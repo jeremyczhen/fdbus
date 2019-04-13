@@ -1,0 +1,83 @@
+
+syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
+
+package NFdbBase;
+
+enum FdbNsMsgCode
+{
+    REQ_ALLOC_SERVICE_ADDRESS = 0;
+    REQ_REGISTER_SERVICE = 1;
+    REQ_UNREGISTER_SERVICE = 2;
+
+    REQ_QUERY_SERVICE = 3;
+    REQ_QUERY_SERVICE_INTER_MACHINE = 4;
+
+    REQ_QUERY_HOST_LOCAL = 5;
+
+    NTF_SERVICE_ONLINE = 6;
+    NTF_SERVICE_ONLINE_INTER_MACHINE = 7;
+    NTF_MORE_ADDRESS = 8;
+    NTF_SERVICE_ONLINE_MONITOR = 9;
+    NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE = 10;
+
+    NTF_HOST_ONLINE_LOCAL = 11;
+    NTF_HOST_NAME = 12;
+}
+
+message FdbMsgAddressList
+{
+    required string service_name = 1;
+    required string host_name = 2;
+    required bool is_local = 3;
+    repeated string address_list = 4;
+}
+
+message FdbMsgServerName
+{
+    required string name = 1;
+}
+
+enum FdbHsMsgCode
+{
+    REQ_REGISTER_HOST = 0;
+    REQ_UNREGISTER_HOST = 1;
+    REQ_QUERY_HOST = 2;
+    REQ_HEARTBEAT_OK = 3;
+
+    NTF_HOST_ONLINE = 4;
+    NTF_HEART_BEAT = 5;
+}
+
+message FdbMsgHostList
+{
+    repeated string address_list = 1;
+}
+
+message FdbMsgHostAddress
+{
+    required string ip_address = 1;
+    required string ns_url = 2;
+    required string host_name = 3;
+}
+
+message FdbMsgHostName
+{
+    required string name = 1;
+}
+
+message FdbMsgHostAddressList
+{
+    repeated FdbMsgHostAddress address_list = 1;
+}
+
+message FdbMsgServiceInfo
+{
+    required FdbMsgAddressList service_addr = 1;
+    required FdbMsgHostAddress host_addr = 2;
+}
+
+message FdbMsgServiceTable
+{
+    repeated FdbMsgServiceInfo service_tbl = 1;
+}

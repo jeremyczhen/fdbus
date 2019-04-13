@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+package NFdbExample;
+
+message SongId
+{
+    required int32 id = 1; 
+}
+
+message NowPlayingDetails 
+{
+    required string artist = 1;
+    required string album = 2;
+    required string genre = 3;
+    required string title = 4;
+    optional string file_name = 5;
+    optional string folder_name = 6;
+    required int32 elapse_time = 7;
+}
+message ElapseTime
+{
+    required int32 hour = 1;
+    required int32 minute = 2;
+    required int32 second = 3;
+}

@@ -1,0 +1,136 @@
+syntax = "proto2";
+
+package NFdbBase;
+option optimize_for = LITE_RUNTIME;
+
+enum FdbMessageType
+{
+    MT_UNKNOWN = 0;
+    MT_REQUEST = 1;
+    MT_REPLY = 2;
+    MT_SUBSCRIBE_REQ = 3;
+    MT_BROADCAST = 4;
+    MT_HEARTBEAT = 5;
+    MT_STATUS = 6;
+    MT_MAX = 7;
+}
+
+enum FdbTraceLogLevel
+{
+    FDB_LL_VERBOSE              = 0;
+    FDB_LL_DEBUG                = 1;
+    FDB_LL_INFO                 = 2;
+    FDB_LL_WARNING              = 3;
+    FDB_LL_ERROR                = 4;
+    FDB_LL_FATAL                = 5;
+    FDB_LL_SILENT               = 6;
+}
+
+enum FdbMessageLoggerCode
+{
+    REQ_FDBUS_LOG               = 0;
+    REQ_TRACE_LOG               = 1;
+
+    REQ_LOGGER_CONFIG           = 2;
+    REQ_TRACE_CONFIG            = 3;
+
+    NTF_LOGGER_CONFIG           = 4;
+    NTF_TRACE_CONFIG            = 5;
+
+    NTF_FDBUS_LOG               = 6;
+    NTF_TRACE_LOG               = 7;
+} 
+
+message FdbMessageHeader
+{
+    required FdbMessageType type = 1;
+    required int32 serial_number = 2;
+    required int32 code = 3;
+    required uint32 flag = 4;
+    required uint32 object_id = 5;
+    required uint32 payload_size = 6;
+    optional string sender_name = 7;
+    optional string broadcast_filter = 8;
+    optional uint64 send_or_arrive_time = 10;
+    optional uint64 reply_time = 11;
+}
+
+message FdbMsgSubscribeItem
+{
+    required int32 msg_code = 1;
+    optional string filter = 2;
+}
+
+message FdbMsgSubscribe
+{
+    repeated FdbMsgSubscribeItem notify_list = 1;
+}
+
+message FdbMsgErrorInfo
+{
+    required int32 error_code = 1;
+    optional string description = 2;
+}
+
+message FdbMsgObjectInfo
+{
+    required uint32 obj_id = 1; 
+    optional string obj_name = 2; 
+}
+
+message FdbMsgObjectInfoTbl
+{
+    repeated FdbMsgObjectInfo info = 1;
+}
+
+message FdbLogProducerData
+{
+    required int32 logger_pid = 1;
+    required string sender_host_name = 2;
+
+    required string sender_name = 3;
+    required string receiver_name = 4;
+    required string service_name = 5;
+
+    required FdbMessageType type = 6;
+    required int32 code = 7;
+    required int32 serial_number = 8;
+    required int64 time_stamp = 9;
+    required bool is_string = 10;
+    
+    required int32 msg_payload_size = 11;
+    required int32 object_id = 12;
+}
+
+message FdbTraceProducerData
+{
+    required int32 trace_pid = 1;
+    required string sender_host_name = 2;
+
+    required string tag = 3;
+    required int64 time_stamp = 4;
+
+    required FdbTraceLogLevel trace_level = 5;
+}
+
+message FdbMsgLogConfig
+{
+    required bool global_enable = 1;
+    required bool enable_request = 2;
+    required bool enable_reply = 3;
+    required bool enable_broadcast = 4;
+    required bool enable_subscribe = 5;
+    required int32 raw_data_clipping_size = 6;
+
+    repeated string host_while_list = 7;
+    repeated string endpoint_while_list = 8;
+}
+
+message FdbTraceConfig
+{
+    required bool global_enable = 1;
+    required FdbTraceLogLevel log_level = 2;
+
+    repeated string host_while_list = 7;
+    repeated string tag_while_list = 8;
+}
