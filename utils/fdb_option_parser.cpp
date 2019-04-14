@@ -31,7 +31,7 @@ handle_option(const struct fdb_option *option, char *value)
 
 	switch (option->type) {
 	case FDB_OPTION_INTEGER:
-		if (safe_strtoint(value, option->data))
+		if (safe_strtoint(value, (int32_t *)option->data))
 			return 0;
 		return 1;
 	case FDB_OPTION_UNSIGNED_INTEGER:
@@ -169,7 +169,7 @@ char **strsplit(const char* str, const char* delim, unsigned int *numtokens) {
     // implement a dynamically-growing array
     size_t tokens_alloc = 1;
     size_t tokens_used = 0;
-    char **tokens = calloc(tokens_alloc, sizeof(char*));
+    char **tokens = (char **)calloc(tokens_alloc, sizeof(char*));
     char *token;
     char *strtok_ctx = 0;
 #ifdef __WIN32__
@@ -179,7 +179,7 @@ char **strsplit(const char* str, const char* delim, unsigned int *numtokens) {
         // check if we need to allocate more space for tokens
         if (tokens_used == tokens_alloc) {
             tokens_alloc *= 2;
-            tokens = realloc(tokens, tokens_alloc * sizeof(char*));
+            tokens = (char **)realloc(tokens, tokens_alloc * sizeof(char*));
         }
         tokens[tokens_used++] = strdup(token);
     }
@@ -190,7 +190,7 @@ char **strsplit(const char* str, const char* delim, unsigned int *numtokens) {
         // check if we need to allocate more space for tokens
         if (tokens_used == tokens_alloc) {
             tokens_alloc *= 2;
-            tokens = realloc(tokens, tokens_alloc * sizeof(char*));
+            tokens = (char **)realloc(tokens, tokens_alloc * sizeof(char*));
         }
         tokens[tokens_used++] = strdup(token);
     }
@@ -200,7 +200,7 @@ char **strsplit(const char* str, const char* delim, unsigned int *numtokens) {
         free(tokens);
         tokens = NULL;
     } else {
-        tokens = realloc(tokens, tokens_used * sizeof(char*));
+        tokens = (char **)realloc(tokens, tokens_used * sizeof(char*));
     }
     *numtokens = (unsigned int)tokens_used;
     free(s);

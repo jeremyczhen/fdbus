@@ -128,7 +128,7 @@ protected:
             case REQ_RAWDATA:
             {
                 /* raw data is received from client */
-                const char *buffer = (char *)msg->getPayloadBuffer();
+                // const char *buffer = (char *)msg->getPayloadBuffer();
                 int32_t size = msg->getPayloadSize();
                 FDB_LOG_I("Invoke of raw buffer is received: size: %d\n", size);
                 msg->status(msg_ref, NFdbBase::FDB_ST_OK, "REQ_RAWDATA is processed successfully!");

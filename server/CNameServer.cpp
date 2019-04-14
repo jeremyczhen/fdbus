@@ -553,7 +553,6 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
         /* never broadcast name server to remote for normal request! */
         return;
     }
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
     NFdbBase::FdbMsgAddressList addr_list;
     EFdbSocketType skt_type;
     if ((msg_code == NFdbBase::NTF_SERVICE_ONLINE_MONITOR) ||

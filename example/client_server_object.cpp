@@ -279,7 +279,7 @@ protected:
             break;
             case REQ_RAWDATA:
             {
-                const char *buffer = (char *)msg->getPayloadBuffer();
+                // const char *buffer = (char *)msg->getPayloadBuffer();
                 int32_t size = msg->getPayloadSize();
                 FDB_LOG_I("OBJ %d Invoke of raw buffer is received: size: %d\n", this->objId(), size);
                 msg->status(msg_ref, NFdbBase::FDB_ST_OK, "REQ_RAWDATA is processed successfully!");
@@ -883,8 +883,6 @@ int main(int argc, char **argv)
     {
         // 创建client并连接Server
         CMyClient<CBaseClient> *client = 0;
-        CMyClient<CFdbBaseObject> *obj1 = 0;
-        CMyClient<CFdbBaseObject> *obj2 = 0;
         for (int i = 2; i < argc; ++i)
         {
             std::string server_name = argv[i];
@@ -894,6 +892,8 @@ int main(int argc, char **argv)
             client = new CMyClient<CBaseClient>(server_name.c_str(), worker_ptr);
             
 #if 0
+            CMyClient<CFdbBaseObject> *obj1 = 0;
+            CMyClient<CFdbBaseObject> *obj2 = 0;
             obj1 = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
             obj1->connect(client, 1000 + i);
             

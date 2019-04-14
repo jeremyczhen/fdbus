@@ -586,7 +586,6 @@ void TCPServerSocket::Accept(TCPSocket &sock){
         int optval = 1;
         socklen_t len;
         struct ucred ucred;
-        struct sockaddr_in sock_addr;
 
         setsockopt(CastToSocket(sock.socket), SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval));
         if (socket_type == SCKT_SOCKET_UNIX)

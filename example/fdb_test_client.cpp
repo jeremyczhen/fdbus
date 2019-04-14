@@ -369,7 +369,7 @@ int main(int argc, char **argv)
         std::string url(FDB_URL_SVC);
         url += server_name;
         server_name += "_client";
-        CMediaClient *client = new CMediaClient(server_name.c_str());
+        CMediaClient *client = new CMediaClient(server_name.c_str(), worker_ptr);
         
         client->enableReconnect(true);
         client->connect(url.c_str());
