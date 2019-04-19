@@ -409,7 +409,9 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
     if (ip.ipc_path.empty())
     {
 #endif
+#ifndef CONFIG_SOCKET_BLOCKING_CONNECT 
         setNonBlock();
+#endif
 
         sockaddr_in sockAddr;
         memset(&sockAddr, 0, sizeof(sockAddr));
@@ -418,19 +420,21 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
         sockAddr.sin_port = htons(ip.port);
 
         // Connect to the remote host
-        #if 0
+#ifdef CONFIG_SOCKET_BLOCKING_CONNECT 
         if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
             this->Close();
             throw sckt::Exc("TCPSocket::Open(): Couldn't connect to remote host");
         }
-        #else
-        connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr));
-        if (!waitConnect(2000))
+#else
+        if (connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)))
         {
-            this->Close();
-            throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
+            if (!waitConnect(2000))
+            {
+                this->Close();
+                throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
+            }
         }
-        #endif
+#endif
 #ifndef __WIN32__
     }
     else
@@ -481,9 +485,10 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
     int flags = fcntl(CastToSocket(this->socket), F_GETFD);
     fcntl(CastToSocket(this->socket), F_SETFD, flags | FD_CLOEXEC);
 
-    struct ucred ucred;
+#ifdef CONFIG_SOCKET_PEERCRED
     if (socket_type == SCKT_SOCKET_UNIX)
     {
+        struct ucred ucred;
         socklen_t len = sizeof(struct ucred);
         if (getsockopt(CastToSocket(socket), SOL_SOCKET, SO_PEERCRED, &ucred, &len) != -1)
         {
@@ -492,6 +497,7 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
             uid = ucred.uid;
         }
     }
+#endif
 #endif
 };
 
@@ -582,23 +588,23 @@ void TCPServerSocket::Accept(TCPSocket &sock){
         int flags = fcntl(CastToSocket(sock.socket), F_GETFD);
         fcntl(CastToSocket(sock.socket), F_SETFD, flags | FD_CLOEXEC);
     }
+
+#ifdef CONFIG_SOCKET_PEERCRED
+    if (socket_type == SCKT_SOCKET_UNIX)
     {
         int optval = 1;
-        socklen_t len;
-        struct ucred ucred;
-
         setsockopt(CastToSocket(sock.socket), SOL_SOCKET, SO_PASSCRED, &optval, sizeof(optval));
-        if (socket_type == SCKT_SOCKET_UNIX)
+
+        struct ucred ucred;
+        socklen_t len = sizeof(struct ucred);
+        if (getsockopt(CastToSocket(sock.socket), SOL_SOCKET, SO_PEERCRED, &ucred, &len) != -1)
         {
-            len = sizeof(struct ucred);
-            if (getsockopt(CastToSocket(sock.socket), SOL_SOCKET, SO_PEERCRED, &ucred, &len) != -1)
-            {
-                sock.pid = ucred.pid;
-                sock.gid = ucred.gid;
-                sock.uid = ucred.uid;
-            }
+            sock.pid = ucred.pid;
+            sock.gid = ucred.gid;
+            sock.uid = ucred.uid;
         }
     }
+#endif
 #endif
     
     if(this->disableNaggle)

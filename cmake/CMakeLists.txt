@@ -1,16 +1,43 @@
 cmake_minimum_required(VERSION 3.1.3)
 project(fdbus C CXX)
 
+option(fdbus_BUILD_TESTS "Build tests" ON)
+option(fdbus_ENABLE_LOG "Enable log" ON)
+option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
+option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" ON)
+option(fdbus_SOCKET_BLOCKING_CONNECT "Blocking until socket is connected" OFF)
+option(fdbus_SOCKET_ENABLE_PEERCRED "Enable peercred of socket" ON)
+
+if (MSVC)
+    add_definitions("-D__WIN32__")
+    add_compile_options(-std=gnu++11 -Wall)
+else()
+    add_definitions("-D__LINUX__")
+endif()
+
+if (fdbus_ENABLE_LOG)
+    add_definitions("-DCONFIG_DEBUG_LOG")
+endif()
+
+if (fdbus_LOG_TO_STDOUT)
+    add_definitions("-DCONFIG_LOG_TO_STDOUT")
+endif()
+
+if (fdbus_ENABLE_MESSAGE_METADATA)
+    add_definitions("-DCONFIG_FDB_MESSAGE_METADATA")
+endif()
+
+if (fdbus_SOCKET_BLOCKING_CONNECT)
+    add_definitions("-DCONFIG_SOCKET_BLOCKING_CONNECT")
+endif()
+
+if (fdbus_SOCKET_ENABLE_PEERCRED)
+    add_definitions("-DCONFIG_SOCKET_PEERCRED")
+endif()
+
 set(RULE_DIR ${CMAKE_SOURCE_DIR})
 get_filename_component(PROJECT_ROOT ${RULE_DIR} PATH)
 include(rule_base.cmake)
-if (NOT MSVC)
-    add_compile_options(-std=gnu++11 -Wall)
-endif()
-
-#add_definitions("-DCONFIG_LOG_TO_STDOUT")
-add_definitions("-DCONFIG_DEBUG_LOG")
-add_definitions("-DCONFIG_FDB_MESSAGE_METADATA")
 
 set(IDL_GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -70,4 +97,6 @@ install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/co
 link_libraries(common_base)
 
 include(service.cmake)
-include(example.cmake)
+if (fdbus_BUILD_TESTS)
+    include(example.cmake)
+endif()
