@@ -76,7 +76,7 @@ protected:
     void reconnectToNs(bool connect);
 private:
     void cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
-    FdbSocketId_t doBind(const char *url);
+    CServerSocket *doBind(const char *url);
 
     void cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     void doUnbind(FdbSocketId_t skid = FDB_INVALID_ID);

@@ -208,7 +208,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = addr_list.begin();
                         it != addr_list.end(); ++it)
                 {
-                    if (!isValidFdbId(client->doConnect(it->c_str())))
+                    if (!client->doConnect(it->c_str()))
                     {
                         LOG_E("CIntraNameProxy: Session %d: Fail to connect to %s!\n", msg->session(), it->c_str());
                         //TODO: do something for me!
@@ -305,7 +305,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         {
             do
             {
-                if (!isValidFdbId(server->doBind(it->c_str())))
+                if (!server->doBind(it->c_str()))
                 {
 #if 0
                     LOG_E("CIntraNameProxy: session %d: Fail to bind to %s! Reconnecting...\n", msg->session(), it->c_str());

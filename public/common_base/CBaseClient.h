@@ -95,7 +95,7 @@ public:
 
 protected:
     std::string mConnectedHost;
-    FdbSessionId_t doConnect(const char *url);
+    CClientSocket *doConnect(const char *url);
     void doDisconnect(FdbSessionId_t sid = FDB_INVALID_ID);
     bool requestServiceAddress(const char *server_name);
     void reconnectToNs(bool connect);

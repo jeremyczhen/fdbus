@@ -125,7 +125,15 @@ void CBaseServer::cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBas
     {
         url = the_job->mUrl.c_str();
     }
-    the_job->mSkId = doBind(url);
+    CServerSocket *sk = doBind(url);
+    if (sk)
+    {
+        the_job->mSkId = sk->skid();
+    }
+    else
+    {
+        the_job->mSkId = FDB_INVALID_ID;
+    }
 }
 
 bool CBaseServer::requestServiceAddress(const char *server_name)
@@ -182,7 +190,7 @@ bool CBaseServer::requestServiceAddress(const char *server_name)
 }
 
 
-FdbSocketId_t CBaseServer::doBind(const char *url)
+CServerSocket *CBaseServer::doBind(const char *url)
 {
     CFdbSocketAddr addr;
     EFdbSocketType skt_type;
@@ -192,7 +200,7 @@ FdbSocketId_t CBaseServer::doBind(const char *url)
     {
         if (!CBaseSocketFactory::getInstance()->parseUrl(url, addr))
         {
-            return FDB_INVALID_ID;
+            return 0;
         }
         skt_type = addr.mType;
         server_name = addr.mAddr.c_str();
@@ -207,13 +215,13 @@ FdbSocketId_t CBaseServer::doBind(const char *url)
     if (skt_type == FDB_SOCKET_SVC)
     {
         requestServiceAddress(server_name);
-        return FDB_INVALID_ID;
+        return 0;
     }
 
     CFdbSessionContainer *session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already bound, do nothing */
     {
-        return session_container->skid();
+        return dynamic_cast<CServerSocket *>(session_container);
     }
 
     CServerSocketImp *server_imp = CBaseSocketFactory::getInstance()->createServerSocket(addr);
@@ -224,14 +232,14 @@ FdbSocketId_t CBaseServer::doBind(const char *url)
         addSocket(sk);
         if (sk->bind(CFdbContext::getInstance()))
         {
-            return skid;
+            return sk;
         }
         else
         {
             delete sk;
         }
     }
-    return FDB_INVALID_ID;
+    return 0;
 }
 
 class CUnbindServerJob : public CMethodJob<CBaseServer>

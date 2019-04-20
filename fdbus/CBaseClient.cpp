@@ -85,7 +85,7 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
         {
             sysdep_sleep(FDB_CLIENT_RECONNECT_WAIT_MS);
         }
-        if (isValidFdbId(client->doConnect(url.c_str())))
+        if (client->doConnect(url.c_str()))
         {
             LOG_E("CClientSocket: shutdown due to IO error but reconnected to %s@%s.\n", client->nsName().c_str(), url.c_str());
         }
@@ -153,7 +153,23 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
     {
         url = the_job->mUrl.c_str();
     }
-    the_job->mSid = doConnect(url);
+
+    CFdbSession *session = preferredPeer();
+    CClientSocket *sk = doConnect(url);
+    if (sk)
+    {
+        CFdbSession *session = sk->getDefaultSession();
+        if (session)
+        {
+            the_job->mSid = session->sid();
+        }
+        else
+        {
+            the_job->mSid = FDB_INVALID_ID;
+            LOG_E("CBaseClient: client is already connected but no session is found!\n");
+            /* Just try to connect again */
+        }
+    }
 }
 
 bool CBaseClient::requestServiceAddress(const char *server_name)
@@ -184,7 +200,7 @@ bool CBaseClient::requestServiceAddress(const char *server_name)
     return true;
 }
 
-FdbSessionId_t CBaseClient::doConnect(const char *url)
+CClientSocket *CBaseClient::doConnect(const char *url)
 {
     CFdbSocketAddr addr;
     EFdbSocketType skt_type;
@@ -194,7 +210,7 @@ FdbSessionId_t CBaseClient::doConnect(const char *url)
     {
         if (!CBaseSocketFactory::getInstance()->parseUrl(url, addr))
         {
-            return FDB_INVALID_ID;
+            return 0;
         }
         skt_type = addr.mType;
         server_name = addr.mAddr.c_str();
@@ -209,22 +225,13 @@ FdbSessionId_t CBaseClient::doConnect(const char *url)
     if (skt_type == FDB_SOCKET_SVC)
     {
         requestServiceAddress(server_name);
-        return FDB_INVALID_ID;
+        return 0;
     }
 
     CFdbSessionContainer *session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already connected, do nothing */
     {
-        CFdbSession *session = preferredPeer();
-        if (session)
-        {
-            return session->sid();
-        }
-        else
-        {
-            LOG_E("CBaseClient: client is already connected but no session is found!\n");
-            /* Just try to connect again */
-        }
+        return dynamic_cast<CClientSocket *>(session_container);
     }
 
     CClientSocketImp *client_imp = CBaseSocketFactory::getInstance()->createClientSocket(addr);
@@ -241,13 +248,13 @@ FdbSessionId_t CBaseClient::doConnect(const char *url)
             session->attach(CFdbContext::getInstance());
             if (addConnectedSession(sk, session))
             {
-                return session->sid();
+                return sk;
             }
             else
             {
                 delete session;
                 deleteSocket(skid);
-                return FDB_INVALID_ID;
+                return 0;
             }
         }
         else
@@ -256,7 +263,7 @@ FdbSessionId_t CBaseClient::doConnect(const char *url)
         }
     }
 
-    return FDB_INVALID_ID;
+    return 0;
 }
 
 class CDisconnectClientJob : public CMethodJob<CBaseClient>
