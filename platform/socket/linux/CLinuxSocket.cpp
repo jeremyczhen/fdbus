@@ -180,6 +180,7 @@ bool CLinuxServerSocket::bind()
             {
                 sckt::IPAddress address(mAddress.mAddr.c_str(), (sckt::u16)mAddress.mPort);
                 mServerSocketImp = new sckt::TCPServerSocket(address);
+                mAddress.mPort = mServerSocketImp->self_port; // in case port number is allocated dynamically...
             }
 #ifndef __WIN32__
             else if (mAddress.mType == FDB_SOCKET_IPC)

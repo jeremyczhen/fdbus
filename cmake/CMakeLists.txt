@@ -7,11 +7,12 @@ option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
 option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" ON)
 option(fdbus_SOCKET_BLOCKING_CONNECT "Blocking until socket is connected" OFF)
 option(fdbus_SOCKET_ENABLE_PEERCRED "Enable peercred of socket" ON)
+option(fdbus_ALLOC_PORT_BY_SYSTEM "Allocate port number by system rather than by name server" OFF)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
-    add_compile_options(-std=gnu++11 -Wall)
 else()
+    add_compile_options(-std=gnu++11 -Wall)
     add_definitions("-D__LINUX__")
 endif()
 
@@ -33,6 +34,10 @@ endif()
 
 if (fdbus_SOCKET_ENABLE_PEERCRED)
     add_definitions("-DCONFIG_SOCKET_PEERCRED")
+endif()
+
+if (fdbus_ALLOC_PORT_BY_SYSTEM)
+    add_definitions("-DCFG_ALLOC_PORT_BY_SYSTEM")
 endif()
 
 set(RULE_DIR ${CMAKE_SOURCE_DIR})

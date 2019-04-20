@@ -44,6 +44,7 @@ typedef uint32_t FdbObjectId_t;
 #define FDB_URL_UDP FDB_URL_UDP_IND "://"
 
 #define FDB_IP_ALL_INTERFACE "0"
+#define FDB_SYSTEM_PORT 0
 
 #define FDB_OBJECT_MAIN 0
 #define FDB_OBJECT_SN_SHIFT 16

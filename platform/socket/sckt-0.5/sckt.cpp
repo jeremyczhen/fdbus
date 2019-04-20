@@ -372,6 +372,18 @@ void TCPServerSocket::Open(const IPAddress& ip, bool disableNaggle){
         throw sckt::Exc("TCPServerSocket::Open(): Couldn't listen to local port");
     }
 
+    if (socket_type != SCKT_SOCKET_UNIX)
+    {
+        struct sockaddr_in sock_addr;
+        socklen_t len = sizeof(sock_addr);
+        len = sizeof(sock_addr);
+        if (getsockname(CastToSocket(socket), (struct sockaddr*)&sock_addr, &len) != -1)
+        {
+            self_ip = inet_ntoa(sock_addr.sin_addr);
+            self_port = ntohs(sock_addr.sin_port);
+        }
+    }
+
     setNonBlock();
 
 #if !defined(__WIN32__)

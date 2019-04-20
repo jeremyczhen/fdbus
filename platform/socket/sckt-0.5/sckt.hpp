@@ -425,6 +425,7 @@ public:
     TCPServerSocket() :
             disableNaggle(false)
           , socket_type(SCKT_SOCKET_INET)
+          , self_port(0)
     {};
     
     /**
@@ -438,6 +439,7 @@ public:
     TCPServerSocket(const TCPServerSocket& s) :
             disableNaggle(s.disableNaggle)
           , socket_type(s.socket_type)
+          , self_port(0)
     {
         //NOTE: that operator= calls destructor, so this->socket should be invalid, base class constructor takes care about it.
         this->operator=(s);//same as auto_ptr
@@ -461,7 +463,10 @@ public:
     @param port - IP port number to listen on.
     @param disableNaggle - enable/disable Naggle algorithm for all accepted connections.
     */
-    TCPServerSocket(const IPAddress& ip, bool disableNaggle = false){
+    TCPServerSocket(const IPAddress& ip, bool disableNaggle = false) :
+          socket_type(SCKT_SOCKET_INET)
+        , self_port(0)
+    {
         this->Open(ip, disableNaggle);
     };
     
@@ -485,6 +490,8 @@ public:
         - if the socket is invalid then there was no any connections pending, so no connection was accepted.
     */
     void Accept(TCPSocket &sock);
+    std::string self_ip;
+    u16 self_port;
 };
 
 class M_DECLSPEC UDPSocket : public Socket{

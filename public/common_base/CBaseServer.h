@@ -85,6 +85,7 @@ private:
     friend class CFdbContext;
     friend class CServerSocket;
     friend class CIntraNameProxy;
+    friend class CNameServer;
 };
 
 #endif

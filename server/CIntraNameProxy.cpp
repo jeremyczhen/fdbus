@@ -18,9 +18,7 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
-#ifdef __WIN32__
 #include <common_base/CBaseSocketFactory.h>
-#endif
 #include <idl-gen/common.base.MessageHeader.pb.h>
 #include "CNsConfig.h"
 #include <utils/Log.h>
@@ -305,19 +303,49 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         {
             do
             {
-                if (!server->doBind(it->c_str()))
+                CServerSocket *sk = server->doBind(it->c_str());
+                if (sk)
+                {
+                    CFdbSocketInfo info;
+                    CFdbSocketAddr addr;
+                    std::string url;
+                    const char *char_url = it->c_str();
+                    sk->getSocketInfo(info);
+                    CBaseSocketFactory::parseUrl(it->c_str(), addr);
+                    if (info.mAddress->mType == FDB_SOCKET_TCP)
+                    {
+                        LOG_I("jeremy server: %s, port: %d\n", svc_name, info.mAddress->mPort);
+                        if (addr.mPort == info.mAddress->mPort)
+                        {
+                            bound_list.add_address_list(*it);
+                        }
+                        else
+                        {
+                            if (addr.mPort)
+                            {
+                                LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
+                                        msg->session(), svc_name, addr.mPort, info.mAddress->mPort);
+                            }
+                            CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP, addr.mAddr.c_str(), info.mAddress->mPort);
+                            bound_list.add_address_list(url);
+                            char_url = url.c_str();
+                        }
+                    }
+                    else
+                    {
+                        bound_list.add_address_list(*it);
+                    }
+
+                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n", msg->session(), svc_name, char_url);
+                    server->mNsConnStatus = CONNECTED;
+                    break;
+                }
+                else
                 {
 #if 0
                     LOG_E("CIntraNameProxy: session %d: Fail to bind to %s! Reconnecting...\n", msg->session(), it->c_str());
 #endif
                     sysdep_sleep(CNsConfig::getAddressBindRetryInterval());
-                }
-                else
-                {
-                    LOG_E("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n", msg->session(), svc_name, it->c_str());
-                    bound_list.add_address_list(*it);
-                    server->mNsConnStatus = CONNECTED;
-                    break;
                 }
             } while (--retries > 0);
         }

@@ -20,8 +20,6 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/common_defs.h>
 
-CBaseSocketFactory *CBaseSocketFactory::mInstance = 0;
-
 CClientSocketImp *CBaseSocketFactory::createClientSocket(CFdbSocketAddr &addr)
 {
     return new CLinuxClientSocket(addr);
@@ -229,4 +227,13 @@ void CBaseSocketFactory::buildUrl(std::string &url, EFdbSocketType type, const c
     sprintf(port_string, "%u", port);
 
     buildUrl(url, type, ip_path_svc, port_string);
+}
+
+void CBaseSocketFactory::updatePort(CFdbSocketAddr &addr, int32_t new_port)
+{
+    if (new_port != addr.mPort)
+    {
+        buildUrl(addr.mUrl, FDB_SOCKET_TCP, addr.mAddr.c_str(), new_port);
+        addr.mPort = new_port;
+    }
 }

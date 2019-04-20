@@ -177,7 +177,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
             if (!ns_url.empty())
             {
                 CFdbSocketAddr addr;
-                if (CBaseSocketFactory::getInstance()->parseUrl(ns_url.c_str(), addr))
+                if (CBaseSocketFactory::parseUrl(ns_url.c_str(), addr))
                 {
                     CBaseSocketFactory::buildUrl(ns_url, addr.mType, ip_address.c_str(), addr.mPort);
                 }
@@ -207,6 +207,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
         else if (np_it == mNameProxyTbl.end())
         {
             CInterNameProxy *proxy = new CInterNameProxy(this, ip_address, ns_url, addr.host_name());
+            proxy->enableReconnect(true);
             proxy->autoRemove(true);
             if (proxy->connectToNameServer())
             {
@@ -261,7 +262,7 @@ void CHostProxy::hostOnline(FdbMsgCode_t code)
     NFdbBase::FdbMsgHostAddress host_addr;
     host_addr.set_ip_address(host_ip);
     host_addr.set_host_name(hostName());
-    host_addr.set_ns_url(mNameServer->getNsUrl(host_ip.c_str()));
+    host_addr.set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
     send(code, host_addr);
 }
 
@@ -429,7 +430,7 @@ void CHostProxy::getHostTbl(NFdbBase::FdbMsgHostAddressList &host_tbl)
 
     addr->set_ip_address(host_ip);
     addr->set_host_name(mHostName);
-    addr->set_ns_url(mNameServer->getNsUrl(host_ip.c_str()));
+    addr->set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
 }
 
 

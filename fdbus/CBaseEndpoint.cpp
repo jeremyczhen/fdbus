@@ -388,7 +388,7 @@ bool CBaseEndpoint::replaceUrlIpAddress(std::string &url, CFdbSession *session,
                                         std::string *ip_addr, int32_t *port)
 {
     CFdbSocketAddr addr;
-    if (CBaseSocketFactory::getInstance()->parseUrl(url.c_str(), addr))
+    if (CBaseSocketFactory::parseUrl(url.c_str(), addr))
     {
         std::string peer_ip;
         if (addr.mType != FDB_SOCKET_TCP)

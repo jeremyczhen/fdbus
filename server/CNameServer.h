@@ -54,7 +54,7 @@ public:
     CNameServer();
     ~CNameServer();
     bool online(const char *hs_url = 0, const char *host_name = 0, const char *interface_name = 0);
-    const std::string getNsUrl(const char *ip_addr = 0);
+    const std::string getNsTcpUrl(const char *ip_addr = 0);
     void populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local);
     tFdbFilterSets &getServiceSubscribedTbl()
     {
@@ -100,11 +100,9 @@ private:
     void onHostNameReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
-    CFdbAddressDesc *allocateAddress(const std::string &svc_name, EFdbSocketType type);
-    bool allocateAddress(const std::string &svc_name, EFdbSocketType type, std::string &addr_url);
+    bool allocateTcpAddress(const std::string &svc_name, std::string &addr_url);
+    bool allocateIpcAddress(const std::string &svc_name, std::string &addr_url);
 
-    void buildUrl(const char *host_ip, const char *id, std::string &url);
-    void buildUrl(const char *host_ip, uint32_t id, std::string &url);
     void buildUrl(const char *id, std::string &url);
     void buildUrl(uint32_t id, std::string &url);
 
@@ -126,6 +124,7 @@ private:
     uint32_t mIpcAllocator;
     CHostProxy *mHostProxy;
     std::string mInterface;
+    int32_t mNsPort;
 };
 
 #endif

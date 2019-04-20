@@ -208,7 +208,7 @@ CClientSocket *CBaseClient::doConnect(const char *url)
 
     if (url)
     {
-        if (!CBaseSocketFactory::getInstance()->parseUrl(url, addr))
+        if (!CBaseSocketFactory::parseUrl(url, addr))
         {
             return 0;
         }
@@ -234,7 +234,7 @@ CClientSocket *CBaseClient::doConnect(const char *url)
         return dynamic_cast<CClientSocket *>(session_container);
     }
 
-    CClientSocketImp *client_imp = CBaseSocketFactory::getInstance()->createClientSocket(addr);
+    CClientSocketImp *client_imp = CBaseSocketFactory::createClientSocket(addr);
     if (client_imp)
     {
         FdbSocketId_t skid = allocateEntityId();

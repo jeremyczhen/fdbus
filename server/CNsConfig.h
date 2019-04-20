@@ -62,9 +62,19 @@ public:
         return "60001";
     }
 
+    static int32_t getIntNameServerTcpPort()
+    {
+        return 60001;
+    }
+
     static const char *getHostServerTcpPort()
     {
         return "60000";
+    }
+
+    static int32_t getIntHostServerTcpPort()
+    {
+        return 60000;
     }
 
     static const char *getIpcPathBase()
