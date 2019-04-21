@@ -30,6 +30,10 @@ THE SOFTWARE. */
 #include <iostream>
 #include "sckt.hpp"
 
+#if !defined(CONFIG_SOCKET_CONNECT_TIMEOUT)
+#define CONFIG_SOCKET_CONNECT_TIMEOUT 2000
+#endif
+
 //system specific defines, typedefs and includes
 #ifdef __WIN32__
 #include <winsock2.h>
@@ -421,9 +425,10 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
     if (ip.ipc_path.empty())
     {
 #endif
-#ifndef CONFIG_SOCKET_BLOCKING_CONNECT 
-        setNonBlock();
-#endif
+        if (CONFIG_SOCKET_CONNECT_TIMEOUT)
+        {
+            setNonBlock();
+        } 
 
         sockaddr_in sockAddr;
         memset(&sockAddr, 0, sizeof(sockAddr));
@@ -432,21 +437,24 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
         sockAddr.sin_port = htons(ip.port);
 
         // Connect to the remote host
-#ifdef CONFIG_SOCKET_BLOCKING_CONNECT 
-        if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
-            this->Close();
-            throw sckt::Exc("TCPSocket::Open(): Couldn't connect to remote host");
-        }
-#else
-        if (connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)))
+        if (CONFIG_SOCKET_CONNECT_TIMEOUT)
         {
-            if (!waitConnect(2000))
+            if (connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)))
             {
-                this->Close();
-                throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
+                if (!waitConnect(CONFIG_SOCKET_CONNECT_TIMEOUT))
+                {
+                    this->Close();
+                    throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
+                }
             }
         }
-#endif
+        else
+        {
+            if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
+                this->Close();
+                throw sckt::Exc("TCPSocket::Open(): Couldn't connect to remote host");
+            }
+        }
 #ifndef __WIN32__
     }
     else

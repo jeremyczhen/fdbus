@@ -5,7 +5,6 @@ option(fdbus_BUILD_TESTS "Build tests" ON)
 option(fdbus_ENABLE_LOG "Enable log" ON)
 option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
 option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" ON)
-option(fdbus_SOCKET_BLOCKING_CONNECT "Blocking until socket is connected" OFF)
 option(fdbus_SOCKET_ENABLE_PEERCRED "Enable peercred of socket" ON)
 option(fdbus_ALLOC_PORT_BY_SYSTEM "Allocate port number by system rather than by name server" OFF)
 
@@ -26,10 +25,6 @@ endif()
 
 if (fdbus_ENABLE_MESSAGE_METADATA)
     add_definitions("-DCONFIG_FDB_MESSAGE_METADATA")
-endif()
-
-if (fdbus_SOCKET_BLOCKING_CONNECT)
-    add_definitions("-DCONFIG_SOCKET_BLOCKING_CONNECT")
 endif()
 
 if (fdbus_SOCKET_ENABLE_PEERCRED)
@@ -105,3 +100,12 @@ include(service.cmake)
 if (fdbus_BUILD_TESTS)
     include(example.cmake)
 endif()
+
+#set( CMAKE_VERBOSE_MAKEFILE on )
+
+print_variable(fdbus_BUILD_TESTS)
+print_variable(fdbus_LOG_TO_STDOUT)
+print_variable(fdbus_ENABLE_MESSAGE_METADATA)
+print_variable(fdbus_SOCKET_BLOCKING_CONNECT)
+print_variable(fdbus_SOCKET_ENABLE_PEERCRED)
+print_variable(fdbus_ALLOC_PORT_BY_SYSTEM)

@@ -17,7 +17,7 @@
 #ifndef _CNAMESERVER_H_
 #define _CNAMESERVER_H_
 
-#include <vector>
+#include <list>
 #include <map>
 #include <string>
 #include <set>
@@ -71,7 +71,7 @@ protected:
     void onInvoke(CBaseJob::Ptr &msg_ref);
     void onOffline(FdbSessionId_t sid, bool is_last);
 private:
-    typedef std::vector<CFdbAddressDesc *> tAddressDescTbl;
+    typedef std::list<CFdbAddressDesc *> tAddressDescTbl;
     struct CSvcRegistryEntry
     {
         FdbSessionId_t mSid;

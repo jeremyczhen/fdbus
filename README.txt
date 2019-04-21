@@ -99,6 +99,39 @@ Dependence:
 
 example of toolchain.cmake for cross-compiling
 ----------------------------------------------
+>>>> cat toolchain.cmake
 SET(CMAKE_SYSTEM_NAME Linux)
 SET(CMAKE_CXX_COMPILER ~/project/android/workspace/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu-7.1.1/bin/aarch64-linux-gnu-g++)
 SET(CMAKE_C_COMPILER ~/project/android/workspace/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-gnu-7.1.1/bin/aarch64-linux-gnu-gcc)
+
+cmake options
+-------------
+>>>> The following options can be specified with -Dfdbus_XXX=ON/OFF when running cmake
+- fdbus_BUILD_TESTS
+    *ON : build examples
+     OFF: don't build examples
+- fdbus_ENABLE_LOG
+    *ON : enable log output of fdbus lib
+     OFF: disable log output of fdbus lib
+- fdbus_LOG_TO_STDOUT 
+     ON : send fdbus log to stdout (terminal)
+    *OFF: fdbus log is sent to log server
+- fdbus_ENABLE_MESSAGE_METADATA
+    *ON : time stamp is included in fdbus message to track delay of message during request-reply interaction
+     OFF: time stamp is disabled
+- fdbus_SOCKET_BLOCKING_CONNECT
+     ON : socket method connect() will be blocked forever if server is not ready to accept
+    *OFF: connect() will be blocked with timer to avoid permanent blocking
+- fdbus_SOCKET_ENABLE_PEERCRED
+    *ON : peercred of UDS (Unix Domain Socket) is enabled
+     OFF: peercred of UDS is disabled
+- fdbus_ALLOC_PORT_BY_SYSTEM
+     ON : socket number of servers are allocated by the system
+    *OFF: socket number of servers are allocated by name server
+>>>> The following options can be specified with -DMACRO_DEF='VARIABLE=value;VARIABLE=value'
+- FDB_CFG_SOCKET_PATH
+    specify directory of UDS file
+    default: /tmp
+- CONFIG_SOCKET_CONNECT_TIMEOUT
+    specify timeout of connect() when connect to socket server in ms. "0" means block forever.
+    default: 2000

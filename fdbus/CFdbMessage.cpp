@@ -665,8 +665,11 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
 
 void CFdbMessage::freeRawBuffer()
 {
-    delete[] mBuffer;
-    mBuffer = 0;
+    if (mBuffer)
+    {
+        delete[] mBuffer;
+        mBuffer = 0;
+    }
 }
 
 bool CFdbMessage::allocCopyRawBuffer(const uint8_t *src, int32_t payload_size)
@@ -729,17 +732,14 @@ bool CFdbMessage::serialize(CFdbMsgPayload &payload, int32_t payload_size)
 
 void CFdbMessage::releaseBuffer()
 {
-    if (mBuffer)
+    if (mFlag & MSG_FLAG_EXTERNAL_BUFFER)
     {
-        if (mFlag & MSG_FLAG_EXTERNAL_BUFFER)
-        {
-            freeRawBuffer();
-        }
-        else
-        {
-            delete[] mBuffer;
-            mBuffer = 0;
-        }
+        freeRawBuffer();
+    }
+    else if (mBuffer)
+    {
+        delete[] mBuffer;
+        mBuffer = 0;
     }
 }
 

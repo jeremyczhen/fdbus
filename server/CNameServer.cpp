@@ -685,7 +685,7 @@ CNameServer::CFdbAddressDesc *CNameServer::findAddress(EFdbSocketType type, cons
     {
         CSvcRegistryEntry &desc_tbl = it->second;
         for (tAddressDescTbl::iterator desc_it = desc_tbl.mAddrTbl.begin();
-                desc_it < desc_tbl.mAddrTbl.end(); ++desc_it)
+                desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
         {
             CFdbAddressDesc *addr_desc = *desc_it;
             if ((type == FDB_SOCKET_MAX) || (addr_desc->mAddress.mType == type))
