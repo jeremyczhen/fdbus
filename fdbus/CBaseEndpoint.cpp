@@ -60,7 +60,7 @@ void CBaseEndpoint::deleteSocket(FdbSocketId_t skid)
     if (isValidFdbId(skid))
     {
         CFdbSessionContainer *container = 0;
-        EntryContainer_t::iterator it = retrieveEntry(skid, container);
+        (void)retrieveEntry(skid, container);
         if (container)
         {
             delete container; // also deleted from socket container
@@ -194,20 +194,24 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
             socket_it != containers.end(); ++socket_it)
     {
         CFdbSessionContainer *container = socket_it->second;
-        CFdbSessionContainer::ConnectedSessionTable_t::iterator session_it;
-        for (session_it = container->mConnectedSessionTable.begin();
-             session_it != container->mConnectedSessionTable.end(); ++session_it)
+        if (!container->mConnectedSessionTable.empty())
         {
-            CFdbSession *session = *session_it;
-            CFdbSessionInfo info;
-            session->getSessionInfo(info);
-
-            if (!obj->authentication(info))
+            // get a snapshot of the table to avoid modification of the table in callback
+            CFdbSessionContainer::ConnectedSessionTable_t tbl = container->mConnectedSessionTable;
+            CFdbSessionContainer::ConnectedSessionTable_t::iterator session_it;
+            for (session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
             {
-                continue;
+                CFdbSession *session = *session_it;
+                CFdbSessionInfo info;
+                session->getSessionInfo(info);
+
+                if (!obj->authentication(info))
+                {
+                    continue;
+                }
+                obj->notifyOnline(session, is_first);
+                is_first = false;
             }
-            obj->notifyOnline(session, is_first);
-            is_first = false;
         }
     }
 
@@ -224,16 +228,20 @@ void CBaseEndpoint::removeObject(CFdbBaseObject *obj)
             socket_it != containers.end(); ++socket_it)
     {
         CFdbSessionContainer *container = socket_it->second;
-        CFdbSessionContainer::ConnectedSessionTable_t::iterator session_it;
-        for (session_it = container->mConnectedSessionTable.begin();
-             session_it != container->mConnectedSessionTable.end(); ++session_it)
+        if (!container->mConnectedSessionTable.empty())
         {
-            if (session_cnt-- == 1)
+            // get a snapshot of the table to avoid modification of the table in callback
+            CFdbSessionContainer::ConnectedSessionTable_t tbl = container->mConnectedSessionTable;
+            CFdbSessionContainer::ConnectedSessionTable_t::iterator session_it;
+            for (session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
             {
-                is_last = true;
+                if (session_cnt-- == 1)
+                {
+                    is_last = true;
+                }
+            
+                obj->notifyOffline(*session_it, is_last);
             }
-        
-            obj->notifyOffline(*session_it, is_last);
         }
     }
     
@@ -318,15 +326,20 @@ bool CBaseEndpoint::addConnectedSession(CFdbSessionContainer *socket, CFdbSessio
     mSessionCnt++;
     
     tObjectContainer::EntryContainer_t &object_tbl = mObjectContainer.getContainer();
-    tObjectContainer::EntryContainer_t::iterator it;
-    for (it = object_tbl.begin(); it != object_tbl.end(); ++it)
+    if (!object_tbl.empty())
     {
-        CFdbBaseObject *object = it->second;
-        if (!object->authentication(info))
+        // get a snapshot of the table to avoid modification of the table in callback
+        tObjectContainer::EntryContainer_t object_tbl = mObjectContainer.getContainer();
+        tObjectContainer::EntryContainer_t::iterator it;
+        for (it = object_tbl.begin(); it != object_tbl.end(); ++it)
         {
-            continue;
+            CFdbBaseObject *object = it->second;
+            if (!object->authentication(info))
+            {
+                continue;
+            }
+            object->notifyOnline(session, is_first);
         }
-        object->notifyOnline(session, is_first);
     }
 
     notifyOnline(session, is_first);
@@ -339,16 +352,28 @@ void CBaseEndpoint::deleteConnectedSession(CFdbSession *session)
     bool is_last = (mSessionCnt == 1);
     
     session->container()->removeSession(session);
-    mSessionCnt--;
+    if (mSessionCnt > 0)
+    {
+        mSessionCnt--;
+    }
+    else
+    {
+        LOG_E("CBaseEndpoint: session count < 0 for object %s!", mName.c_str());
+    }
 
     notifyOffline(session, is_last);
     
     tObjectContainer::EntryContainer_t &object_tbl = mObjectContainer.getContainer();
-    tObjectContainer::EntryContainer_t::iterator it;
-    for (it = object_tbl.begin(); it != object_tbl.end(); ++it)
+    if (!object_tbl.empty())
     {
-        CFdbBaseObject *object = it->second;
-        object->notifyOffline(session, is_last);
+        // get a snapshot of the table to avoid modification of the table in callback
+        tObjectContainer::EntryContainer_t object_tbl = mObjectContainer.getContainer();
+        tObjectContainer::EntryContainer_t::iterator it;
+        for (it = object_tbl.begin(); it != object_tbl.end(); ++it)
+        {
+            CFdbBaseObject *object = it->second;
+            object->notifyOffline(session, is_last);
+        }
     }
 }
 

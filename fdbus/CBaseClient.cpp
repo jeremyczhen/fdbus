@@ -154,7 +154,6 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
         url = the_job->mUrl.c_str();
     }
 
-    CFdbSession *session = preferredPeer();
     CClientSocket *sk = doConnect(url);
     if (sk)
     {

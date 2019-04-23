@@ -128,8 +128,7 @@ void CFdbContext::unregisterSession(FdbSessionId_t session_id)
 void CFdbContext::deleteSession(FdbSessionId_t session_id)
 {
     CFdbSession *session = 0;
-    tSessionContainer::EntryContainer_t::iterator it =
-        mSessionContainer.retrieveEntry(session_id, session);
+    (void)mSessionContainer.retrieveEntry(session_id, session);
     if (session)
     {
         delete session;

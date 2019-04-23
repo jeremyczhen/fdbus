@@ -848,8 +848,7 @@ int main(int argc, char **argv)
     if (is_server)
     {
         // ´´½¨²¢×¢²áserver
-        CMyClient<CFdbBaseObject> *obj1 = 0;
-        CMyClient<CFdbBaseObject> *obj2 = 0;
+        CMyClient<CFdbBaseObject> *obj = 0;
         for (int i = 2; i < argc; ++i)
         {
             std::string server_name = argv[i];
@@ -858,13 +857,15 @@ int main(int argc, char **argv)
             server_name += "_server";
             CMyServer<CBaseServer> *server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr);
 
-            std::string obj_name = server_name + "_obj1";
-            obj1 = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
-            obj1->connect(server, 1000);
-            
-            obj_name = server_name + "_obj2";
-            obj2 = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
-            obj2->connect(server, 1000);
+            for (int j = 0; j < 5; ++j)
+            {
+                char obj_id[64];
+                sprintf(obj_id, "obj%u", j);
+                std::string obj_name = server_name + obj_id;
+                obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                obj->connect(server, 1000);
+            }
+
             server->bind(url.c_str());
         }
 #if 0
