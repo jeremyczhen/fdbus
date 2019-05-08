@@ -58,11 +58,10 @@ int main(int argc, char **argv)
 	fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
-        std::cout << "Usage: name_server[ -n host_name][ -u host_url][ -i interface" << std::endl;
+        std::cout << "Usage: name_server[ -n host_name][ -u host_url]" << std::endl;
         std::cout << "Service naming server" << std::endl;
         std::cout << "    -n host_name: host name of this machine" << std::endl;
         std::cout << "    -u host_url: the URL of host server to be connected" << std::endl;
-        std::cout << "    -i interface: the interface to bind" << std::endl;
         return 0;
     }
 

@@ -773,11 +773,12 @@ void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
     }
 }
 
-void CFdbBaseObject::broadcast(CFdbMessage *msg, const char *filter)
+void CFdbBaseObject::broadcast(CFdbMessage *msg)
 {
     SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg->code());
     if (it_sessions != mSessionSubscribeTable.end())
     {
+        const char *filter = msg->getFilter();
         if (!filter)
         {
             filter = "";
@@ -815,9 +816,54 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg, const char *filter)
                     session->sendMessage(msg);
                 }
             }
-            
         }
     }
+}
+
+bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
+{
+    bool sent = false;
+    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg->code());
+    if (it_sessions != mSessionSubscribeTable.end())
+    {
+        SessionTable_t &sessions = it_sessions->second;
+        SessionTable_t::iterator it_objects = sessions.find(session);
+        if (it_objects != sessions.end())
+        {
+            ObjectTable_t &objects = it_objects->second;
+            ObjectTable_t::iterator it_filters = objects.find(msg->objectId());
+            if (it_filters != objects.end())
+            {
+                const char *filter = msg->getFilter();
+                if (!filter)
+                {
+                    filter = "";
+                }
+                FilterTable_t &filters = it_filters->second;
+                FilterTable_t::iterator it_subscribed = filters.find(filter);
+                if (it_subscribed == filters.end())
+                {
+                    /*
+                     * If filter doesn't match, check who registers filter "".
+                     * It represents any filter.
+                     */
+                    if (filter[0] != '\0')
+                    {
+                        FilterTable_t::iterator it_subscribed = filters.find("");
+                        if (it_subscribed != filters.end())
+                        {
+                            sent = session->sendMessage(msg);
+                        }
+                    }
+                }
+                else
+                {
+                    sent = session->sendMessage(msg);
+                }
+            }
+        }
+    }
+    return sent;
 }
 
 void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filter_tbl)
@@ -839,7 +885,7 @@ void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets 
     }
 }
 
-void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgSets &table)
+void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
 {
     for (SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.begin();
             it_sessions != mSessionSubscribeTable.end(); ++it_sessions)
@@ -860,7 +906,33 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filter
     }
 }
 
-bool CFdbBaseObject::subscribed(CFdbSession *session, FdbMsgCode_t code, FdbObjectId_t obj_id, const char *filter)
+void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
+                                        tFdbFilterSets &filter_tbl)
+{
+    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(code);
+    if (it_sessions != mSessionSubscribeTable.end())
+    {
+        SessionTable_t &sessions = it_sessions->second;
+        SessionTable_t::iterator it_objects = sessions.find(session);
+        if (it_objects != sessions.end())
+        {
+            ObjectTable_t &objects = it_objects->second;
+            for (ObjectTable_t::iterator it_filters = objects.begin();
+                    it_filters != objects.end(); ++it_filters)
+            {
+                FilterTable_t &filters = it_filters->second;
+                for (FilterTable_t::iterator it_subscribed = filters.begin();
+                        it_subscribed != filters.end(); ++it_subscribed)
+                {
+                    filter_tbl.insert(it_subscribed->first);
+                }
+            }
+        }
+    }
+}
+
+void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
+                                       tSubscribedSessionSets &session_tbl)
 {
     SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(code);
     if (it_sessions != mSessionSubscribeTable.end())
@@ -873,19 +945,11 @@ bool CFdbBaseObject::subscribed(CFdbSession *session, FdbMsgCode_t code, FdbObje
         for (SessionTable_t::iterator it_objects = sessions.begin();
                 it_objects != sessions.end(); ++it_objects)
         {
-            if (it_objects->first != session)
-            {
-                continue;
-            }
-
+            CFdbSession *session = it_objects->first;
             ObjectTable_t &objects = it_objects->second;
             for (ObjectTable_t::iterator it_filters = objects.begin();
                     it_filters != objects.end(); ++it_filters)
             {
-                if (it_filters->first != obj_id)
-                {
-                    continue;
-                }
                 FilterTable_t &filters = it_filters->second;
                 FilterTable_t::iterator it_subscribed = filters.find(filter);
                 if (it_subscribed == filters.end())
@@ -899,19 +963,17 @@ bool CFdbBaseObject::subscribed(CFdbSession *session, FdbMsgCode_t code, FdbObje
                         FilterTable_t::iterator it_subscribed = filters.find("");
                         if (it_subscribed != filters.end())
                         {
-                            return true;
+                            session_tbl.insert(session);
                         }
                     }
                 }
                 else
                 {
-                    return true;
+                    session_tbl.insert(session);
                 }
             }
         }
     }
-
-    return false;
 }
 
 FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId_t obj_id)
@@ -1111,5 +1173,20 @@ void CFdbBaseObject::broadcast(FdbSessionId_t sid
 {
     CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
     msg->broadcast(buffer, size);
+}
+
+void CFdbBaseObject::invokeSideband(FdbMsgCode_t code
+                           , const CFdbBasePayload &data
+                           , int32_t timeout)
+{
+    CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    msg->invokeSideband(data, timeout);
+}
+
+void CFdbBaseObject::sendSideband(FdbMsgCode_t code
+                         , const CFdbBasePayload &data)
+{
+    CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    msg->sendSideband(data);
 }
 

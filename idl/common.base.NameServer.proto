@@ -22,7 +22,7 @@ enum FdbNsMsgCode
     NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE = 10;
 
     NTF_HOST_ONLINE_LOCAL = 11;
-    NTF_HOST_NAME = 12;
+    NTF_HOST_INFO = 12;
 }
 
 message FdbMsgAddressList
@@ -31,6 +31,7 @@ message FdbMsgAddressList
     required string host_name = 2;
     required bool is_local = 3;
     repeated string address_list = 4;
+    repeated string tokens = 5;
 }
 
 message FdbMsgServerName
@@ -61,9 +62,10 @@ message FdbMsgHostAddress
     required string host_name = 3;
 }
 
-message FdbMsgHostName
+message FdbMsgHostInfo
 {
     required string name = 1;
+    required int32 security_level = 2;
 }
 
 message FdbMsgHostAddressList

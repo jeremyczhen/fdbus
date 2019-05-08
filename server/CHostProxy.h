@@ -46,10 +46,17 @@ public:
         return mNameServer;
     }
     void hostOffline();
-    std::string &hostName(); /* local */
+    std::string &hostName() /* local */
+    {
+        return mHostName;
+    }
     std::string &hostUrl()  /* remote */
     {
         return mHostUrl;
+    }
+    int32_t securityLevel()
+    {
+        return mHostSecurityLevel;
     }
     void deleteNameProxy(CInterNameProxy *proxy);
     void queryServiceReq(CBaseJob::Ptr &msg_ref);
@@ -68,6 +75,7 @@ private:
     CFdbMessageHandle<CHostProxy> mNotifyHdl;
     std::string mHostName;
     std::string mHostUrl;
+    int32_t mHostSecurityLevel;
 
     void subscribeListener(NFdbBase::FdbHsMsgCode code, bool sub);
     void onHostOnlineNotify(CBaseJob::Ptr &msg_ref);

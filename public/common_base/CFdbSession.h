@@ -61,6 +61,22 @@ public:
     {
         mInternalError = active;
     }
+    void securityLevel(int32_t level)
+    {
+        mSecurityLevel = level;
+    }
+    int32_t securityLevel()
+    {
+        return mSecurityLevel;
+    }
+    void token(const char *token)
+    {
+        mToken = token;
+    }
+    std::string &token()
+    {
+        return mToken;
+    }
 
     bool receiveData(uint8_t *buf, int32_t size);
 
@@ -86,6 +102,8 @@ private:
     CFdbSessionContainer *mContainer;
     CSocketImp *mSocket;
     bool mInternalError;
+    int32_t mSecurityLevel;
+    std::string mToken;
 };
 
 #endif

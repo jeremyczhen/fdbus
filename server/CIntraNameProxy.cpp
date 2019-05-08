@@ -65,7 +65,8 @@ void CIntraNameProxy::CConnectTimer::fire()
 
 
 CIntraNameProxy::CIntraNameProxy()
-    : mConnectTimer(this)
+    : mHostSecurityLevel(FDB_SECURITY_LEVEL_NONE)
+    , mConnectTimer(this)
     , mNotificationCenter(this)
 {
     mConnectTimer.attach(FDB_CONTEXT, false);
@@ -198,6 +199,11 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                     mConnectedHost.clear();
                 }
 
+                if (importTokens(msg_addr_list, client))
+                {
+                    client->updateSecurityLevel();
+                }
+
                 client->local(msg_addr_list.is_local());
 
                 replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
@@ -254,14 +260,15 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             processServiceOnline(msg, msg_addr_list);
         }
         break;
-        case NFdbBase::NTF_HOST_NAME:
+        case NFdbBase::NTF_HOST_INFO:
         {
-            NFdbBase::FdbMsgServerName msg_host_name;
-            if (!msg->deserialize(msg_host_name))
+            NFdbBase::FdbMsgHostInfo msg_host_info;
+            if (!msg->deserialize(msg_host_info))
             {
                 return;
             }
-            mHostName = msg_host_name.name();
+            mHostName = msg_host_info.name();
+            mHostSecurityLevel = msg_host_info.security_level();
             CHostNameReady name_ready(mHostName);
             mNotificationCenter.notify(name_ready);
         }
@@ -294,6 +301,10 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         {
             continue;
         }
+        if (importTokens(msg_addr_list, server))
+        {
+            server->updateSecurityLevel();
+        }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
         const ::google::protobuf::RepeatedPtrField< ::std::string> &addr_list =
@@ -314,7 +325,6 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                     CBaseSocketFactory::parseUrl(it->c_str(), addr);
                     if (info.mAddress->mType == FDB_SOCKET_TCP)
                     {
-                        LOG_I("jeremy server: %s, port: %d\n", svc_name, info.mAddress->mPort);
                         if (addr.mPort == info.mAddress->mPort)
                         {
                             bound_list.add_address_list(*it);
@@ -326,7 +336,8 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                                 LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
                                         msg->session(), svc_name, addr.mPort, info.mAddress->mPort);
                             }
-                            CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP, addr.mAddr.c_str(), info.mAddress->mPort);
+                            CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP,
+                                        addr.mAddr.c_str(), info.mAddress->mPort);
                             bound_list.add_address_list(url);
                             char_url = url.c_str();
                         }
@@ -336,7 +347,8 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                         bound_list.add_address_list(*it);
                     }
 
-                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n", msg->session(), svc_name, char_url);
+                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
+                            msg->session(), svc_name, char_url);
                     server->mNsConnStatus = CONNECTED;
                     break;
                 }
@@ -364,7 +376,8 @@ void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
             int32_t id;
             std::string reason;
             msg->decodeStatus(id, reason);
-            LOG_I("CIntraNameProxy: status is received: msg code: %d, id: %d, reason: %s\n", msg->code(), id, reason.c_str());
+            LOG_I("CIntraNameProxy: status is received: msg code: %d, id: %d, reason: %s\n",
+                    msg->code(), id, reason.c_str());
         }
 
         return;
@@ -399,11 +412,12 @@ void CIntraNameProxy::onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer)
 void CIntraNameProxy::onOnline(FdbSessionId_t sid, bool is_first)
 {
     mConnectTimer.disable();
-    FDB_CONTEXT->reconnectOnNsConnected(true);
-
+    
     NFdbBase::FdbMsgSubscribe subscribe_list;
-    addNotifyItem(subscribe_list, NFdbBase::NTF_HOST_NAME);
+    addNotifyItem(subscribe_list, NFdbBase::NTF_HOST_INFO);
     subscribe(subscribe_list);
+    
+    FDB_CONTEXT->reconnectOnNsConnected(true);
 }
 
 void CIntraNameProxy::onOffline(FdbSessionId_t sid, bool is_last)
@@ -417,3 +431,19 @@ void CIntraNameProxy::registerHostNameReadyNotify(CBaseNotification<CHostNameRea
     CBaseNotification<CHostNameReady>::Ptr ntf(notification);
     mNotificationCenter.subscribe(ntf);
 }
+
+bool CIntraNameProxy::importTokens(NFdbBase::FdbMsgAddressList &msg_addr_list,
+                                    CBaseEndpoint *endpoint)
+{
+    const ::google::protobuf::RepeatedPtrField< ::std::string> &tokens =
+        msg_addr_list.tokens();
+    std::vector<const char *> token_list;
+    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = tokens.begin();
+            it != tokens.end(); ++it)
+    {
+        token_list.push_back(it->c_str());
+    }
+
+    return endpoint->importTokens(token_list);
+}
+

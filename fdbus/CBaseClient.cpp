@@ -333,3 +333,13 @@ void CBaseClient::reconnectToNs(bool connect)
     }
 }
 
+void CBaseClient::updateSecurityLevel()
+{
+    NFdbBase::FdbAuthentication authen;
+    for (tTokenList::const_iterator it = mTokens.begin(); it != mTokens.end(); ++it)
+    {
+        authen.add_tokens(*it);
+    }
+    sendSideband(FDB_SIDEBAND_AUTH, authen);
+}
+

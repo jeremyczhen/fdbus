@@ -484,7 +484,8 @@ public:
     FdbEndpointId_t &mEpid;
 };
 
-void CBaseEndpoint::callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
+void CBaseEndpoint::callRegisterEndpoint(CBaseWorker *worker,
+                CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
     CRegisterJob *the_job = dynamic_cast<CRegisterJob *>(job);
     if (the_job)
@@ -519,7 +520,8 @@ public:
     }
 };
 
-void CBaseEndpoint::callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
+void CBaseEndpoint::callUnregisterEndpoint(CBaseWorker *worker,
+            CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
     CFdbContext::getInstance()->unregisterEndpoint(this);
     mNsConnStatus = DISCONNECTED;
@@ -531,6 +533,75 @@ void CBaseEndpoint::unregisterSelf()
     {
         CFdbContext::getInstance()->sendSyncEndeavor(new CUnregisterJob(this));
         registered(false);
+    }
+}
+
+bool CBaseEndpoint::importTokens(const std::vector<const char *> &in_tokens)
+{
+    bool need_update = false;
+    
+    if (in_tokens.size() != mTokens.size())
+    {
+        need_update = true;
+    }
+    else
+    {
+        tTokenList::const_iterator it = mTokens.begin();
+        std::vector<const char *>::const_iterator in_it = in_tokens.begin();
+         for (; in_it != in_tokens.end(); ++in_it, ++it)
+        {
+            if (it->compare(*in_it))
+            {
+                need_update = true;
+                break;
+            }
+        }
+    }
+    
+    if (need_update)
+    {
+        mTokens.clear();
+        for (std::vector<const char *>::const_iterator in_it = in_tokens.begin();
+             in_it != in_tokens.end(); ++in_it)
+        {
+            mTokens.push_back(*in_it);
+        }
+    }
+    return need_update;
+}
+
+int32_t CBaseEndpoint::checkSecurityLevel(const char *token)
+{
+    int32_t security_level = FDB_SECURITY_LEVEL_NONE;
+    if (token)
+    {
+        for (int32_t i = 0; i < (int32_t)mTokens.size(); ++i)
+        {
+            if (!mTokens[i].compare(token))
+            {
+                security_level = i;
+                break;
+            }
+        }
+    }
+    return security_level;
+}
+
+// given token in session, update security level
+void CBaseEndpoint::updateSecurityLevel()
+{
+    EntryContainer_t &containers = getContainer();
+    for (EntryContainer_t::iterator socket_it = containers.begin();
+            socket_it != containers.end(); ++socket_it)
+    {
+        CFdbSessionContainer *container = socket_it->second;
+        CFdbSessionContainer::ConnectedSessionTable_t &tbl = container->mConnectedSessionTable;
+        CFdbSessionContainer::ConnectedSessionTable_t::iterator session_it;
+        for (session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
+        {
+            CFdbSession *session = *session_it;
+            session->securityLevel(checkSecurityLevel(session->token().c_str()));
+        }
     }
 }
 

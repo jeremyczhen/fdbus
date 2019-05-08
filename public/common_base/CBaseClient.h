@@ -117,6 +117,7 @@ private:
     {
         mIsLocal = is_local;
     }
+    void updateSecurityLevel(void);
 
     friend class CFdbContext;
     friend class CConnectClientJob;

@@ -26,6 +26,7 @@
 CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
     : CBaseClient("HostServer")
     , mNameServer(ns)
+    , mHostSecurityLevel(FDB_SECURITY_LEVEL_NONE)
     , mConnectTimer(this)
 {
     mNotifyHdl.registerCallback(NFdbBase::NTF_HOST_ONLINE, &CHostProxy::onHostOnlineNotify);
@@ -159,6 +160,10 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     {
         return;
     }
+    tFdbFilterSets registered_service_tbl;
+    mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE, registered_service_tbl);
+    tFdbFilterSets monitored_service_tbl;
+    mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, monitored_service_tbl);
     mNameServer->broadcast(NFdbBase::NTF_HOST_ONLINE_LOCAL, host_list);
     const ::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgHostAddress> &addr_list =
         host_list.address_list();
@@ -212,16 +217,16 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
             if (proxy->connectToNameServer())
             {
                 mNameProxyTbl[ip_address] = proxy;
-                tFdbFilterSets &f1 = mNameServer->getServiceSubscribedTbl();
-                for (tFdbFilterSets::iterator filter_it = f1.begin(); filter_it != f1.end(); ++filter_it)
+
+                for (tFdbFilterSets::iterator filter_it = registered_service_tbl.begin();
+                            filter_it != registered_service_tbl.end(); ++filter_it)
                 {
                     proxy->addServiceListener(filter_it->c_str(), FDB_INVALID_ID);
                     LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
                           filter_it->c_str(), ip_address.c_str());
                 }
-
-                tFdbFilterSets &f2 = mNameServer->ServiceMonitoredTbl();
-                for (tFdbFilterSets::iterator filter_it = f2.begin(); filter_it != f2.end(); ++filter_it)
+                for (tFdbFilterSets::iterator filter_it = monitored_service_tbl.begin();
+                            filter_it != monitored_service_tbl.end(); ++filter_it)
                 {
                     proxy->addServiceMonitorListener(filter_it->c_str(), FDB_INVALID_ID);
                     LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
@@ -240,11 +245,6 @@ void CHostProxy::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 {
     send(NFdbBase::REQ_HEARTBEAT_OK);
     mConnectTimer.startHeartbeatMode();
-}
-
-std::string &CHostProxy::hostName() /* local */
-{
-    return mHostName;
 }
 
 void CHostProxy::hostOnline(FdbMsgCode_t code)

@@ -55,6 +55,8 @@ typedef uint32_t FdbObjectId_t;
 
 #define FDB_LOCAL_HOST "127.0.0.1"
 
+#define FDB_SECURITY_LEVEL_NONE -1
+
 template <typename T>
 bool isValidFdbId(T id)
 {

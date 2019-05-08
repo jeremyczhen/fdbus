@@ -81,6 +81,7 @@ protected:
 
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
+    typedef std::vector<std::string> tTokenList;
     
     CFdbSession *preferredPeer();
     void checkAutoRemove();
@@ -99,17 +100,22 @@ private:
     void callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     CFdbBaseObject *findObject(FdbObjectId_t obj_id, bool server_only);
     bool retrieveIpAddress(std::string &ip_address, CFdbSession *session, bool self);
+    bool importTokens(const std::vector<const char *> &in_tokens);
+    int32_t checkSecurityLevel(const char *token);
+    void updateSecurityLevel();
 
     tObjectContainer mObjectContainer;
 
     uint32_t mSessionCnt;
     FdbObjectId_t mSnAllocator;
+    tTokenList mTokens;
 
     friend class CFdbSession;
     friend class CFdbMessage;
     friend class CFdbContext;
     friend class CBaseServer;
     friend class CBaseClient;
+    friend class CIntraNameProxy;
     friend class CFdbBaseObject;
     friend class CServerSocket;
     friend class CRegisterJob;

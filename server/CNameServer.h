@@ -21,6 +21,7 @@
 #include <map>
 #include <string>
 #include <set>
+#include <vector>
 #include <common_base/CBaseServer.h>
 #include <idl-gen/common.base.NameServer.pb.h>
 #include <common_base/CSocketImp.h>
@@ -56,14 +57,6 @@ public:
     bool online(const char *hs_url = 0, const char *host_name = 0, const char *interface_name = 0);
     const std::string getNsTcpUrl(const char *ip_addr = 0);
     void populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local);
-    tFdbFilterSets &getServiceSubscribedTbl()
-    {
-        return mServiceSubscribedTbl;
-    }
-    tFdbFilterSets &ServiceMonitoredTbl()
-    {
-        return mServiceMonitoredTbl;
-    }
 
     void notifyRemoteNameServerDrop(const char *host_name);
 protected:
@@ -72,21 +65,21 @@ protected:
     void onOffline(FdbSessionId_t sid, bool is_last);
 private:
     typedef std::list<CFdbAddressDesc *> tAddressDescTbl;
+    typedef std::vector<std::string> tTokenList;
     struct CSvcRegistryEntry
     {
         FdbSessionId_t mSid;
         tAddressDescTbl mAddrTbl;
+        tTokenList mTokens;
     };
     typedef std::map<std::string, CSvcRegistryEntry> tRegistryTbl;
 
     tRegistryTbl mRegistryTbl;
     CFdbMessageHandle<CNameServer> mMsgHdl;
     CFdbSubscribeHandle<CNameServer> mSubscribeHdl;
-    tFdbFilterSets mServiceSubscribedTbl;
-    tFdbFilterSets mServiceMonitoredTbl;
 
-    void populateList(const tAddressDescTbl &addr_tbl,
-                      NFdbBase::FdbMsgAddressList &list, EFdbSocketType type);
+    void populateAddrList(const tAddressDescTbl &addr_tbl,
+                          NFdbBase::FdbMsgAddressList &list, EFdbSocketType type);
 
     void onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref);
     void onRegisterServiceReq(CBaseJob::Ptr &msg_ref);
@@ -97,7 +90,7 @@ private:
     
     void onServiceOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
     void onHostOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
-    void onHostNameReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
+    void onHostInfoReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
     bool allocateTcpAddress(const std::string &svc_name, std::string &addr_url);
@@ -119,12 +112,23 @@ private:
     bool bindNsAddress(tAddressDescTbl &addr_tbl);
     void checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const char *svc_name);
     void buildSpecificTcpAddress(CFdbSession *session, int32_t port, std::string &out_url);
+    void allocateTokens(tTokenList &tokens);
+    void updateSecurityLevel(CFdbSession *session);
+    void broadcastServiceAddressLocal(const tTokenList &tokens,
+                                      NFdbBase::FdbMsgAddressList &addr_list,
+                                      CFdbSession *session);
+    void broadcastServiceAddressLocal(const tTokenList &tokens,
+                                      NFdbBase::FdbMsgAddressList &addr_list);
+    void populateTokens(const tTokenList &tokens, NFdbBase::FdbMsgAddressList &list);
 
     uint32_t mTcpPortAllocator;
     uint32_t mIpcAllocator;
     CHostProxy *mHostProxy;
     std::string mInterface;
     int32_t mNsPort;
+    int32_t mNrSecurityLevel;
+    
+    friend class CInterNameProxy;
 };
 
 #endif

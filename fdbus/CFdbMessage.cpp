@@ -174,9 +174,11 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
     switch (mType)
     {
         case NFdbBase::MT_REQUEST:
+        case NFdbBase::MT_SIDEBAND_REQUEST:
             doRequest(ref);
             break;
         case NFdbBase::MT_REPLY:
+        case NFdbBase::MT_SIDEBAND_REPLY:
             doReply(ref);
             break;
         case NFdbBase::MT_BROADCAST:
@@ -218,11 +220,11 @@ void CFdbMessage::feedback(CBaseJob::Ptr &msg_ref, CFdbMsgPayload &payload, int3
     }
 }
 
-void CFdbMessage::reply(CBaseJob::Ptr &msg_ref, const CFdbBasePayload &msg)
+void CFdbMessage::reply(CBaseJob::Ptr &msg_ref, const CFdbBasePayload &data)
 {
     CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     CFdbMsgPayload payload;
-    payload.mMessage = &msg;
+    payload.mMessage = &data;
     fdb_msg->mType = NFdbBase::MT_REPLY;
     fdb_msg->feedback(msg_ref, payload, -1);
 }
@@ -481,7 +483,7 @@ void CFdbMessage::broadcastLog(const CFdbBasePayload &data
             CFdbBaseObject *object = endpoint->getObject(this, false);
             if (object)
             {
-                object->broadcast(this, getFilter());
+                object->broadcast(this);
             }
         }
     }
@@ -817,11 +819,11 @@ void CFdbMessage::doBroadcast(Ptr &ref)
         CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
         if (endpoint)
         {
-            // Broadcast per object!!!
             CFdbBaseObject *object = endpoint->getObject(this, false);
             if (object)
             {
-                object->broadcast(this, getFilter());
+                // broadcast to all sessions of the object
+                object->broadcast(this);
             }
             else
             {
@@ -837,40 +839,34 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     }
     else
     {
-        mFlag |= MSG_FLAG_FORCE_BROADCAST; // broadcast anyway
+        mFlag |= MSG_FLAG_FORCE_BROADCAST; // broadcast anyway; jeremy
         mFlag |= MSG_FLAG_INITIAL_RESPONSE; // mark as initial response
         CFdbSession *session = CFdbContext::getInstance()->getSession(mSid);
         if (session)
         {
-            if (mFlag & MSG_FLAG_FORCE_BROADCAST)
+            //if (mFlag & MSG_FLAG_FORCE_BROADCAST)
+            if (0)
             {
                 success = session->sendMessage(this);
                 reason = "error when sending message!";
             }
             else
             {
-                CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
-                if (endpoint)
+                CFdbBaseObject *object =
+                        session->container()->owner()->getObject(this, false);
+                if (object)
                 {
-                    // Broadcast per object!!!
-                    CFdbBaseObject *object = endpoint->getObject(this, false);
-                    if (object)
-                    {
-                        if (object->subscribed(session, mCode, mOid, getFilter()))
-                        {
-                            session->sendMessage(this);
-                        }
-                    }
-                    else
+                    // Broadcast to specified session of object
+                    if (!object->broadcast(this, session))
                     {
                         success = false;
-                        reason = "Invalid object id!";
+                        reason = "Not subscribed or fail to send!";
                     }
                 }
                 else
                 {
                     success = false;
-                    reason = "Invalid epid!";
+                    reason = "Invalid object id!";
                 }
             }
         }
@@ -1114,7 +1110,8 @@ const char *CFdbMessage::getMsgTypeName(NFdbBase::wrapper::FdbMessageType type)
                                     , "Reply"
                                     , "Subscribe"
                                     , "Broadcast"
-                                    , "HeartBeat"
+                                    , "SidebandRequest"
+                                    , "SidebandReply"
                                     , "Status"};
     if (type >= NFdbBase::MT_MAX)
     {
@@ -1267,3 +1264,32 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
     }
 }
 
+void CFdbMessage::invokeSideband(const CFdbBasePayload &data
+                               , int32_t timeout)
+{
+    CFdbMsgPayload payload;
+    payload.mMessage = &data;
+    CBaseJob::Ptr msg_ref(this);
+    mType = NFdbBase::MT_SIDEBAND_REQUEST;
+    submit(msg_ref, payload, -1, 0, timeout);
+}
+
+void CFdbMessage::sendSideband(const CFdbBasePayload &data)
+{
+    CFdbMsgPayload payload;
+    payload.mMessage = &data;
+    CBaseJob::Ptr msg_ref(this);
+    mType = NFdbBase::MT_SIDEBAND_REQUEST;
+    submit(msg_ref, payload, -1, FDB_MSG_TX_NO_REPLY, -1);
+}
+
+
+void CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref,
+                                       const CFdbBasePayload &data)
+{
+    CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    CFdbMsgPayload payload;
+    payload.mMessage = &data;
+    fdb_msg->mType = NFdbBase::MT_SIDEBAND_REPLY;
+    fdb_msg->feedback(msg_ref, payload, -1);
+}

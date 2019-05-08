@@ -63,7 +63,8 @@ namespace NFdbBase
         FDB_ST_OUT_OF_MEMORY   = -27,
         FDB_ST_NOT_IMPLEMENTED = -28,
 
-        FDB_ST_OBJECT_NOT_FOUND= -29
+        FDB_ST_OBJECT_NOT_FOUND= -29,
+        FDB_ST_AUTHENTICATION_FAIL = -30
     };
 }
 
@@ -74,6 +75,14 @@ namespace NFdbBase
         typedef int32_t FdbMessageType;
     }
 }
+
+enum EFdbSidebandMessage
+{
+    FDB_SIDEBAND_AUTH = 0,
+    FDB_SIDEBAND_WATCHDOG = 1,
+    FDB_SIDEBAND_SYSTEM_MAX = 4095,
+    FDB_SIDEBAND_USER_MIN = FDB_SIDEBAND_SYSTEM_MAX + 1
+};
 
 typedef ::google::protobuf::MessageLite CFdbBasePayload;
 
@@ -610,6 +619,11 @@ private:
                     , int32_t size
                     , bool send_as_johb);
     CFdbMessage *parseFdbLog(uint8_t *buffer, int32_t size);
+    void invokeSideband(const CFdbBasePayload &data
+                      , int32_t timeout = 0);
+    void sendSideband(const CFdbBasePayload &data);
+    static void replySideband(CBaseJob::Ptr &msg_ref,
+                              const CFdbBasePayload &data);
 
     NFdbBase::wrapper::FdbMessageType mType;
     FdbMsgCode_t mCode;

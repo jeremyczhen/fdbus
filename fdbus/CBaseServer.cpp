@@ -102,7 +102,8 @@ public:
 FdbSocketId_t CBaseServer::bind(const char *url)
 {
     FdbSocketId_t skid = FDB_INVALID_ID;
-    CFdbContext::getInstance()->sendSyncEndeavor(new CBindServerJob(this, &CBaseServer::cbBind, skid, url), 0, true);
+    CFdbContext::getInstance()->sendSyncEndeavor(
+        new CBindServerJob(this, &CBaseServer::cbBind, skid, url), 0, true);
     return skid;
 }
 
@@ -280,7 +281,8 @@ void CBaseServer::doUnbind(FdbSocketId_t skid)
 
 void CBaseServer::unbind(FdbSocketId_t skid)
 {
-    CFdbContext::getInstance()->sendSyncEndeavor(new CUnbindServerJob(this, &CBaseServer::cbUnbind, skid), 0, true);
+    CFdbContext::getInstance()->sendSyncEndeavor(
+            new CUnbindServerJob(this, &CBaseServer::cbUnbind, skid), 0, true);
 }
 
 void CBaseServer::reconnectToNs(bool connect)
@@ -296,6 +298,44 @@ void CBaseServer::reconnectToNs(bool connect)
     else
     {
         mNsConnStatus = LOST;
+    }
+}
+
+void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
+{
+    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    NFdbBase::FdbAuthentication authen;
+    if (!msg->deserialize(authen))
+    {
+        msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
+        return;
+    }
+    switch (msg->code())
+    {
+        case FDB_SIDEBAND_AUTH:
+        {
+            CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+            if (!session)
+            {
+                return;
+            }
+            int32_t security_level = FDB_SECURITY_LEVEL_NONE;
+            const char *token = "";
+            if (!authen.tokens().empty())
+            {
+                const ::google::protobuf::RepeatedPtrField< ::std::string> &tokens =
+                    authen.tokens();
+                // only use the first token in case more than 1 tokens are received
+                token = tokens.begin()->c_str();
+                security_level = checkSecurityLevel(token);
+            }
+            // update security level and token
+            session->securityLevel(security_level);
+            session->token(token);
+        }
+        break;
+        default:
+        break;
     }
 }
 

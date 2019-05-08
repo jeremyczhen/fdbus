@@ -44,7 +44,8 @@ namespace google
 }
 
 typedef std::set<std::string> tFdbFilterSets;
-typedef std::map<FdbMsgCode_t, tFdbFilterSets> tFdbSubscribeMsgSets;
+typedef std::map<FdbMsgCode_t, tFdbFilterSets> tFdbSubscribeMsgTbl;
+typedef std::set<CFdbSession *> tSubscribedSessionSets;
 class CFdbBaseObject
 {
 public:
@@ -349,9 +350,10 @@ public:
      * Get a list of subscribed messages.
      * Warning: not thread-safe!!! MUST be used within CONTEXT!!!
      */
-    void getSubscribeTable(tFdbSubscribeMsgSets &table);
+    void getSubscribeTable(tFdbSubscribeMsgTbl &table);
     void getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filters);
-    bool subscribed(CFdbSession *session, FdbMsgCode_t code, FdbObjectId_t obj_id, const char *filter);
+    void getSubscribeTable(FdbMsgCode_t code, const char *filter,
+                            tSubscribedSessionSets &session_tbl);
 
     CBaseWorker *worker() const
     {
@@ -454,6 +456,9 @@ public:
                   , const char *filter = 0
                   , const void *buffer = 0
                   , int32_t size = 0);
+
+    // Internal use only!!!
+    bool broadcast(CFdbMessage *msg, CFdbSession *session);
 
 protected:
     std::string mName;
@@ -572,6 +577,26 @@ protected:
         }
     }
 
+    bool onAuthentication(CBaseJob::Ptr &msg_ref
+                        , FdbMsgCode_t msg_code
+                        , bool is_subscribe)
+    {
+        return true;
+    }
+
+    /*
+     * request-reply through side band.
+     * Note: Only used internally for FDBus!!!
+     */
+    void invokeSideband(FdbMsgCode_t code
+                      , const CFdbBasePayload &data
+                      , int32_t timeout = 0);
+    void sendSideband(FdbMsgCode_t code, const CFdbBasePayload &data);
+    virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref)
+    {}
+    virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
+    {}
+
 private:
     typedef std::map<std::string, bool> FilterTable_t;
     typedef std::map<FdbObjectId_t, FilterTable_t> ObjectTable_t;
@@ -590,7 +615,7 @@ private:
     void unsubscribe(CFdbSession *session, FdbMsgCode_t msg, FdbObjectId_t obj_id, const char *filter = 0);
     void unsubscribe(CFdbSession *session);
     void unsubscribe(FdbObjectId_t obj_id);
-    void broadcast(CFdbMessage *msg, const char *filter = 0);
+    void broadcast(CFdbMessage *msg);
     void sendFdbLog(const CFdbBasePayload &data
                   , uint8_t *log_data
                   , int32_t size
@@ -606,7 +631,8 @@ private:
                          , int32_t size);
 
     void getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filters);
-
+    void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
+    
     void callOnSubscribe(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnBroadcast(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnInvoke(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);

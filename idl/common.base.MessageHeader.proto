@@ -10,9 +10,10 @@ enum FdbMessageType
     MT_REPLY = 2;
     MT_SUBSCRIBE_REQ = 3;
     MT_BROADCAST = 4;
-    MT_HEARTBEAT = 5;
-    MT_STATUS = 6;
-    MT_MAX = 7;
+    MT_SIDEBAND_REQUEST = 5;
+    MT_SIDEBAND_REPLY = 6;
+    MT_STATUS = 7;
+    MT_MAX = 8;
 }
 
 enum FdbTraceLogLevel
@@ -133,4 +134,9 @@ message FdbTraceConfig
 
     repeated string host_while_list = 7;
     repeated string tag_while_list = 8;
+}
+
+message FdbAuthentication
+{
+	repeated string tokens = 1;
 }

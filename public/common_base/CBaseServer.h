@@ -74,6 +74,7 @@ public:
 
 protected:
     void reconnectToNs(bool connect);
+    void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
 private:
     void cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     CServerSocket *doBind(const char *url);

@@ -135,6 +135,7 @@ void CInterNameProxy::removeServiceMonitorListener(const char *svc_name)
 void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    CNameServer *name_server = mHostProxy->nameServer();
     switch (msg->code())
     {
         case NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE:
@@ -146,13 +147,16 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 return;
             }
 
-            replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
+            CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+            if (session)
+            {
+                replaceSourceUrl(msg_addr_list, session);
+            }
             FdbMsgCode_t code = (msg->code() == NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE) ?
                                 NFdbBase::NTF_SERVICE_ONLINE :
                                 NFdbBase::NTF_SERVICE_ONLINE_MONITOR;
 
             FdbSessionId_t subscriber = FDB_INVALID_ID;
-            CFdbSession *session = CFdbContext::getInstance()->getSession(msg->session());
             if (session)
             {
                 CFdbMessage *out_going_msg = session->peepPendingMessage(msg->sn());
@@ -166,11 +170,34 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                     }
                 }
             }
-            mHostProxy->nameServer()->broadcast(subscriber,
-                                                FDB_OBJECT_MAIN,
-                                                code,
-                                                msg_addr_list,
-                                                msg_addr_list.service_name().c_str());
+            
+            if (code == NFdbBase::NTF_SERVICE_ONLINE)
+            {
+                CNameServer::tTokenList tokens;
+                name_server->populateTokens(tokens, msg_addr_list);
+                bool broadcast_to_all = true;
+                if (isValidFdbId(subscriber))
+                {
+                    CFdbSession *session = FDB_CONTEXT->getSession(subscriber);
+                    if (session)
+                    {
+                        // send token matching security level to the client
+                        name_server->broadcastServiceAddressLocal(
+                                                    tokens, msg_addr_list, session);
+                        broadcast_to_all = false;
+                    }
+                }
+                if (broadcast_to_all)
+                {
+                    name_server->broadcastServiceAddressLocal( tokens, msg_addr_list);
+                }
+            }
+            else
+            {
+                msg_addr_list.clear_tokens(); // never broadcast token to monitors!!!
+                name_server->broadcast(subscriber, FDB_OBJECT_MAIN, code,
+                                msg_addr_list, msg_addr_list.service_name().c_str());
+            }
         }
         break;
         default:

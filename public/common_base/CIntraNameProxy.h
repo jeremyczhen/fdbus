@@ -46,6 +46,10 @@ public:
     {
         return mHostName;
     }
+    int32_t securityLevel()
+    {
+        return mHostSecurityLevel;
+    }
     void registerHostNameReadyNotify(CBaseNotification<CHostNameReady> *notification);
     
 protected:
@@ -56,6 +60,7 @@ protected:
     
 private:
     std::string mHostName;
+    int32_t mHostSecurityLevel;
     class CConnectTimer : public CMethodLoopTimer<CIntraNameProxy>
     {
     public:
@@ -90,6 +95,7 @@ private:
     
     void processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
     void processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list);
+    bool importTokens(NFdbBase::FdbMsgAddressList &msg_addr_list, CBaseEndpoint *endpoint);
 };
 
 #endif
