@@ -65,8 +65,7 @@ void CIntraNameProxy::CConnectTimer::fire()
 
 
 CIntraNameProxy::CIntraNameProxy()
-    : mHostSecurityLevel(FDB_SECURITY_LEVEL_NONE)
-    , mConnectTimer(this)
+    : mConnectTimer(this)
     , mNotificationCenter(this)
 {
     mConnectTimer.attach(FDB_CONTEXT, false);
@@ -199,9 +198,10 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                     mConnectedHost.clear();
                 }
 
-                if (importTokens(msg_addr_list, client))
+                if (msg_addr_list.has_token_list() && client->importTokens(msg_addr_list.token_list().tokens()))
                 {
                     client->updateSecurityLevel();
+                    LOG_I("CIntraNameProxy: tokens of client %s are updated.\n", client->name().c_str());
                 }
 
                 client->local(msg_addr_list.is_local());
@@ -268,7 +268,6 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 return;
             }
             mHostName = msg_host_info.name();
-            mHostSecurityLevel = msg_host_info.security_level();
             CHostNameReady name_ready(mHostName);
             mNotificationCenter.notify(name_ready);
         }
@@ -301,9 +300,10 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         {
             continue;
         }
-        if (importTokens(msg_addr_list, server))
+        if (msg_addr_list.has_token_list() && server->importTokens(msg_addr_list.token_list().tokens()))
         {
             server->updateSecurityLevel();
+            LOG_I("CIntraNameProxy: tokens of server %s are updated.\n", server->name().c_str());
         }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
@@ -430,20 +430,5 @@ void CIntraNameProxy::registerHostNameReadyNotify(CBaseNotification<CHostNameRea
 {
     CBaseNotification<CHostNameReady>::Ptr ntf(notification);
     mNotificationCenter.subscribe(ntf);
-}
-
-bool CIntraNameProxy::importTokens(NFdbBase::FdbMsgAddressList &msg_addr_list,
-                                    CBaseEndpoint *endpoint)
-{
-    const ::google::protobuf::RepeatedPtrField< ::std::string> &tokens =
-        msg_addr_list.tokens();
-    std::vector<const char *> token_list;
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = tokens.begin();
-            it != tokens.end(); ++it)
-    {
-        token_list.push_back(it->c_str());
-    }
-
-    return endpoint->importTokens(token_list);
 }
 

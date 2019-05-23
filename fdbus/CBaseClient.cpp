@@ -130,7 +130,8 @@ public:
 FdbSessionId_t CBaseClient::connect(const char *url)
 {
     FdbSessionId_t sid = FDB_INVALID_ID;
-    CFdbContext::getInstance()->sendSyncEndeavor(new CConnectClientJob(this, &CBaseClient::cbConnect, sid, url), 0, true);
+    CFdbContext::getInstance()->sendSyncEndeavor(
+                new CConnectClientJob(this, &CBaseClient::cbConnect, sid, url), 0, true);
     return sid;
 }
 
@@ -314,7 +315,8 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
 
 void CBaseClient::disconnect(FdbSessionId_t sid)
 {
-    CFdbContext::getInstance()->sendSyncEndeavor(new CDisconnectClientJob(this, &CBaseClient::cbDisconnect, sid), 0, true);
+    CFdbContext::getInstance()->sendSyncEndeavor(
+                new CDisconnectClientJob(this, &CBaseClient::cbDisconnect, sid), 0, true);
 }
 
 void CBaseClient::reconnectToNs(bool connect)
@@ -335,11 +337,15 @@ void CBaseClient::reconnectToNs(bool connect)
 
 void CBaseClient::updateSecurityLevel()
 {
-    NFdbBase::FdbAuthentication authen;
-    for (tTokenList::const_iterator it = mTokens.begin(); it != mTokens.end(); ++it)
+    if (!mTokens.empty())
     {
-        authen.add_tokens(*it);
+        NFdbBase::FdbAuthentication authen;
+        authen.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE); 
+        for (CFdbToken::tTokenList::const_iterator it = mTokens.begin(); it != mTokens.end(); ++it)
+        {
+            authen.mutable_token_list()->add_tokens(*it);
+        }
+        sendSideband(FDB_SIDEBAND_AUTH, authen);
     }
-    sendSideband(FDB_SIDEBAND_AUTH, authen);
 }
 

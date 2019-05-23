@@ -22,6 +22,7 @@
 #include "CFdbSessionContainer.h"
 #include "CBaseEndpoint.h"
 #include "CMethodJob.h"
+#include "CApiSecurityConfig.h"
 
 class CBaseServer;
 class CServerSocket : public CBaseFdWatch, public CFdbSessionContainer
@@ -75,7 +76,10 @@ public:
 protected:
     void reconnectToNs(bool connect);
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
+    bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session);
+    bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session);
 private:
+    CApiSecurityConfig mApiSecurity;
     void cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     CServerSocket *doBind(const char *url);
 

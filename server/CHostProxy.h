@@ -54,10 +54,6 @@ public:
     {
         return mHostUrl;
     }
-    int32_t securityLevel()
-    {
-        return mHostSecurityLevel;
-    }
     void deleteNameProxy(CInterNameProxy *proxy);
     void queryServiceReq(CBaseJob::Ptr &msg_ref);
     void finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQueryServiceMsg *query);
@@ -75,7 +71,6 @@ private:
     CFdbMessageHandle<CHostProxy> mNotifyHdl;
     std::string mHostName;
     std::string mHostUrl;
-    int32_t mHostSecurityLevel;
 
     void subscribeListener(NFdbBase::FdbHsMsgCode code, bool sub);
     void onHostOnlineNotify(CBaseJob::Ptr &msg_ref);
@@ -114,6 +109,8 @@ private:
     CConnectTimer mConnectTimer;
 
     void onConnectTimer(CMethodLoopTimer<CHostProxy> *timer);
+    bool importTokens(const ::NFdbBase::FdbMsgHostAddress &host_addr,
+                                        CBaseEndpoint *endpoint);
 };
 
 #endif

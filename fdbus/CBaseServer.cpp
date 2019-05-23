@@ -215,6 +215,7 @@ CServerSocket *CBaseServer::doBind(const char *url)
 
     if (skt_type == FDB_SOCKET_SVC)
     {
+        mApiSecurity.importSecLevel(server_name);
         requestServiceAddress(server_name);
         return 0;
     }
@@ -304,16 +305,17 @@ void CBaseServer::reconnectToNs(bool connect)
 void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-    NFdbBase::FdbAuthentication authen;
-    if (!msg->deserialize(authen))
-    {
-        msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
-        return;
-    }
     switch (msg->code())
     {
         case FDB_SIDEBAND_AUTH:
         {
+            NFdbBase::FdbAuthentication authen;
+            if (!msg->deserialize(authen))
+            {
+                msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
+                return;
+            }
+            
             CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
             if (!session)
             {
@@ -321,10 +323,10 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             }
             int32_t security_level = FDB_SECURITY_LEVEL_NONE;
             const char *token = "";
-            if (!authen.tokens().empty())
+            if (authen.has_token_list() && !authen.token_list().tokens().empty())
             {
                 const ::google::protobuf::RepeatedPtrField< ::std::string> &tokens =
-                    authen.tokens();
+                    authen.token_list().tokens();
                 // only use the first token in case more than 1 tokens are received
                 token = tokens.begin()->c_str();
                 security_level = checkSecurityLevel(token);
@@ -332,10 +334,24 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             // update security level and token
             session->securityLevel(security_level);
             session->token(token);
+            LOG_I("CBaseServer: security is set: session: %d, level: %d.\n",
+                    msg->session(), security_level);
         }
         break;
         default:
         break;
     }
+}
+
+bool CBaseServer::onMessageAuthentication(CFdbMessage *msg, CFdbSession *session)
+{
+    int32_t security_level = mApiSecurity.getMessageSecLevel(msg->code());
+    return session->securityLevel() >= security_level;
+}
+
+bool CBaseServer::onEventAuthentication(CFdbMessage *msg, CFdbSession *session)
+{
+    int32_t security_level = mApiSecurity.getEventSecLevel(msg->code());
+    return session->securityLevel() >= security_level;
 }
 

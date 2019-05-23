@@ -19,6 +19,7 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
+#include <security/CFdbusSecurityConfig.h>
 #include "CNsConfig.h"
 #include <utils/Log.h>
 
@@ -26,10 +27,13 @@ CHostServer::CHostServer()
     : CBaseServer(CNsConfig::getHostServerName())
     , mHeartBeatTimer(this)
 {
+    mHostSecurity.importSecurity();
+
     mMsgHdl.registerCallback(NFdbBase::REQ_REGISTER_HOST, &CHostServer::onRegisterHostReq);
     mMsgHdl.registerCallback(NFdbBase::REQ_UNREGISTER_HOST, &CHostServer::onUnregisterHostReq);
     mMsgHdl.registerCallback(NFdbBase::REQ_QUERY_HOST, &CHostServer::onQueryHostReq);
     mMsgHdl.registerCallback(NFdbBase::REQ_HEARTBEAT_OK, &CHostServer::onHeartbeatOk);
+    mMsgHdl.registerCallback(NFdbBase::REQ_HOST_READY, &CHostServer::onHostReady);
 
     mSubscribeHdl.registerCallback(NFdbBase::NTF_HOST_ONLINE, &CHostServer::onHostOnlineReg);
     mHeartBeatTimer.attach(FDB_CONTEXT, false);
@@ -114,11 +118,47 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
     info.mIpAddress = ip_addr;
     info.mNsUrl = ns_url;
     info.mHbCount = 0;
+    info.ready = false;
+    CFdbToken::allocateToken(info.mTokens);
 
-    broadcastSingleHost(msg->session(), true, info);
+    NFdbBase::FdbMsgHostRegisterAck ack;
+    populateTokens(info.mTokens, ack);
+    msg->reply(msg_ref, ack);
+
     if (mHostTbl.size() == 1)
     {
         mHeartBeatTimer.enable();
+    }
+}
+
+void CHostServer::onHostReady(CBaseJob::Ptr &msg_ref)
+{
+    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+
+    tHostTbl::iterator it = mHostTbl.find(msg->session());
+    if (it != mHostTbl.end())
+    {
+        CHostInfo &info = it->second;
+        info.ready = true;
+        broadcastSingleHost(msg->session(), true, info);
+    }
+}
+
+void CHostServer::addToken(const CFdbSession *session,
+                          const CHostInfo &host_info,
+                          ::NFdbBase::FdbMsgHostAddress &host_addr)
+{
+    int32_t security_level = getSecurityLevel(session, host_info.mHostName.c_str());
+    const char *token = 0;
+    if ((security_level >= 0) && (security_level < (int32_t)host_info.mTokens.size()))
+    {
+        token = host_info.mTokens[security_level].c_str();
+    }
+    host_addr.mutable_token_list()->clear_tokens();
+    host_addr.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    if (token)
+    {
+        host_addr.mutable_token_list()->add_tokens(token);
     }
 }
 
@@ -130,7 +170,21 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
     addr->set_ip_address(info.mIpAddress);
     addr->set_ns_url(online ? info.mNsUrl : ""); // ns_url being empty means offline
 
-    broadcast(NFdbBase::NTF_HOST_ONLINE, addr_list);
+    if (online)
+    {
+        tSubscribedSessionSets sessions;
+        getSubscribeTable(NFdbBase::NTF_HOST_ONLINE, 0, sessions);
+        for (tSubscribedSessionSets::iterator it = sessions.begin(); it != sessions.end(); ++it)
+        {
+            CFdbSession *session = *it;
+            addToken(session, info, *addr);
+            broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_HOST_ONLINE, addr_list);
+        }
+    }
+    else
+    {
+        broadcast(NFdbBase::NTF_HOST_ONLINE, addr_list);
+    }
 }
 
 void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
@@ -149,9 +203,8 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
         if (it->second.mIpAddress == ip_addr)
         {
             CHostInfo &info = it->second;
-            LOG_I("CHostServer: host is unregistered: name: %s, ip: %s, ns: %s\n", info.mHostName.c_str(),
-                                                                                   info.mIpAddress.c_str(),
-                                                                                   info.mNsUrl.c_str());
+            LOG_I("CHostServer: host is unregistered: name: %s, ip: %s, ns: %s\n",
+                    info.mHostName.c_str(), info.mIpAddress.c_str(), info.mNsUrl.c_str());
             broadcastSingleHost(msg->session(), false, info);
             mHostTbl.erase(it);
             return;
@@ -181,14 +234,19 @@ void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 void CHostServer::onHostOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item)
 {
     ::NFdbBase::FdbMsgHostAddressList addr_list;
+    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
     for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         CHostInfo &info = it->second;
+        if (info.ready)
+        {
+            ::NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
+            addr->set_ip_address(info.mIpAddress);
+            addr->set_ns_url(info.mNsUrl); // ns_url being empty means offline
+            addr->set_host_name(info.mHostName);
 
-        ::NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
-        addr->set_ip_address(info.mIpAddress);
-        addr->set_ns_url(info.mNsUrl); // ns_url being empty means offline
-        addr->set_host_name(info.mHostName);
+            addToken(session, info, *addr);
+        }
     }
     if (!addr_list.address_list().empty())
     {
@@ -210,5 +268,21 @@ void CHostServer::broadcastHeartBeat(CMethodLoopTimer<CHostServer> *timer)
         }
     }
     broadcast(NFdbBase::NTF_HEART_BEAT);
+}
+
+int32_t CHostServer::getSecurityLevel(const CFdbSession *session, const char *host_name)
+{
+    return mHostSecurity.getSecurityLevel(host_name, "");
+}
+
+void CHostServer::populateTokens(const CFdbToken::tTokenList &tokens,
+                                 NFdbBase::FdbMsgHostRegisterAck &list)
+{
+    list.mutable_token_list()->clear_tokens();
+    list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    for (CFdbToken::tTokenList::const_iterator it = tokens.begin(); it != tokens.end(); ++it)
+    {
+        list.mutable_token_list()->add_tokens(*it);
+    }
 }
 

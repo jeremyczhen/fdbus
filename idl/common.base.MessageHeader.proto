@@ -1,7 +1,9 @@
 syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
 
 package NFdbBase;
-option optimize_for = LITE_RUNTIME;
+
+import "common.base.Token.proto";
 
 enum FdbMessageType
 {
@@ -138,5 +140,5 @@ message FdbTraceConfig
 
 message FdbAuthentication
 {
-	repeated string tokens = 1;
+    optional FdbMsgTokens token_list = 1;
 }

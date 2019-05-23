@@ -256,13 +256,13 @@ void CFdbSession::doRequest(NFdbBase::FdbMessageHeader &head,
         NFdbBase::FdbMsgStatusCode status_code = NFdbBase::FDB_ST_AUTO_REPLY_OK;
         const char *status_msg = "Automatically reply to request.";
         msg->decodeDebugInfo(head, this);
-        if (msg->code() == NFdbBase::MT_SIDEBAND_REQUEST)
+        if (msg->type() == NFdbBase::MT_SIDEBAND_REQUEST)
         {
             object->onSidebandInvoke(msg_ref);
         }
         else
         {
-            if (object->onAuthentication(msg_ref, msg->code(), false))
+            if (object->onMessageAuthentication(msg, this))
             {
                 object->doInvoke(msg_ref);
             }
@@ -323,7 +323,7 @@ void CFdbSession::doResponse(NFdbBase::FdbMessageHeader &head,
                     {
                         object->doReply(msg_ref);
                     }
-                    else if (msg->mType == NFdbBase::MT_REQUEST)
+                    else if (msg->mType == NFdbBase::MT_SIDEBAND_REQUEST)
                     {
                         object->onSidebandReply(msg_ref);
                     }
@@ -391,7 +391,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
             if (subscribe)
             {
                 // if fail on authentication, unable to 
-                if (object->onAuthentication(msg_ref, msg->code(), true))
+                if (object->onEventAuthentication(msg, this))
                 {
                     object->subscribe(this, code, object_id, filter);
                 }
@@ -473,5 +473,16 @@ CFdbMessage *CFdbSession::peepPendingMessage(FdbMsgSn_t sn)
     PendingMsgTable_t::EntryContainer_t::iterator it;
     CBaseJob::Ptr &job = mPendingMsgTable.retrieveEntry(sn, it, found);
     return found ? castToMessage<CFdbMessage *>(job) : 0;
+}
+
+void CFdbSession::securityLevel(int32_t level)
+{
+    mSecurityLevel = level;
+    LOG_I("CFdbSession: security level of %d is updated to %d.\n", mSid, level);
+}
+
+void CFdbSession::token(const char *token)
+{
+    mToken = token;
 }
 

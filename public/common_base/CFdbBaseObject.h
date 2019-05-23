@@ -577,13 +577,6 @@ protected:
         }
     }
 
-    bool onAuthentication(CBaseJob::Ptr &msg_ref
-                        , FdbMsgCode_t msg_code
-                        , bool is_subscribe)
-    {
-        return true;
-    }
-
     /*
      * request-reply through side band.
      * Note: Only used internally for FDBus!!!
@@ -596,6 +589,15 @@ protected:
     {}
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
     {}
+
+    virtual bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session)
+    {
+        return true;
+    }
+    virtual bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session)
+    {
+        return true;
+    }
 
 private:
     typedef std::map<std::string, bool> FilterTable_t;

@@ -26,7 +26,6 @@
 CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
     : CBaseClient("HostServer")
     , mNameServer(ns)
-    , mHostSecurityLevel(FDB_SECURITY_LEVEL_NONE)
     , mConnectTimer(this)
 {
     mNotifyHdl.registerCallback(NFdbBase::NTF_HOST_ONLINE, &CHostProxy::onHostOnlineNotify);
@@ -135,6 +134,27 @@ void CHostProxy::onReply(CBaseJob::Ptr &msg_ref)
             LOG_I("CHostProxy: onReply(): status is received: msg code: %d, id: %d, reason: %s\n", msg->code(), id, reason.c_str());
         }
     }
+
+    switch (msg->code())
+    {
+        case NFdbBase::REQ_REGISTER_HOST:
+        {
+            NFdbBase::FdbMsgHostRegisterAck ack;
+            if (!msg->deserialize(ack))
+            {
+                return;
+            }
+            if (ack.has_token_list() && mNameServer->importTokens(ack.token_list().tokens()))
+            {
+                mNameServer->updateSecurityLevel();
+                LOG_I("CHostProxy: tokens of name server is updated.\n");
+            }
+            send(NFdbBase::REQ_HOST_READY);
+        }
+        break;
+        default:
+        break;
+    }
 }
 
 void CHostProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
@@ -155,11 +175,10 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     {
         return;
     }
+
     std::string host_ip;
-    if (!hostIp(host_ip, session))
-    {
-        return;
-    }
+    hostIp(host_ip, session);
+
     tFdbFilterSets registered_service_tbl;
     mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE, registered_service_tbl);
     tFdbFilterSets monitored_service_tbl;
@@ -193,7 +212,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
             }
         }
 
-        if (ip_address == host_ip)
+        if (!host_ip.empty() && (ip_address == host_ip))
         {
             // don't connect to self.
             continue;
@@ -217,6 +236,11 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
             if (proxy->connectToNameServer())
             {
                 mNameProxyTbl[ip_address] = proxy;
+                if (addr.has_token_list() && proxy->importTokens(addr.token_list().tokens()))
+                {
+                    proxy->updateSecurityLevel();
+                    LOG_I("CHostProxy: tokens of %s is updated.\n", proxy->name().c_str());
+                }
 
                 for (tFdbFilterSets::iterator filter_it = registered_service_tbl.begin();
                             filter_it != registered_service_tbl.end(); ++filter_it)
@@ -263,7 +287,7 @@ void CHostProxy::hostOnline(FdbMsgCode_t code)
     host_addr.set_ip_address(host_ip);
     host_addr.set_host_name(hostName());
     host_addr.set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
-    send(code, host_addr);
+    invoke(code, host_addr);
 }
 
 void CHostProxy::hostOnline()
@@ -432,5 +456,4 @@ void CHostProxy::getHostTbl(NFdbBase::FdbMsgHostAddressList &host_tbl)
     addr->set_host_name(mHostName);
     addr->set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
 }
-
 

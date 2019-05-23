@@ -61,18 +61,12 @@ public:
     {
         mInternalError = active;
     }
-    void securityLevel(int32_t level)
-    {
-        mSecurityLevel = level;
-    }
+    void securityLevel(int32_t level);
     int32_t securityLevel()
     {
         return mSecurityLevel;
     }
-    void token(const char *token)
-    {
-        mToken = token;
-    }
+    void token(const char *token);
     std::string &token()
     {
         return mToken;

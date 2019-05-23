@@ -16,14 +16,15 @@
 
 #ifndef _CHOSTSERVER_H_
 #define _CHOSTSERVER_H_
-#include <common_base/CBaseServer.h>
-#include <list>
 #include <map>
 #include <string>
+#include <vector>
+#include <common_base/CBaseServer.h>
 #include <idl-gen/common.base.NameServer.pb.h>
 #include <idl-gen/common.base.MessageHeader.pb.h>
 #include <common_base/CMethodLoopTimer.h>
 #include "CNsConfig.h"
+#include <security/CHostSecurityConfig.h>
 
 class CFdbMessage;
 class CHostServer : public CBaseServer
@@ -43,8 +44,9 @@ private:
         std::string mIpAddress;
         std::string mNsUrl;
         int32_t mHbCount;
+        bool ready;
+        CFdbToken::tTokenList mTokens;
     };
-
     typedef std::map<FdbSessionId_t, CHostInfo> tHostTbl;
     tHostTbl mHostTbl;
     CFdbMessageHandle<CHostServer> mMsgHdl;
@@ -54,6 +56,7 @@ private:
     void onUnregisterHostReq(CBaseJob::Ptr &msg_ref);
     void onQueryHostReq(CBaseJob::Ptr &msg_ref);
     void onHeartbeatOk(CBaseJob::Ptr &msg_ref);
+    void onHostReady(CBaseJob::Ptr &msg_ref);
 
     void onHostOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
 
@@ -70,6 +73,14 @@ private:
     };
     CHeartBeatTimer mHeartBeatTimer;
     void broadcastHeartBeat(CMethodLoopTimer<CHostServer> *timer);
+    CHostSecurityConfig mHostSecurity;
+
+    int32_t getSecurityLevel(const CFdbSession *session, const char *host_name);
+    void populateTokens(const CFdbToken::tTokenList &tokens,
+                        NFdbBase::FdbMsgHostRegisterAck &list);
+    void addToken(const CFdbSession *session,
+                    const CHostInfo &host_info,
+                    ::NFdbBase::FdbMsgHostAddress &host_addr);
 };
 
 #endif

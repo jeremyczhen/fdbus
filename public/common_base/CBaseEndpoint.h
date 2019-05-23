@@ -23,6 +23,7 @@
 #include "CEntityContainer.h"
 #include "CFdbBaseObject.h"
 #include "CMethodJob.h"
+#include "CFdbToken.h"
 
 class CBaseWorker;
 class CFdbSessionContainer;
@@ -81,7 +82,6 @@ protected:
 
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
-    typedef std::vector<std::string> tTokenList;
     
     CFdbSession *preferredPeer();
     void checkAutoRemove();
@@ -100,7 +100,7 @@ private:
     void callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     CFdbBaseObject *findObject(FdbObjectId_t obj_id, bool server_only);
     bool retrieveIpAddress(std::string &ip_address, CFdbSession *session, bool self);
-    bool importTokens(const std::vector<const char *> &in_tokens);
+    bool importTokens(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_tokens);
     int32_t checkSecurityLevel(const char *token);
     void updateSecurityLevel();
 
@@ -108,7 +108,7 @@ private:
 
     uint32_t mSessionCnt;
     FdbObjectId_t mSnAllocator;
-    tTokenList mTokens;
+    CFdbToken::tTokenList mTokens;
 
     friend class CFdbSession;
     friend class CFdbMessage;
@@ -116,6 +116,7 @@ private:
     friend class CBaseServer;
     friend class CBaseClient;
     friend class CIntraNameProxy;
+    friend class CHostProxy;
     friend class CFdbBaseObject;
     friend class CServerSocket;
     friend class CRegisterJob;

@@ -7,11 +7,13 @@ option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
 option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" ON)
 option(fdbus_SOCKET_ENABLE_PEERCRED "Enable peercred of socket" ON)
 option(fdbus_ALLOC_PORT_BY_SYSTEM "Allocate port number by system rather than by name server" OFF)
+option(fdbus_SECURITY "Enable security of FDBus" OFF)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
 else()
     add_compile_options(-std=gnu++11 -Wall)
+    #add_compile_options(-g -O0)
     add_definitions("-D__LINUX__")
 endif()
 
@@ -35,6 +37,10 @@ if (fdbus_ALLOC_PORT_BY_SYSTEM)
     add_definitions("-DCFG_ALLOC_PORT_BY_SYSTEM")
 endif()
 
+if (fdbus_SECURITY)
+    add_definitions("-DCFG_FDBUS_SECURITY")
+endif()
+
 set(RULE_DIR ${CMAKE_SOURCE_DIR})
 get_filename_component(PROJECT_ROOT ${RULE_DIR} PATH)
 include(rule_base.cmake)
@@ -52,11 +58,19 @@ file(GLOB UTILS_SOURCES "${PROJECT_ROOT}/utils/*.cpp")
 file(GLOB WORKER_SOURCES "${PROJECT_ROOT}/worker/*.cpp")
 file(GLOB PUBLIC_HEADERS "${PROJECT_ROOT}/common_base/*.h")
 
+set(SECURITY_SOURCES
+	${PROJECT_ROOT}/security/cJSON/cJSON.c
+	${PROJECT_ROOT}/security/CApiSecurityConfig.cpp
+	${PROJECT_ROOT}/security/CFdbToken.cpp
+	${PROJECT_ROOT}/security/CFdbusSecurityConfig.cpp
+)
+
 set(OTHER_SOURCES
     ${PROJECT_ROOT}/server/CBaseNameProxy.cpp
     ${PROJECT_ROOT}/server/CIntraNameProxy.cpp
     ${IDL_GEN_ROOT}/idl-gen/common.base.NameServer.pb.cc
     ${IDL_GEN_ROOT}/idl-gen/common.base.MessageHeader.pb.cc
+    ${IDL_GEN_ROOT}/idl-gen/common.base.Token.pb.cc
 )
 
 include(idl-gen.cmake)
@@ -90,6 +104,7 @@ add_library(common_base ${LIB_BUILD_TYPE}
                           ${UTILS_SOURCES}
                           ${WORKER_SOURCES}
                           ${OTHER_SOURCES}
+                          ${SECURITY_SOURCES}
 )
 install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)

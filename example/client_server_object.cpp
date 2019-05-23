@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <common_base/fdbus.h>
+#define OBJ_FROM_SERVER_TO_CLIENT 1
 
 /*
  * 该文件由描述文件workspace/pb_idl/common.base.Example.proto自动生成。
@@ -848,7 +849,6 @@ int main(int argc, char **argv)
     if (is_server)
     {
         // 创建并注册server
-        CMyClient<CFdbBaseObject> *obj = 0;
         for (int i = 2; i < argc; ++i)
         {
             std::string server_name = argv[i];
@@ -857,26 +857,19 @@ int main(int argc, char **argv)
             server_name += "_server";
             CMyServer<CBaseServer> *server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr);
 
+#ifdef OBJ_FROM_SERVER_TO_CLIENT
             for (int j = 0; j < 5; ++j)
             {
                 char obj_id[64];
                 sprintf(obj_id, "obj%u", j);
                 std::string obj_name = server_name + obj_id;
-                obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                CMyClient<CFdbBaseObject> *obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
                 obj->connect(server, 1000);
             }
+#endif
 
             server->bind(url.c_str());
         }
-#if 0
-        sysdep_sleep(1000);
-        server.unbind();
-        main_worker.flush();
-        main_worker.exit();
-        main_worker.join();
-        FDB_CONTEXT->destroy();
-        return 0;
-#endif
         CBaseWorker background_worker;
         background_worker.start(FDB_WORKER_EXE_IN_PLACE);
     }
@@ -892,34 +885,20 @@ int main(int argc, char **argv)
             server_name += "_client";
             client = new CMyClient<CBaseClient>(server_name.c_str(), worker_ptr);
             
-#if 0
-            CMyClient<CFdbBaseObject> *obj1 = 0;
-            CMyClient<CFdbBaseObject> *obj2 = 0;
-            obj1 = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
-            obj1->connect(client, 1000 + i);
-            
-            obj2 = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
-            obj2->connect(client, 2000 + i);
+#ifndef OBJ_FROM_SERVER_TO_CLIENT
+            for (int j = 0; j < 5; ++j)
+            {
+                char obj_id[64];
+                sprintf(obj_id, "obj%u", j);
+                std::string obj_name = server_name + obj_id;
+                CMyClient<CFdbBaseObject> *obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                obj->connect(client, 1000);
+            }
 #endif
             
             client->enableReconnect(true);
             client->connect(url.c_str());
         }
-#if 0
-        sysdep_sleep(1000);
-        if (obj1)
-        {
-            obj1->disconnect();
-            mediaplayer_worker.flush();
-            delete obj1;
-        }
-        if (obj2)
-        {
-            obj2->disconnect();
-            mediaplayer_worker.flush();
-            delete obj2;
-        }
-#endif
 #if 0
         sysdep_sleep(1000);
         client->disconnect();

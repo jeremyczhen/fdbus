@@ -4,11 +4,13 @@ add_executable(name_server
     ${PROJECT_ROOT}/server/CNameServer.cpp
     ${PROJECT_ROOT}/server/CInterNameProxy.cpp
     ${PROJECT_ROOT}/server/CHostProxy.cpp
+    ${PROJECT_ROOT}/security/CServerSecurityConfig.cpp
 )
 
 add_executable(host_server
     ${PROJECT_ROOT}/server/main_hs.cpp
     ${PROJECT_ROOT}/server/CHostServer.cpp
+    ${PROJECT_ROOT}/security/CHostSecurityConfig.cpp
 )
 
 add_executable(lssvc

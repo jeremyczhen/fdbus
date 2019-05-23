@@ -536,18 +536,18 @@ void CBaseEndpoint::unregisterSelf()
     }
 }
 
-bool CBaseEndpoint::importTokens(const std::vector<const char *> &in_tokens)
+bool CBaseEndpoint::importTokens(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_tokens)
 {
     bool need_update = false;
     
-    if (in_tokens.size() != mTokens.size())
+    if (in_tokens.size() != (int32_t)mTokens.size())
     {
         need_update = true;
     }
     else
     {
-        tTokenList::const_iterator it = mTokens.begin();
-        std::vector<const char *>::const_iterator in_it = in_tokens.begin();
+        CFdbToken::tTokenList::const_iterator it = mTokens.begin();
+        ::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator in_it = in_tokens.begin();
          for (; in_it != in_tokens.end(); ++in_it, ++it)
         {
             if (it->compare(*in_it))
@@ -561,7 +561,7 @@ bool CBaseEndpoint::importTokens(const std::vector<const char *> &in_tokens)
     if (need_update)
     {
         mTokens.clear();
-        for (std::vector<const char *>::const_iterator in_it = in_tokens.begin();
+        for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator in_it = in_tokens.begin();
              in_it != in_tokens.end(); ++in_it)
         {
             mTokens.push_back(*in_it);
@@ -572,19 +572,7 @@ bool CBaseEndpoint::importTokens(const std::vector<const char *> &in_tokens)
 
 int32_t CBaseEndpoint::checkSecurityLevel(const char *token)
 {
-    int32_t security_level = FDB_SECURITY_LEVEL_NONE;
-    if (token)
-    {
-        for (int32_t i = 0; i < (int32_t)mTokens.size(); ++i)
-        {
-            if (!mTokens[i].compare(token))
-            {
-                security_level = i;
-                break;
-            }
-        }
-    }
-    return security_level;
+    return CFdbToken::checkSecurityLevel(mTokens, token);
 }
 
 // given token in session, update security level

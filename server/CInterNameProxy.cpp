@@ -173,7 +173,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             
             if (code == NFdbBase::NTF_SERVICE_ONLINE)
             {
-                CNameServer::tTokenList tokens;
+                CFdbToken::tTokenList tokens;
                 name_server->populateTokens(tokens, msg_addr_list);
                 bool broadcast_to_all = true;
                 if (isValidFdbId(subscriber))
@@ -182,19 +182,24 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                     if (session)
                     {
                         // send token matching security level to the client
-                        name_server->broadcastServiceAddressLocal(
-                                                    tokens, msg_addr_list, session);
+                        name_server->broadcastServiceAddress(tokens,
+                                                             msg_addr_list,
+                                                             session,
+                                                             NFdbBase::NTF_SERVICE_ONLINE);
                         broadcast_to_all = false;
                     }
                 }
                 if (broadcast_to_all)
                 {
-                    name_server->broadcastServiceAddressLocal( tokens, msg_addr_list);
+                    name_server->broadcastServiceAddress(tokens, msg_addr_list,
+                                                         NFdbBase::NTF_SERVICE_ONLINE);
                 }
             }
             else
             {
-                msg_addr_list.clear_tokens(); // never broadcast token to monitors!!!
+                // never broadcast token to monitors!!!
+                msg_addr_list.mutable_token_list()->clear_tokens();
+                msg_addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
                 name_server->broadcast(subscriber, FDB_OBJECT_MAIN, code,
                                 msg_addr_list, msg_addr_list.service_name().c_str());
             }

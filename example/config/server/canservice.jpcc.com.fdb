@@ -1,0 +1,84 @@
+{
+    "message": [
+        {
+            "level": -1,
+            "from": "default"
+        },
+        {
+            "level": 0,
+            "from": 101,
+            "to": 200
+        },
+        {
+            "level": 1,
+            "from": 201,
+            "to": 300
+        },
+        {
+            "level": 2,
+            "from": 301,
+            "to": 400
+        },
+        {
+            "level": 3,
+            "from": 401,
+            "to": 500
+        }
+    ],
+    "event": [
+        {
+            "level": -1,
+            "from": "default"
+        },
+        {
+            "level": 0,
+            "from": 101,
+            "to": 200
+        },
+        {
+            "level": 1,
+            "from": 201,
+            "to": 300
+        },
+        {
+            "level": 2,
+            "from": 301,
+            "to": 400
+        },
+        {
+            "level": 3,
+            "from": 401,
+            "to": 500
+        }
+    ],
+    "permission": [
+        {
+            "level": -1,
+            "gid": "default"
+        },
+        {
+            "level": 0,
+            "gid": ["adm"],
+            "uid": ["xxx"]
+        },
+        {
+            "level": 1,
+            "gid": ["plugdev"],
+            "uid": "default"
+        },
+        {
+            "level": 2,
+            "gid": ["lpadmin"],
+            "uid": ["jer"]
+        },
+        {
+            "level": 3,
+            "gid": ["root"],
+            "uid": ["root"]
+        }
+    ],
+    "cred": {
+        "uid": "root",
+        "gid": "system"
+    }
+}

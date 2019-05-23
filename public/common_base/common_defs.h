@@ -74,6 +74,20 @@ bool isValidFdbId(T id)
 #define Num_Elems(_arr_) sizeof(_arr_)/sizeof(_arr_[0])
 #endif
 
+#if !defined(FDB_CFG_CONFIG_PATH)
+#define FDB_CFG_CONFIG_PATH "/etc/fdbus"
+#endif
+
+#define FDB_CFG_CONFIG_FILE_SUFFIX ".fdb"
+
+#if !defined(FDB_CFG_NR_SECURE_LEVEL)
+#define FDB_CFG_NR_SECURE_LEVEL 4
+#endif
+
+#if !defined(FDB_CFG_TOKEN_LENGTH)
+#define FDB_CFG_TOKEN_LENGTH 32
+#endif
+
 enum EFdbLogLevel
 {
     FDB_LL_VERBOSE = 0,
@@ -84,6 +98,15 @@ enum EFdbLogLevel
     FDB_LL_FATAL = 5,
     FDB_LL_SILENT = 6,
     FDB_LL_MAX = 7
+};
+
+enum EFdbusCredType
+{
+    FDB_PERM_CRED_AUTO,
+    FDB_PERM_CRED_GID,
+    FDB_PERM_CRED_UID,
+    FDB_PERM_CRED_MAC,
+    FDB_PERM_CRED_IP
 };
 
 #endif

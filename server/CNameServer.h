@@ -25,6 +25,7 @@
 #include <common_base/CBaseServer.h>
 #include <idl-gen/common.base.NameServer.pb.h>
 #include <common_base/CSocketImp.h>
+#include <security/CServerSecurityConfig.h>
 
 class CFdbMessage;
 class CHostProxy;
@@ -65,12 +66,11 @@ protected:
     void onOffline(FdbSessionId_t sid, bool is_last);
 private:
     typedef std::list<CFdbAddressDesc *> tAddressDescTbl;
-    typedef std::vector<std::string> tTokenList;
     struct CSvcRegistryEntry
     {
         FdbSessionId_t mSid;
         tAddressDescTbl mAddrTbl;
-        tTokenList mTokens;
+        CFdbToken::tTokenList mTokens;
     };
     typedef std::map<std::string, CSvcRegistryEntry> tRegistryTbl;
 
@@ -112,21 +112,22 @@ private:
     bool bindNsAddress(tAddressDescTbl &addr_tbl);
     void checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const char *svc_name);
     void buildSpecificTcpAddress(CFdbSession *session, int32_t port, std::string &out_url);
-    void allocateTokens(tTokenList &tokens);
-    void updateSecurityLevel(CFdbSession *session);
-    void broadcastServiceAddressLocal(const tTokenList &tokens,
-                                      NFdbBase::FdbMsgAddressList &addr_list,
-                                      CFdbSession *session);
-    void broadcastServiceAddressLocal(const tTokenList &tokens,
-                                      NFdbBase::FdbMsgAddressList &addr_list);
-    void populateTokens(const tTokenList &tokens, NFdbBase::FdbMsgAddressList &list);
+    void broadcastServiceAddress(const CFdbToken::tTokenList &tokens,
+                                 NFdbBase::FdbMsgAddressList &addr_list,
+                                 CFdbSession *session,
+                                 NFdbBase::FdbNsMsgCode code);
+    void broadcastServiceAddress(const CFdbToken::tTokenList &tokens,
+                                 NFdbBase::FdbMsgAddressList &addr_list,
+                                 NFdbBase::FdbNsMsgCode);
+    int32_t getSecurityLevel(CFdbSession *session, const char *svc_name);
+    void populateTokens(const CFdbToken::tTokenList &tokens, NFdbBase::FdbMsgAddressList &list);
 
     uint32_t mTcpPortAllocator;
     uint32_t mIpcAllocator;
     CHostProxy *mHostProxy;
     std::string mInterface;
     int32_t mNsPort;
-    int32_t mNrSecurityLevel;
+    CServerSecurityConfig mServerSecruity;
     
     friend class CInterNameProxy;
 };
