@@ -341,6 +341,7 @@ int main(int argc, char **argv)
     FDB_CONTEXT->init();
     
     CLogClient log_client;
+    log_client.enableReconnect(true);
     log_client.connect();
     FDB_CONTEXT->start(FDB_WORKER_EXE_IN_PLACE);
     return 0;

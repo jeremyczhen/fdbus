@@ -684,13 +684,15 @@ private:
     friend class CFdbBaseObject;
 };
 
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-typedef CFdbDebugMsg CBaseMessage;
-#else
 typedef CFdbMessage CBaseMessage;
+
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+typedef CFdbDebugMsg _CBaseMessage;
+#else
+typedef CFdbMessage _CBaseMessage;
 #endif
 
-class CFdbBroadcastMsg : public CBaseMessage
+class CFdbBroadcastMsg : public _CBaseMessage
 {
 public:
     CFdbBroadcastMsg(FdbMsgCode_t code
@@ -714,7 +716,7 @@ protected:
                      , uint8_t *buffer
                      , FdbSessionId_t sid
                      , const char *filter)
-        : CBaseMessage(head, prefix, buffer, sid)
+        : _CBaseMessage(head, prefix, buffer, sid)
     {
         if (filter)
         {

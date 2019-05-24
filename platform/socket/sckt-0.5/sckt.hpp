@@ -121,7 +121,7 @@ public:
     
 private:
     //override from std::exception
-    const char *what(){
+    const char *what() const _NOEXCEPT {
         return this->What();
     };
 };

@@ -1229,7 +1229,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
                                  , const char *filter
                                  , FdbSessionId_t alt_sid
                                  , FdbObjectId_t alt_oid)
-    : CBaseMessage(code, obj)
+    : _CBaseMessage(code, obj)
 {
     if (filter)
     {
@@ -1256,7 +1256,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
 CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
                                  , CFdbMessage *msg
                                  , const char *filter)
-    : CBaseMessage(code, msg)
+    : _CBaseMessage(code, msg)
 {
     if (filter)
     {
