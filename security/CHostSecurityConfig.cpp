@@ -121,26 +121,26 @@ void CHostSecurityConfig::parseHostSecurityConfig(const char *json_str, std::str
                                             else
                                             {
                                                 err_msg = "'level' is not number";
-                                                return;
+                                                goto _quit;
                                             }
                                         }
                                         else
                                         {
                                             err_msg = "'level' is not found";
-                                            return;
+                                            goto _quit;
                                         }
                                     }
                                     else
                                     {
                                         err_msg = "not object - 1";
-                                        return;
+                                        goto _quit;
                                     }
                                 }
                             }
                             else
                             {
                                 err_msg = "not array - 1";
-                                return;
+                                goto _quit;
                             }
                         }
                     }
@@ -148,10 +148,16 @@ void CHostSecurityConfig::parseHostSecurityConfig(const char *json_str, std::str
                 else
                 {
                     err_msg = "not number - 1";
-                    return;
+                    goto _quit;
                 }
             }
         }
+    }
+
+_quit:
+    if (cfg_root)
+    {
+        cJSON_Delete(cfg_root);
     }
 }
 
@@ -177,6 +183,7 @@ void CHostSecurityConfig::importSecurity()
             LOG_E("CHostSecurityConfig: error when parsing %s: %s\n",
                     config_file, err_msg.c_str());
         }
+        free(buffer);
     }
 }
 

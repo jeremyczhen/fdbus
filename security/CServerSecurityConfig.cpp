@@ -217,19 +217,19 @@ void CServerSecurityConfig::parseServerSecurityConfig(const char *svc_name,
                                     else
                                     {
                                         err_msg = "'level' should be number.";
-                                        return;
+                                        goto _quit;
                                     }
                                 }
                                 else
                                 {
                                     err_msg = "'level' is not found.";
-                                    return;
+                                    goto _quit;
                                 }
                             }
                             else
                             {
                                 err_msg = "not object - 2.";
-                                return;
+                                goto _quit;
                             }
                         }
                     }
@@ -237,19 +237,25 @@ void CServerSecurityConfig::parseServerSecurityConfig(const char *svc_name,
                 else
                 {
                     err_msg = "not array - 1.";
-                    return;
+                    goto _quit;
                 }
             }
         }
         else
         {
             err_msg = "not object - 1.";
-            return;
+            goto _quit;
         }
     }
     else
     {
         err_msg = "unable to parse json string.";
+    }
+
+_quit:
+    if (cfg_root)
+    {
+        cJSON_Delete(cfg_root);
     }
 }
 

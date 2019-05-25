@@ -119,9 +119,9 @@ public:
         return this->msg?this->msg:("sckt::Exc(): Unknown exception");
     };
     
-private:
+private:  
     //override from std::exception
-    const char *what() const _NOEXCEPT {
+    const char *what() const noexcept {
         return this->What();
     };
 };

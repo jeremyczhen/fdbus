@@ -94,6 +94,12 @@ void CFdbusSecurityConfig::parseSecurityConfig(const char *json_str,
             }
         }
     }
+
+_quit:
+    if (cfg_root)
+    {
+        cJSON_Delete(cfg_root);
+    }
 }
 
 void CFdbusSecurityConfig::importSecurity()
@@ -111,6 +117,7 @@ void CFdbusSecurityConfig::importSecurity()
             LOG_E("CServerSecurityConfig: error when parsing %s: %s\n",
                     file_name, err_msg.c_str());
         }
+        free(buffer);
     }
 }
 

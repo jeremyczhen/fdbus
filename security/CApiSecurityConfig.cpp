@@ -136,33 +136,36 @@ void CApiSecurityConfig::parseSecurityConfig(const char *json_str, std::string &
     {
         if (cJSON_IsObject(cfg_root))
         {
-            {
-            cJSON *json = cJSON_GetObjectItem(cfg_root, "message");
-            if (json == NULL)
+            cJSON *message = cJSON_GetObjectItem(cfg_root, "message");
+            if (message == NULL)
             {
                 err_msg = "'message' is not found!";
-                return;
+                goto _quit;
             }
-            parseApiConfig(json, mMessageSecLevelTbl, err_msg);
+            parseApiConfig(message, mMessageSecLevelTbl, err_msg);
             if (!err_msg.empty())
             {
-                return;
+                goto _quit;
             }
-            }
-            {
-            cJSON *json = cJSON_GetObjectItem(cfg_root, "event");
-            if (json == NULL)
+            
+            cJSON *event = cJSON_GetObjectItem(cfg_root, "event");
+            if (event == NULL)
             {
                 err_msg = "'event' is not found!";
-                return;
+                goto _quit;
             }
-            parseApiConfig(json, mEventSecLevelTbl, err_msg);
-            }
+            parseApiConfig(event, mEventSecLevelTbl, err_msg);
         }
     }
     else
     {
         err_msg = "unable to parse json string.";
+    }
+    
+_quit:
+    if (cfg_root)
+    {
+        cJSON_Delete(cfg_root);
     }
 }
 
