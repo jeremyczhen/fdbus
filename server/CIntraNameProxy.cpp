@@ -158,20 +158,21 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
         {
             continue;
         }
+        std::string &connected_host = client->mConnectedHost;
 
         if (is_offline)
         {
-            if (host_name == mConnectedHost)
+            if (host_name == connected_host)
             {
                 // only disconnect the connected server (host name should match)
                 client->doDisconnect();
                 LOG_E("CIntraNameProxy: Session %d: Client %s is disconnected by %s!\n",
                         msg->session(), svc_name, host_name.c_str());
-                mConnectedHost.clear();
+                connected_host.clear();
             }
             else
             {
-                if (mConnectedHost.empty())
+                if (connected_host.empty())
                 {
                     if (client->connected())
                     {
@@ -195,7 +196,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 if (force_reconnect)
                 {
                     client->doDisconnect();
-                    mConnectedHost.clear();
+                    connected_host.clear();
                 }
 
                 if (msg_addr_list.has_token_list() && client->importTokens(msg_addr_list.token_list().tokens()))
@@ -228,7 +229,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 }
                 if (client->connected())
                 {
-                    mConnectedHost = host_name;
+                    connected_host = host_name;
                 }
             }
         }

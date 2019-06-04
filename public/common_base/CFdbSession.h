@@ -71,6 +71,8 @@ public:
     {
         return mToken;
     }
+    bool hostIp(std::string &host_ip);
+    bool peerIp(std::string &host_ip);
 
     bool receiveData(uint8_t *buf, int32_t size);
 

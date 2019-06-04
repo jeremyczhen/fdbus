@@ -272,7 +272,15 @@ void CHostServer::broadcastHeartBeat(CMethodLoopTimer<CHostServer> *timer)
 
 int32_t CHostServer::getSecurityLevel(const CFdbSession *session, const char *host_name)
 {
-    return mHostSecurity.getSecurityLevel(host_name, "");
+    std::string peer_ip;
+    if ((const_cast<CFdbSession *>(session))->peerIp(peer_ip))
+    {
+        return mHostSecurity.getSecurityLevel(host_name, peer_ip.c_str(), FDB_PERM_CRED_IP);
+    }
+    else
+    {
+        return FDB_SECURITY_LEVEL_NONE;
+    }
 }
 
 void CHostServer::populateTokens(const CFdbToken::tTokenList &tokens,

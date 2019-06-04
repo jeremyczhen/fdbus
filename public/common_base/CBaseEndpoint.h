@@ -99,7 +99,6 @@ private:
     void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     void callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     CFdbBaseObject *findObject(FdbObjectId_t obj_id, bool server_only);
-    bool retrieveIpAddress(std::string &ip_address, CFdbSession *session, bool self);
     bool importTokens(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_tokens);
     int32_t checkSecurityLevel(const char *token);
     void updateSecurityLevel();

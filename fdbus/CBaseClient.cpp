@@ -92,12 +92,17 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
         else
         {
             LOG_E("CClientSocket: shutdown due to IO error and fail to reconnect to %s@%s.\n", client->nsName().c_str(), url.c_str());
+            client->mConnectedHost.clear();
         }
     }
     else
     {
         CFdbSessionContainer::onSessionDeleted(session);
         delete this;
+        if (client)
+        {
+            client->mConnectedHost.clear();
+        }
     }
 }
 

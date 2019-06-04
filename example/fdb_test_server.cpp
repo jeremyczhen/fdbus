@@ -67,10 +67,10 @@ public:
         broadcast(NTF_ELAPSE_TIME, et, "my_filter");
 
         /* another test: broadcast raw data */
-        char raw_data[1920];
+        char raw_data[256];
         memset(raw_data, '=', sizeof(raw_data));
-        raw_data[1919] = '\0';
-        broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data, 1920);
+        raw_data[255] = '\0';
+        broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data, 256);
     }
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first)

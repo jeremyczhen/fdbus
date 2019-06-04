@@ -112,15 +112,36 @@ private:
     bool bindNsAddress(tAddressDescTbl &addr_tbl);
     void checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const char *svc_name);
     void buildSpecificTcpAddress(CFdbSession *session, int32_t port, std::string &out_url);
-    void broadcastServiceAddress(const CFdbToken::tTokenList &tokens,
+    void populateTokens(const CFdbToken::tTokenList &tokens,
+                        NFdbBase::FdbMsgAddressList &list);
+
+    void populateTokensRemote(const CFdbToken::tTokenList &tokens,
+                               NFdbBase::FdbMsgAddressList &addr_list,
+                               CFdbSession *session);
+    void broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
                                  NFdbBase::FdbMsgAddressList &addr_list,
-                                 CFdbSession *session,
-                                 NFdbBase::FdbNsMsgCode code);
-    void broadcastServiceAddress(const CFdbToken::tTokenList &tokens,
+                                 CFdbMessage *msg);
+    void broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
                                  NFdbBase::FdbMsgAddressList &addr_list,
-                                 NFdbBase::FdbNsMsgCode);
+                                 CFdbSession *session);
+    void broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
+                                 NFdbBase::FdbMsgAddressList &addr_list);
+    void populateTokensLocal(const CFdbToken::tTokenList &tokens,
+                              NFdbBase::FdbMsgAddressList &addr_list,
+                              CFdbSession *session);
+    void broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
+                                NFdbBase::FdbMsgAddressList &addr_list,
+                                CFdbMessage *msg);
+    void broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
+                                NFdbBase::FdbMsgAddressList &addr_list,
+                                CFdbSession *session);
+    void broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
+                                NFdbBase::FdbMsgAddressList &addr_list);
+
     int32_t getSecurityLevel(CFdbSession *session, const char *svc_name);
-    void populateTokens(const CFdbToken::tTokenList &tokens, NFdbBase::FdbMsgAddressList &list);
+
+    void dumpTokens(CFdbToken::tTokenList &tokens,
+                    const NFdbBase::FdbMsgAddressList &list);
 
     uint32_t mTcpPortAllocator;
     uint32_t mIpcAllocator;

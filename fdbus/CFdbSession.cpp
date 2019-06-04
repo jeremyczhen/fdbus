@@ -398,6 +398,12 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
                 else
                 {
                     object->unsubscribe(this, code, object_id, filter);
+                    LOG_E("CFdbSession: Session %d: Unable to subscribe obj: %d, id: %d, filter: %s. Fail in security check!\n",
+                           mSid, object_id, code, filter);
+                    if (ret >= 0)
+                    {
+                        ret = -2;
+                    }
                 }
             }
             else
@@ -407,11 +413,20 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
             }
         }
         FDB_END_FOREACH_SIGNAL_WITH_RETURN()
+
         if (ret < 0)
         {
-            msg->sendStatus(this, NFdbBase::FDB_ST_MSG_DECODE_FAIL,
-                    "Not valid NFdbBase::FdbMsgSubscribe message!");
-            LOG_E("CFdbSession: Session %d: Unable to deserialize subscribe message!\n", mSid);
+            if (ret == -2)
+            {
+                msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
+                        "Authentication failed for some events!");
+            }
+            else
+            {
+                msg->sendStatus(this, NFdbBase::FDB_ST_MSG_DECODE_FAIL,
+                        "Not valid NFdbBase::FdbMsgSubscribe message!");
+                LOG_E("CFdbSession: Session %d: Unable to deserialize subscribe message!\n", mSid);
+            }
         }
         else if (subscribe)
         {
@@ -478,7 +493,6 @@ CFdbMessage *CFdbSession::peepPendingMessage(FdbMsgSn_t sn)
 void CFdbSession::securityLevel(int32_t level)
 {
     mSecurityLevel = level;
-    LOG_I("CFdbSession: security level of %d is updated to %d.\n", mSid, level);
 }
 
 void CFdbSession::token(const char *token)
@@ -486,3 +500,27 @@ void CFdbSession::token(const char *token)
     mToken = token;
 }
 
+bool CFdbSession::hostIp(std::string &host_ip)
+{
+    CFdbSessionInfo sinfo;
+    getSessionInfo(sinfo);
+    if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
+    {
+        return false;
+    }
+    host_ip = sinfo.mConn->mSelfIp;
+    return true;
+}
+
+bool CFdbSession::peerIp(std::string &host_ip)
+{
+    CFdbSessionInfo sinfo;
+    getSessionInfo(sinfo);
+    if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
+    {
+        return false;
+    }
+    host_ip = sinfo.mConn->mPeerIp;
+    return true;
+
+}

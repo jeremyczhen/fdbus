@@ -223,6 +223,7 @@ int32_t CHostSecurityConfig::getSecurityLevel(const char *host_name, const char 
 
 #else
 #include "CHostSecurityConfig.h"
+#include <security/CFdbusSecurityConfig.h>
 
 void CHostSecurityConfig::importSecurity()
 {
@@ -231,7 +232,7 @@ void CHostSecurityConfig::importSecurity()
 int32_t CHostSecurityConfig::getSecurityLevel(const char *host_name, const char *cred,
                                                 EFdbusCredType type)
 {
-    return FDB_SECURITY_LEVEL_NONE;
+    return CFdbusSecurityConfig::getNrSecurityLevel() - 1;
 }
 
 #endif

@@ -418,6 +418,7 @@ int32_t CServerSecurityConfig::getSecurityLevel(const char *svc_name, uint32_t u
 
 #else
 #include "CServerSecurityConfig.h"
+#include <security/CFdbusSecurityConfig.h>
 
 void CServerSecurityConfig::importSecurity()
 {
@@ -426,6 +427,6 @@ void CServerSecurityConfig::importSecurity()
 int32_t CServerSecurityConfig::getSecurityLevel(const char *svc_name, uint32_t uid,
                                                 EFdbusCredType type)
 {
-    return FDB_SECURITY_LEVEL_NONE;
+    return CFdbusSecurityConfig::getNrSecurityLevel() - 1;
 }
 #endif

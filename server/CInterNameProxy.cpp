@@ -174,7 +174,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             if (code == NFdbBase::NTF_SERVICE_ONLINE)
             {
                 CFdbToken::tTokenList tokens;
-                name_server->populateTokens(tokens, msg_addr_list);
+                name_server->dumpTokens(tokens, msg_addr_list);
                 bool broadcast_to_all = true;
                 if (isValidFdbId(subscriber))
                 {
@@ -182,17 +182,13 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                     if (session)
                     {
                         // send token matching security level to the client
-                        name_server->broadcastServiceAddress(tokens,
-                                                             msg_addr_list,
-                                                             session,
-                                                             NFdbBase::NTF_SERVICE_ONLINE);
+                        name_server->broadcastSvcAddrLocal(tokens, msg_addr_list, session);
                         broadcast_to_all = false;
                     }
                 }
                 if (broadcast_to_all)
                 {
-                    name_server->broadcastServiceAddress(tokens, msg_addr_list,
-                                                         NFdbBase::NTF_SERVICE_ONLINE);
+                    name_server->broadcastSvcAddrLocal(tokens, msg_addr_list);
                 }
             }
             else

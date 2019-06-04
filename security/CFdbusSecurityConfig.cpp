@@ -95,7 +95,6 @@ void CFdbusSecurityConfig::parseSecurityConfig(const char *json_str,
         }
     }
 
-_quit:
     if (cfg_root)
     {
         cJSON_Delete(cfg_root);

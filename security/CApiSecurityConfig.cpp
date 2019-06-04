@@ -201,7 +201,7 @@ int32_t CApiSecurityConfig::getSecLevel(FdbMsgCode_t msg_code, CApiSecLevelTbl &
             it != tbl.mApiSecRangeTbl.end(); ++it)
     {
         const CSecLevelRange &range = *it;
-        if ((msg_code >= range.mBegin) && (msg_code >= range.mEnd))
+        if ((msg_code >= range.mBegin) && (msg_code <= range.mEnd))
         {
             return range.mSecLevel;
         }

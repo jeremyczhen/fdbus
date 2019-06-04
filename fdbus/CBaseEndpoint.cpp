@@ -377,36 +377,22 @@ void CBaseEndpoint::deleteConnectedSession(CFdbSession *session)
     }
 }
 
-bool CBaseEndpoint::retrieveIpAddress(std::string &ip_address, CFdbSession *session, bool self)
+bool CBaseEndpoint::hostIp(std::string &host_ip, CFdbSession *session)
 {
     if (!session)
     {
         session = preferredPeer();
     }
-    
-    if (session)
-    {
-        CFdbSessionInfo sinfo;
-        session->getSessionInfo(sinfo);
-        if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
-        {
-            return false;
-        }
-        ip_address = self ? sinfo.mConn->mSelfIp : sinfo.mConn->mPeerIp;
-        return true;
-    }
-    return false;
-}
-
-
-bool CBaseEndpoint::hostIp(std::string &host_ip, CFdbSession *session)
-{
-    return retrieveIpAddress(host_ip, session, true);
+    return session ? session->hostIp(host_ip) : false;
 }
 
 bool CBaseEndpoint::peerIp(std::string &peer_ip, CFdbSession *session)
 {
-    return retrieveIpAddress(peer_ip, session, false);
+    if (!session)
+    {
+        session = preferredPeer();
+    }
+    return session ? session->peerIp(peer_ip) : false;
 }
 
 bool CBaseEndpoint::replaceUrlIpAddress(std::string &url, CFdbSession *session,
