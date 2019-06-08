@@ -147,14 +147,26 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 return;
             }
 
+            FdbMsgCode_t code = (msg->code() == NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE) ?
+                                NFdbBase::NTF_SERVICE_ONLINE :
+                                NFdbBase::NTF_SERVICE_ONLINE_MONITOR;
+            tSubscribedSessionSets sessions;
+            const char *svc_name = msg_addr_list.service_name().c_str();
+            name_server->getSubscribeTable(code, svc_name, sessions);
+            if (sessions.empty())
+            {
+                // if no client is connected to the server, unsubscrie it from
+                // name server of other hosts.
+                mHostProxy->recallServiceListener(msg->code(), svc_name);
+                return;
+            }
+
+            // now show forward appear/disappear of the server to local clients
             CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
             if (session)
             {
                 replaceSourceUrl(msg_addr_list, session);
             }
-            FdbMsgCode_t code = (msg->code() == NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE) ?
-                                NFdbBase::NTF_SERVICE_ONLINE :
-                                NFdbBase::NTF_SERVICE_ONLINE_MONITOR;
 
             FdbSessionId_t subscriber = FDB_INVALID_ID;
             if (session)

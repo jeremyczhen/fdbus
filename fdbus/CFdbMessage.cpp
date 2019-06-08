@@ -839,35 +839,25 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     }
     else
     {
-        mFlag |= MSG_FLAG_FORCE_BROADCAST; // broadcast anyway; jeremy
         mFlag |= MSG_FLAG_INITIAL_RESPONSE; // mark as initial response
         CFdbSession *session = CFdbContext::getInstance()->getSession(mSid);
         if (session)
         {
-            //if (mFlag & MSG_FLAG_FORCE_BROADCAST)
-            if (0)
+            CFdbBaseObject *object =
+                    session->container()->owner()->getObject(this, false);
+            if (object)
             {
-                success = session->sendMessage(this);
-                reason = "error when sending message!";
+                // Broadcast to specified session of object
+                if (!object->broadcast(this, session))
+                {
+                    success = false;
+                    reason = "Not subscribed or fail to send!";
+                }
             }
             else
             {
-                CFdbBaseObject *object =
-                        session->container()->owner()->getObject(this, false);
-                if (object)
-                {
-                    // Broadcast to specified session of object
-                    if (!object->broadcast(this, session))
-                    {
-                        success = false;
-                        reason = "Not subscribed or fail to send!";
-                    }
-                }
-                else
-                {
-                    success = false;
-                    reason = "Invalid object id!";
-                }
+                success = false;
+                reason = "Invalid object id!";
             }
         }
         else

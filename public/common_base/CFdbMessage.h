@@ -157,7 +157,6 @@ private:
 #define MSG_FLAG_HEAD_OK            (1 << (MSG_LOCAL_FLAG_SHIFT + 0))
 #define MSG_FLAG_ENDPOINT           (1 << (MSG_LOCAL_FLAG_SHIFT + 1))
 #define MSG_FLAG_REPLIED            (1 << (MSG_LOCAL_FLAG_SHIFT + 2))
-#define MSG_FLAG_FORCE_BROADCAST    (1 << (MSG_LOCAL_FLAG_SHIFT + 3))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
 #define MSG_FLAG_DO_NOT_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 5))
     

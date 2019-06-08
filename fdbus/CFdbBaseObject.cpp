@@ -964,12 +964,14 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                         if (it_subscribed != filters.end())
                         {
                             session_tbl.insert(session);
+                            break;
                         }
                     }
                 }
                 else
                 {
                     session_tbl.insert(session);
+                    break;
                 }
             }
         }

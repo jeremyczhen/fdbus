@@ -1001,7 +1001,6 @@ EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
 
 void CNameServer::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    bool is_service = false;
     for (tRegistryTbl::iterator it = mRegistryTbl.begin(); it != mRegistryTbl.end();)
     {
         CSvcRegistryEntry &addr_tbl = it->second;
@@ -1010,14 +1009,8 @@ void CNameServer::onOffline(FdbSessionId_t sid, bool is_last)
         if (addr_tbl.mSid == sid)
         {
             removeService(cur_it);
-            is_service = true;
         }
     }
-    if (is_service)
-    {
-        return;
-    }
-    // TODO: unregister the service unique to the client
 }
 
 bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
