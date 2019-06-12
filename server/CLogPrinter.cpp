@@ -55,12 +55,15 @@ void CLogPrinter::outputFdbLog(const NFdbBase::FdbLogProducerData &log_info, CFd
         {
             clipped_payload_size = -1;
             LOG_E("CLogServer: Unable to decode log data!\n");
+            return;
         }
 
         std::cout << "Raw data of size " << log_info.msg_payload_size()
                   << " is clipped to "
                   << clipped_payload_size << " bytes"
                   << std::endl << "}" << std::endl;
+        log->ownBuffer();
+        delete log;
     }
 }
 

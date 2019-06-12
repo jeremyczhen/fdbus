@@ -144,6 +144,9 @@ cmake options
 - fdbus_ALLOC_PORT_BY_SYSTEM
      ON : socket number of servers are allocated by the system
     *OFF: socket number of servers are allocated by name server
+- fdbus_SECURITY
+     ON : enable security
+    *OFF: disable security
 >>>> The following options can be specified with -DMACRO_DEF='VARIABLE=value;VARIABLE=value'
 - FDB_CFG_SOCKET_PATH
     specify directory of UDS file
