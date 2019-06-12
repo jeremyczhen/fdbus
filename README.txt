@@ -37,6 +37,10 @@ Download
 --------
 https://github.com/jeremyczhen/fdbus.git
 
+Documentation & Blog
+--------------------
+https://blog.csdn.net/jeremy_cz/article/details/89060291
+
 How to build
 ------------
 >>>> For Ubuntu host version (running at host machine)
