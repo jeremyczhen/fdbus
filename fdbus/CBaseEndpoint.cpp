@@ -358,7 +358,7 @@ void CBaseEndpoint::deleteConnectedSession(CFdbSession *session)
     }
     else
     {
-        LOG_E("CBaseEndpoint: session count < 0 for object %s!", mName.c_str());
+        LOG_E("CBaseEndpoint: session count < 0 for object %s!\n", mName.c_str());
     }
 
     notifyOffline(session, is_last);

@@ -48,17 +48,24 @@ public:
         return mOwner;
     }
     CFdbSession *getDefaultSession();
+
+    void enableSessionDestroyHook(bool enable)
+    {
+        mEnableSessionDestroyHook = enable;
+    }
 protected:
     FdbSocketId_t mSkid;
     virtual void onSessionDeleted(CFdbSession *session) {}
     CBaseEndpoint *mOwner;
 private:
+    bool mEnableSessionDestroyHook;
     typedef std::list<CFdbSession *> ConnectedSessionTable_t;
 
     ConnectedSessionTable_t mConnectedSessionTable;
 
     void addSession(CFdbSession *session);
     void removeSession(CFdbSession *session);
+    void callSessionDestroyHook(CFdbSession *session);
 
     friend class CBaseEndpoint;
     friend class CFdbSession;

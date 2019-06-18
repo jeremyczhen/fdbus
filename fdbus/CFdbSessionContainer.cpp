@@ -23,6 +23,7 @@ CFdbSessionContainer::CFdbSessionContainer(FdbSocketId_t skid
         , CBaseEndpoint *owner)
     : mSkid(skid)
     , mOwner(owner)
+    , mEnableSessionDestroyHook(true)
 {
 }
 
@@ -65,5 +66,13 @@ void CFdbSessionContainer::addSession(CFdbSession *session)
 void CFdbSessionContainer::removeSession(CFdbSession *session)
 {
     mConnectedSessionTable.remove(session);
+}
+
+void CFdbSessionContainer::callSessionDestroyHook(CFdbSession *session)
+{
+    if (mEnableSessionDestroyHook)
+    {
+        onSessionDeleted(session);
+    }
 }
 

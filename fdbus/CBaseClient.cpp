@@ -33,6 +33,8 @@ CClientSocket::CClientSocket(CBaseClient *owner
 
 CClientSocket::~CClientSocket()
 {
+    // so that onSessionDeleted() will not be called upon session destroy
+    enableSessionDestroyHook(false);
     disconnect();
 }
 

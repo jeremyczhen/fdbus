@@ -47,6 +47,7 @@ public:
         return mHostName;
     }
     void registerHostNameReadyNotify(CBaseNotification<CHostNameReady> *notification);
+    void disconnect();
     
 protected:
     void onReply(CBaseJob::Ptr &msg_ref);
@@ -85,6 +86,7 @@ private:
         CIntraNameProxy *mHostProxy;
     };
     CHostNameNotificationCenter mNotificationCenter;
+    bool mEnableReconnectToNS;
 
     void onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer);
     

@@ -67,6 +67,7 @@ void CIntraNameProxy::CConnectTimer::fire()
 CIntraNameProxy::CIntraNameProxy()
     : mConnectTimer(this)
     , mNotificationCenter(this)
+    , mEnableReconnectToNS(true)
 {
     mConnectTimer.attach(FDB_CONTEXT, false);
 }
@@ -407,7 +408,10 @@ void CIntraNameProxy::onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer)
 #if 0
     LOG_E("CIntraNameProxy: Reconnecting to name server...\n");
 #endif
-    connectToNameServer();
+    if (mEnableReconnectToNS)
+    {
+        connectToNameServer();
+    }
 }
 
 void CIntraNameProxy::onOnline(FdbSessionId_t sid, bool is_first)
@@ -423,13 +427,22 @@ void CIntraNameProxy::onOnline(FdbSessionId_t sid, bool is_first)
 
 void CIntraNameProxy::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    mConnectTimer.fire();
-    FDB_CONTEXT->reconnectOnNsConnected(false);
+    if (mEnableReconnectToNS)
+    {
+        mConnectTimer.fire();
+        FDB_CONTEXT->reconnectOnNsConnected(false);
+    }
 }
 
 void CIntraNameProxy::registerHostNameReadyNotify(CBaseNotification<CHostNameReady> *notification)
 {
     CBaseNotification<CHostNameReady>::Ptr ntf(notification);
     mNotificationCenter.subscribe(ntf);
+}
+
+void CIntraNameProxy::disconnect()
+{
+    mEnableReconnectToNS = false;
+    CBaseClient::disconnect();
 }
 

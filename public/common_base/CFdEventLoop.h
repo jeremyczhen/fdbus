@@ -61,6 +61,7 @@ private:
     void processNotifyWatch(bool &io_error);
     int32_t buildFdArray();
     void processWatches(int32_t nr_watches);
+    bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);
 
     friend CSysFdWatch;
 };

@@ -56,9 +56,10 @@ CFdbSession::~CFdbSession()
     if (mSocket)
     {
         delete mSocket;
+        mSocket = 0;
     }
 
-    mContainer->onSessionDeleted(this);
+    mContainer->callSessionDestroyHook(this);
 }
 
 bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)

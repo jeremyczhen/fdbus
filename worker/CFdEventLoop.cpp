@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <algorithm>
 #include <stdlib.h>
 #include <utils/Log.h>
 #include <common_base/CFdEventLoop.h>
@@ -37,18 +38,8 @@ CSysFdWatch::~CSysFdWatch()
 
 void CSysFdWatch::enable(bool enb)
 {
-    if (mEnable != enb)
-    {
-        if (enb)
-        {
-            mEventLoop->mWatchWorkingList.push_back(this);
-        }
-        else
-        {
-            mEventLoop->mWatchWorkingList.remove(this);
-        }
-        mEnable = enb;
-    }
+    mEventLoop->addWatchToList(mEventLoop->mWatchWorkingList, this, enb);
+    mEnable = enb;
 }
 
 class CNotifyFdWatch : public CSysFdWatch
@@ -284,25 +275,40 @@ void CFdEventLoop::dispatch()
 
 void CFdEventLoop::addWatch(CSysFdWatch *watch, bool enb)
 {
-    for (tCFdWatchList::iterator wi = mWatchList.begin(); wi != mWatchList.end(); ++wi)
-    {
-        if ((*wi) == watch)
-        {
-            return; // alredy added
-        }
-    }
-
+    addWatchToList(mWatchList, watch, true);
     watch->eventloop(this);
-    mWatchList.push_back(watch);
     watch->enable(enb);
 }
 
 void CFdEventLoop::removeWatch(CSysFdWatch *watch)
 {
     addWatchToBlacklist(watch);
+    addWatchToList(mWatchList, watch, false);
     watch->enable(false);
-    mWatchList.remove(watch);
     watch->eventloop(0);
+}
+
+bool CFdEventLoop::addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable)
+{
+    bool did = false;
+    tCFdWatchList::iterator wi = std::find(wlist.begin(), wlist.end(), watch);
+    if (enable)
+    {
+        if (wi == wlist.end())
+        {
+            wlist.push_back(watch);
+            did = true;
+        }
+    }
+    else
+    {
+        if (wi != wlist.end())
+        {
+            wlist.remove(watch);
+            did = true;
+        }
+    }
+    return did;
 }
 
 void CFdEventLoop::uninstallWatches()

@@ -65,13 +65,13 @@ bool CFdbContext::destroy()
 {
     if (mNameProxy)
     {
-        mNameProxy->doDisconnect();
+        mNameProxy->disconnect();
         delete mNameProxy;
         mNameProxy = 0;
     }
     if (mLogger)
     {
-        mLogger->doDisconnect();
+        mLogger->disconnect();
         delete mLogger;
         mLogger = 0;
     }
