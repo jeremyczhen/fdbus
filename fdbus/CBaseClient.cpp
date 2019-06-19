@@ -72,14 +72,6 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
         session->internalError(false);
         std::string url = mSocket->getAddress().mUrl;
 
-        /*
-         * normally fd is closed in ~CSysFdWatch(). However, it should be
-         * called before doConnect() to keep down->up sequence at server.
-         * So call it manually before doConnect().
-         */
-        closePollFd(session->descriptor());
-        session->descriptor(0);
-        
         CFdbSessionContainer::onSessionDeleted(session);
         delete this;
         

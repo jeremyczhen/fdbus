@@ -25,7 +25,7 @@ bool getLinuxIpAddress(std::map<std::string, std::string> &addr_tbl);
 class CLinuxSocket : public CSocketImp
 {
 public:
-    CLinuxSocket(sckt::TCPSocket *imp, bool del_imp = true);
+    CLinuxSocket(sckt::TCPSocket *imp);
     ~CLinuxSocket();
     int32_t send(const uint8_t *data, int32_t size);
     int32_t recv(uint8_t *data, int32_t size);
@@ -35,7 +35,6 @@ public:
 private:
     //sckt::Socket *mSocketImp;
     sckt::TCPSocket *mSocketImp;
-    bool mDeleteImp;
     CFdbSocketCredentials mCred;
     CFdbSocketConnInfo mConn;
 };
@@ -46,9 +45,6 @@ public:
     CLinuxClientSocket(CFdbSocketAddr &addr);
     ~CLinuxClientSocket();
     CSocketImp *connect();
-    int getFd();
-private:
-    sckt::TCPSocket *mClientSocketImp;
 };
 
 class CLinuxServerSocket : public CServerSocketImp

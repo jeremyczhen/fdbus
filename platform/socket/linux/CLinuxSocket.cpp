@@ -16,9 +16,8 @@
 
 #include "CLinuxSocket.h"
 
-CLinuxSocket::CLinuxSocket(sckt::TCPSocket *imp, bool del_imp)
+CLinuxSocket::CLinuxSocket(sckt::TCPSocket *imp)
     : mSocketImp(imp)
-    , mDeleteImp(del_imp)
 {
     mCred.pid = imp->pid;
     mCred.gid = imp->gid;
@@ -31,7 +30,7 @@ CLinuxSocket::CLinuxSocket(sckt::TCPSocket *imp, bool del_imp)
 
 CLinuxSocket::~CLinuxSocket()
 {
-    if (mSocketImp && mDeleteImp)
+    if (mSocketImp)
     {
         delete mSocketImp;
     }
@@ -92,16 +91,11 @@ CFdbSocketConnInfo const &CLinuxSocket::getConnectionInfo()
 
 CLinuxClientSocket::CLinuxClientSocket(CFdbSocketAddr &addr)
     : CClientSocketImp(addr)
-    , mClientSocketImp(0)
 {
 }
 
 CLinuxClientSocket::~CLinuxClientSocket()
 {
-    if (mClientSocketImp)
-    {
-        delete mClientSocketImp;
-    }
 }
 
 CSocketImp *CLinuxClientSocket::connect()
@@ -109,47 +103,34 @@ CSocketImp *CLinuxClientSocket::connect()
     CSocketImp *ret = 0;
     try
     {
-        if (mClientSocketImp)
+        sckt::TCPSocket *sckt_imp = 0;
+        if (mAddress.mType == FDB_SOCKET_TCP)
         {
-        }
-        {
-            if (mAddress.mType == FDB_SOCKET_TCP)
+            if (mAddress.mAddr.empty())
             {
-                if (mAddress.mAddr.empty())
-                {
-                    mAddress.mAddr = "127.0.0.1";
-                }
-                sckt::IPAddress address(mAddress.mAddr.c_str(), (sckt::u16)mAddress.mPort);
-                mClientSocketImp = new sckt::TCPSocket(address);
+                mAddress.mAddr = "127.0.0.1";
             }
+            sckt::IPAddress address(mAddress.mAddr.c_str(), (sckt::u16)mAddress.mPort);
+            sckt_imp = new sckt::TCPSocket(address);
+        }
 #ifndef __WIN32__
-            else if (mAddress.mType == FDB_SOCKET_IPC)
-            {
-                sckt::IPAddress address(mAddress.mAddr.c_str());
-                mClientSocketImp = new sckt::TCPSocket(address);
-            }
-#endif
-            else
-            {
-                return 0;
-            }
+        else if (mAddress.mType == FDB_SOCKET_IPC)
+        {
+            sckt::IPAddress address(mAddress.mAddr.c_str());
+            sckt_imp = new sckt::TCPSocket(address);
         }
-        ret = new CLinuxSocket(mClientSocketImp, false);
+#endif
+
+        if (sckt_imp)
+        {
+            ret = new CLinuxSocket(sckt_imp);
+        }
     }
     catch (...)
     {
         ret = 0;
     }
     return ret;
-}
-
-int CLinuxClientSocket::getFd()
-{
-    if (mClientSocketImp)
-    {
-        return mClientSocketImp->getNativeSocket();
-    }
-    return -1;
 }
 
 CLinuxServerSocket::CLinuxServerSocket(CFdbSocketAddr &addr)

@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <common_base/CBaseSysDep.h>
+#include <sys/utsname.h>
 
 bool sysdep_startup()
 {
@@ -70,8 +71,10 @@ void sysdep_sleep
 
 void sysdep_gethostname(std::string &name)
 {
-    char n[1024];
-    gethostname(n, 1024);
-    name = n;
+    struct utsname sysinfo;
+    if( uname(&sysinfo) >= 0)
+    {
+        name = sysinfo.nodename;
+    }
 }
 

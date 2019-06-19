@@ -58,6 +58,7 @@ CFdbSession::~CFdbSession()
         delete mSocket;
         mSocket = 0;
     }
+    descriptor(0);
 
     mContainer->callSessionDestroyHook(this);
 }
