@@ -480,7 +480,7 @@ void CFdbMessage::broadcastLog(const CFdbBasePayload &data
         if (endpoint)
         {
             // Broadcast per object!!!
-            CFdbBaseObject *object = endpoint->getObject(this, false);
+            CFdbBaseObject *object = endpoint->getObject(this, true);
             if (object)
             {
                 object->broadcast(this);
@@ -819,7 +819,7 @@ void CFdbMessage::doBroadcast(Ptr &ref)
         CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
         if (endpoint)
         {
-            CFdbBaseObject *object = endpoint->getObject(this, false);
+            CFdbBaseObject *object = endpoint->getObject(this, true);
             if (object)
             {
                 // broadcast to all sessions of the object
@@ -844,7 +844,7 @@ void CFdbMessage::doBroadcast(Ptr &ref)
         if (session)
         {
             CFdbBaseObject *object =
-                    session->container()->owner()->getObject(this, false);
+                    session->container()->owner()->getObject(this, true);
             if (object)
             {
                 // Broadcast to specified session of object

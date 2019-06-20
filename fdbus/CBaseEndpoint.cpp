@@ -173,10 +173,18 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
 
     if (obj->role() == FDB_OBJECT_ROLE_SERVER)
     {
-        if (findObject(obj_id, true))
+        CFdbBaseObject *o = findObject(obj_id, true);
+        if (o)
         {
-            LOG_E("CBaseEndpoint: server object %d already exist!\n", obj_id);
-            return FDB_INVALID_ID;
+            if (o == obj)
+            {
+                return obj_id;
+            }
+            else
+            {
+                LOG_E("CBaseEndpoint: server object %d already exist!\n", obj_id);
+                return FDB_INVALID_ID;
+            }
         }
     }
 
