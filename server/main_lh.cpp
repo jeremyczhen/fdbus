@@ -190,6 +190,9 @@ int main(int argc, char **argv)
 	fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
+        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
+                                      << FDB_VERSION_MINOR << "."
+                                      << FDB_VERSION_BUILD << std::endl;
         std::cout << "Usage: lshost[ -f]" << std::endl;
         std::cout << "List name of all hosts" << std::endl;
         std::cout << "    -f: keep monitoring hosts" << std::endl;

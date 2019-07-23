@@ -26,7 +26,8 @@ enum EMessageId
     REQ_RAWDATA,
     REQ_CREATE_MEDIAPLAYER,
     NTF_ELAPSE_TIME,
-    NTF_MEDIAPLAYER_CREATED
+    NTF_MEDIAPLAYER_CREATED,
+    NTF_MANUAL_UPDATE
 };
 
 class CMediaServer;
@@ -177,11 +178,14 @@ protected:
                         msg->broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data.c_str(), raw_data.length() + 1);
                     }
                 }
+                case NTF_MANUAL_UPDATE:
+                {
+                    msg->broadcast(NTF_MANUAL_UPDATE);
+                }
                 break;
                 default:
                 break;
             }
-
         }
         FDB_END_FOREACH_SIGNAL()
     }

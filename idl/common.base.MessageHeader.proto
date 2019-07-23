@@ -44,6 +44,12 @@ enum FdbMessageLoggerCode
     NTF_TRACE_LOG               = 7;
 } 
 
+enum FdbSubscribeType
+{
+    SUB_TYPE_NORMAL             = 0;
+    SUB_TYPE_ON_REQUEST         = 1;
+}
+
 message FdbMessageHeader
 {
     required FdbMessageType type = 1;
@@ -62,6 +68,7 @@ message FdbMsgSubscribeItem
 {
     required int32 msg_code = 1;
     optional string filter = 2;
+    optional FdbSubscribeType type = 3;
 }
 
 message FdbMsgSubscribe

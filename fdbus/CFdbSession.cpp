@@ -220,6 +220,10 @@ void CFdbSession::onInput(bool &io_error)
             {
                 doSubscribeReq(head, prefix, whole_buf, false);
             }
+            else if (head.code() == FDB_CODE_UPDATE)
+            {
+                doUpdate(head, prefix, whole_buf);
+            }
             break;
         default:
             LOG_E("CFdbSession: Message %d: Unknown type!\n", (int32_t)head.serial_number());
@@ -395,7 +399,12 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
                 // if fail on authentication, unable to 
                 if (object->onEventAuthentication(msg, this))
                 {
-                    object->subscribe(this, code, object_id, filter);
+                    NFdbBase::FdbSubscribeType type = NFdbBase::SUB_TYPE_NORMAL;
+                    if (sub_item->has_type())
+                    {
+                        type = sub_item->type();
+                    }
+                    object->subscribe(this, code, object_id, filter, type);
                 }
                 else
                 {
@@ -438,6 +447,29 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
         {   
             object->unsubscribe(object_id); // unsubscribe the whole object
         }
+    }
+    else
+    {
+        msg->sendStatus(this, NFdbBase::FDB_ST_OBJECT_NOT_FOUND, "Object is not found.");
+    }
+}
+
+void CFdbSession::doUpdate(NFdbBase::FdbMessageHeader &head,
+                           CFdbMessage::CFdbMsgPrefix &prefix,
+                           uint8_t *buffer)
+{
+    FdbObjectId_t object_id = head.object_id();
+    CFdbMessage *msg = (head.flag() & MSG_FLAG_DEBUG) ?
+                       new CFdbDebugMsg(head, prefix, buffer, mSid) :
+                       new CFdbMessage(head, prefix, buffer, mSid);
+    CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
+    CBaseJob::Ptr msg_ref(msg);
+
+    if (object)
+    {
+        // trigger a broadcast() from onSubscribe() to update peer status.
+        msg->manualUpdate(true);
+        object->doSubscribe(msg_ref);
     }
     else
     {

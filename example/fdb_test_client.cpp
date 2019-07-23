@@ -30,7 +30,8 @@ enum EMessageId
     REQ_RAWDATA,
     REQ_CREATE_MEDIAPLAYER,
     NTF_ELAPSE_TIME,
-    NTF_MEDIAPLAYER_CREATED
+    NTF_MEDIAPLAYER_CREATED,
+    NTF_MANUAL_UPDATE
 };
 
 class CMediaClient;
@@ -147,9 +148,13 @@ public:
         invoke(REQ_METADATA, song_id);
 #endif
 
-        /* invoke with raw data; just for test */
-        //std::string raw_buffer("raw buffer test for invoke()!");
-        //invoke(REQ_RAWDATA, raw_buffer.c_str(), raw_buffer.length() + 1);
+        /*
+         * trigger update manually; onBroadcast() will be called followed by
+         * onStatus().
+         */
+        NFdbBase::FdbMsgSubscribe update_list;
+        addManualTrigger(update_list, NTF_MANUAL_UPDATE);
+        update(update_list);
     }
 
 protected:
@@ -165,6 +170,11 @@ protected:
             NFdbBase::FdbMsgSubscribe subscribe_list;
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
+            /*
+             * register NTF_MANUAL_UPDATE for manual update: it will not
+             * update unless update() is called
+             */
+            addUpdateItem(subscribe_list, NTF_MANUAL_UPDATE);
             /* subscribe them, leading to onSubscribe() to be called at server */
             subscribe(subscribe_list);
         }
@@ -219,6 +229,11 @@ protected:
                     int32_t size = msg->getPayloadSize();
                     FDB_LOG_I("Broadcast of raw buffer is received: size: %d\n", size);
                 }
+            }
+            break;
+            case NTF_MANUAL_UPDATE:
+            {
+                FDB_LOG_I("Manual update is received!\n");
             }
             break;
             default:

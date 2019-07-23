@@ -43,6 +43,11 @@ namespace google
     }
 }
 
+namespace NFdbBase
+{
+    typedef FdbMsgSubscribe FdbMsgTrigger;
+}
+
 typedef std::set<std::string> tFdbFilterSets;
 typedef std::map<FdbMsgCode_t, tFdbFilterSets> tFdbSubscribeMsgTbl;
 typedef std::set<CFdbSession *> tSubscribedSessionSets;
@@ -251,6 +256,8 @@ public:
                    , int32_t size = 0);
     /*
      * Build subscribe list before calling subscribe().
+     * The event added is updated by brocast() from server or update()
+     * from client.
      *
      * @oparam msg_list: the protobuf holding message sending subscribe
      *      request to server
@@ -262,11 +269,57 @@ public:
                               , const char *filter = 0);
 
     /*
+     * Build subscribe list for update on request before calling subscribe().
+     * Unlike addNotifyItem(), the event added can only be updated by update()
+     * from client.
+     *
+     * @oparam msg_list: the protobuf holding message sending subscribe
+     *      request to server
+     * @iparam msg_code: The message code to subscribe
+     * @iparam filter: the filter associated with the message.
+     */
+    static void addUpdateItem(NFdbBase::FdbMsgSubscribe &msg_list
+                              , FdbMsgCode_t msg_code
+                              , const char *filter = 0);
+
+    /*
+     * Build update list to trigger update manually.
+     *
+     * @oparam msg_list: the protobuf holding message sending update
+     *      trigger to server
+     * @iparam msg_code: The message code to trigger
+     * @iparam filter: the filter associated with the message.
+     */
+    static void addManualTrigger(NFdbBase::FdbMsgTrigger &msg_list
+                                , FdbMsgCode_t msg_code
+                                , const char *filter = 0);
+    /*
      * subscribe[1]
      * Subscribe a list of messages so that the messages can be received
      *      when the server broadcast a message.
      * The method doesn't block and is asynchronous. Once completed, onStatus()
      *      will be called with CBaseMessage::isSubscribe() being true.
+     *
+     *   server                                  client
+     *     |                            /-----------|
+     *     |                addNotifyItem(list,...) |
+     *     |                            \---------->|
+     *     |                            /-----------|
+     *     |                addUpdateItem(list,...) |
+     *     |                            \---------->|
+     *     |<------------subscribe(list,...)--------|
+     *     |---------broadcast(event1)------------->|
+     *     |                            /-----------|
+     *     |                       onBroadcast()    |
+     *     |                            \---------->|
+     *     |---------broadcast(event2)------------->|
+     *     |                            /-----------|
+     *     |                       onBroadcast()    |
+     *     |                            \---------->|
+     *     |------status()[auto reply]------------->|
+     *     |                    /-------------------|
+     *     |     onStatus()[isSubscribe()==true]    |
+     *     |                    \------------------>|
      *
      * @iparam msg_list: list of messages to be subscribed
      * @iparam timeout: optional timeout
@@ -307,6 +360,72 @@ public:
     void subscribe(CBaseJob::Ptr &msg_ref
                    , NFdbBase::FdbMsgSubscribe &msg_list
                    , int32_t timeout = 0);
+
+    /*
+     * update[1]
+     * Request to update a list of messages manually. In essence it takes
+     *      advantage of subscribe-broadcast to trigger a broadcast upon
+     *      selected events.
+     * The method doesn't block and is asynchronous. Once completed, onStatus()
+     *      will be called with CBaseMessage::isSubscribe() being true.
+     * Note that the events to be updated should be subscribed with subscribe()
+     *      or can not be updated.
+     *
+     *   server                                  client
+     *     |                                        |
+     *     |   The same sequence as subscribe()[1]  |
+     *     |                                        |
+     *     |                            /-----------|
+     *     |             addManualTrigger(list,...) |
+     *     |                            \---------->|
+     *     |<------------update(list,...)-----------|
+     *     |---------broadcast(event1)------------->|
+     *     |                            /-----------|
+     *     |                       onBroadcast()    |
+     *     |                            \---------->|
+     *     |---------broadcast(event2)------------->|
+     *     |                            /-----------|
+     *     |                       onBroadcast()    |
+     *     |                            \---------->|
+     *     |------status()[auto reply]------------->|
+     *     |                    /-------------------|
+     *     |     onStatus()[isSubscribe()==true]    |
+     *     |                    \------------------>|
+     *
+     * @iparam msg_list: list of messages to be subscribed
+     * @iparam timeout: optional timeout
+     */
+    void update(NFdbBase::FdbMsgSubscribe &msg_list, int32_t timeout = 0);
+
+    /*
+     * update[1.1]
+     * Similiar to update[1] but additional parameter msg is given. The
+     *      msg is object of subclass of CBaseMessage allowing extra data to be
+     *      attached with the transaction.
+     * in onStatus() with CBaseMessage::isSubscribe() being true, the object
+     *      can be retrieved with castToMessage().
+     *
+     * @iparam msg_ist: list of messages to be retrieved
+     * @iparam msg: (subclass of) CBaseMessage containing transaction-
+     *      specific data
+     * @iparam timeout: a timer expires if response is not received from
+     *      server with the specified time.
+     */
+    void update(NFdbBase::FdbMsgSubscribe &msg_list, CFdbMessage *msg, int32_t timeout = 0);
+
+    /*
+     * update[2]
+     * Similiar to update[1] but is synchronous. It will block until the
+     *      server has updated all messages in list.
+     *
+     * @ioparam msg_ref: if msg_ref doesn't hold anything, CBaseMessage is
+     *      used by default; if msg_ref holds object of (subclass of)
+     *      CBaseMessage, transaction-specific data can be attached.
+     *
+     * @iparam msg_ist: list of messages to be retrieved
+     * @iparam timeout: timer of the transaction
+     */
+    void update(CBaseJob::Ptr &msg_ref, NFdbBase::FdbMsgSubscribe &msg_list, int32_t timeout = 0);
 
     /*
      * Unsubscribe messages listed in msg_list
@@ -600,7 +719,7 @@ protected:
     }
 
 private:
-    typedef std::map<std::string, bool> FilterTable_t;
+    typedef std::map<std::string, NFdbBase::FdbSubscribeType> FilterTable_t;
     typedef std::map<FdbObjectId_t, FilterTable_t> ObjectTable_t;
     typedef std::map<CFdbSession *, ObjectTable_t> SessionTable_t;
     typedef std::map<FdbMsgCode_t, SessionTable_t> SubscribeTable_t;
@@ -613,8 +732,15 @@ private:
     EFdbEndpointRole mRole;
     FdbSessionId_t mSid;
 
-    void subscribe(CFdbSession *session, FdbMsgCode_t msg, FdbObjectId_t obj_id, const char *filter = 0);
-    void unsubscribe(CFdbSession *session, FdbMsgCode_t msg, FdbObjectId_t obj_id, const char *filter = 0);
+    void subscribe(CFdbSession *session,
+                   FdbMsgCode_t msg,
+                   FdbObjectId_t obj_id,
+                   const char *filter,
+                   NFdbBase::FdbSubscribeType type);
+    void unsubscribe(CFdbSession *session,
+                     FdbMsgCode_t msg,
+                     FdbObjectId_t obj_id,
+                     const char *filter);
     void unsubscribe(CFdbSession *session);
     void unsubscribe(FdbObjectId_t obj_id);
     void broadcast(CFdbMessage *msg);
@@ -661,6 +787,10 @@ private:
     void doDisconnect();
     void notifyOnline(CFdbSession *session, bool is_first);
     void notifyOffline(CFdbSession *session, bool is_last);
+
+    void broadcastOneMsg(CFdbSession *session,
+                         CFdbMessage *msg,
+                         NFdbBase::FdbSubscribeType type);
 
     friend class COnSubscribeJob;
     friend class COnBroadcastJob;

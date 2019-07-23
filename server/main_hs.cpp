@@ -16,6 +16,7 @@
 
 #include <common_base/CFdbContext.h>
 #include "CHostServer.h"
+#include <common_base/fdb_option_parser.h>
 
 #if __WIN32__
 // Need to link with Ws2_32.lib
@@ -41,6 +42,23 @@ int main(int argc, char **argv)
         return 1;
     }
 #endif
+    int32_t help = 0;
+	const struct fdb_option core_options[] = {
+        { FDB_OPTION_BOOLEAN, "help", 'h', &help }
+    };
+
+	fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
+    if (help)
+    {
+        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
+                                      << FDB_VERSION_MINOR << "."
+                                      << FDB_VERSION_BUILD << std::endl;
+        std::cout << "Usage: host_server" << std::endl;
+        std::cout << "Start host server in case of multi-host." << std::endl;
+        std::cout << "Note that only one instance is needed to run." << std::endl;
+        return 0;
+    }
+
     FDB_CONTEXT->enableLogger(false);
     FDB_CONTEXT->init();
     CHostServer *hs = new CHostServer();

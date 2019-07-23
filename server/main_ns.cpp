@@ -58,6 +58,9 @@ int main(int argc, char **argv)
 	fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
+        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
+                                      << FDB_VERSION_MINOR << "."
+                                      << FDB_VERSION_BUILD << std::endl;
         std::cout << "Usage: name_server[ -n host_name][ -u host_url]" << std::endl;
         std::cout << "Service naming server" << std::endl;
         std::cout << "    -n host_name: host name of this machine" << std::endl;

@@ -92,6 +92,7 @@ private:
     void doResponse(NFdbBase::FdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
     void doBroadcast(NFdbBase::FdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
     void doSubscribeReq(NFdbBase::FdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
+    void doUpdate(NFdbBase::FdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
 
     PendingMsgTable_t mPendingMsgTable;
     FdbSessionId_t mSid;

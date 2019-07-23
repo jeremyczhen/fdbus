@@ -655,6 +655,40 @@ void CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
     }
 }
 
+void CFdbBaseObject::update(NFdbBase::FdbMsgSubscribe &msg_list
+                            , int32_t timeout)
+{
+    CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->update(msg_list, timeout);
+}
+
+void CFdbBaseObject::update(NFdbBase::FdbMsgSubscribe &msg_list
+                            , CFdbMessage *msg
+                            , int32_t timeout)
+{
+    msg->setDestination(this);
+    msg->update(msg_list, timeout);
+}
+
+void CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
+                            , NFdbBase::FdbMsgSubscribe &msg_list
+                            , int32_t timeout)
+{
+    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (msg)
+    {
+        msg->setDestination(this);
+        msg->update(msg_ref, msg_list, timeout);
+    }
+    else
+    {
+        msg = new CBaseMessage(FDB_INVALID_ID, this);
+        CBaseJob::Ptr ref(msg);
+        msg->subscribe(ref, msg_list, timeout);
+        msg_ref = ref;
+    }
+}
+
 void CFdbBaseObject::addNotifyItem(NFdbBase::FdbMsgSubscribe &msg_list
                                   , FdbMsgCode_t msg_code
                                   , const char *filter)
@@ -667,16 +701,43 @@ void CFdbBaseObject::addNotifyItem(NFdbBase::FdbMsgSubscribe &msg_list
     }
 }
 
-void CFdbBaseObject::subscribe(CFdbSession *session, FdbMsgCode_t msg, FdbObjectId_t obj_id, const char *filter)
+void CFdbBaseObject::addUpdateItem(NFdbBase::FdbMsgSubscribe &msg_list
+                                  , FdbMsgCode_t msg_code
+                                  , const char *filter)
+{
+    NFdbBase::FdbMsgSubscribeItem *item = msg_list.add_notify_list();
+    item->set_msg_code(msg_code);
+    if (filter)
+    {
+        item->set_filter(filter);
+    }
+    item->set_type(NFdbBase::SUB_TYPE_ON_REQUEST);
+}
+
+void CFdbBaseObject::addManualTrigger(NFdbBase::FdbMsgTrigger &msg_list
+                                     , FdbMsgCode_t msg_code
+                                     , const char *filter)
+{
+    addNotifyItem(msg_list, msg_code, filter);
+}
+
+void CFdbBaseObject::subscribe(CFdbSession *session,
+                               FdbMsgCode_t msg,
+                               FdbObjectId_t obj_id,
+                               const char *filter,
+                               NFdbBase::FdbSubscribeType type)
 {
     if (!filter)
     {
         filter = "";
     }
-    mSessionSubscribeTable[msg][session][obj_id][filter] = true;
+    mSessionSubscribeTable[msg][session][obj_id][filter] = type;
 }
 
-void CFdbBaseObject::unsubscribe(CFdbSession *session, FdbMsgCode_t msg, FdbObjectId_t obj_id, const char *filter)
+void CFdbBaseObject::unsubscribe(CFdbSession *session,
+                                 FdbMsgCode_t msg,
+                                 FdbObjectId_t obj_id,
+                                 const char *filter)
 {
     SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg);
     if (it_sessions != mSessionSubscribeTable.end())
@@ -692,10 +753,10 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session, FdbMsgCode_t msg, FdbObje
                 if (filter)
                 {
                     FilterTable_t &filters = it_filters->second;
-                    FilterTable_t::iterator it_subscribed = filters.find(filter);
-                    if (it_subscribed != filters.end())
+                    FilterTable_t::iterator it_type = filters.find(filter);
+                    if (it_type != filters.end())
                     {
-                        filters.erase(it_subscribed);
+                        filters.erase(it_type);
                     }
                     if (filters.empty())
                     {
@@ -773,6 +834,16 @@ void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
     }
 }
 
+void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
+                                     CFdbMessage *msg,
+                                     NFdbBase::FdbSubscribeType type)
+{
+    if ((type == NFdbBase::SUB_TYPE_NORMAL) || msg->manualUpdate())
+    {
+        session->sendMessage(msg);
+    }
+}
+
 void CFdbBaseObject::broadcast(CFdbMessage *msg)
 {
     SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg->code());
@@ -795,8 +866,8 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
                 FdbObjectId_t object_id = it_filters->first;
                 msg->updateObjectId(object_id); // send to the specific object.
                 FilterTable_t &filters = it_filters->second;
-                FilterTable_t::iterator it_subscribed = filters.find(filter);
-                if (it_subscribed == filters.end())
+                FilterTable_t::iterator it_type = filters.find(filter);
+                if (it_type == filters.end())
                 {
                     /*
                      * If filter doesn't match, check who registers filter "".
@@ -804,16 +875,16 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
                      */
                     if (filter[0] != '\0')
                     {
-                        FilterTable_t::iterator it_subscribed = filters.find("");
-                        if (it_subscribed != filters.end())
+                        FilterTable_t::iterator it_type = filters.find("");
+                        if (it_type != filters.end())
                         {
-                            session->sendMessage(msg);
+                            broadcastOneMsg(session, msg, it_type->second);
                         }
                     }
                 }
                 else
                 {
-                    session->sendMessage(msg);
+                    broadcastOneMsg(session, msg, it_type->second);
                 }
             }
         }
@@ -840,8 +911,8 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
                     filter = "";
                 }
                 FilterTable_t &filters = it_filters->second;
-                FilterTable_t::iterator it_subscribed = filters.find(filter);
-                if (it_subscribed == filters.end())
+                FilterTable_t::iterator it_type = filters.find(filter);
+                if (it_type == filters.end())
                 {
                     /*
                      * If filter doesn't match, check who registers filter "".
@@ -849,16 +920,16 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
                      */
                     if (filter[0] != '\0')
                     {
-                        FilterTable_t::iterator it_subscribed = filters.find("");
-                        if (it_subscribed != filters.end())
+                        FilterTable_t::iterator it_type = filters.find("");
+                        if (it_type != filters.end())
                         {
-                            sent = session->sendMessage(msg);
+                            broadcastOneMsg(session, msg, it_type->second);
                         }
                     }
                 }
                 else
                 {
-                    sent = session->sendMessage(msg);
+                    broadcastOneMsg(session, msg, it_type->second);
                 }
             }
         }
@@ -876,10 +947,13 @@ void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets 
                 it_filters != objects.end(); ++it_filters)
         {
             FilterTable_t &filters = it_filters->second;
-            for (FilterTable_t::iterator it_subscribed = filters.begin();
-                    it_subscribed != filters.end(); ++it_subscribed)
+            for (FilterTable_t::iterator it_type = filters.begin();
+                    it_type != filters.end(); ++it_type)
             {
-                filter_tbl.insert(it_subscribed->first);
+                if (it_type->second == NFdbBase::SUB_TYPE_NORMAL)
+                {
+                    filter_tbl.insert(it_type->first);
+                }
             }
         }
     }
@@ -921,10 +995,13 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
                     it_filters != objects.end(); ++it_filters)
             {
                 FilterTable_t &filters = it_filters->second;
-                for (FilterTable_t::iterator it_subscribed = filters.begin();
-                        it_subscribed != filters.end(); ++it_subscribed)
+                for (FilterTable_t::iterator it_type = filters.begin();
+                        it_type != filters.end(); ++it_type)
                 {
-                    filter_tbl.insert(it_subscribed->first);
+                    if (it_type->second == NFdbBase::SUB_TYPE_NORMAL)
+                    {
+                        filter_tbl.insert(it_type->first);
+                    }
                 }
             }
         }
@@ -951,8 +1028,8 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                     it_filters != objects.end(); ++it_filters)
             {
                 FilterTable_t &filters = it_filters->second;
-                FilterTable_t::iterator it_subscribed = filters.find(filter);
-                if (it_subscribed == filters.end())
+                FilterTable_t::iterator it_type = filters.find(filter);
+                if (it_type == filters.end())
                 {
                     /*
                      * If filter doesn't match, check who registers filter "".
@@ -960,15 +1037,16 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                      */
                     if (filter[0] != '\0')
                     {
-                        FilterTable_t::iterator it_subscribed = filters.find("");
-                        if (it_subscribed != filters.end())
+                        FilterTable_t::iterator it_type = filters.find("");
+                        if (it_type != filters.end() &&
+                            (it_type->second == NFdbBase::SUB_TYPE_NORMAL))
                         {
                             session_tbl.insert(session);
                             break;
                         }
                     }
                 }
-                else
+                else if (it_type->second == NFdbBase::SUB_TYPE_NORMAL)
                 {
                     session_tbl.insert(session);
                     break;

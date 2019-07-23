@@ -188,8 +188,8 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
             doStatus(ref);
             break;
         case NFdbBase::MT_SUBSCRIBE_REQ:
-            if (mCode == FDB_CODE_SUBSCRIBE)
-            {
+            if ((mCode == FDB_CODE_SUBSCRIBE) || (mCode == FDB_CODE_UPDATE))
+			{
                 doSubscribeReq(ref);
             }
             else if (mCode == FDB_CODE_UNSUBSCRIBE)
@@ -595,6 +595,25 @@ void CFdbMessage::unsubscribe(NFdbBase::FdbMsgSubscribe &msg_list)
 {
     CBaseJob::Ptr msg_ref(this);
     subscribe(msg_ref, msg_list, FDB_MSG_TX_NO_REPLY, FDB_CODE_UNSUBSCRIBE, 0);
+}
+
+void CFdbMessage::update(NFdbBase::FdbMsgSubscribe &msg_list, int32_t timeout)
+{
+    CBaseJob::Ptr msg_ref(this);
+    // actually subscribe nothing but just trigger a broadcast() from onBroadcast()
+    subscribe(msg_ref, msg_list, 0, FDB_CODE_UPDATE, timeout);
+}
+
+void CFdbMessage::update(CBaseJob::Ptr &msg_ref
+                            , NFdbBase::FdbMsgSubscribe &msg_list
+                            , int32_t timeout)
+{
+    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (msg)
+    {
+        // actually subscribe nothing but just trigger a broadcast() from onBroadcast()
+        msg->subscribe(msg_ref, msg_list, FDB_MSG_TX_SYNC, FDB_CODE_UPDATE, timeout);
+    }
 }
 
 bool CFdbMessage::buildHeader(CFdbSession *session)
@@ -1252,6 +1271,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
     {
         mFilter = filter;
     }
+    mFlag |= msg->mFlag & MSG_FLAG_MANUAL_UPDATE;
 }
 
 void CFdbMessage::invokeSideband(const CFdbBasePayload &data

@@ -383,6 +383,9 @@ int main(int argc, char **argv)
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
+        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
+                                      << FDB_VERSION_MINOR << "."
+                                      << FDB_VERSION_BUILD << std::endl;
         std::cout << "Usage: logsvc[ -q][ -p][ -b][ -s][ -f][ -o][ -c clipping_size][ -e ep1,ep2...][ -m host1,host2...][ -l][ -d][ -t tag1,tag2][ -M host1,host2...][ -h]" << std::endl;
         std::cout << "Start log server." << std::endl;
         std::cout << "    ==== Options for fdbus monitor ====" << std::endl;

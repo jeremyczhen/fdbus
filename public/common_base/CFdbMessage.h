@@ -141,6 +141,7 @@ class CFdbMessage : public CBaseJob
 private:
 #define FDB_CODE_SUBSCRIBE          0
 #define FDB_CODE_UNSUBSCRIBE        1
+#define FDB_CODE_UPDATE             2
 
 #define MSG_LOCAL_FLAG_SHIFT        24
 #define MSG_GLOBAL_FLAG_MASK        0xffffff
@@ -159,6 +160,7 @@ private:
 #define MSG_FLAG_REPLIED            (1 << (MSG_LOCAL_FLAG_SHIFT + 2))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
 #define MSG_FLAG_DO_NOT_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 5))
+#define MSG_FLAG_MANUAL_UPDATE      (1 << (MSG_LOCAL_FLAG_SHIFT + 5))
     
     struct CFdbMsgPrefix
     {
@@ -507,6 +509,22 @@ private:
                        , const void *buffer = 0
                        , int32_t size = 0
                        , int32_t timeout = 0);
+    void manualUpdate(bool active)
+    {
+        if (active)
+        {
+            mFlag |= MSG_FLAG_MANUAL_UPDATE;
+        }
+        else
+        {
+            mFlag &= ~MSG_FLAG_MANUAL_UPDATE;
+        }
+    }
+
+    bool manualUpdate()
+    {
+        return !!(mFlag & MSG_FLAG_MANUAL_UPDATE);
+    }
 
     void send(const CFdbBasePayload &data);
     void send(const void *buffer = 0
@@ -518,11 +536,16 @@ private:
 
     void subscribe(NFdbBase::FdbMsgSubscribe &msg_list
                    , int32_t timeout = 0);
-
     static void subscribe(CBaseJob::Ptr &msg_ref
                           , NFdbBase::FdbMsgSubscribe &msg_list
                           , int32_t timeout = 0);
+    
     void unsubscribe(NFdbBase::FdbMsgSubscribe &msg_list);
+    
+    void update(NFdbBase::FdbMsgSubscribe &msg_list, int32_t timeout = 0);
+    static void update(CBaseJob::Ptr &msg_ref
+                       , NFdbBase::FdbMsgSubscribe &msg_list
+                       , int32_t timeout = 0);
 
     void run(CBaseWorker *worker, Ptr &ref);
     bool buildHeader(CFdbSession *session);

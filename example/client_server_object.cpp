@@ -92,7 +92,8 @@ enum EMessageId
     REQ_RAWDATA,
     REQ_CREATE_MEDIAPLAYER,
     NTF_ELAPSE_TIME,
-    NTF_MEDIAPLAYER_CREATED
+    NTF_MEDIAPLAYER_CREATED,
+    NTF_MANUAL_UPDATE
 };
 
 /*
@@ -354,6 +355,10 @@ protected:
                     }
                 }
                 break;
+                case NTF_MANUAL_UPDATE:
+                {
+                    msg->broadcast(NTF_MANUAL_UPDATE);
+                }
                 default:
                 break;
             }
@@ -503,6 +508,14 @@ public:
 
         std::string raw_buffer("raw buffer test for invoke()!");
         this->invoke(REQ_RAWDATA, raw_buffer.c_str(), raw_buffer.length() + 1);
+
+        /*
+         * trigger update manually; onBroadcast() will be called followed by
+         * onStatus().
+         */
+        NFdbBase::FdbMsgSubscribe update_list;
+        addManualTrigger(update_list, NTF_MANUAL_UPDATE);
+        update(update_list);
     }
 
 protected:
@@ -530,6 +543,11 @@ protected:
             this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
             this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME);
             this->addNotifyItem(subscribe_list, NTF_MEDIAPLAYER_CREATED);
+            /*
+             * register NTF_MANUAL_UPDATE for manual update: it will not
+             * update unless update() is called
+             */
+            addUpdateItem(subscribe_list, NTF_MANUAL_UPDATE);
             this->subscribe(subscribe_list);
 
             if (this->isPrimary())
@@ -626,6 +644,10 @@ protected:
                 my_client_objects.push_back(obj);
             }
             break;
+            case NTF_MANUAL_UPDATE:
+            {
+                FDB_LOG_I("Manual update is received!\n");
+            }
             default:
             break;
         }
