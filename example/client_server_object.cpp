@@ -514,8 +514,8 @@ public:
          * onStatus().
          */
         NFdbBase::FdbMsgSubscribe update_list;
-        addManualTrigger(update_list, NTF_MANUAL_UPDATE);
-        update(update_list);
+	this->addManualTrigger(update_list, NTF_MANUAL_UPDATE);
+	this->update(update_list);
     }
 
 protected:
@@ -547,7 +547,7 @@ protected:
              * register NTF_MANUAL_UPDATE for manual update: it will not
              * update unless update() is called
              */
-            addUpdateItem(subscribe_list, NTF_MANUAL_UPDATE);
+	    this->addUpdateItem(subscribe_list, NTF_MANUAL_UPDATE);
             this->subscribe(subscribe_list);
 
             if (this->isPrimary())
@@ -820,6 +820,17 @@ protected:
     int mCount;
 };
 
+static void printUsage(void)
+{
+    std::cout << "ERROR:" << std::endl;
+    std::cout << "argv 1:  1 - server; 0 - client" << std::endl;
+    std::cout << "argv 2:  service name" << std::endl;
+    std::cout << "Should run this test with arguments like these:" << std::endl;
+    std::cout << "if you run server : ./fdbobjtest 1 testserver" << std::endl;
+    std::cout << "if you run client : ./fdbobjtest 0 testserver" << std::endl;
+}
+
+
 int main(int argc, char **argv)
 {
     //shared_ptr_test();
@@ -864,6 +875,11 @@ int main(int argc, char **argv)
      * - ipc:
      * ipc://path - 指定unix域socket的路径名；不需要name server
      */
+    if(argc < 3)
+    {
+        printUsage();
+        return -1;
+    }
     int32_t is_server = atoi(argv[1]);
     CObjTestTimer obj_test_timer;
     obj_test_timer.attach(&main_worker, true);
