@@ -3,11 +3,7 @@ Introduction
 
 `FDBus Documentation <https://fdbus.readthedocs.io/en/latest/?badge=latest>`_
 
-.. image:: https://readthedocs.org/projects/fdbus/badge/?version=latest
-
-.. image:: https://readthedocs.org/projects/fdbus/badge/?version=latest
-:target: https://fdbus.readthedocs.io/en/latest/?badge=latest
-:alt: Documentation Status
+.. image:: `https://readthedocs.org/projects/fdbus/badge/?version=latest <https://fdbus.readthedocs.io/en/latest/?badge=latest>`
 
 ``FDBus`` is a middleware development framework targeting the following objectives:
 
