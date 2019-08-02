@@ -121,6 +121,31 @@ The same as cross compiling, but when building fdbus, should add the following o
 
    -Dfdbus_SOCKET_ENABLE_PEERCRED=OFF
 
+For Android NDK
+^^^^^^^^^^^^^^^
+ Dependence:
+ 
+ - cmake, gcc are installed, also need android NDK
+
+1 build protocol buffer
+
+.. code-block:: bash
+    
+    1.1 build host is the same as previously discussed
+    1.2 cd ./protobuf-target;mkdir -p build/install;cd build #create directory for out-of-source build
+    1.3 cmake -DCMAKE_INSTALL_PREFIX=install -DBUILD_SHARED_LIBS=1 -DANDROID_LINKER_FLAGS="-landroid -llog" -Dprotobuf_BUILD_PROTOC_BINARIES=0 -Dprotobuf_BUILD_TESTS=0 -DCMAKE_TOOLCHAIN_FILE=~/android-ndk-r20/build/cmake/android.toolchain.cmake ../cmake
+    1.4 PATH=~/workspace/protobuf-target/build/install/bin:$PATH make -j4 install #build and install to build/install directory
+
+2 build fdbus
+
+.. code-block:: bash
+    
+    2.1 cd ~/workspace
+    2.2 git clone https://github.com/jeremyczhen/fdbus.git
+    2.3 cd fdbus;mkdir -p build/install;cd build
+    2.4 cmake -DSYSTEM_ROOT=~/workspace/protobuf-target/build/install -DCMAKE_INSTALL_PREFIX=install -Dfdbus_ANDROID=ON -DCMAKE_TOOLCHAIN_FILE=~/android-ndk-r20/build/cmake/android.toolchain.cmake ../cmake
+    2.5 PATH=~/workspace/protobuf-host/build/install/bin:$PATH make #set PATH to the directory where protoc can be found
+
 For Windows version
 ^^^^^^^^^^^^^^^^^^^
 
