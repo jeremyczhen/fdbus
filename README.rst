@@ -1,7 +1,7 @@
 Introduction
 ============
 
-`FDBus Documentation <https://fdbus.readthedocs.io/en/latest/?badge=latest>`_
+`FDBus Documentation <https://fdbus.readthedocs.io/en/latest/?badge=latest>`
 
 .. image:: https://readthedocs.org/projects/fdbus/badge/?version=latest
 
