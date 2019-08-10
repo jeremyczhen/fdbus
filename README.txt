@@ -83,8 +83,8 @@ Dependence:
     2.5 PATH=~/workspace/protobuf-host/build/install/bin:$PATH make #set PATH to the directory where protoc can be found
 
 >>>> For QNX
-The same as cross compiling, but when building fdbus, should add the following option to cmake since QNX doesn't support peercred:
--Dfdbus_SOCKET_ENABLE_PEERCRED=OFF
+The same as cross compiling, but when building fdbus, should add the following option to cmake since QNX doesn't support peercred and eventfd:
+-Dfdbus_SOCKET_ENABLE_PEERCRED=OFF -Dfdbus_PIPE_AS_EVENTFD=true
 
 >>>> For Windows version
 Dependence:

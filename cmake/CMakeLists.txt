@@ -8,6 +8,7 @@ option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" ON)
 option(fdbus_SOCKET_ENABLE_PEERCRED "Enable peercred of socket" ON)
 option(fdbus_ALLOC_PORT_BY_SYSTEM "Allocate port number by system rather than by name server" OFF)
 option(fdbus_SECURITY "Enable security of FDBus" OFF)
+option(fdbus_PIPE_AS_EVENTFD "Do not use event FD" OFF)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
@@ -41,6 +42,10 @@ if (fdbus_SECURITY)
     add_definitions("-DCFG_FDBUS_SECURITY")
 endif()
 
+if (fdbus_PIPE_AS_EVENTFD)
+    add_definitions("-DCFG_PIPE_AS_EVENTFD")
+endif()
+
 set(RULE_DIR ${CMAKE_SOURCE_DIR})
 get_filename_component(PROJECT_ROOT ${RULE_DIR} PATH)
 include(rule_base.cmake)
@@ -52,6 +57,15 @@ if (MSVC)
     file(GLOB PLATFORM_SOURCES "${PROJECT_ROOT}/platform/win/*.cpp")
 else()
     file(GLOB PLATFORM_SOURCES "${PROJECT_ROOT}/platform/linux/*.cpp")
+endif()
+if (MSVC)
+    set(EVENTFD_SOURCES "${PROJECT_ROOT}/platform/CEventFd_pipe.cpp")
+else()
+    if (fdbus_PIPE_AS_EVENTFD)
+        set(EVENTFD_SOURCES "${PROJECT_ROOT}/platform/CEventFd_pipe.cpp")
+    else()
+        set(EVENTFD_SOURCES "${PROJECT_ROOT}/platform/CEventFd_eventfd.cpp")
+    endif()
 endif()
 file(GLOB_RECURSE SOCKET_SOURCES "${PROJECT_ROOT}/platform/socket/*.cpp")
 file(GLOB UTILS_SOURCES "${PROJECT_ROOT}/utils/*.cpp")
@@ -100,6 +114,7 @@ endif()
 add_library(common_base ${LIB_BUILD_TYPE}
                           ${FDBUS_SOURCES}
                           ${PLATFORM_SOURCES}
+                          ${EVENTFD_SOURCES}
                           ${SOCKET_SOURCES}
                           ${UTILS_SOURCES}
                           ${WORKER_SOURCES}
