@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef _CEVENTFD_
-#define _CEVENTFD_
-#if !defined(__LINUX__)
+#ifndef _CEVENTFD_H_
+#define _CEVENTFD_H_
+#if !defined(__LINUX__) || defined(CFG_PIPE_AS_EVENTFD)
 #include "CBasePipe.h"
 #endif
 
@@ -29,7 +29,7 @@ public:
     bool pickEvent();
     bool triggerEvent();
 private:
-#if !defined(__LINUX__)
+#if !defined(__LINUX__) || defined(CFG_PIPE_AS_EVENTFD)
     CBasePipe mPipe;
 #else
     int mEventFd;

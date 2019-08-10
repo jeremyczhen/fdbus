@@ -115,11 +115,11 @@ Dependence:
 For QNX
 ^^^^^^^
 
-The same as cross compiling, but when building fdbus, should add the following option to cmake since QNX doesn't support peercred:
+The same as cross compiling, but when building fdbus, should add the following option to cmake since QNX doesn't support peercred and eventfd:
 
 .. code-block:: bash
 
-   -Dfdbus_SOCKET_ENABLE_PEERCRED=OFF
+   -Dfdbus_SOCKET_ENABLE_PEERCRED=OFF -Dfdbus_PIPE_AS_EVENTFD=true
 
 For Android NDK
 ^^^^^^^^^^^^^^^

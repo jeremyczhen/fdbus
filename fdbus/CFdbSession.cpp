@@ -458,7 +458,6 @@ void CFdbSession::doUpdate(NFdbBase::FdbMessageHeader &head,
                            CFdbMessage::CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {
-    FdbObjectId_t object_id = head.object_id();
     CFdbMessage *msg = (head.flag() & MSG_FLAG_DEBUG) ?
                        new CFdbDebugMsg(head, prefix, buffer, mSid) :
                        new CFdbMessage(head, prefix, buffer, mSid);
