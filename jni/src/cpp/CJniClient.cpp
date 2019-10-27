@@ -1,0 +1,460 @@
+/*
+ * Copyright (C) 2015   Jeremy Chen jeremy_cz@yahoo.com
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "FdbusGlobal.h"
+#include <ipc_fdbus_FdbusClient.h>
+#include <common_base/CBaseClient.h>
+#include <common_base/CFdbMessage.h>
+#define FDB_LOG_TAG "FDB_JNI"
+#include <common_base/fdb_log_trace.h>
+
+class CJniClient : public CBaseClient
+{
+public:
+    CJniClient(JNIEnv *env, const char *name, jobject java_client);
+    ~CJniClient();
+protected:
+    void onOnline(FdbSessionId_t sid, bool is_first);
+    void onOffline(FdbSessionId_t sid, bool is_last);
+    void onReply(CBaseJob::Ptr &msg_ref);
+    void onBroadcast(CBaseJob::Ptr &msg_ref);
+private:
+    jobject mJavaClient;
+};
+
+class CJniInvokeMsg : public CBaseMessage
+{
+public:
+    CJniInvokeMsg(FdbMsgCode_t code, EFdbMessageEncoding enc, jobject user_data)
+        : CBaseMessage(code, enc)
+        , mUserData(user_data)
+    {
+    }
+    jobject mUserData;
+};
+
+CJniClient::CJniClient(JNIEnv *env, const char *name, jobject java_client)
+    : CBaseClient(name)
+    , mJavaClient(env->NewGlobalRef(java_client))
+{
+}
+    
+CJniClient::~CJniClient()
+{
+    disconnect();
+    if (mJavaClient)
+    {
+        JNIEnv *env = CGlobalParam::obtainJniEnv();
+        if (env)
+        {
+            env->DeleteGlobalRef(mJavaClient);
+            mJavaClient = 0;
+        }
+        else
+        {
+            FDB_LOG_E("~CJniClient: unable to get JVM!\n");
+        }
+    }
+}
+
+void CJniClient::onOnline(FdbSessionId_t sid, bool is_first)
+{
+    JNIEnv *env = CGlobalParam::obtainJniEnv();
+    if (env)
+    {
+        env->CallVoidMethod(mJavaClient, CFdbusClientParam::mOnOnline, sid);
+    }
+    else
+    {
+        FDB_LOG_E("onOnline: unable to get JVM!\n");
+    }
+    CGlobalParam::releaseJniEnv(env);
+}
+
+void CJniClient::onOffline(FdbSessionId_t sid, bool is_last)
+{
+    JNIEnv *env = CGlobalParam::obtainJniEnv();
+    if (env)
+    {
+        env->CallVoidMethod(mJavaClient, CFdbusClientParam::mOnOffline, sid);
+    }
+    else
+    {
+        FDB_LOG_E("onOffline: unable to get JVM!\n");
+    }
+    CGlobalParam::releaseJniEnv(env);
+}
+
+void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
+{
+    JNIEnv *env = CGlobalParam::obtainJniEnv();
+    if (env)
+    {
+        CJniInvokeMsg *msg = castToMessage<CJniInvokeMsg *>(msg_ref);
+        if (msg)
+        {
+            int32_t error_code = NFdbBase::FDB_ST_OK;
+            if (msg->isStatus())
+            {
+                std::string reason;
+                if (!msg->decodeStatus(error_code, reason))
+                {
+                    FDB_LOG_E("onReply: fail to decode status!\n");
+                    return;
+                }
+            }
+            jobject user_data = 0;
+            if (msg->mUserData)
+            {
+                user_data = env->NewLocalRef(msg->mUserData);
+                env->DeleteGlobalRef(msg->mUserData);
+            }
+            env->CallVoidMethod(mJavaClient,
+                                CFdbusClientParam::mOnReply,
+                                msg->session(),
+                                msg->code(),
+                                CGlobalParam::createRawPayloadBuffer(env, msg),
+                                msg->getDataEncoding(),
+                                error_code,
+                                user_data
+                                );
+        }
+    }
+    else
+    {
+        FDB_LOG_E("onReply: unable to get JVM!\n");
+    }
+    CGlobalParam::releaseJniEnv(env);
+}
+
+void CJniClient::onBroadcast(CBaseJob::Ptr &msg_ref)
+{
+    JNIEnv *env = CGlobalParam::obtainJniEnv();
+    if (env)
+    {
+        CBaseMessage *msg = castToMessage<CBaseMessage *>(msg_ref);
+        if (msg)
+        {
+            const char *c_filter = msg->getFilter();
+            jstring filter = c_filter ? env->NewStringUTF(c_filter) : 0;
+            env->CallVoidMethod(mJavaClient,
+                                CFdbusClientParam::mOnBroadcast,
+                                msg->session(),
+                                msg->code(),
+                                filter,
+                                CGlobalParam::createRawPayloadBuffer(env, msg),
+                                msg->getDataEncoding()
+                                );
+        }
+    }
+    else
+    {
+        FDB_LOG_E("onBroadcast: unable to get JVM!\n");
+    }
+    CGlobalParam::releaseJniEnv(env);
+}
+
+JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusClient_fdb_1create
+  (JNIEnv *env, jobject thiz, jstring name)
+{
+    const char* c_name = 0;
+    if (name)
+    {
+        c_name = env->GetStringUTFChars(name, 0);
+    }
+    
+    const char *endpoint_name = c_name;
+    if (!endpoint_name)
+    {
+        endpoint_name = "default client";
+        FDB_LOG_W("Java_FdbusClient_fdb_1create: using %s as default name!\n", endpoint_name);
+    }
+    jlong handle = (jlong) new CJniClient(env, endpoint_name, thiz);
+    if (c_name)
+    {
+        env->ReleaseStringUTFChars(name, c_name);
+    }
+    return handle;
+}
+
+JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusClient_fdb_1destroy
+  (JNIEnv *, jobject, jlong handle)
+{
+    CJniClient *client = (CJniClient *)handle;
+    if (client)
+    {
+        delete client;
+    }
+}
+ 
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1connect
+  (JNIEnv *env, jobject, jlong handle, jstring url)
+{
+    bool ret = false;
+    const char* c_url = env->GetStringUTFChars(url, 0);
+    if (c_url)
+    {
+        CJniClient *client = (CJniClient *)handle;
+        if (client)
+        {
+            client->connect(c_url);
+            ret = true;
+        }
+        else
+        {
+            FDB_LOG_E("Java_FdbusClient_fdb_1connect: empty handle!\n");
+        }
+        env->ReleaseStringUTFChars(url, c_url);
+    }
+    return ret;
+}
+
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1disconnect
+  (JNIEnv *env, jobject, jlong handle)
+{
+    CJniClient *client = (CJniClient *)handle;
+    if (client)
+    {
+        client->disconnect();
+        return true;
+    }
+    else
+    {
+        FDB_LOG_E("Java_FdbusClient_fdb_1disconnect: empty handle!\n");
+    }
+    return false;
+}
+
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
+                              (JNIEnv *env,
+                              jobject,
+                              jlong handle,
+                              jint code,
+                              jbyteArray pb_data,
+                              jint encoding,
+                              jstring log_data,
+                              jobject user_data,
+                              jint timeout)
+{
+    CJniClient *client = (CJniClient *)handle;
+    if (!client)
+    {
+        FDB_LOG_E("Java_FdbusClient_fdb_1invoke_1async: empty handle!\n");
+        return false;
+    }
+    
+    if (encoding >= FDB_MSG_ENC_MAX)
+    {
+        FDB_LOG_E("Java_FdbusClient_fdb_1invoke_1async: encoding %d out of range!\n", encoding);
+        return false;
+    }
+    
+    jbyte *c_array = 0;
+    int len_arr = 0;
+    if (pb_data)
+    {
+        c_array = env->GetByteArrayElements(pb_data, 0);
+        len_arr = env->GetArrayLength(pb_data);
+    }
+    
+    CJniInvokeMsg *msg = new CJniInvokeMsg(code, (EFdbMessageEncoding)encoding,
+                                           env->NewGlobalRef(user_data));
+
+    const char* c_log_data = 0;
+    if (log_data)
+    {
+        c_log_data = env->GetStringUTFChars(log_data, 0);
+    }
+    
+    if (c_log_data)
+    {
+        msg->setLogData(c_log_data);
+        env->ReleaseStringUTFChars(log_data, c_log_data);
+    }
+
+    jboolean ret = client->invoke(msg, (const void *)c_array, len_arr, timeout);
+    if (c_array)
+    {
+        env->ReleaseByteArrayElements(pb_data, c_array, 0);
+    }
+    return ret;
+}
+
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
+                              (JNIEnv *env,
+                               jobject,
+                               jlong handle,
+                               jint code,
+                               jbyteArray pb_data,
+                               jint encoding,
+                               jstring log_data)
+{
+    CJniClient *client = (CJniClient *)handle;
+    if (!client)
+    {
+        FDB_LOG_E("Java_FdbusClient_fdb_1send: empty handle!\n");
+        return false;
+    }
+    
+    if (encoding >= FDB_MSG_ENC_MAX)
+    {
+        FDB_LOG_E("Java_FdbusClient_fdb_1send: encoding %d out of range!\n", encoding);
+        return false;
+    }
+
+    jbyte *c_array = 0;
+    int len_arr = 0;
+    if (pb_data)
+    {
+        c_array = env->GetByteArrayElements(pb_data, 0);
+        len_arr = env->GetArrayLength(pb_data);
+    }
+
+    const char* c_log_data = 0;
+    if (log_data)
+    {
+        c_log_data = env->GetStringUTFChars(log_data, 0);
+    }
+
+    jboolean ret = client->send((FdbMsgCode_t)code,
+                        (const void *)c_array,
+                        len_arr,
+                        (EFdbMessageEncoding)encoding,
+                        c_log_data);
+    if (c_array)
+    {
+        env->ReleaseByteArrayElements(pb_data, c_array, 0);
+    }
+    if (c_log_data)
+    {
+        env->ReleaseStringUTFChars(log_data, c_log_data);
+    }
+    return ret;
+}
+
+static jint getSubscriptionList(JNIEnv *env,
+                                jobject sub_items,
+                                CJniClient *client,
+                                NFdbBase::FdbMsgSubscribe &subscribe_list)
+{
+    jint len = 0;
+    jclass sub_item_cls = env->GetObjectClass(sub_items);
+    if (sub_item_cls)
+    {
+        jmethodID arraylist_get = env->GetMethodID(sub_item_cls, "get", "(I)Ljava/lang/Object;");
+        jmethodID arraylist_size = env->GetMethodID(sub_item_cls,"size","()I");
+        len = env->CallIntMethod(sub_items, arraylist_size);
+        for (int i = 0; i < len; ++i)
+        {
+            jobject sub_item_obj = env->CallObjectMethod(sub_items, arraylist_get, i);
+            if (!sub_item_obj)
+            {
+                FDB_LOG_E("Java_FdbusClient_fdb_1subscribe: fail to get item at %d!\n", i);
+                continue;
+            }
+    
+            jint code= env->GetIntField(sub_item_obj , CFdbusSubscribeItemParam::mCode);
+            jobject filter_obj = env->GetObjectField(sub_item_obj , CFdbusSubscribeItemParam::mTopic);
+            const char* c_filter = 0;
+            jstring filter = 0;
+            if (filter_obj)
+            {
+                filter = reinterpret_cast<jstring>(filter_obj);
+                c_filter = env->GetStringUTFChars(filter, 0);
+            }
+            client->addNotifyItem(subscribe_list, code, c_filter);
+            if (c_filter)
+            {
+                env->ReleaseStringUTFChars(filter, c_filter);
+            }
+            if (filter_obj)
+            {
+                env->DeleteLocalRef(filter_obj);
+            }
+            env->DeleteLocalRef(sub_item_obj);
+        }
+    }
+    
+    return len;
+}
+
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1subscribe
+  (JNIEnv *env, jobject, jlong handle, jobject sub_items)
+{
+    CJniClient *client = (CJniClient *)handle;
+    if (!client)
+    {
+        FDB_LOG_E("Java_FdbusClient_fdb_1subscribe: empty handle!\n");
+        return false;
+    }
+
+    NFdbBase::FdbMsgSubscribe subscribe_list;
+    jint len = getSubscriptionList(env, sub_items, client, subscribe_list);
+    return len ? client->subscribe(subscribe_list) : false;
+}
+
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1unsubscribe
+  (JNIEnv *env, jobject, jlong handle, jobject sub_items)
+{
+    CJniClient *client = (CJniClient *)handle;
+    if (!client)
+    {
+        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1unsubscribe: empty handle!\n");
+        return false;
+    }
+
+    NFdbBase::FdbMsgSubscribe subscribe_list;
+    jint len = getSubscriptionList(env, sub_items, client, subscribe_list);
+    return len ? client->unsubscribe(subscribe_list) : false;
+}
+
+JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusClient_fdb_1endpoint_1name
+  (JNIEnv *env, jobject, jlong handle)
+{
+    CJniClient *client = (CJniClient *)handle;
+    const char *name = "";
+    
+    if (client)
+    {
+        name = client->name().c_str();
+    }
+    else
+    {
+        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1endpoint_1name: empty handle!\n");
+    }
+    
+    return env->NewStringUTF(name);
+}
+
+JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusClient_fdb_1bus_1name
+  (JNIEnv *env, jobject, jlong handle)
+{
+    CJniClient *client = (CJniClient *)handle;
+    const char *name = "";
+      
+    if (client)
+    {
+        name = client->nsName().c_str();
+    }
+    else
+    {
+        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1bus_1name: empty handle!\n");
+    }
+      
+    return env->NewStringUTF(name);
+}
+
+
