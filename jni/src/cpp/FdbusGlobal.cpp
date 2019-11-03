@@ -20,7 +20,7 @@
 #include <common_base/CLogProducer.h>
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
-#include <ipc_fdbus_Fdbus.h>
+#include <idl-gen/ipc_fdbus_Fdbus.h>
 
 #if __WIN32__
 // Need to link with Ws2_32.lib

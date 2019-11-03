@@ -15,7 +15,7 @@
  */
 
 #include "FdbusGlobal.h"
-#include <ipc_fdbus_FdbusMessage.h>
+#include <idl-gen/ipc_fdbus_FdbusMessage.h>
 #include <common_base/CFdbMessage.h>
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>

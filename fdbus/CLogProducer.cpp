@@ -254,7 +254,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
 
     logger_data.set_sender_name(sender);
     logger_data.set_receiver_name(receiver);
-    logger_data.set_service_name(endpoint->nsName());
+    logger_data.set_service_name(busname);
     logger_data.set_type((NFdbBase::FdbMessageType)msg->type());
     logger_data.set_code(msg->code());
     logger_data.set_time_stamp(sysdep_getsystemtime_milli());

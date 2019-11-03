@@ -15,7 +15,7 @@
  */
 
 #include "FdbusGlobal.h"
-#include <ipc_fdbus_FdbusClient.h>
+#include <idl-gen/ipc_fdbus_FdbusClient.h>
 #include <common_base/CBaseClient.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CLogProducer.h>

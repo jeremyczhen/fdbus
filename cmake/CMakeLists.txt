@@ -10,6 +10,7 @@ option(fdbus_ALLOC_PORT_BY_SYSTEM "Allocate port number by system rather than by
 option(fdbus_SECURITY "Enable security of FDBus" OFF)
 option(fdbus_ANDROID "build Android version" OFF)
 option(fdbus_PIPE_AS_EVENTFD "Do not use event FD" OFF)
+option(fdbus_BUILD_JNI "Build jni" OFF)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
@@ -94,7 +95,7 @@ include(idl-gen.cmake)
 include_directories(
     ${PROJECT_ROOT}
     ${PROJECT_ROOT}/public
-    "${IDL_GEN_ROOT}"
+    ${IDL_GEN_ROOT}
     )
 
 if (MSVC)
@@ -125,12 +126,17 @@ add_library(common_base ${LIB_BUILD_TYPE}
 )
 install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
+install(DIRECTORY ${IDL_GEN_ROOT}/idl-gen/ DESTINATION usr/include/idl-gen)
 
 link_libraries(common_base)
 
 include(service.cmake)
 if (fdbus_BUILD_TESTS)
     include(example.cmake)
+endif()
+
+if (fdbus_BUILD_JNI)
+    include(jni.cmake)
 endif()
 
 #set( CMAKE_VERBOSE_MAKEFILE on )
