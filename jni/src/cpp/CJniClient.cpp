@@ -304,13 +304,13 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
     CJniClient *client = (CJniClient *)handle;
     if (!client)
     {
-        return false;
+        return 0;
     }
 
     if (encoding >= FDB_MSG_ENC_MAX)
     {
         FDB_LOG_E("Java_FdbusClient_fdb_1invoke_1async: encoding %d out of range!\n", encoding);
-        return false;
+        return 0;
     }
 
     jbyte *c_array = 0;
@@ -320,8 +320,6 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
         c_array = env->GetByteArrayElements(pb_data, 0);
         len_arr = env->GetArrayLength(pb_data);
     }
-
-     CJniInvokeMsg *msg = new CJniInvokeMsg(code, (EFdbMessageEncoding)encoding, 0);
 
     const char* c_log_data = 0;
     if (log_data)

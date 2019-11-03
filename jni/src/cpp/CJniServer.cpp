@@ -241,7 +241,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1bind
         }
         env->ReleaseStringUTFChars(url, c_url);
     }
-    return false;
+    return ret;
 }
 
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1unbind
