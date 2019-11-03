@@ -18,6 +18,7 @@ package ipc.fdbus;
 
 import ipc.fdbus.FdbusServerListener;
 import ipc.fdbus.SubscribeItem;
+import ipc.fdbus.Fdbus;
 import java.util.ArrayList;
 
 public class FdbusServer
@@ -35,6 +36,7 @@ public class FdbusServer
 
     private native String fdb_endpoint_name(long native_handle);
     private native String fdb_bus_name(long native_handle);
+    private native boolean fdb_log_enabled(long native_handle, int msg_type);
     
     private long mNativeHandle;
     private FdbusServerListener mFdbusListener;
@@ -92,12 +94,48 @@ public class FdbusServer
 
     public boolean broadcast(int msg_code, String topic, byte[] pb_data)
     {
-        return fdb_broadcast(mNativeHandle, msg_code, topic, pb_data, 1, null);
+        return fdb_broadcast(mNativeHandle,
+                            msg_code,
+                            topic,
+                            pb_data,
+                            Fdbus.FDB_MSG_ENC_PROTOBUF,
+                            null);
     }
 
     public boolean broadcast(int msg_code, byte[] pb_data)
     {
-        return fdb_broadcast(mNativeHandle, msg_code, null, pb_data, 1, null);
+        return fdb_broadcast(mNativeHandle,
+                             msg_code,
+                             null,
+                             pb_data,
+                             Fdbus.FDB_MSG_ENC_PROTOBUF,
+                             null);
+    }
+
+    public boolean broadcast(int msg_code, String topic, Object msg)
+    {
+        if (Fdbus.messageParser() == null)
+        {
+            return false;
+        }
+
+        String log_data = null;
+        if (logEnabled(Fdbus.MT_BROADCAST))
+        {
+            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+        }
+
+        return fdb_broadcast(mNativeHandle,
+                            msg_code,
+                            topic,
+                            Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                            Fdbus.FDB_MSG_ENC_PROTOBUF,
+                            log_data);
+    }
+
+    public boolean broadcast(int msg_code, Object msg)
+    {
+        return broadcast(msg_code, null, msg);
     }
 
     public String endpointName()
@@ -110,6 +148,10 @@ public class FdbusServer
         return fdb_bus_name(mNativeHandle);
     }
 
+    public boolean logEnabled(int msg_type)
+    {
+        return fdb_log_enabled(mNativeHandle, msg_type);
+    }
     
     private void callbackOnline(int sid, boolean is_first)
     {

@@ -17,6 +17,7 @@
 #include "FdbusGlobal.h"
 #include <common_base/CFdbMessage.h>
 #include <common_base/CFdbContext.h>
+#include <common_base/CLogProducer.h>
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
 #include <ipc_fdbus_Fdbus.h>
@@ -41,6 +42,8 @@ jmethodID CFdbusServerParam::mOnSubscribe = 0;
 jfieldID CFdbusSubscribeItemParam::mCode = 0;
 jfieldID CFdbusSubscribeItemParam::mTopic = 0;
 jclass CFdbusSubscribeItemParam::mClass = 0;
+
+jclass CFdbusMessageParam::mClass = 0;
 
 bool CGlobalParam::init(JNIEnv *env)
 {
@@ -202,16 +205,46 @@ _quit:
     return ret;
 }
 
-JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_initialize
+bool CFdbusMessageParam::init(JNIEnv *env, jclass &clazz)
+{
+    mClass = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
+    return true;
+}
+
+JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1init
                           (JNIEnv * env,
                            jobject,
                            jclass server_class,
                            jclass client_class,
-                           jclass sub_item_class)
+                           jclass sub_item_class,
+                           jclass fdb_msg_class)
 {
     CGlobalParam::init(env);
     CFdbusServerParam::init(env, server_class);
     CFdbusClientParam::init(env, client_class);
     CFdbusSubscribeItemParam::init(env, sub_item_class);
+    CFdbusMessageParam::init(env, fdb_msg_class);
+}
+
+JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
+  (JNIEnv *env, jclass, jstring tag, jint level, jstring data)
+{
+    const char *c_tag = 0;
+    if (tag)
+    {
+        c_tag = env->GetStringUTFChars(tag, 0);
+    }
+    
+    const char *c_data = "";
+    if (data)
+    {
+        c_data = env->GetStringUTFChars(data, 0);
+    }
+    
+    CLogProducer *logger = FDB_CONTEXT->getLogger();
+    if (logger)
+    {
+        logger->logTrace((EFdbLogLevel)level, c_tag, "%s", c_data);
+    }
 }
 

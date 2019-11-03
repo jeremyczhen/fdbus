@@ -76,7 +76,7 @@ public:
 
     bool receiveData(uint8_t *buf, int32_t size);
 
-    std::string &getEndpointName();
+    const std::string &getEndpointName() const;
     void terminateMessage(CBaseJob::Ptr &job, int32_t status, const char *reason);
     void terminateMessage(FdbMsgSn_t msg, int32_t status, const char *reason = 0);
     void getSessionInfo(CFdbSessionInfo &info);

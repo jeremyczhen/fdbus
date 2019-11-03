@@ -1,4 +1,6 @@
 syntax = "proto2";
+option java_outer_classname = "NFdbExample";
+option java_package = "ipc.fdbus";
 
 package NFdbExample;
 

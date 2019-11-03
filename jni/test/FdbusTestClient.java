@@ -19,7 +19,9 @@ import ipc.fdbus.FdbusClientListener;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
 import ipc.fdbus.FdbusMessage;
+import ipc.fdbus.FdbusMessageParser;
 import ipc.fdbus.NFdbExample;
+import com.google.protobuf.AbstractMessageLite;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -62,10 +64,10 @@ public class FdbusTestClient
         {
             System.out.println(mClient.endpointName() + ": onOffline is received.");
         }
-        
-        public void onReply(FdbusMessage msg)
+
+        private void handleReplyMsg(FdbusMessage msg)
         {
-            if (msg.returnValue() != FdbusMessage.FDB_ST_OK)
+            if (msg.returnValue() != Fdbus.FDB_ST_OK)
             {
                 System.out.println(mClient.endpointName() + 
                         ": Error is received at onReply. Error code: " + msg.returnValue());
@@ -88,6 +90,12 @@ public class FdbusTestClient
                 default:
                 break;
             }
+        }
+        
+        public void onReply(FdbusMessage msg)
+        {
+            Fdbus.LOG_I("FDB_TEST_CLIENT", "Async reply is received.\n");
+            handleReplyMsg(msg);
         }
         
         public void onBroadcast(FdbusMessage msg)
@@ -119,7 +127,10 @@ public class FdbusTestClient
             NFdbExample.SongId.Builder builder = NFdbExample.SongId.newBuilder();
             builder.setId(mSongId);
             NFdbExample.SongId song_id = builder.build();
-            mClient.invokeAsync(REQ_METADATA, song_id.toByteArray(), null, 0);
+            //mClient.invokeAsync(REQ_METADATA, song_id.toByteArray(), null, 0);
+            FdbusMessage msg = mClient.invokeSync(REQ_METADATA, song_id, 0);
+            Fdbus.LOG_I("FDB_TEST_CLIENT", "Sync reply is received.\n");
+            handleReplyMsg(msg);
         }
     }
 
@@ -139,7 +150,26 @@ public class FdbusTestClient
 
     public static void main(String[] args)
     {
-        Fdbus fdbus = new Fdbus();
+        Fdbus fdbus = new Fdbus(new FdbusMessageParser() {
+                public byte[] serialize(Object msg, int encoding)
+                {
+                    if (msg instanceof AbstractMessageLite)
+                    {
+                        return ((AbstractMessageLite) msg).toByteArray();
+                    }
+                    return null;
+                }
+
+                public String toString(Object msg, int encoding)
+                {
+                    if (msg instanceof AbstractMessageLite)
+                    {
+                        return ((AbstractMessageLite) msg).toString();
+                    }
+                    return null;
+                }
+            }
+            );
         FdbusTestClient clt = new FdbusTestClient();
 
         ArrayList<myTestClient> clients = new ArrayList<myTestClient>();

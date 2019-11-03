@@ -88,10 +88,13 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
     }
     if (sendMessage(msg->getRawBuffer(), msg->getRawDataSize()))
     {
-        CLogProducer *logger = CFdbContext::getInstance()->getLogger();
-        if (logger)
+        if (msg->isLogEnabled())
         {
-            logger->logMessage(msg, mContainer->owner());
+            CLogProducer *logger = CFdbContext::getInstance()->getLogger();
+            if (logger)
+            {
+                logger->logMessage(msg, mContainer->owner());
+            }
         }
         return true;
     }
@@ -257,6 +260,9 @@ void CFdbSession::doRequest(NFdbBase::FdbMessageHeader &head,
                        new CFdbMessage(head, prefix, buffer, mSid);
     CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
+
+    msg->type(NFdbBase::MT_REPLY);
+    msg->checkLogEnabled(mContainer->owner(), false);
     if (object)
     {
         NFdbBase::FdbMsgStatusCode status_code = NFdbBase::FDB_ST_AUTO_REPLY_OK;
@@ -378,9 +384,15 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
                        new CFdbMessage(head, prefix, buffer, mSid);
     CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
-
+    
+    int32_t error_code;
+    const char *error_msg;
     if (object)
     {
+        // correct the type so that checkLogEnabled() can get correct
+        // sender name and receiver name
+        msg->type(NFdbBase::MT_BROADCAST);
+        msg->checkLogEnabled(mContainer->owner(), false);
         msg->decodeDebugInfo(head, this);
         const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
         int32_t ret;
@@ -429,15 +441,16 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
         {
             if (ret == -2)
             {
-                msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
-                        "Authentication failed for some events!");
+                error_code = NFdbBase::FDB_ST_AUTHENTICATION_FAIL;
+                error_msg = "Authentication failed for some events!";
             }
             else
             {
-                msg->sendStatus(this, NFdbBase::FDB_ST_MSG_DECODE_FAIL,
-                        "Not valid NFdbBase::FdbMsgSubscribe message!");
+                error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
+                error_msg = "Not valid NFdbBase::FdbMsgSubscribe message!";
                 LOG_E("CFdbSession: Session %d: Unable to deserialize subscribe message!\n", mSid);
             }
+            goto _reply_status;
         }
         else if (subscribe)
         {
@@ -450,8 +463,17 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
     }
     else
     {
-        msg->sendStatus(this, NFdbBase::FDB_ST_OBJECT_NOT_FOUND, "Object is not found.");
+        error_code = NFdbBase::FDB_ST_OBJECT_NOT_FOUND;
+        error_msg = "Object is not found.";
+        goto _reply_status;
+        
     }
+    return;
+    
+_reply_status:
+    msg->type(NFdbBase::MT_STATUS); // correct the type
+    msg->checkLogEnabled(mContainer->owner(), false);
+    msg->sendStatus(this, error_code, error_msg);
 }
 
 void CFdbSession::doUpdate(NFdbBase::FdbMessageHeader &head,
@@ -476,7 +498,7 @@ void CFdbSession::doUpdate(NFdbBase::FdbMessageHeader &head,
     }
 }
 
-std::string &CFdbSession::getEndpointName()
+const std::string &CFdbSession::getEndpointName() const
 {
     return mContainer->owner()->name();
 }

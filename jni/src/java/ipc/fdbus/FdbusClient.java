@@ -17,20 +17,9 @@
 package ipc.fdbus;
 import ipc.fdbus.FdbusClientListener;
 import ipc.fdbus.SubscribeItem;
+import ipc.fdbus.Fdbus;
 
 import java.util.ArrayList;
-
-//enum EFdbMessageEncoding
-//{
-//    FDB_MSG_ENC_RAW,
-//    FDB_MSG_ENC_PROTOBUF,
-//    FDB_MSG_ENC_CUSTOM1,
-//    FDB_MSG_ENC_CUSTOM2,
-//    FDB_MSG_ENC_CUSTOM3,
-//    FDB_MSG_ENC_CUSTOM4,
-//    FDB_MSG_ENC_CUSTOM5,
-//    FDB_MSG_ENC_CUSTOM6,
-//}
 
 public class FdbusClient
 {
@@ -45,6 +34,12 @@ public class FdbusClient
                                             String log_msg,
                                             Object user_data,
                                             int timeout);
+    private native FdbusMessage fdb_invoke_sync(long native_handle,
+                                                int msg_code,
+                                                byte[] pb_data,
+                                                int encoding,
+                                                String log_msg,
+                                                int timeout);
     private native boolean fdb_send(long native_handle,
                                     int msg_code,
                                     byte[] pb_data,
@@ -57,6 +52,7 @@ public class FdbusClient
     
     private native String fdb_endpoint_name(long native_handle);
     private native String fdb_bus_name(long native_handle);
+    private native boolean fdb_log_enabled(long native_handle, int msg_type);
 	
     private long mNativeHandle;
     private FdbusClientListener mFdbusListener;
@@ -112,19 +108,93 @@ public class FdbusClient
         return fdb_disconnect(mNativeHandle);
     }
 	
-    //public boolean invokeAsync(int msg_code, AbstractMessageLite msg, Object user_data, int timeout)
-    //{
-    //    return fdb_invoke_async(mNativeHandle, msg_code, msg.toByteArray(), 1, null, user_data, timeout);
-    //}
-
     public boolean invokeAsync(int msg_code, byte[] pb_data, Object user_data, int timeout)
     {
-        return fdb_invoke_async(mNativeHandle, msg_code, pb_data, 1, null, user_data, timeout);
+        return fdb_invoke_async(mNativeHandle,
+                                msg_code,
+                                pb_data,
+                                Fdbus.FDB_MSG_ENC_PROTOBUF,
+                                null,
+                                user_data,
+                                timeout);
+    }
+
+    public boolean invokeAsync(int msg_code, Object msg, Object user_data, int timeout)
+    {
+        if (Fdbus.messageParser() == null)
+        {
+            return false;
+        }
+    
+        String log_data = null;
+        if (logEnabled(Fdbus.MT_REQUEST))
+        {
+            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+        }
+
+        return fdb_invoke_async(mNativeHandle,
+                                msg_code,
+                                Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                                Fdbus.FDB_MSG_ENC_PROTOBUF,
+                                log_data,
+                                user_data,
+                                timeout);
+    }
+
+    public FdbusMessage invokeSync(int msg_code, byte[] pb_data, int timeout)
+    {
+        return fdb_invoke_sync(mNativeHandle,
+                               msg_code,
+                               pb_data,
+                               Fdbus.FDB_MSG_ENC_PROTOBUF,
+                               null,
+                               timeout);
+    }
+
+    public FdbusMessage invokeSync(int msg_code, Object msg, int timeout)
+    {
+        if (Fdbus.messageParser() == null)
+        {
+            return null;
+        }
+    
+        String log_data = null;
+        if (logEnabled(Fdbus.MT_REQUEST))
+        {
+            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+        }
+        
+        return fdb_invoke_sync(mNativeHandle,
+                               msg_code,
+                               Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                               Fdbus.FDB_MSG_ENC_PROTOBUF,
+                               log_data,
+                               timeout);
     }
 	
     public boolean send(int msg_code, byte[] pb_data)
     {
-        return fdb_send(mNativeHandle, msg_code, pb_data, 1, null);
+        return fdb_send(mNativeHandle, msg_code, pb_data, Fdbus.FDB_MSG_ENC_PROTOBUF, null);
+    }
+
+    public boolean send(int msg_code, Object msg)
+    {
+        if (Fdbus.messageParser() == null)
+        {
+            return false;
+        }
+    
+        String log_data = null;
+        if (logEnabled(Fdbus.MT_REQUEST))
+        {
+            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+        }
+    
+        return fdb_send(mNativeHandle,
+                        msg_code,
+                        Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                        Fdbus.FDB_MSG_ENC_PROTOBUF,
+                        log_data);
     }
 	
     public boolean subscribe(ArrayList<SubscribeItem> sub_list)
@@ -145,6 +215,11 @@ public class FdbusClient
     public String busName()
     {
         return fdb_bus_name(mNativeHandle);
+    }
+
+    public boolean logEnabled(int msg_type)
+    {
+        return fdb_log_enabled(mNativeHandle, msg_type);
     }
 
     private void callbackOnline(int sid)
@@ -172,8 +247,7 @@ public class FdbusClient
     {
         if (mFdbusListener != null)
         {
-            FdbusMessage msg = new FdbusMessage(sid, msg_code, payload, encoding, user_data);
-            msg.returnValue(status);
+            FdbusMessage msg = new FdbusMessage(sid, msg_code, payload, encoding, user_data, status);
             mFdbusListener.onReply(msg);
         }
     }

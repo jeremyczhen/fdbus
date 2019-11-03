@@ -31,7 +31,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1reply
     CBaseJob::Ptr *msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
-        FDB_LOG_E("Java_FdbusMessage_fdb_1reply: empty handle!\n");
         return false;
     }
     
@@ -89,7 +88,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
     CBaseJob::Ptr *msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
-        FDB_LOG_E("Java_FdbusMessage_fdb_1broadcast: empty handle!\n");
         return false;
     }
     
@@ -151,10 +149,28 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1destroy
     CBaseJob::Ptr *msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
-        FDB_LOG_E("Java_FdbusMessage_fdb_1broadcast: empty handle!\n");
         return;
     }
     (*msg_ref).reset();
     delete msg_ref;
+}
+  
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled
+  (JNIEnv *env, jobject, jlong handle)
+{
+    CBaseJob::Ptr *msg_ref = (CBaseJob::Ptr *)handle;
+    if (!msg_ref)
+    {
+        return false;
+    }
+    
+    CFdbMessage *msg = castToMessage<CFdbMessage *>(*msg_ref);
+    if (!msg)
+    {
+        FDB_LOG_E("Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled: msg pointer is corrupted!\n");
+        return false;
+    }
+
+    return msg->isLogEnabled();
 }
 

@@ -132,8 +132,9 @@ message FdbMsgLogConfig
     required bool enable_subscribe = 5;
     required int32 raw_data_clipping_size = 6;
 
-    repeated string host_while_list = 7;
-    repeated string endpoint_while_list = 8;
+    repeated string host_white_list = 7;
+    repeated string endpoint_white_list = 8;
+    repeated string busname_white_list = 9;
 }
 
 message FdbTraceConfig
@@ -141,8 +142,9 @@ message FdbTraceConfig
     required bool global_enable = 1;
     required FdbTraceLogLevel log_level = 2;
 
-    repeated string host_while_list = 7;
-    repeated string tag_while_list = 8;
+    repeated string host_white_list = 7;
+    repeated string tag_white_list = 8;
+    repeated string busname_white_list = 9;
 }
 
 message FdbAuthentication

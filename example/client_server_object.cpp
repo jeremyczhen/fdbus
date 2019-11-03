@@ -623,7 +623,7 @@ protected:
                 }
                 else if (!filter.compare("raw_buffer"))
                 {
-                    if (!msg->isRawData())
+                    if (!msg->notPbEncoded())
                     {
                         FDB_LOG_E("OBJ %d Error! Raw data is expected but protobuf is received.\n", this->objId());
                         return;

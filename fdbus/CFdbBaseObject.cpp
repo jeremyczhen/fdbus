@@ -24,8 +24,8 @@
 #include <utils/Log.h>
 
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
-    : mWorker(worker)
-    , mEpid(FDB_INVALID_ID)
+    : mEndpoint(0)
+    , mWorker(worker)
     , mObjId(FDB_INVALID_ID)
     , mFlag(0)
     , mRole(role)
@@ -41,34 +41,49 @@ CFdbBaseObject::~CFdbBaseObject()
 {
 }
 
-void CFdbBaseObject::send(FdbSessionId_t receiver
+bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , FdbMsgCode_t code
                          , const CFdbBasePayload &data)
 {
     CBaseMessage *msg = new CBaseMessage(code, this, receiver);
-    msg->send(data);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->send();
 }
 
-void CFdbBaseObject::send(FdbMsgCode_t code
+bool CFdbBaseObject::send(FdbMsgCode_t code
                          , const CFdbBasePayload &data)
 {
-    send(FDB_INVALID_ID, code, data);
+    return send(FDB_INVALID_ID, code, data);
 }
 
-void CFdbBaseObject::send(FdbSessionId_t receiver
+bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , FdbMsgCode_t code
                          , const void *buffer
-                         , int32_t size)
+                         , int32_t size
+                         , EFdbMessageEncoding enc
+                         , const char *log_data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
-    msg->send(buffer, size);
+    CBaseMessage *msg = new CBaseMessage(code, this, receiver, enc);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    msg->setLogData(log_data);
+    return msg->send();
 }
 
-void CFdbBaseObject::send(FdbMsgCode_t code
+bool CFdbBaseObject::send(FdbMsgCode_t code
                          , const void *buffer
-                         , int32_t size)
+                         , int32_t size
+                         , EFdbMessageEncoding enc
+                         , const char *log_data)
 {
-    send(FDB_INVALID_ID, code, buffer, size);
+    return send(FDB_INVALID_ID, code, buffer, size, enc, log_data);
 }
 
 void CFdbBaseObject::sendFdbLog(const CFdbBasePayload &data
@@ -85,25 +100,37 @@ void CFdbBaseObject::sendTraceLog(const CFdbBasePayload &data
                                 , int32_t size)
 {
     CBaseMessage *msg = new CBaseMessage(NFdbBase::REQ_TRACE_LOG, this);
-    msg->mFlag |= MSG_FLAG_DO_NOT_LOG;
-    msg->sendLog(data, trace_data, size, -1, true);
+     msg->sendLog(data, trace_data, size, -1, true);
 }
 
-void CFdbBaseObject::broadcast(FdbMsgCode_t code
+bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const CFdbBasePayload &data
                               , const char *filter)
 {
     CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
-    msg->broadcast(data);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->broadcast();
 }
 
-void CFdbBaseObject::broadcast(FdbMsgCode_t code
+bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const char *filter
                               , const void *buffer
-                              , int32_t size)
+                              , int32_t size
+                              , EFdbMessageEncoding enc
+                              , const char *log_data)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
-    msg->broadcast(buffer, size);
+    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, enc);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    msg->setLogData(log_data);
+    return msg->broadcast();
 }
 
 void CFdbBaseObject::broadcastFdbLog(const CFdbBasePayload &data
@@ -119,20 +146,24 @@ void CFdbBaseObject::broadcastTraceLog(const CFdbBasePayload &data
                                      , int32_t size)
 {
     CFdbBroadcastMsg msg(NFdbBase::NTF_TRACE_LOG, this, 0, FDB_INVALID_ID);
-    msg.mFlag |= MSG_FLAG_DO_NOT_LOG;
     msg.broadcastLog(data, trace_data, size, false);
 }
 
-void CFdbBaseObject::unsubscribe(NFdbBase::FdbMsgSubscribe &msg_list)
+bool CFdbBaseObject::unsubscribe(NFdbBase::FdbMsgSubscribe &msg_list)
 {
     CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
-    msg->unsubscribe(msg_list);
+    if (!msg->serialize(msg_list, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->unsubscribe();
 }
 
-void CFdbBaseObject::unsubscribe()
+bool CFdbBaseObject::unsubscribe()
 {
     NFdbBase::FdbMsgSubscribe msg_list;
-    unsubscribe(msg_list);
+    return unsubscribe(msg_list);
 }
 
 class COnSubscribeJob : public CMethodJob<CFdbBaseObject>
@@ -516,93 +547,122 @@ void CFdbBaseObject::doStatus(CBaseJob::Ptr &msg_ref)
     }
 }
 
-void CFdbBaseObject::invoke(FdbSessionId_t receiver
+bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , FdbMsgCode_t code
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
     CBaseMessage *msg = new CBaseMessage(code, this, receiver);
-    msg->invoke(data, timeout);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->invoke(timeout);
 }
 
-void CFdbBaseObject::invoke(FdbMsgCode_t code
+bool CFdbBaseObject::invoke(FdbMsgCode_t code
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
-    invoke(FDB_INVALID_ID, code, data, timeout);
+    return invoke(FDB_INVALID_ID, code, data, timeout);
 }
 
-void CFdbBaseObject::invoke(FdbSessionId_t receiver
+bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , CFdbMessage *msg
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
     msg->setDestination(this, receiver);
-    msg->invoke(data, timeout);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->invoke(timeout);
 }
 
-void CFdbBaseObject::invoke(CFdbMessage *msg
+bool CFdbBaseObject::invoke(CFdbMessage *msg
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
-    invoke(FDB_INVALID_ID, msg, data, timeout);
+    return invoke(FDB_INVALID_ID, msg, timeout);
 }
 
-void CFdbBaseObject::invoke(FdbSessionId_t receiver
+bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , CBaseJob::Ptr &msg_ref
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, receiver);
-    msg->invoke(msg_ref, data, timeout);
+    if (!msg->serialize(data, this))
+    {
+       return false;
+    }
+    return msg->invoke(msg_ref, timeout);
 }
 
-void CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
+bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
-    invoke(FDB_INVALID_ID, msg_ref, data, timeout);
+    return invoke(FDB_INVALID_ID, msg_ref, data, timeout);
 }
 
-void CFdbBaseObject::invoke(FdbSessionId_t receiver
+bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , FdbMsgCode_t code
                            , const void *buffer
                            , int32_t size
-                           , int32_t timeout)
+                           , int32_t timeout
+                           , EFdbMessageEncoding enc
+                           , const char *log_data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
-    msg->invoke(buffer, size, timeout);
+    CBaseMessage *msg = new CBaseMessage(code, this, receiver, enc);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    msg->setLogData(log_data);
+    return msg->invoke(timeout);
 }
 
-void CFdbBaseObject::invoke(FdbMsgCode_t code
+bool CFdbBaseObject::invoke(FdbMsgCode_t code
                            , const void *buffer
                            , int32_t size
-                           , int32_t timeout)
+                           , int32_t timeout
+                           , EFdbMessageEncoding enc
+                           , const char *log_data)
 {
-    invoke(FDB_INVALID_ID, code, buffer, size, timeout);
+    return invoke(FDB_INVALID_ID, code, buffer, size, timeout, enc, log_data);
 }
 
 
-void CFdbBaseObject::invoke(FdbSessionId_t receiver
+bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , CFdbMessage *msg
                            , const void *buffer
                            , int32_t size
                            , int32_t timeout)
 {
     msg->setDestination(this, receiver);
-    msg->invoke(buffer, size, timeout);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->invoke(timeout);
 }
 
-void CFdbBaseObject::invoke(CFdbMessage *msg
+bool CFdbBaseObject::invoke(CFdbMessage *msg
                            , const void *buffer
                            , int32_t size
                            , int32_t timeout)
 {
-    invoke(FDB_INVALID_ID, msg, buffer, size, timeout);
+    return invoke(FDB_INVALID_ID, msg, buffer, size, timeout);
 }
 
-void CFdbBaseObject::invoke(FdbSessionId_t receiver
+bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , CBaseJob::Ptr &msg_ref
                            , const void *buffer
                            , int32_t size
@@ -610,33 +670,47 @@ void CFdbBaseObject::invoke(FdbSessionId_t receiver
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, receiver);
-    msg->invoke(msg_ref, buffer, size, timeout);
+    if (!msg->serialize(buffer, size, this))
+    {
+       return false;
+    }
+    return msg->invoke(msg_ref, timeout);
 }
 
-void CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
+bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
                            , const void *buffer
                            , int32_t size
                            , int32_t timeout)
 {
-    invoke(FDB_INVALID_ID, msg_ref, buffer, size, timeout);
+    return invoke(FDB_INVALID_ID, msg_ref, buffer, size, timeout);
 }
 
-void CFdbBaseObject::subscribe(NFdbBase::FdbMsgSubscribe &msg_list
-                              , int32_t timeout)
+bool CFdbBaseObject::subscribe(NFdbBase::FdbMsgSubscribe &msg_list
+                           , int32_t timeout)
 {
     CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
-    msg->subscribe(msg_list, timeout);
+    if (!msg->serialize(msg_list, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->subscribe(timeout);
 }
 
-void CFdbBaseObject::subscribe(NFdbBase::FdbMsgSubscribe &msg_list
+bool CFdbBaseObject::subscribe(NFdbBase::FdbMsgSubscribe &msg_list
                               , CFdbMessage *msg
                               , int32_t timeout)
 {
     msg->setDestination(this);
-    msg->subscribe(msg_list, timeout);
+    if (!msg->serialize(msg_list, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->subscribe(timeout);
 }
 
-void CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
+bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
                               , NFdbBase::FdbMsgSubscribe &msg_list
                               , int32_t timeout)
 {
@@ -644,33 +718,54 @@ void CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
     if (msg)
     {
         msg->setDestination(this);
-        msg->subscribe(msg_ref, msg_list, timeout);
+        if (!msg->serialize(msg_list, this))
+        {
+            return false;
+        }
+        return msg->subscribe(msg_ref, timeout);
     }
     else
     {
         msg = new CBaseMessage(FDB_INVALID_ID, this);
+        if (!msg->serialize(msg_list, this))
+        {
+            delete msg;
+            return false;
+        }
+        
         CBaseJob::Ptr ref(msg);
-        msg->subscribe(ref, msg_list, timeout);
+        bool ret = msg->subscribe(ref, timeout);
         msg_ref = ref;
+        return ret;
     }
 }
 
-void CFdbBaseObject::update(NFdbBase::FdbMsgSubscribe &msg_list
+bool CFdbBaseObject::update(NFdbBase::FdbMsgSubscribe &msg_list
                             , int32_t timeout)
 {
     CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
-    msg->update(msg_list, timeout);
+    if (!msg->serialize(msg_list, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->update(timeout);
 }
 
-void CFdbBaseObject::update(NFdbBase::FdbMsgSubscribe &msg_list
+bool CFdbBaseObject::update(NFdbBase::FdbMsgSubscribe &msg_list
                             , CFdbMessage *msg
                             , int32_t timeout)
 {
     msg->setDestination(this);
-    msg->update(msg_list, timeout);
+    if (!msg->serialize(msg_list, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->update(timeout);
 }
 
-void CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
+bool CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
                             , NFdbBase::FdbMsgSubscribe &msg_list
                             , int32_t timeout)
 {
@@ -678,14 +773,25 @@ void CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
     if (msg)
     {
         msg->setDestination(this);
-        msg->update(msg_ref, msg_list, timeout);
+        if (!msg->serialize(msg_list, this))
+        {
+            return false;
+        }
+        return msg->update(msg_ref, timeout);
     }
     else
     {
         msg = new CBaseMessage(FDB_INVALID_ID, this);
+        if (!msg->serialize(msg_list, this))
+        {
+            delete msg;
+            return false;
+        }
+        
         CBaseJob::Ptr ref(msg);
-        msg->subscribe(ref, msg_list, timeout);
+        bool ret = msg->update(ref, timeout);
         msg_ref = ref;
+        return ret;
     }
 }
 
@@ -1058,7 +1164,7 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
 
 FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId_t obj_id)
 {
-    mEpid = endpoint->epid();
+    mEndpoint = endpoint;
     mObjId = obj_id;
     obj_id = endpoint->addObject(this);
     if (isValidFdbId(obj_id))
@@ -1071,13 +1177,19 @@ FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId
 
 void CFdbBaseObject::removeFromEndpoint()
 {
-    CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
-    if (endpoint)
+    if (mEndpoint)
     {
-        endpoint->removeObject(this);
+        mEndpoint->removeObject(this);
         registered(false);
+        mEndpoint = 0;
     }
 }
+
+FdbEndpointId_t CFdbBaseObject::epid() const
+{
+    return mEndpoint ? mEndpoint->epid() : FDB_INVALID_ID;
+}
+
 
 FdbObjectId_t CFdbBaseObject::doBind(CBaseEndpoint *endpoint, FdbObjectId_t obj_id)
 {
@@ -1105,14 +1217,14 @@ void CFdbBaseObject::doDisconnect()
 class CBindObjectJob : public CMethodJob<CFdbBaseObject>
 {
 public:
-    CBindObjectJob(CFdbBaseObject *object, FdbEndpointId_t endpoint, FdbObjectId_t &oid)
+    CBindObjectJob(CFdbBaseObject *object, CBaseEndpoint *endpoint, FdbObjectId_t &oid)
         : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callBindObject, JOB_FORCE_RUN)
-        , mEpid(endpoint)
+        , mEndpoint(endpoint)
         , mOid(oid)
     {
     }
 
-    FdbEndpointId_t mEpid;
+    CBaseEndpoint *mEndpoint;
     FdbObjectId_t &mOid;
 };
 
@@ -1121,11 +1233,7 @@ void CFdbBaseObject::callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObje
     CBindObjectJob *the_job = dynamic_cast<CBindObjectJob *>(job);
     if (the_job)
     {
-        CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(the_job->mEpid);
-        if (endpoint)
-        {
-            the_job->mOid = doBind(endpoint, the_job->mOid);
-        }
+        the_job->mOid = doBind(the_job->mEndpoint, the_job->mOid);
     }
 }
 
@@ -1137,7 +1245,7 @@ FdbObjectId_t CFdbBaseObject::bind(CBaseEndpoint *endpoint, FdbObjectId_t oid)
     }
     else
     {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CBindObjectJob(this, endpoint->epid(), oid), 0, true);
+        CFdbContext::getInstance()->sendSyncEndeavor(new CBindObjectJob(this, endpoint, oid), 0, true);
     }
     return oid;
 }
@@ -1146,14 +1254,14 @@ FdbObjectId_t CFdbBaseObject::bind(CBaseEndpoint *endpoint, FdbObjectId_t oid)
 class CConnectObjectJob : public CMethodJob<CFdbBaseObject>
 {
 public:
-    CConnectObjectJob(CFdbBaseObject *object, FdbEndpointId_t endpoint, FdbObjectId_t &oid)
+    CConnectObjectJob(CFdbBaseObject *object, CBaseEndpoint *endpoint, FdbObjectId_t &oid)
         : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callConnectObject, JOB_FORCE_RUN)
-        , mEpid(endpoint)
+        , mEndpoint(endpoint)
         , mOid(oid)
     {
     }
 
-    FdbEndpointId_t mEpid;
+    CBaseEndpoint *mEndpoint;
     FdbObjectId_t &mOid;
 };
 
@@ -1162,11 +1270,7 @@ void CFdbBaseObject::callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseO
     CConnectObjectJob *the_job = dynamic_cast<CConnectObjectJob *>(job);
     if (the_job)
     {
-        CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(the_job->mEpid);
-        if (endpoint)
-        {
-            the_job->mOid = doConnect(endpoint, the_job->mOid);
-        }
+        the_job->mOid = doConnect(the_job->mEndpoint, the_job->mOid);
     }
 }
 
@@ -1178,7 +1282,7 @@ FdbObjectId_t CFdbBaseObject::connect(CBaseEndpoint *endpoint, FdbObjectId_t oid
     }
     else
     {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CConnectObjectJob(this, endpoint->epid(), oid));
+        CFdbContext::getInstance()->sendSyncEndeavor(new CConnectObjectJob(this, endpoint, oid));
     }
     return oid;
 }
@@ -1234,39 +1338,61 @@ void CFdbBaseObject::disconnect()
     }
 }
 
-void CFdbBaseObject::broadcast(FdbSessionId_t sid
+bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                       , FdbObjectId_t obj_id
                       , FdbMsgCode_t code
                       , const CFdbBasePayload &data
                       , const char *filter)
 {
     CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
-    msg->broadcast(data);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->broadcast();
 }
 
-void CFdbBaseObject::broadcast(FdbSessionId_t sid
+bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                       , FdbObjectId_t obj_id
                       , FdbMsgCode_t code
                       , const char *filter
                       , const void *buffer
-                      , int32_t size)
+                      , int32_t size
+                      , const char *log_data)
 {
     CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
-    msg->broadcast(buffer, size);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    msg->setLogData(log_data);
+    return msg->broadcast();
 }
 
-void CFdbBaseObject::invokeSideband(FdbMsgCode_t code
+bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
                            , const CFdbBasePayload &data
                            , int32_t timeout)
 {
     CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
-    msg->invokeSideband(data, timeout);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->invokeSideband(timeout);
 }
 
-void CFdbBaseObject::sendSideband(FdbMsgCode_t code
+bool CFdbBaseObject::sendSideband(FdbMsgCode_t code
                          , const CFdbBasePayload &data)
 {
     CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
-    msg->sendSideband(data);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->sendSideband();
 }
 

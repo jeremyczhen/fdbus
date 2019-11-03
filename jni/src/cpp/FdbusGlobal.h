@@ -60,4 +60,11 @@ public:
     static jclass mClass;
 };
 
+class CFdbusMessageParam
+{
+public:
+    static bool init(JNIEnv *env, jclass &clazz);
+    static jclass mClass;
+};
+
 #endif

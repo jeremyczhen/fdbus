@@ -19,13 +19,119 @@ import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.FdbusServer;
 import ipc.fdbus.FdbusClient;
 import ipc.fdbus.SubscribeItem;
+import ipc.fdbus.FdbusMessage;
+import ipc.fdbus.FdbusMessageParser;
 
 public class Fdbus
 {
-    public native void initialize(Class server, Class client, Class sub_item);
-    public Fdbus()
+    /*============================================================*
+     *  The following definition should keep exact the same       *
+     *  as that in FDBus lib!                                     *
+     *============================================================*/
+    // definition for message type
+    public final static int MT_UNKNOWN              = 0;
+    public final static int MT_REQUEST              = 1;
+    public final static int MT_REPLY                = 2;
+    public final static int MT_SUBSCRIBE_REQ        = 3;
+    public final static int MT_BROADCAST            = 4;
+    public final static int MT_SIDEBAND_REQUEST     = 5;
+    public final static int MT_SIDEBAND_REPLY       = 6;
+    public final static int MT_STATUS               = 7;
+    public final static int MT_MAX                  = 8;
+
+    // definition for encoding
+    public final static int FDB_MSG_ENC_RAW         = 0;
+    public final static int FDB_MSG_ENC_PROTOBUF    = 1;
+    public final static int FDB_MSG_ENC_CUSTOM1     = 2;
+    public final static int FDB_MSG_ENC_CUSTOM2     = 3;
+    public final static int FDB_MSG_ENC_CUSTOM3     = 4;
+    public final static int FDB_MSG_ENC_CUSTOM4     = 5;
+    public final static int FDB_MSG_ENC_CUSTOM5     = 6;
+    public final static int FDB_MSG_ENC_CUSTOM6     = 7;
+    public final static int FDB_MSG_ENC_MAX         = 8;
+
+    // Fdbus Message invoke Status
+    public final static int FDB_ST_OK               = 0;
+    public final static int FDB_ST_AUTO_REPLY_OK    = -11;
+    public final static int FDB_ST_SUBSCRIBE_OK     = -12;
+    public final static int FDB_ST_SUBSCRIBE_FAIL   = -13;
+    public final static int FDB_ST_UNSUBSCRIBE_OK   = -14;
+    public final static int FDB_ST_UNSUBSCRIBE_FAIL = -15;
+    public final static int FDB_ST_TIMEOUT          = -16;
+    public final static int FDB_ST_INVALID_ID       = -17;
+    public final static int FDB_ST_PEER_VANISH      = -18;
+    public final static int FDB_ST_DEAD_LOCK        = -19;
+    public final static int FDB_ST_UNABLE_TO_SEND   = -20;
+    public final static int FDB_ST_NON_EXIST        = -21;
+    public final static int FDB_ST_ALREADY_EXIST    = -22;
+    public final static int FDB_ST_MSG_DECODE_FAIL  = -23;
+    public final static int FDB_ST_BAD_PARAMETER    = -24;
+    public final static int FDB_ST_NOT_AVAILABLE    = -25;
+    public final static int FDB_ST_INTERNAL_FAIL    = -26;
+    public final static int FDB_ST_OUT_OF_MEMORY    = -27;
+    public final static int FDB_ST_NOT_IMPLEMENTED  = -28;
+    public final static int FDB_ST_OBJECT_NOT_FOUND = -29;
+    public final static int FDB_ST_AUTHENTICATION_FAIL = -30;
+
+    // Fdbus log level
+    public final static int FDB_LL_VERBOSE          = 0;
+    public final static int FDB_LL_DEBUG            = 1;
+    public final static int FDB_LL_INFO             = 2;
+    public final static int FDB_LL_WARNING          = 3;
+    public final static int FDB_LL_ERROR            = 4;
+    public final static int FDB_LL_FATAL            = 5;
+    public final static int FDB_LL_SILENT           = 6;
+    public final static int FDB_LL_MAX              = 7;
+
+    private native void fdb_init(Class server, Class client, Class sub_item, Class msg);
+    private static native void fdb_log_trace(String tag, int level, String data);
+    
+    private static FdbusMessageParser mMessageParser;
+
+    private void initialize(FdbusMessageParser msg_parser)
     {
         System.loadLibrary("fdbus-jni");
-        initialize(FdbusServer.class, FdbusClient.class, SubscribeItem.class);
+        fdb_init(FdbusServer.class, FdbusClient.class, SubscribeItem.class, FdbusMessage.class);
+        mMessageParser = msg_parser;
+    }
+
+    public Fdbus(FdbusMessageParser msg_parser)
+    {
+        initialize(msg_parser);
+    }
+
+    public Fdbus()
+    {
+        initialize(null);
+    }
+
+    public static FdbusMessageParser messageParser()
+    {
+        return mMessageParser;
+    }
+
+    public static void LOG_D(String tag, String data)
+    {
+        fdb_log_trace(tag, FDB_LL_DEBUG, data);
+    }
+
+    public static void LOG_I(String tag, String data)
+    {
+        fdb_log_trace(tag, FDB_LL_INFO, data);
+    }
+
+    public static void LOG_W(String tag, String data)
+    {
+        fdb_log_trace(tag, FDB_LL_WARNING, data);
+    }
+
+    public static void LOG_E(String tag, String data)
+    {
+        fdb_log_trace(tag, FDB_LL_ERROR, data);
+    }
+
+    public static void LOG_F(String tag, String data)
+    {
+        fdb_log_trace(tag, FDB_LL_FATAL, data);
     }
 }

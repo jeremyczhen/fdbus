@@ -18,6 +18,8 @@
 #include <ipc_fdbus_FdbusServer.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CFdbMessage.h>
+#include <common_base/CLogProducer.h>
+#include <common_base/CFdbContext.h>
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
 
@@ -167,6 +169,11 @@ void CJniServer::onSubscribe(CBaseJob::Ptr &msg_ref)
             jstring filter = c_filter ? env->NewStringUTF(c_filter) : 0;
             jobject j_sub_item = env->NewObject(CFdbusSubscribeItemParam::mClass,
                                                 constructor, msg_code, filter);
+            if (!j_sub_item)
+            {
+                FDB_LOG_E("onSubscribe: unable to create subscribe item!\n");
+                continue;
+            }
             env->CallObjectMethod(obj_arr_list, arr_list_add, j_sub_item);
         }
         FDB_END_FOREACH_SIGNAL()
@@ -209,7 +216,7 @@ JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusServer_fdb_1create
     return handle;
 }
 
-JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusServer_fdb_1create
+JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusServer_fdb_1destroy
   (JNIEnv *, jobject, jlong handle)
 {
     CJniServer *server = (CJniServer *)handle;
@@ -232,10 +239,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1bind
             server->bind(c_url);
             ret = true;
         }
-        else
-        {
-            FDB_LOG_E("Java_FdbusServer_fdb_1bind: empty handle!\n");
-        }
         env->ReleaseStringUTFChars(url, c_url);
     }
     return false;
@@ -250,10 +253,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1unbind
         server->unbind();
         return true;
     }
-    else
-    {
-        FDB_LOG_E("Java_FdbusServer_fdb_1unbind: empty handle!\n");
-    }
+
     return false;
 }
 
@@ -270,7 +270,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1broadcast
     CJniServer *server = (CJniServer *)handle;
     if (!server)
     {
-        FDB_LOG_E("Java_FdbusServer_fdb_1broadcast: empty handle!\n");
         return false;
     }
 
@@ -329,10 +328,6 @@ JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusServer_fdb_1endpoint_1name
     {
         name = server->name().c_str();
     }
-    else
-    {
-        FDB_LOG_E("Java_ipc_fdbus_FdbusServer_fdb_1endpoint_1name: empty handle!\n");
-    }
    
    return env->NewStringUTF(name);
 }
@@ -347,12 +342,23 @@ JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusServer_fdb_1bus_1name
     {
         name = server->nsName().c_str();
     }
-    else
-    {
-        FDB_LOG_E("Java_ipc_fdbus_FdbusServer_fdb_1endpoint_1name: empty handle!\n");
-    }
  
     return env->NewStringUTF(name);
 }
 
+JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
+  (JNIEnv *env, jobject, jlong handle, jint msg_type)
+{
+    CJniServer *server = (CJniServer *)handle;
+    if (server)
+    {
+        CLogProducer *logger = CFdbContext::getInstance()->getLogger();
+        if (logger && logger->checkLogEnabled(msg_type, 0, server))
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
 
