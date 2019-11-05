@@ -81,6 +81,11 @@ JNIEnv *CGlobalParam::obtainJniEnv()
         }
     }
 
+    if (!env)
+    {
+        FDB_LOG_E("obtainJniEnv: fail to get JVM env!\n");
+    }
+
     return env;
 }
 

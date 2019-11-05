@@ -65,10 +65,6 @@ CJniClient::~CJniClient()
             env->DeleteGlobalRef(mJavaClient);
             mJavaClient = 0;
         }
-        else
-        {
-            FDB_LOG_E("~CJniClient: unable to get JVM!\n");
-        }
     }
 }
 
@@ -79,10 +75,6 @@ void CJniClient::onOnline(FdbSessionId_t sid, bool is_first)
     {
         env->CallVoidMethod(mJavaClient, CFdbusClientParam::mOnOnline, sid);
     }
-    else
-    {
-        FDB_LOG_E("onOnline: unable to get JVM!\n");
-    }
     CGlobalParam::releaseJniEnv(env);
 }
 
@@ -92,10 +84,6 @@ void CJniClient::onOffline(FdbSessionId_t sid, bool is_last)
     if (env)
     {
         env->CallVoidMethod(mJavaClient, CFdbusClientParam::mOnOffline, sid);
-    }
-    else
-    {
-        FDB_LOG_E("onOffline: unable to get JVM!\n");
     }
     CGlobalParam::releaseJniEnv(env);
 }
@@ -138,10 +126,6 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
                                 );
         }
     }
-    else
-    {
-        FDB_LOG_E("onReply: unable to get JVM!\n");
-    }
     CGlobalParam::releaseJniEnv(env);
 }
 
@@ -164,10 +148,6 @@ void CJniClient::onBroadcast(CBaseJob::Ptr &msg_ref)
                                 msg->getDataEncoding()
                                 );
         }
-    }
-    else
-    {
-        FDB_LOG_E("onBroadcast: unable to get JVM!\n");
     }
     CGlobalParam::releaseJniEnv(env);
 }

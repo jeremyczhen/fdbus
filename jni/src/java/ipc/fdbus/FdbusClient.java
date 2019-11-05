@@ -118,6 +118,10 @@ public class FdbusClient
                                 user_data,
                                 timeout);
     }
+    public boolean invokeAsync(int msg_code, byte[] pb_data, Object user_data)
+    {
+        return invokeAsync(msg_code, pb_data, user_data, 0);
+    }
 
     public boolean invokeAsync(int msg_code, Object msg, Object user_data, int timeout)
     {
@@ -140,6 +144,10 @@ public class FdbusClient
                                 user_data,
                                 timeout);
     }
+    public boolean invokeAsync(int msg_code, Object msg, Object user_data)
+    {
+        return invokeAsync(msg_code, msg, user_data, 0);
+    }
 
     public FdbusMessage invokeSync(int msg_code, byte[] pb_data, int timeout)
     {
@@ -149,6 +157,10 @@ public class FdbusClient
                                Fdbus.FDB_MSG_ENC_PROTOBUF,
                                null,
                                timeout);
+    }
+    public FdbusMessage invokeSync(int msg_code, byte[] pb_data)
+    {
+        return invokeSync(msg_code, pb_data, 0);
     }
 
     public FdbusMessage invokeSync(int msg_code, Object msg, int timeout)
@@ -170,6 +182,10 @@ public class FdbusClient
                                Fdbus.FDB_MSG_ENC_PROTOBUF,
                                log_data,
                                timeout);
+    }
+    public FdbusMessage invokeSync(int msg_code, Object msg)
+    {
+        return invokeSync(msg_code, msg, 0);
     }
 	
     public boolean send(int msg_code, byte[] pb_data)

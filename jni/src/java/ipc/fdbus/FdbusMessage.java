@@ -117,6 +117,7 @@ public class FdbusMessage
     {
         if (Fdbus.messageParser() == null)
         {
+            destroy();
             return false;
         }
 
@@ -155,6 +156,7 @@ public class FdbusMessage
     {
         if (Fdbus.messageParser() == null)
         {
+            destroy();
             return false;
         }
 

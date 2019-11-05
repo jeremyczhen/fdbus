@@ -30,6 +30,8 @@ public class FdbusTestClient
 {
     private class myTestClient extends TimerTask implements FdbusClientListener
     {
+        public final static int CONFIG_SYNC_INVOKE = 0;
+
         public final static int REQ_METADATA = 0;
         public final static int REQ_RAWDATA = 1;
         public final static int REQ_CREATE_MEDIAPLAYER = 2;
@@ -94,7 +96,18 @@ public class FdbusTestClient
         
         public void onReply(FdbusMessage msg)
         {
-            Fdbus.LOG_I("FDB_TEST_CLIENT", "Async reply is received.\n");
+            Object ud = msg.userData();
+            if (ud != null)
+            {
+                if (ud instanceof ArrayList<?>)
+                {
+                    if (((ArrayList<?>)ud).get(0) instanceof String)
+                    {
+                        ArrayList<?> user_data = (ArrayList<?>)ud;
+                        System.out.println("OnReply: user data is received with size " + user_data.size());
+                    }
+                }
+            }
             handleReplyMsg(msg);
         }
         
@@ -127,10 +140,21 @@ public class FdbusTestClient
             NFdbExample.SongId.Builder builder = NFdbExample.SongId.newBuilder();
             builder.setId(mSongId);
             NFdbExample.SongId song_id = builder.build();
-            //mClient.invokeAsync(REQ_METADATA, song_id.toByteArray(), null, 0);
-            FdbusMessage msg = mClient.invokeSync(REQ_METADATA, song_id, 0);
-            Fdbus.LOG_I("FDB_TEST_CLIENT", "Sync reply is received.\n");
-            handleReplyMsg(msg);
+
+            ArrayList<String> usr_data = new ArrayList<String>();
+            if (CONFIG_SYNC_INVOKE == 0)
+            {
+                for (int i = 0; i < 10000; ++i)
+                {
+                    usr_data.add(new String("a quick fox dump over brown dog " + i));
+                }
+                mClient.invokeAsync(REQ_METADATA, song_id.toByteArray(), usr_data, 0);
+            }
+            else
+            {
+                FdbusMessage msg = mClient.invokeSync(REQ_METADATA, song_id, 0);
+                handleReplyMsg(msg);
+            }
         }
     }
 
