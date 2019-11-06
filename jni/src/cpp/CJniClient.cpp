@@ -46,6 +46,18 @@ public:
     {
     }
     jobject mUserData;
+    ~CJniInvokeMsg()
+    {
+        if (mUserData)
+        {
+            JNIEnv *env = CGlobalParam::obtainJniEnv();
+            if (env)
+            {
+                env->DeleteGlobalRef(mUserData);
+                mUserData = 0;
+            }
+        }
+    }
 };
 
 CJniClient::CJniClient(JNIEnv *env, const char *name, jobject java_client)
