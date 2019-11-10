@@ -21,6 +21,7 @@
 #include <common_base/CLogProducer.h>
 #include <idl-gen/common.base.MessageHeader.pb.h>
 #include <utils/Log.h>
+#include "CFdbMessageHeader.h"
 
 #define FDB_SEND_RETRIES 65535
 #define FDB_RECV_RETRIES 65535
@@ -117,7 +118,7 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
     }
     else
     {
-        msg->setErrorMsg(NFdbBase::MT_UNKNOWN, NFdbBase::FDB_ST_UNABLE_TO_SEND,
+        msg->setErrorMsg(FDB_MT_UNKNOWN, NFdbBase::FDB_ST_UNABLE_TO_SEND,
                          "Fail when sending message!");
         if (!msg->sync())
         {
@@ -189,8 +190,8 @@ void CFdbSession::onInput(bool &io_error)
         return;
     }
 
-    NFdbBase::FdbMessageHeader head;
-    if (!CFdbMessage::deserializePb(head, head_start, prefix.mHeadLength))
+    CFdbMessageHeaderParser head(head_start, prefix.mHeadLength);
+    if (head.parse() < 0)
     {
         LOG_E("CFdbSession: Session %d: Unable to deserialize message head!\n", mSid);
         delete[] whole_buf;
@@ -200,21 +201,21 @@ void CFdbSession::onInput(bool &io_error)
 
     switch (head.type())
     {
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SIDEBAND_REQUEST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SIDEBAND_REQUEST:
             doRequest(head, prefix, whole_buf);
             break;
-        case NFdbBase::MT_REPLY:
-        case NFdbBase::MT_SIDEBAND_REPLY:
+        case FDB_MT_REPLY:
+        case FDB_MT_SIDEBAND_REPLY:
             doResponse(head, prefix, whole_buf);
             break;
-        case NFdbBase::MT_BROADCAST:
+        case FDB_MT_BROADCAST:
             doBroadcast(head, prefix, whole_buf);
             break;
-        case NFdbBase::MT_STATUS:
+        case FDB_MT_STATUS:
             doResponse(head, prefix, whole_buf);
             break;
-        case NFdbBase::MT_SUBSCRIBE_REQ:
+        case FDB_MT_SUBSCRIBE_REQ:
             if (head.code() == FDB_CODE_SUBSCRIBE)
             {
                 doSubscribeReq(head, prefix, whole_buf, true);
@@ -252,7 +253,7 @@ void CFdbSession::onHup()
     endpoint->checkAutoRemove();
 }
 
-void CFdbSession::doRequest(NFdbBase::FdbMessageHeader &head,
+void CFdbSession::doRequest(CFdbMessageHeader &head,
                             CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     CFdbMessage *msg = (head.flag() & MSG_FLAG_DEBUG) ?
@@ -261,14 +262,14 @@ void CFdbSession::doRequest(NFdbBase::FdbMessageHeader &head,
     CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
-    msg->type(NFdbBase::MT_REPLY);
+    msg->type(FDB_MT_REPLY);
     msg->checkLogEnabled(mContainer->owner(), false);
     if (object)
     {
         NFdbBase::FdbMsgStatusCode status_code = NFdbBase::FDB_ST_AUTO_REPLY_OK;
         const char *status_msg = "Automatically reply to request.";
         msg->decodeDebugInfo(head, this);
-        if (msg->type() == NFdbBase::MT_SIDEBAND_REQUEST)
+        if (msg->type() == FDB_MT_SIDEBAND_REQUEST)
         {
             object->onSidebandInvoke(msg_ref);
         }
@@ -293,7 +294,7 @@ void CFdbSession::doRequest(NFdbBase::FdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doResponse(NFdbBase::FdbMessageHeader &head,
+void CFdbSession::doResponse(CFdbMessageHeader &head,
                              CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     bool found;
@@ -321,21 +322,21 @@ void CFdbSession::doResponse(NFdbBase::FdbMessageHeader &head,
             msg->replaceBuffer(buffer, head.payload_size(), prefix.mHeadLength);
             if (!msg->sync())
             {
-                if (head.type() == NFdbBase::MT_REPLY)
+                if (head.type() == FDB_MT_REPLY)
                 {
                     object->doReply(msg_ref);
                 }
-                else if (head.type() == NFdbBase::MT_SIDEBAND_REQUEST)
+                else if (head.type() == FDB_MT_SIDEBAND_REQUEST)
                 {
                     object->onSidebandReply(msg_ref);
                 }
-                else if (head.type() == NFdbBase::MT_STATUS)
+                else if (head.type() == FDB_MT_STATUS)
                 {
-                    if (msg->mType == NFdbBase::MT_REQUEST)
+                    if (msg->mType == FDB_MT_REQUEST)
                     {
                         object->doReply(msg_ref);
                     }
-                    else if (msg->mType == NFdbBase::MT_SIDEBAND_REQUEST)
+                    else if (msg->mType == FDB_MT_SIDEBAND_REQUEST)
                     {
                         object->onSidebandReply(msg_ref);
                     }
@@ -356,7 +357,7 @@ void CFdbSession::doResponse(NFdbBase::FdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doBroadcast(NFdbBase::FdbMessageHeader &head,
+void CFdbSession::doBroadcast(CFdbMessageHeader &head,
                               CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     const char *filter = "";
@@ -374,7 +375,7 @@ void CFdbSession::doBroadcast(NFdbBase::FdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
+void CFdbSession::doSubscribeReq(CFdbMessageHeader &head,
                                  CFdbMessage::CFdbMsgPrefix &prefix,
                                  uint8_t *buffer, bool subscribe)
 {
@@ -391,10 +392,10 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
     {
         // correct the type so that checkLogEnabled() can get correct
         // sender name and receiver name
-        msg->type(NFdbBase::MT_BROADCAST);
+        msg->type(FDB_MT_BROADCAST);
         msg->checkLogEnabled(mContainer->owner(), false);
         msg->decodeDebugInfo(head, this);
-        const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+        const CFdbMsgSubscribeItem *sub_item;
         int32_t ret;
         bool unsubscribe_object = true;
         FDB_BEGIN_FOREACH_SIGNAL_WITH_RETURN(msg, sub_item, ret)
@@ -411,7 +412,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
                 // if fail on authentication, unable to 
                 if (object->onEventAuthentication(msg, this))
                 {
-                    NFdbBase::FdbSubscribeType type = NFdbBase::SUB_TYPE_NORMAL;
+                    CFdbSubscribeType type = FDB_SUB_TYPE_NORMAL;
                     if (sub_item->has_type())
                     {
                         type = sub_item->type();
@@ -447,7 +448,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
             else
             {
                 error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
-                error_msg = "Not valid NFdbBase::FdbMsgSubscribe message!";
+                error_msg = "Not valid CFdbMsgSubscribeList message!";
                 LOG_E("CFdbSession: Session %d: Unable to deserialize subscribe message!\n", mSid);
             }
             goto _reply_status;
@@ -471,12 +472,12 @@ void CFdbSession::doSubscribeReq(NFdbBase::FdbMessageHeader &head,
     return;
     
 _reply_status:
-    msg->type(NFdbBase::MT_STATUS); // correct the type
+    msg->type(FDB_MT_STATUS); // correct the type
     msg->checkLogEnabled(mContainer->owner(), false);
     msg->sendStatus(this, error_code, error_msg);
 }
 
-void CFdbSession::doUpdate(NFdbBase::FdbMessageHeader &head,
+void CFdbSession::doUpdate(CFdbMessageHeader &head,
                            CFdbMessage::CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {
@@ -508,7 +509,7 @@ void CFdbSession::terminateMessage(CBaseJob::Ptr &job, int32_t status, const cha
     CFdbMessage *msg = castToMessage<CFdbMessage *>(job);
     if (msg)
     {
-        msg->setErrorMsg(NFdbBase::MT_UNKNOWN, status, reason);
+        msg->setErrorMsg(FDB_MT_UNKNOWN, status, reason);
         if (!msg->sync())
         {
             mContainer->owner()->doReply(job);

@@ -32,7 +32,7 @@ void CLogPrinter::outputFdbLog(const NFdbBase::FdbLogProducerData &log_info, CFd
               << log_info.sender_name() << "->" << log_info.receiver_name() << "]["
               << log_info.service_name() << "]["
               << log_info.object_id() << "]["
-              << CFdbMessage::getMsgTypeName(log_info.type()) << "]["
+              << CFdbMessage::getMsgTypeName((EFdbMessageType)log_info.type()) << "]["
               << log_info.code() << "]["
               << log_info.serial_number() << "]["
               << log_info.msg_payload_size() << "]["

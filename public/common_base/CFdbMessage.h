@@ -21,22 +21,7 @@
 #include "CBaseJob.h"
 #include "CBaseLoopTimer.h"
 
-#include <idl-gen/common.base.MessageHeader.pb.h>
-#if defined(PROTOBUF_common_2ebase_2eMessageHeader_2eproto__INCLUDED)
-#define CONFIG_INCLUDE_GEN_HEAD
-#endif
-
-#if !defined(CONFIG_INCLUDE_GEN_HEAD)
-namespace google{namespace protobuf {class Message;}}
 namespace google{namespace protobuf {class MessageLite;}}
-
-namespace NFdbBase
-{
-    class FdbMessageHeader;
-    class FdbMsgSubscribe;
-    class FdbMsgSubscribeItem;
-}
-#endif
 
 namespace NFdbBase
 {
@@ -68,13 +53,22 @@ namespace NFdbBase
     };
 }
 
-namespace NFdbBase
-{
-    namespace wrapper
-    {
-        typedef int32_t FdbMessageType;
-    }
-}
+enum EFdbMessageType {
+    FDB_MT_UNKNOWN = 0,
+    FDB_MT_REQUEST = 1,
+    FDB_MT_REPLY = 2,
+    FDB_MT_SUBSCRIBE_REQ = 3,
+    FDB_MT_BROADCAST = 4,
+    FDB_MT_SIDEBAND_REQUEST = 5,
+    FDB_MT_SIDEBAND_REPLY = 6,
+    FDB_MT_STATUS = 7,
+    FDB_MT_MAX = 8
+};
+
+enum CFdbSubscribeType {
+  FDB_SUB_TYPE_NORMAL = 0,
+  FDB_SUB_TYPE_ON_REQUEST = 1
+};
 
 enum EFdbSidebandMessage
 {
@@ -88,7 +82,7 @@ enum EFdbMessageEncoding
 {
     FDB_MSG_ENC_RAW,
     FDB_MSG_ENC_PROTOBUF,
-    FDB_MSG_ENC_CUSTOM1,
+    FDB_MSG_ENC_SIMPLE,
     FDB_MSG_ENC_CUSTOM2,
     FDB_MSG_ENC_CUSTOM3,
     FDB_MSG_ENC_CUSTOM4,
@@ -115,7 +109,7 @@ struct CFdbMsgMetadata
 };
 
 #define FDB_BEGIN_FOREACH_SIGNAL_WITH_RETURN(_msg, _sub_item, _error)     do { \
-    NFdbBase::FdbMsgSubscribe _subscribe_msg; \
+    CFdbMsgSubscribeParser _subscribe_msg; \
     if (!_msg->deserialize(_subscribe_msg)) \
     { \
         _error = -1; \
@@ -123,10 +117,7 @@ struct CFdbMsgMetadata
     else \
     { \
         _error = 0; \
-        const ::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgSubscribeItem> &_notify_list = \
-            _subscribe_msg.notify_list(); \
-        for (::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgSubscribeItem>::const_iterator it = _notify_list.begin(); \
-                it != _notify_list.end(); ++it) \
+        for (CFdbMsgSubscribe::SubList_t::const_iterator it = _subscribe_msg.getSubList().begin(); it != _subscribe_msg.getSubList().end(); ++it) \
         { \
             _sub_item = &(*it);
 
@@ -150,6 +141,9 @@ class CMessageTimer;
 class CFdbSession;
 class CFdbBaseObject;
 class CBaseEndpoint;
+class CFdbMessageHeader;
+class IFdbMsgBuilder;
+class IFdbMsgParser;
 class CFdbMessage : public CBaseJob
 {
 private:
@@ -170,7 +164,7 @@ private:
 #define MSG_FLAG_ENCODING           16
     #define MSG_FLAG_ENC_RAW_DATA   (FDB_MSG_ENC_RAW << MSG_FLAG_ENCODING)
     #define MSG_FLAG_ENC_PROTOBUF   (FDB_MSG_ENC_PROTOBUF << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_CUSTOM1    (FDB_MSG_ENC_CUSTOM1 << MSG_FLAG_ENCODING)
+    #define MSG_FLAG_ENC_SIMPLE     (FDB_MSG_ENC_SIMPLE << MSG_FLAG_ENCODING)
     #define MSG_FLAG_ENC_CUSTOM2    (FDB_MSG_ENC_CUSTOM2 << MSG_FLAG_ENCODING)
     #define MSG_FLAG_ENC_CUSTOM3    (FDB_MSG_ENC_CUSTOM3 << MSG_FLAG_ENCODING)
     #define MSG_FLAG_ENC_CUSTOM4    (FDB_MSG_ENC_CUSTOM4 << MSG_FLAG_ENCODING)
@@ -246,7 +240,20 @@ public:
      * @iparam msg_ref: reference to the incoming message
      * @iparam data: message in protocol buffer
      */
-    static bool reply(CBaseJob::Ptr &msg_ref, const CFdbBasePayload &data);
+    template<typename T>
+    static bool reply(CBaseJob::Ptr &msg_ref, T &data)
+    {
+        CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+        if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
+        {
+            return false;
+        }
+        if (!fdb_msg->serialize(data))
+        {
+            return false;
+        }
+        return fdb_msg->feedback(msg_ref, FDB_MT_REPLY);
+    }
     /*
      * reply[2]
      * Similiar to reply[1] but raw data is sent
@@ -267,9 +274,20 @@ public:
      */
     static bool status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
 
+    template<typename T>
     bool broadcast(FdbMsgCode_t code
-                   , const CFdbBasePayload &data
-                   , const char *filter = 0);
+                   , T &data
+                   , const char *filter = 0)
+    {
+        CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
+        msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
+        if (!msg->serialize(data))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->broadcast();
+    }
 
     bool broadcast(FdbMsgCode_t code
                    , const char *filter = 0
@@ -283,6 +301,7 @@ public:
      *         false - unable to decode
      */
     bool deserialize(CFdbBasePayload &payload) const;
+    bool deserialize(IFdbMsgParser &payload) const;
     /*
      *=========================================================
      * buffer structure:
@@ -367,11 +386,6 @@ public:
         {
             delete[] buffer;
         }
-    }
-
-    bool notPbEncoded() const
-    {
-        return (mFlag & MSG_FLAG_ENCODING_MASK) != MSG_FLAG_ENC_PROTOBUF;
     }
 
     EFdbMessageEncoding getDataEncoding() const
@@ -500,12 +514,12 @@ public:
         }
     }
 
-    NFdbBase::wrapper::FdbMessageType type() const
+    EFdbMessageType type() const
     {
         return mType;
     }
 
-    static const char *getMsgTypeName(NFdbBase::wrapper::FdbMessageType type);
+    static const char *getMsgTypeName(EFdbMessageType type);
 
     void setLogData(const char *log_data);
     void setLogData(std::string *log_data);
@@ -513,17 +527,17 @@ public:
     void checkLogEnabled(const CFdbBaseObject *object, bool lock = true);
 
 protected:
-    virtual void encodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSession *session)
+    virtual void encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
     {}
 
-    virtual void decodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSession *session)
+    virtual void decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
     {}
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
     virtual void onAsyncError(Ptr &ref, NFdbBase::FdbMsgStatusCode code, const char *reason) {}
 
 private:
-    CFdbMessage(NFdbBase::FdbMessageHeader &head
+    CFdbMessage(CFdbMessageHeader &head
                 , CFdbMsgPrefix &prefix
                 , uint8_t *buffer
                 , FdbSessionId_t sid);
@@ -573,6 +587,7 @@ private:
     void run(CBaseWorker *worker, Ptr &ref);
     bool buildHeader(CFdbSession *session);
     bool serialize(const CFdbBasePayload &data, const CFdbBaseObject *object = 0);
+    bool serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object = 0);
     bool serialize(const void *buffer, int32_t size, const CFdbBaseObject *object = 0);
 
     bool submit(CBaseJob::Ptr &msg_ref
@@ -586,8 +601,7 @@ private:
                    , FdbMsgCode_t subscribe_code
                    , int32_t timeout);
     bool feedback(CBaseJob::Ptr &msg_ref
-                , const CFdbBasePayload &data
-                , NFdbBase::wrapper::FdbMessageType type);
+                , EFdbMessageType type);
 
     void doRequest(Ptr &ref);
     void doReply(Ptr &ref);
@@ -597,7 +611,7 @@ private:
     void doUnsubscribeReq(Ptr &ref);
 
     static void autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
-    void setErrorMsg(NFdbBase::wrapper::FdbMessageType type, int32_t error_code, const char *description = 0);
+    void setErrorMsg(EFdbMessageType type, int32_t error_code, const char *description = 0);
 
     void sendStatus(CFdbSession *session, int32_t error_code, const char *description = 0);
     void sendAutoReply(CFdbSession *session, int32_t error_code, const char *description = 0);
@@ -620,19 +634,17 @@ private:
         mSid = session;
     }
 
-    void type(NFdbBase::wrapper::FdbMessageType type)
+    void type(EFdbMessageType type)
     {
         mType = type;
     }
-
-    static bool deserializePb(CFdbBasePayload &payload, void *buffer, int32_t size);
 
     bool sync()
     {
         return !!(mFlag & MSG_FLAG_SYNC_REPLY);
     }
 
-    void update(NFdbBase::FdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix);
+    void update(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix);
     CFdbSession *getSession();
 
     void setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid = FDB_INVALID_ID);
@@ -663,10 +675,23 @@ private:
     CFdbMessage *parseFdbLog(uint8_t *buffer, int32_t size);
     bool invokeSideband(int32_t timeout = 0);
     bool sendSideband();
+    template<typename T>
     static bool replySideband(CBaseJob::Ptr &msg_ref,
-                              const CFdbBasePayload &data);
+                              T &data)
+    {
+        CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+        if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
+        {
+            return false;
+        }
+        if (!fdb_msg->serialize(data))
+        {
+            return false;
+        }
+        return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
+    }
 
-    NFdbBase::wrapper::FdbMessageType mType;
+    EFdbMessageType mType;
     FdbMsgCode_t mCode;
     FdbMsgSn_t mSn;
     int32_t mPayloadSize;
@@ -702,14 +727,14 @@ public:
     
     void metadata(CFdbMsgMetadata &metadata);
 protected:
-    void encodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSession *session);
-    void decodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSession *session);
+    void encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session);
+    void decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session);
 private:
     CFdbDebugMsg(FdbMsgCode_t code
                 , CFdbBaseObject *obj
                 , FdbSessionId_t alt_receiver = FDB_INVALID_ID
                 , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
-    CFdbDebugMsg(NFdbBase::FdbMessageHeader &head
+    CFdbDebugMsg(CFdbMessageHeader &head
                  , CFdbMsgPrefix &prefix
                  , uint8_t *buffer
                  , FdbSessionId_t sid);
@@ -756,7 +781,7 @@ public:
     }
 
 protected:
-    CFdbBroadcastMsg(NFdbBase::FdbMessageHeader &head
+    CFdbBroadcastMsg(CFdbMessageHeader &head
                      , CFdbMsgPrefix &prefix
                      , uint8_t *buffer
                      , FdbSessionId_t sid

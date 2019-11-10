@@ -166,7 +166,7 @@ protected:
         }
         else
         {
-            NFdbBase::FdbMsgSubscribe subscribe_list;
+            CFdbMsgSubscribeList subscribe_list;
             addNotifyItem(subscribe_list, NFdbBase::NTF_FDBUS_LOG);
             addNotifyItem(subscribe_list, NFdbBase::NTF_TRACE_LOG);
             subscribe(subscribe_list);

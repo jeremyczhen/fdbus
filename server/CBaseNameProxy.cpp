@@ -26,14 +26,14 @@ CBaseNameProxy::CBaseNameProxy()
 
 void CBaseNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code, const char *svc_name)
 {
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, code, svc_name);
     subscribe(subscribe_list);
 }
 
 void CBaseNameProxy::unsubscribeListener(NFdbBase::FdbNsMsgCode code, const char *svc_name)
 {
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, code, svc_name);
     unsubscribe(subscribe_list);
 }

@@ -178,7 +178,7 @@ protected:
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
         CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+        const CFdbMsgSubscribeItem *sub_item;
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
             switch (sub_item->msg_code())

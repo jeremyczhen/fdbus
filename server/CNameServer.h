@@ -88,9 +88,9 @@ private:
     void onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref);
     void onQueryHostReq(CBaseJob::Ptr &msg_ref);
     
-    void onServiceOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
-    void onHostOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
-    void onHostInfoReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
+    void onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
+    void onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
+    void onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
     bool allocateTcpAddress(const std::string &svc_name, std::string &addr_url);

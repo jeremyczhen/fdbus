@@ -47,7 +47,7 @@ CLogProducer::CLogProducer()
 
 void CLogProducer::onOnline(FdbSessionId_t sid, bool is_first)
 {
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, NFdbBase::NTF_LOGGER_CONFIG);
     addNotifyItem(subscribe_list, NFdbBase::NTF_TRACE_CONFIG);
     subscribe(subscribe_list);
@@ -102,7 +102,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
     }
 }
 
-const char *CLogProducer::getReceiverName(NFdbBase::wrapper::FdbMessageType type,
+const char *CLogProducer::getReceiverName(EFdbMessageType type,
                                           const char *sender_name,
                                           const CBaseEndpoint *endpoint)
 {
@@ -110,9 +110,9 @@ const char *CLogProducer::getReceiverName(NFdbBase::wrapper::FdbMessageType type
     
     switch (type)
     {
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SUBSCRIBE_REQ:
-        case NFdbBase::MT_SIDEBAND_REQUEST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SUBSCRIBE_REQ:
+        case FDB_MT_SIDEBAND_REQUEST:
             receiver = endpoint->nsName().c_str();
         break;
         default:
@@ -135,33 +135,33 @@ bool CLogProducer::checkLogEnabledGlobally()
     return getSessionCount() && !mLoggerDisableGlobal && mLogHostEnabled;
 }
 
-bool CLogProducer::checkLogEnabledByMessageType(NFdbBase::wrapper::FdbMessageType type)
+bool CLogProducer::checkLogEnabledByMessageType(EFdbMessageType type)
 {
     bool match = true;
     switch (type)
     {
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SIDEBAND_REQUEST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SIDEBAND_REQUEST:
             if (mDisableRequest)
             {
                 match = false;
             }
         break;
-        case NFdbBase::MT_REPLY:
-        case NFdbBase::MT_STATUS:
-        case NFdbBase::MT_SIDEBAND_REPLY:
+        case FDB_MT_REPLY:
+        case FDB_MT_STATUS:
+        case FDB_MT_SIDEBAND_REPLY:
             if (mDisableReply)
             {
                 match = false;
             }
         break;
-        case NFdbBase::MT_BROADCAST:
+        case FDB_MT_BROADCAST:
             if (mDisableBroadcast)
             {
                 match = false;
             }
         break;
-        case NFdbBase::MT_SUBSCRIBE_REQ:
+        case FDB_MT_SUBSCRIBE_REQ:
             if (mDisableSubscribe)
             {
                 match = false;
@@ -196,7 +196,7 @@ bool CLogProducer::checkLogEnabledByEndpoint(const char *sender, const char *rec
     return true;
 }
 
-bool CLogProducer::checkLogEnabled(NFdbBase::wrapper::FdbMessageType type,
+bool CLogProducer::checkLogEnabled(EFdbMessageType type,
                                     const char *sender_name,
                                     const CBaseEndpoint *endpoint,
                                     bool lock)
@@ -255,7 +255,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
     logger_data.set_sender_name(sender);
     logger_data.set_receiver_name(receiver);
     logger_data.set_service_name(busname);
-    logger_data.set_type((NFdbBase::FdbMessageType)msg->type());
+    logger_data.set_type((int32_t)msg->type());
     logger_data.set_code(msg->code());
     logger_data.set_time_stamp(sysdep_getsystemtime_milli());
     logger_data.set_msg_payload_size(msg->getPayloadSize());

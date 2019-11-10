@@ -56,8 +56,7 @@
 #include "CSysLoopTimer.h"
 #include "CThreadEventLoop.h"
 #include "fdb_option_parser.h"
-#if 0
-#include <idl-gen/common.base.MessageHeader.pb.h>
-#endif
+#include "CFdbMsgSubscribe.h"
+#include "fdb_log_trace.h"
 
 #endif

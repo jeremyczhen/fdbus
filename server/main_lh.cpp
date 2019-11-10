@@ -104,7 +104,7 @@ protected:
     {
         if (ls_follow)
         {
-            NFdbBase::FdbMsgSubscribe subscribe_list;
+            CFdbMsgSubscribeList subscribe_list;
             addNotifyItem(subscribe_list, NFdbBase::NTF_HOST_ONLINE_LOCAL);
             subscribe(subscribe_list);
         }

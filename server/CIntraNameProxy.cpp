@@ -418,7 +418,7 @@ void CIntraNameProxy::onOnline(FdbSessionId_t sid, bool is_first)
 {
     mConnectTimer.disable();
     
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, NFdbBase::NTF_HOST_INFO);
     subscribe(subscribe_list);
     

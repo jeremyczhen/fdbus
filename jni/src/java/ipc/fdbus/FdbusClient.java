@@ -131,7 +131,7 @@ public class FdbusClient
         }
     
         String log_data = null;
-        if (logEnabled(Fdbus.MT_REQUEST))
+        if (logEnabled(Fdbus.FDB_MT_REQUEST))
         {
             log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
@@ -171,7 +171,7 @@ public class FdbusClient
         }
     
         String log_data = null;
-        if (logEnabled(Fdbus.MT_REQUEST))
+        if (logEnabled(Fdbus.FDB_MT_REQUEST))
         {
             log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
@@ -201,7 +201,7 @@ public class FdbusClient
         }
     
         String log_data = null;
-        if (logEnabled(Fdbus.MT_REQUEST))
+        if (logEnabled(Fdbus.FDB_MT_REQUEST))
         {
             log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }

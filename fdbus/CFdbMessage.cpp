@@ -26,6 +26,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <utils/Log.h>
+#include "CFdbMessageHeader.h"
 
 #define FDB_MSG_TX_SYNC         (1 << 0)
 #define FDB_MSG_TX_NO_REPLY     (1 << 1)
@@ -50,7 +51,7 @@ private:
 };
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, EFdbMessageEncoding enc)
-    : mType(NFdbBase::MT_REQUEST)
+    : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
     , mPayloadSize(0)
@@ -67,7 +68,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, EFdbMessageEncoding enc)
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, EFdbMessageEncoding enc)
-    : mType(NFdbBase::MT_REQUEST)
+    : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
     , mPayloadSize(0)
@@ -83,7 +84,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, EFdbMessageEncoding enc)
-    : mType(NFdbBase::MT_BROADCAST)
+    : mType(FDB_MT_BROADCAST)
     , mCode(code)
     , mSn(msg->mSn)
     , mPayloadSize(0)
@@ -100,12 +101,12 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, EFdbMessageEncodin
 {
 }
 
-CFdbMessage::CFdbMessage(NFdbBase::FdbMessageHeader &head
+CFdbMessage::CFdbMessage(CFdbMessageHeader &head
                          , CFdbMsgPrefix &prefix
                          , uint8_t *buffer
                          , FdbSessionId_t sid
                         )
-    : mType(NFdbBase::MT_REPLY)
+    : mType(FDB_MT_REPLY)
     , mCode(head.code())
     , mSn(head.serial_number())
     , mPayloadSize(head.payload_size())
@@ -173,21 +174,21 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
 {
     switch (mType)
     {
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SIDEBAND_REQUEST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SIDEBAND_REQUEST:
             doRequest(ref);
             break;
-        case NFdbBase::MT_REPLY:
-        case NFdbBase::MT_SIDEBAND_REPLY:
+        case FDB_MT_REPLY:
+        case FDB_MT_SIDEBAND_REPLY:
             doReply(ref);
             break;
-        case NFdbBase::MT_BROADCAST:
+        case FDB_MT_BROADCAST:
             doBroadcast(ref);
             break;
-        case NFdbBase::MT_STATUS:
+        case FDB_MT_STATUS:
             doStatus(ref);
             break;
-        case NFdbBase::MT_SUBSCRIBE_REQ:
+        case FDB_MT_SUBSCRIBE_REQ:
             if ((mCode == FDB_CODE_SUBSCRIBE) || (mCode == FDB_CODE_UPDATE))
 			{
                 doSubscribeReq(ref);
@@ -204,17 +205,8 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
 }
 
 bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
-                         , const CFdbBasePayload &data
-                         , NFdbBase::wrapper::FdbMessageType type)
+                         , EFdbMessageType type)
 {
-    if (mFlag & MSG_FLAG_NOREPLY_EXPECTED)
-    {
-        return false;
-    }
-    if (!serialize(data))
-    {
-        return false;
-    }
     mType = type;
     mFlag &= ~MSG_FLAG_ENCODING_MASK;
     mFlag |= MSG_FLAG_REPLIED | MSG_FLAG_ENC_PROTOBUF;
@@ -225,13 +217,6 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
         return false;
     }
     return true;
-}
-
-
-bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref, const CFdbBasePayload &data)
-{
-    CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-    return fdb_msg->feedback(msg_ref, data, NFdbBase::MT_REPLY);
 }
 
 bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
@@ -251,7 +236,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     }
     fdb_msg->setLogData(log_data);
     
-    fdb_msg->mType = NFdbBase::MT_REPLY;
+    fdb_msg->mType = FDB_MT_REPLY;
     fdb_msg->mFlag &= ~MSG_FLAG_ENCODING_MASK;
     fdb_msg->mFlag |= MSG_FLAG_REPLIED | ((enc << MSG_FLAG_ENCODING) & MSG_FLAG_ENCODING_MASK);
     if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
@@ -270,7 +255,7 @@ bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char 
     {
         return false;
     }
-    fdb_msg->setErrorMsg(NFdbBase::MT_STATUS, error_code, description);
+    fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
     if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
     {
         LOG_E("CFdbMessage: Fail to send status job to FDB_CONTEXT!\n");
@@ -327,7 +312,7 @@ bool CFdbMessage::invoke(CBaseJob::Ptr &msg_ref
                          , uint32_t tx_flag
                          , int32_t timeout)
 {
-    mType = NFdbBase::MT_REQUEST;
+    mType = FDB_MT_REQUEST;
     return submit(msg_ref, tx_flag, timeout);
 }
 
@@ -358,7 +343,7 @@ bool CFdbMessage::sendLog(const CFdbBasePayload &data
 {
     mFlag |= MSG_FLAG_NOREPLY_EXPECTED;
     mFlag &= ~MSG_FLAG_ENABLE_LOG;
-    mType = NFdbBase::MT_REQUEST;
+    mType = FDB_MT_REQUEST;
 
     if (clipped_size < 0)
     {
@@ -417,7 +402,7 @@ void CFdbMessage::broadcastLog(const CFdbBasePayload &data
                                 , int32_t size
                                 , bool send_as_job)
 {
-    mType = NFdbBase::MT_BROADCAST;
+    mType = FDB_MT_BROADCAST;
     mFlag &= ~MSG_FLAG_ENABLE_LOG;
     mExtraSize = size;
     if (!serialize(data))
@@ -459,14 +444,12 @@ CFdbMessage *CFdbMessage::parseFdbLog(uint8_t *buffer, int32_t size)
     CFdbMessage::CFdbMsgPrefix prefix;
     prefix.deserialize(buffer);
     
-    NFdbBase::FdbMessageHeader head;
-    if (!CFdbMessage::deserializePb(head,
-                                    buffer + CFdbMessage::mPrefixSize,
-                                    prefix.mHeadLength))
+    CFdbMessageHeaderParser head(buffer + CFdbMessage::mPrefixSize, prefix.mHeadLength);
+    if (head.parse() < 0)
     {
-        LOG_E("CFdbMessage: Unable to deserialize log header!\n");
         return 0;
     }
+
     int32_t payload_size = head.payload_size();
     int32_t extra_size = prefix.mTotalLength - mPrefixSize - prefix.mHeadLength - payload_size;
     if (extra_size < 0)
@@ -479,20 +462,6 @@ CFdbMessage *CFdbMessage::parseFdbLog(uint8_t *buffer, int32_t size)
         head.set_payload_size(payload_size);
     }
     return new CFdbMessage(head, prefix, buffer, session());
-}
-
-bool CFdbMessage::broadcast(FdbMsgCode_t code
-                           , const CFdbBasePayload &data
-                           , const char *filter)
-{
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
-    msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
-    if (!msg->serialize(data))
-    {
-        delete msg;
-        return false;
-    }
-    return msg->broadcast();
 }
 
 bool CFdbMessage::broadcast(FdbMsgCode_t code
@@ -515,7 +484,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
 
 bool CFdbMessage::broadcast()
 {
-   mType = NFdbBase::MT_BROADCAST;
+   mType = FDB_MT_BROADCAST;
    if (!CFdbContext::getInstance()->sendAsyncEndeavor(this))
    {
        LOG_E("CFdbMessage: Fail to send broadcast job to FDB_CONTEXT!\n");
@@ -529,7 +498,7 @@ bool CFdbMessage::subscribe(CBaseJob::Ptr &msg_ref
                             , FdbMsgCode_t subscribe_code
                             , int32_t timeout)
 {
-    mType = NFdbBase::MT_SUBSCRIBE_REQ;
+    mType = FDB_MT_SUBSCRIBE_REQ;
     mCode = subscribe_code;
     return submit(msg_ref, tx_flag, timeout);
 }
@@ -573,8 +542,8 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
     {
         return true;
     }
-    NFdbBase::FdbMessageHeader msg_hdr;
-    msg_hdr.set_type((NFdbBase::FdbMessageType)mType);
+    CFdbMessageHeaderBuilder msg_hdr;
+    msg_hdr.set_type(mType);
     msg_hdr.set_serial_number(mSn);
     msg_hdr.set_code(mCode);
     msg_hdr.set_flag(mFlag & MSG_GLOBAL_FLAG_MASK);
@@ -584,14 +553,14 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
     encodeDebugInfo(msg_hdr, session);
     if (mSenderName.empty())
     {
-        msg_hdr.set_sender_name(session->getEndpointName());
+        msg_hdr.set_sender_name(session->getEndpointName().c_str());
     }
     else
     {
-        msg_hdr.set_sender_name(mSenderName);
+        msg_hdr.set_sender_name(mSenderName.c_str());
     }
 
-    if (mType == NFdbBase::MT_BROADCAST)
+    if (mType == FDB_MT_BROADCAST)
     {
         const char *filter = getFilter();
         if (filter && (filter[0] != '\0'))
@@ -600,10 +569,10 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
         }
     }
 
-    int32_t head_size = msg_hdr.ByteSize();
-    if (head_size > mMaxHeadSize)
+    int32_t head_size = msg_hdr.build();
+    if ((head_size > mMaxHeadSize) || (head_size < 0))
     {
-        LOG_E("CFdbMessage: Message %d of Session %d: Head is too long!\n", (int32_t)mCode, (int32_t)mSid);
+        LOG_E("CFdbMessage: Message %d of Session %d: Head is too long or error!\n", (int32_t)mCode, (int32_t)mSid);
         return false;
     }
     mHeadSize = head_size;
@@ -611,21 +580,7 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
     int32_t prefix_offset = head_offset - mPrefixSize;
     mOffset = prefix_offset;
 
-    try
-    {
-        google::protobuf::io::ArrayOutputStream aos(mBuffer + head_offset, head_size);
-        google::protobuf::io::CodedOutputStream coded_output(&aos);
-        if (!msg_hdr.SerializeToCodedStream(&coded_output))
-        {
-            LOG_E("CFdbMessage: Unable to serialize head!\n");
-            return false;
-        }
-    }
-    catch (...)
-    {
-        LOG_E("CFdbMessage: Unable to serialize head!\n");
-        return false;
-    }
+    msg_hdr.toBuffer(mBuffer + head_offset, head_size);
 
     // Update offset and head size according to actual head size
     CFdbMsgPrefix prefix(getRawDataSize(), mHeadSize);
@@ -682,6 +637,9 @@ bool CFdbMessage::serialize(const CFdbBasePayload &data, const CFdbBaseObject *o
         return false;
     }
 
+    mFlag &= ~MSG_FLAG_ENCODING_MASK;
+    mFlag |= MSG_FLAG_ENC_PROTOBUF;
+
     if (object)
     {
         checkLogEnabled(object);
@@ -705,6 +663,34 @@ bool CFdbMessage::serialize(const CFdbBasePayload &data, const CFdbBaseObject *o
     }
 
 	return true;
+}
+
+bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
+{
+    mOffset = 0;
+    mHeadSize = mMaxHeadSize;
+
+    if (object)
+    {
+        checkLogEnabled(object);
+    }
+    releaseBuffer();
+    
+    mFlag |= MSG_FLAG_EXTERNAL_BUFFER;
+    int32_t size = data.build();
+    if (size < 0)
+    {
+        return false;
+    }
+    mPayloadSize = size;
+    if (allocCopyRawBuffer(0, mPayloadSize))
+    {
+        data.toBuffer(mBuffer + maxReservedSize(), mPayloadSize);
+    }
+    
+    mFlag &= ~MSG_FLAG_ENCODING_MASK;
+    mFlag |= MSG_FLAG_ENC_SIMPLE;
+    return true;
 }
 
 bool CFdbMessage::serialize(const void *buffer, int32_t size, const CFdbBaseObject *object)
@@ -779,7 +765,7 @@ void CFdbMessage::doRequest(Ptr &ref)
     {
         if (mFlag & MSG_FLAG_SYNC_REPLY)
         {
-            setErrorMsg(NFdbBase::MT_UNKNOWN, NFdbBase::FDB_ST_INVALID_ID, reason);
+            setErrorMsg(FDB_MT_UNKNOWN, NFdbBase::FDB_ST_INVALID_ID, reason);
         }
         else
         {
@@ -878,9 +864,9 @@ void CFdbMessage::doUnsubscribeReq(Ptr &ref)
     doRequest(ref);
 }
 
-void CFdbMessage::setErrorMsg(NFdbBase::wrapper::FdbMessageType type, int32_t error_code, const char *description)
+void CFdbMessage::setErrorMsg(EFdbMessageType type, int32_t error_code, const char *description)
 {
-    if (type != NFdbBase::MT_UNKNOWN)
+    if (type != FDB_MT_UNKNOWN)
     {
         mType = type;
     }
@@ -905,7 +891,7 @@ void CFdbMessage::sendStatus(CFdbSession *session, int32_t error_code, const cha
 {
     if (!(mFlag & MSG_FLAG_NOREPLY_EXPECTED))
     {
-        setErrorMsg(NFdbBase::MT_STATUS, error_code, description);
+        setErrorMsg(FDB_MT_STATUS, error_code, description);
         session->sendMessage(this);
     }
 }
@@ -940,7 +926,7 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
             && (msg_ref.use_count() == 1))
     {
         CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-        fdb_msg->setErrorMsg(NFdbBase::MT_STATUS, error_code, description);
+        fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
         CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref);
     }
 }
@@ -1012,7 +998,7 @@ bool CFdbMessage::decodeStatus(int32_t &error_code, std::string &description)
     return ret;
 }
 
-void CFdbMessage::update(NFdbBase::FdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix)
+void CFdbMessage::update(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix)
 {
     mFlag = (mFlag & ~MSG_GLOBAL_FLAG_MASK) | (head.flag() & MSG_GLOBAL_FLAG_MASK);
     //mCode = head.code();
@@ -1040,30 +1026,25 @@ CFdbSession *CFdbMessage::getSession()
 
 bool CFdbMessage::deserialize(CFdbBasePayload &payload) const
 {
-    if (!mBuffer || notPbEncoded())
+    if (!mBuffer || ((mFlag & MSG_FLAG_ENCODING_MASK) != MSG_FLAG_ENC_PROTOBUF))
     {
         return false;
     }
-    return deserializePb(payload
-                         , mBuffer + mOffset + mPrefixSize + mHeadSize
-                         , mPayloadSize);
-}
 
-bool CFdbMessage::deserializePb(CFdbBasePayload &payload, void *buffer, int32_t size)
-{
     bool ret;
-    if (!size)
+    if (!mPayloadSize)
     {
         ret = true;
     }
-    else if (buffer)
+    else
     {
+        uint8_t *buffer = mBuffer + mOffset + mPrefixSize + mHeadSize;
         try
         {
             //Assign ArrayInputStream with enough memory
-            google::protobuf::io::ArrayInputStream ais(buffer, size);
+            google::protobuf::io::ArrayInputStream ais(buffer, mPayloadSize);
             google::protobuf::io::CodedInputStream coded_input(&ais);
-            google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(size);
+            google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(mPayloadSize);
             // De-Serialize
             ret = payload.ParseFromCodedStream(&coded_input);
             //Once the embedded message has been parsed, PopLimit() is called to undo the limit
@@ -1074,15 +1055,21 @@ bool CFdbMessage::deserializePb(CFdbBasePayload &payload, void *buffer, int32_t 
             ret = false;
         }
     }
-    else
-    {
-        ret = false;
-    }
     
     return ret;
 }
 
-const char *CFdbMessage::getMsgTypeName(NFdbBase::wrapper::FdbMessageType type)
+bool CFdbMessage::deserialize(IFdbMsgParser &payload) const
+{
+    if (!mBuffer || !mPayloadSize || ((mFlag & MSG_FLAG_ENCODING_MASK) != MSG_FLAG_ENC_SIMPLE))
+    {
+        return false;
+    }
+    payload.prepare(mBuffer + mOffset + mPrefixSize + mHeadSize, mPayloadSize);
+    return payload.parse() < 0 ? false : true;
+}
+
+const char *CFdbMessage::getMsgTypeName(EFdbMessageType type)
 {
     static const char *type_name[] = {"Unknown"
                                     , "Request"
@@ -1092,7 +1079,7 @@ const char *CFdbMessage::getMsgTypeName(NFdbBase::wrapper::FdbMessageType type)
                                     , "SidebandRequest"
                                     , "SidebandReply"
                                     , "Status"};
-    if (type >= NFdbBase::MT_MAX)
+    if (type >= FDB_MT_MAX)
     {
         return 0;
     }
@@ -1128,7 +1115,7 @@ void CFdbMessage::setLogData(std::string *log_data)
 
 bool CFdbMessage::isSubscribe()
 {
-    return (mType == NFdbBase::MT_SUBSCRIBE_REQ) && (mCode == FDB_CODE_SUBSCRIBE);
+    return (mType == FDB_MT_SUBSCRIBE_REQ) && (mCode == FDB_CODE_SUBSCRIBE);
 }
 
 void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
@@ -1166,7 +1153,7 @@ CFdbDebugMsg::CFdbDebugMsg(FdbMsgCode_t code
     mFlag |= MSG_FLAG_DEBUG;
 }
 
-CFdbDebugMsg::CFdbDebugMsg(NFdbBase::FdbMessageHeader &head
+CFdbDebugMsg::CFdbDebugMsg(CFdbMessageHeader &head
                            , CFdbMsgPrefix &prefix
                            , uint8_t *buffer
                            , FdbSessionId_t sid)
@@ -1186,18 +1173,18 @@ CFdbDebugMsg:: CFdbDebugMsg(FdbMsgCode_t code
     mFlag |= MSG_FLAG_DEBUG;
 }
 
-void CFdbDebugMsg::encodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSession *session)
+void CFdbDebugMsg::encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
 {
     switch (msg_hdr.type())
     {
-        case NFdbBase::MT_REPLY:
-        case NFdbBase::MT_STATUS:
+        case FDB_MT_REPLY:
+        case FDB_MT_STATUS:
             msg_hdr.set_send_or_arrive_time(mArriveTime);
             msg_hdr.set_reply_time(CNanoTimer::getNanoSecTimer());
             break;
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SUBSCRIBE_REQ:
-        case NFdbBase::MT_BROADCAST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SUBSCRIBE_REQ:
+        case FDB_MT_BROADCAST:
             mSendTime = CNanoTimer::getNanoSecTimer();
             msg_hdr.set_send_or_arrive_time(mSendTime);
             break;
@@ -1206,30 +1193,25 @@ void CFdbDebugMsg::encodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSess
     }
 }
 
-void CFdbDebugMsg::decodeDebugInfo(NFdbBase::FdbMessageHeader &msg_hdr, CFdbSession *session)
+void CFdbDebugMsg::decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
 {
+    if (!msg_hdr.has_debug_info())
+    {
+        return;
+    }
     switch (msg_hdr.type())
     {
-        case NFdbBase::MT_REPLY:
-        case NFdbBase::MT_STATUS:
-            if (msg_hdr.has_send_or_arrive_time())
-            {
-                mArriveTime = msg_hdr.send_or_arrive_time();
-            }
-            if (msg_hdr.has_reply_time())
-            {
-                mReplyTime = msg_hdr.reply_time();
-            }
+        case FDB_MT_REPLY:
+        case FDB_MT_STATUS:
+            mArriveTime = msg_hdr.send_or_arrive_time();
+            mReplyTime = msg_hdr.reply_time();
             mReceiveTime = CNanoTimer::getNanoSecTimer();
             break;
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SUBSCRIBE_REQ:
-        case NFdbBase::MT_BROADCAST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SUBSCRIBE_REQ:
+        case FDB_MT_BROADCAST:
             mArriveTime = CNanoTimer::getNanoSecTimer();
-            if (msg_hdr.has_send_or_arrive_time())
-            {
-                mSendTime = msg_hdr.send_or_arrive_time();
-            }
+            mSendTime = msg_hdr.send_or_arrive_time();
             break;
         default:
             break;
@@ -1272,7 +1254,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
     {
         mOid = alt_oid;
     }
-    mType = NFdbBase::MT_BROADCAST;
+    mType = FDB_MT_BROADCAST;
 }
 
 CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
@@ -1287,27 +1269,20 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
     }
     mFlag |= msg->mFlag & MSG_FLAG_MANUAL_UPDATE;
 
-    mType = NFdbBase::MT_BROADCAST;
+    mType = FDB_MT_BROADCAST;
 }
 
 bool CFdbMessage::invokeSideband(int32_t timeout)
 {
     CBaseJob::Ptr msg_ref(this);
-    mType = NFdbBase::MT_SIDEBAND_REQUEST;
+    mType = FDB_MT_SIDEBAND_REQUEST;
     return submit(msg_ref, 0, timeout);
 }
 
 bool CFdbMessage::sendSideband()
 {
     CBaseJob::Ptr msg_ref(this);
-    mType = NFdbBase::MT_SIDEBAND_REQUEST;
+    mType = FDB_MT_SIDEBAND_REQUEST;
     return submit(msg_ref, FDB_MSG_TX_NO_REPLY, -1);
 }
 
-
-bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref,
-                                const CFdbBasePayload &data)
-{
-    CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-    return fdb_msg->feedback(msg_ref, data, NFdbBase::MT_SIDEBAND_REPLY);
-}

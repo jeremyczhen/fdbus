@@ -37,10 +37,10 @@ public:
     void logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *format, ...);
 
-    bool checkLogEnabled(NFdbBase::wrapper::FdbMessageType type,
-                                        const char *sender_name,
-                                        const CBaseEndpoint *endpoint,
-                                        bool lock = true);
+    bool checkLogEnabled(EFdbMessageType type,
+                         const char *sender_name,
+                         const CBaseEndpoint *endpoint,
+                         bool lock = true);
     bool checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock = true);
     
     bool printToString(std::string *str_msg, const CFdbBasePayload &pb_msg);
@@ -53,12 +53,12 @@ protected:
 private:
     typedef std::set<std::string> tFilterTbl;
     
-    const char *getReceiverName(NFdbBase::wrapper::FdbMessageType type,
+    const char *getReceiverName(EFdbMessageType type,
                                 const char *sender_name,
                                 const CBaseEndpoint *endpoint);
     
     bool checkLogEnabledGlobally();
-    bool checkLogEnabledByMessageType(NFdbBase::wrapper::FdbMessageType type);
+    bool checkLogEnabledByMessageType(EFdbMessageType type);
     bool checkLogEnabledByEndpoint(const char *sender, const char *receiver, const char *busname);
     
     uint32_t mFlag;

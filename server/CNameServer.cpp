@@ -79,7 +79,7 @@ CNameServer::~CNameServer()
 void CNameServer::onSubscribe(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-    const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+    const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
         mSubscribeHdl.processMessage(this, msg, sub_item, sub_item->msg_code());
@@ -772,7 +772,7 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
     }
 }
 
-void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item)
+void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     FdbMsgCode_t msg_code = sub_item->msg_code();
     const char *svc_name = sub_item->has_filter() ? sub_item->filter().c_str() : "";
@@ -806,14 +806,14 @@ void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgS
     }
 }
 
-void CNameServer::onHostOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item)
+void CNameServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
     msg->broadcast(sub_item->msg_code(), host_tbl);
 }
 
-void CNameServer::onHostInfoReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item)
+void CNameServer::onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     NFdbBase::FdbMsgHostInfo msg_host_info;
     msg_host_info.set_name(mHostProxy->hostName());

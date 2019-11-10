@@ -140,7 +140,7 @@ void CJniServer::onSubscribe(CBaseJob::Ptr &msg_ref)
         }
         
         CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+        const CFdbMsgSubscribeItem *sub_item;
         /* iterate all message id subscribed */
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
@@ -333,7 +333,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
     if (server)
     {
         CLogProducer *logger = CFdbContext::getInstance()->getLogger();
-        if (logger && logger->checkLogEnabled(msg_type, 0, server))
+        if (logger && logger->checkLogEnabled((EFdbMessageType)msg_type, 0, server))
         {
             return true;
         }

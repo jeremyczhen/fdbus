@@ -19,6 +19,7 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
+#include <idl-gen/common.base.MessageHeader.pb.h>
 #include <utils/Log.h>
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)

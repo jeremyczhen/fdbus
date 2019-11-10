@@ -21,6 +21,7 @@
 #include <set>
 #include "CFdbMessage.h"
 #include "CMethodJob.h"
+#include "CFdbMsgSubscribe.h"
 
 enum EFdbEndpointRole
 {
@@ -31,7 +32,6 @@ enum EFdbEndpointRole
 };
 
 class CBaseWorker;
-class CFdbMessage;
 class CFdbSession;
 class CBaseEndpoint;
 struct CFdbSessionInfo;
@@ -43,10 +43,8 @@ namespace google
     }
 }
 
-namespace NFdbBase
-{
-    typedef FdbMsgSubscribe FdbMsgTrigger;
-}
+typedef CFdbMsgSubscribeBuilder CFdbMsgSubscribeList;
+typedef CFdbMsgSubscribeBuilder CFdbMsgTriggerList;
 
 typedef std::set<std::string> tFdbFilterSets;
 typedef std::map<FdbMsgCode_t, tFdbFilterSets> tFdbSubscribeMsgTbl;
@@ -77,10 +75,20 @@ public:
      * If timeout is specified but receiver doesn't reply within specified time,
      * status is returned with error code being FDB_ST_TIMEOUT.
      */
+    template<typename T>
     bool invoke(FdbSessionId_t receiver
                 , FdbMsgCode_t code
-                , const CFdbBasePayload &data
-                , int32_t timeout = 0);
+                , T &data
+                , int32_t timeout = 0)
+    {
+        CBaseMessage *msg = new CBaseMessage(code, this, receiver);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->invoke(timeout);
+    }
 
     /*
      * invoke[1.1]
@@ -91,27 +99,45 @@ public:
      * convert msg_ref to subclass of CBaseMessage so that the extra data
      * can be retrieved.
      */
+    template<typename T>
     bool invoke(FdbSessionId_t receiver
                 , CFdbMessage *msg
-                , const CFdbBasePayload &data
-                , int32_t timeout = 0);
+                , T &data
+                , int32_t timeout = 0)
+    {
+        msg->setDestination(this, receiver);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->invoke(timeout);
+    }
 
     /*
      * invoke[2]
      * Similiar to invoke[1] without parameter 'receiver'. The method is called at
      * CBaseClient to invoke method upon connected server.
      */
+    template<typename T>
     bool invoke(FdbMsgCode_t code
-                , const CFdbBasePayload &data
-                , int32_t timeout = 0);
+                , T &data
+                , int32_t timeout = 0)
+    {
+        return invoke(FDB_INVALID_ID, code, data, timeout);
+    }
     /*
      * invoke[2.1]
      * Similiar to invoke[1.1] without parameter 'receiver'. The method is called at
      * CBaseClient to invoke method upon connected server.
      */
+    template<typename T>
     bool invoke(CFdbMessage *msg
-                , const CFdbBasePayload &data
-                , int32_t timeout = 0);
+                , T &data
+                , int32_t timeout = 0)
+    {
+        return invoke(FDB_INVALID_ID, msg, data, timeout);
+    }
 
     /*
      * invoke[3]
@@ -123,19 +149,33 @@ public:
      * @ioparam msg_ref: input - object of CBaseMessage or its subclass
      *                   output - the same object containing return data
      */
+    template<typename T>
     bool invoke(FdbSessionId_t receiver
                 , CBaseJob::Ptr &msg_ref
-                , const CFdbBasePayload &data
-                , int32_t timeout = 0);
+                , T &data
+                , int32_t timeout = 0)
+    {
+        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        msg->setDestination(this, receiver);
+        if (!msg->serialize(data, this))
+        {
+           return false;
+        }
+        return msg->invoke(msg_ref, timeout);
+    }
 
     /*
      * invoke[4]
      * Similiar to invoke[3] but 'receiver' is not specified. The method is
      * called by CBaseClient to invoke method upon connected server.
      */
+    template<typename T>
     bool invoke(CBaseJob::Ptr &msg_ref
-                , const CFdbBasePayload &data
-                , int32_t timeout = 0);
+                , T &data
+                , int32_t timeout = 0)
+    {
+        return invoke(FDB_INVALID_ID, msg_ref, data, timeout);
+    }
 
     /*
      * invoke[5]
@@ -205,16 +245,30 @@ public:
      * @iparam code: message code
      * @imaram data: message in protocol buffer format
      */
+    template<typename T>
     bool send(FdbSessionId_t receiver
               , FdbMsgCode_t code
-              , const CFdbBasePayload &data);
+              , T &data)
+    {
+        CBaseMessage *msg = new CBaseMessage(code, this, receiver);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->send();
+    }
     /*
      * send[2]
      * Similiar to send[1] without parameter 'receiver'. The method is called
      * from CBaseClient to send message to the connected server.
      */
+    template<typename T>
     bool send(FdbMsgCode_t code
-              , const CFdbBasePayload &data);
+              , T &data)
+    {
+        return send(FDB_INVALID_ID, code, data);
+    }
 
     /*
      * send[3]
@@ -249,9 +303,19 @@ public:
      * @iparam data: message of protocol buffer
      * @iparam filter: the filter associated with the broadcasting
      */
+    template<typename T>
     bool broadcast(FdbMsgCode_t code
-                   , const CFdbBasePayload &data
-                   , const char *filter = 0);
+                   , T &data
+                   , const char *filter = 0)
+    {
+        CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->broadcast();
+    }
     /*
      * broadcast[3]
      * Similiar to broadcast[1] except that raw data is broadcasted.
@@ -274,7 +338,7 @@ public:
      * @iparam msg_code: The message code to subscribe
      * @iparam filter: the filter associated with the message.
      */
-    static void addNotifyItem(NFdbBase::FdbMsgSubscribe &msg_list
+    static void addNotifyItem(CFdbMsgSubscribeList &msg_list
                               , FdbMsgCode_t msg_code
                               , const char *filter = 0);
 
@@ -288,7 +352,7 @@ public:
      * @iparam msg_code: The message code to subscribe
      * @iparam filter: the filter associated with the message.
      */
-    static void addUpdateItem(NFdbBase::FdbMsgSubscribe &msg_list
+    static void addUpdateItem(CFdbMsgSubscribeList &msg_list
                               , FdbMsgCode_t msg_code
                               , const char *filter = 0);
 
@@ -300,7 +364,7 @@ public:
      * @iparam msg_code: The message code to trigger
      * @iparam filter: the filter associated with the message.
      */
-    static void addManualTrigger(NFdbBase::FdbMsgTrigger &msg_list
+    static void addManualTrigger(CFdbMsgTriggerList &msg_list
                                 , FdbMsgCode_t msg_code
                                 , const char *filter = 0);
     /*
@@ -334,7 +398,7 @@ public:
      * @iparam msg_list: list of messages to be subscribed
      * @iparam timeout: optional timeout
      */
-    bool subscribe(NFdbBase::FdbMsgSubscribe &msg_list
+    bool subscribe(CFdbMsgSubscribeList &msg_list
                    , int32_t timeout = 0);
 
     /*
@@ -351,7 +415,7 @@ public:
      * @iparam timeout: a timer expires if response is not received from
      *      server with the specified time.
      */
-    bool subscribe(NFdbBase::FdbMsgSubscribe &msg_list
+    bool subscribe(CFdbMsgSubscribeList &msg_list
                    , CFdbMessage *msg
                    , int32_t timeout = 0);
 
@@ -368,7 +432,7 @@ public:
      * @iparam timeout: timer of the transaction
      */
     bool subscribe(CBaseJob::Ptr &msg_ref
-                   , NFdbBase::FdbMsgSubscribe &msg_list
+                   , CFdbMsgSubscribeList &msg_list
                    , int32_t timeout = 0);
 
     /*
@@ -405,7 +469,7 @@ public:
      * @iparam msg_list: list of messages to be subscribed
      * @iparam timeout: optional timeout
      */
-    bool update(NFdbBase::FdbMsgSubscribe &msg_list, int32_t timeout = 0);
+    bool update(CFdbMsgSubscribeList &msg_list, int32_t timeout = 0);
 
     /*
      * update[1.1]
@@ -421,7 +485,7 @@ public:
      * @iparam timeout: a timer expires if response is not received from
      *      server with the specified time.
      */
-    bool update(NFdbBase::FdbMsgSubscribe &msg_list, CFdbMessage *msg, int32_t timeout = 0);
+    bool update(CFdbMsgSubscribeList &msg_list, CFdbMessage *msg, int32_t timeout = 0);
 
     /*
      * update[2]
@@ -435,12 +499,12 @@ public:
      * @iparam msg_ist: list of messages to be retrieved
      * @iparam timeout: timer of the transaction
      */
-    bool update(CBaseJob::Ptr &msg_ref, NFdbBase::FdbMsgSubscribe &msg_list, int32_t timeout = 0);
+    bool update(CBaseJob::Ptr &msg_ref, CFdbMsgSubscribeList &msg_list, int32_t timeout = 0);
 
     /*
      * Unsubscribe messages listed in msg_list
      */
-    bool unsubscribe(NFdbBase::FdbMsgSubscribe &msg_list);
+    bool unsubscribe(CFdbMsgSubscribeList &msg_list);
     
     /*
      * Unsubscribe the whole object
@@ -569,11 +633,21 @@ public:
     }
 
     // Internal use only!!!
+    template<typename T>
     bool broadcast(FdbSessionId_t sid
                   , FdbObjectId_t obj_id
                   , FdbMsgCode_t code
-                  , const CFdbBasePayload &data
-                  , const char *filter = 0);
+                  , T &data
+                  , const char *filter = 0)
+    {
+        CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->broadcast();
+    }
 
     // Internal use only!!!
     bool broadcast(FdbSessionId_t sid
@@ -704,10 +778,30 @@ protected:
      * request-reply through side band.
      * Note: Only used internally for FDBus!!!
      */
+    template<typename T>
     bool invokeSideband(FdbMsgCode_t code
-                      , const CFdbBasePayload &data
-                      , int32_t timeout = 0);
-    bool sendSideband(FdbMsgCode_t code, const CFdbBasePayload &data);
+                      , T &data
+                      , int32_t timeout = 0)
+    {
+        CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->invokeSideband(timeout);
+    }
+    template<typename T>
+    bool sendSideband(FdbMsgCode_t code, T &data)
+    {
+        CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+        if (!msg->serialize(data, this))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->sendSideband();
+    }
     virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref)
     {}
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
@@ -723,7 +817,7 @@ protected:
     }
 
 private:
-    typedef std::map<std::string, NFdbBase::FdbSubscribeType> FilterTable_t;
+    typedef std::map<std::string, CFdbSubscribeType> FilterTable_t;
     typedef std::map<FdbObjectId_t, FilterTable_t> ObjectTable_t;
     typedef std::map<CFdbSession *, ObjectTable_t> SessionTable_t;
     typedef std::map<FdbMsgCode_t, SessionTable_t> SubscribeTable_t;
@@ -739,7 +833,7 @@ private:
                    FdbMsgCode_t msg,
                    FdbObjectId_t obj_id,
                    const char *filter,
-                   NFdbBase::FdbSubscribeType type);
+                   CFdbSubscribeType type);
     void unsubscribe(CFdbSession *session,
                      FdbMsgCode_t msg,
                      FdbObjectId_t obj_id,
@@ -747,19 +841,39 @@ private:
     void unsubscribe(CFdbSession *session);
     void unsubscribe(FdbObjectId_t obj_id);
     void broadcast(CFdbMessage *msg);
-    void sendFdbLog(const CFdbBasePayload &data
+    template<typename T>
+    void sendFdbLog(T &data
                   , uint8_t *log_data
                   , int32_t size
-                  , int32_t clipped_size = -1);
-    void sendTraceLog(const CFdbBasePayload &data
-                  , uint8_t *log_data
-                  , int32_t size);
-    void broadcastFdbLog(const CFdbBasePayload &data
+                  , int32_t clipped_size = -1)
+    {
+        CBaseMessage msg(NFdbBase::REQ_FDBUS_LOG, this);
+        msg.sendLog(data, log_data, size, clipped_size, false);
+    }
+    template<typename T>
+    void sendTraceLog(T &data
+                  , uint8_t *trace_data
+                  , int32_t size)
+    {
+        CBaseMessage *msg = new CBaseMessage(NFdbBase::REQ_TRACE_LOG, this);
+        msg->sendLog(data, trace_data, size, -1, true);
+    }
+    template<typename T>
+    void broadcastFdbLog(T &data
                        , const uint8_t *log_data
-                       , int32_t size);
-    void broadcastTraceLog(const CFdbBasePayload &data
-                         , const uint8_t *log_data
-                         , int32_t size);
+                       , int32_t size)
+    {
+        CFdbBroadcastMsg msg(NFdbBase::NTF_FDBUS_LOG, this, 0, FDB_INVALID_ID);
+        msg.broadcastLog(data, log_data, size, false);
+    }
+    template<typename T>
+    void broadcastTraceLog(T &data
+                         , const uint8_t *trace_data
+                         , int32_t size)
+    {
+        CFdbBroadcastMsg msg(NFdbBase::NTF_TRACE_LOG, this, 0, FDB_INVALID_ID);
+        msg.broadcastLog(data, trace_data, size, false);
+    }
 
     void getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filters);
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
@@ -793,7 +907,7 @@ private:
 
     void broadcastOneMsg(CFdbSession *session,
                          CFdbMessage *msg,
-                         NFdbBase::FdbSubscribeType type);
+                         CFdbSubscribeType type);
 
      
     CBaseEndpoint *endpoint() const
@@ -854,7 +968,7 @@ template<typename T>
 class CFdbSubscribeHandle
 {
 private:
-    typedef void (T::*tCallbackFn)(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item);
+    typedef void (T::*tCallbackFn)(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
     typedef std::map<FdbMsgCode_t, tCallbackFn> tCallbackTbl;
 
 public:
@@ -863,7 +977,7 @@ public:
         mCallbackTbl[code] = callback;
     }
 
-    bool processMessage(T *instance, CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item, FdbMsgCode_t code)
+    bool processMessage(T *instance, CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item, FdbMsgCode_t code)
     {
         typename tCallbackTbl::iterator it = mCallbackTbl.find(code);
         if (it == mCallbackTbl.end())

@@ -422,7 +422,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
 static jint getSubscriptionList(JNIEnv *env,
                                 jobject sub_items,
                                 CJniClient *client,
-                                NFdbBase::FdbMsgSubscribe &subscribe_list)
+                                CFdbMsgSubscribeList &subscribe_list)
 {
     jint len = 0;
     jclass sub_item_cls = env->GetObjectClass(sub_items);
@@ -474,7 +474,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1subscribe
         return false;
     }
 
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     jint len = getSubscriptionList(env, sub_items, client, subscribe_list);
     return len ? client->subscribe(subscribe_list) : false;
 }
@@ -488,7 +488,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1unsubscribe
         return false;
     }
 
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     jint len = getSubscriptionList(env, sub_items, client, subscribe_list);
     return len ? client->unsubscribe(subscribe_list) : false;
 }
@@ -528,7 +528,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1log_1enabled
     if (client)
     {
         CLogProducer *logger = CFdbContext::getInstance()->getLogger();
-        if (logger && logger->checkLogEnabled(msg_type, 0, client))
+        if (logger && logger->checkLogEnabled((EFdbMessageType)msg_type, 0, client))
         {
             return true;
         }

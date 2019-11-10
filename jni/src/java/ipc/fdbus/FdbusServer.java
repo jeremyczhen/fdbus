@@ -120,7 +120,7 @@ public class FdbusServer
         }
 
         String log_data = null;
-        if (logEnabled(Fdbus.MT_BROADCAST))
+        if (logEnabled(Fdbus.FDB_MT_BROADCAST))
         {
             log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }

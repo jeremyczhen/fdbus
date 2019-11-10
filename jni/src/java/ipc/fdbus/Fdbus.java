@@ -29,20 +29,20 @@ public class Fdbus
      *  as that in FDBus lib!                                     *
      *============================================================*/
     // definition for message type
-    public final static int MT_UNKNOWN              = 0;
-    public final static int MT_REQUEST              = 1;
-    public final static int MT_REPLY                = 2;
-    public final static int MT_SUBSCRIBE_REQ        = 3;
-    public final static int MT_BROADCAST            = 4;
-    public final static int MT_SIDEBAND_REQUEST     = 5;
-    public final static int MT_SIDEBAND_REPLY       = 6;
-    public final static int MT_STATUS               = 7;
-    public final static int MT_MAX                  = 8;
+    public final static int FDB_MT_UNKNOWN          = 0;
+    public final static int FDB_MT_REQUEST          = 1;
+    public final static int FDB_MT_REPLY            = 2;
+    public final static int FDB_MT_SUBSCRIBE_REQ    = 3;
+    public final static int FDB_MT_BROADCAST        = 4;
+    public final static int FDB_MT_SIDEBAND_REQUEST = 5;
+    public final static int FDB_MT_SIDEBAND_REPLY   = 6;
+    public final static int FDB_MT_STATUS           = 7;
+    public final static int FDB_MT_MAX              = 8;
 
     // definition for encoding
     public final static int FDB_MSG_ENC_RAW         = 0;
     public final static int FDB_MSG_ENC_PROTOBUF    = 1;
-    public final static int FDB_MSG_ENC_CUSTOM1     = 2;
+    public final static int FDB_MSG_ENC_SIMPLE      = 2;
     public final static int FDB_MSG_ENC_CUSTOM2     = 3;
     public final static int FDB_MSG_ENC_CUSTOM3     = 4;
     public final static int FDB_MSG_ENC_CUSTOM4     = 5;
