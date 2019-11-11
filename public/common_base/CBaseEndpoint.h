@@ -28,6 +28,13 @@
 class CBaseWorker;
 class CFdbSessionContainer;
 class CFdbMessage;
+namespace google
+{
+    namespace protobuf
+    {
+        template <typename Element> class RepeatedPtrField;
+    }
+}
 
 class CBaseEndpoint : public CEntityContainer<FdbSocketId_t, CFdbSessionContainer *>
                     , public CFdbBaseObject

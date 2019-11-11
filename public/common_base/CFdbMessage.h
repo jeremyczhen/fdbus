@@ -241,19 +241,7 @@ public:
      * @iparam data: message in protocol buffer
      */
     template<typename T>
-    static bool reply(CBaseJob::Ptr &msg_ref, T &data)
-    {
-        CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-        if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
-        {
-            return false;
-        }
-        if (!fdb_msg->serialize(data))
-        {
-            return false;
-        }
-        return fdb_msg->feedback(msg_ref, FDB_MT_REPLY);
-    }
+    static bool reply(CBaseJob::Ptr &msg_ref, T &data);
     /*
      * reply[2]
      * Similiar to reply[1] but raw data is sent
@@ -277,18 +265,8 @@ public:
     template<typename T>
     bool broadcast(FdbMsgCode_t code
                    , T &data
-                   , const char *filter = 0)
-    {
-        CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
-        msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
-        if (!msg->serialize(data))
-        {
-            delete msg;
-            return false;
-        }
-        return msg->broadcast();
-    }
-
+                   , const char *filter = 0);
+                   
     bool broadcast(FdbMsgCode_t code
                    , const char *filter = 0
                    , const void *buffer = 0
@@ -676,20 +654,7 @@ private:
     bool invokeSideband(int32_t timeout = 0);
     bool sendSideband();
     template<typename T>
-    static bool replySideband(CBaseJob::Ptr &msg_ref,
-                              T &data)
-    {
-        CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-        if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
-        {
-            return false;
-        }
-        if (!fdb_msg->serialize(data))
-        {
-            return false;
-        }
-        return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
-    }
+    static bool replySideband(CBaseJob::Ptr &msg_ref, T &data);
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -797,5 +762,50 @@ private:
     std::string mFilter;
     friend class CFdbSession;
 };
+
+template<typename T>
+bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref, T &data)
+{
+    CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
+    {
+        return false;
+    }
+    if (!fdb_msg->serialize(data))
+    {
+        return false;
+    }
+    return fdb_msg->feedback(msg_ref, FDB_MT_REPLY);
+}
+
+template<typename T>
+bool CFdbMessage::broadcast(FdbMsgCode_t code
+                           , T &data
+                           , const char *filter)
+{
+    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
+    msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
+    if (!msg->serialize(data))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->broadcast();
+}
+
+template<typename T>
+bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref, T &data)
+{
+    CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
+    {
+        return false;
+    }
+    if (!fdb_msg->serialize(data))
+    {
+        return false;
+    }
+    return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
+}
 
 #endif

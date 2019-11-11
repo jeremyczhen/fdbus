@@ -67,6 +67,23 @@ bool CFdbBaseObject::send(FdbMsgCode_t code
     return send(FDB_INVALID_ID, code, buffer, size, enc, log_data);
 }
 
+void CFdbBaseObject::sendFdbLog(CFdbBasePayload &data
+                              , uint8_t *log_data
+                              , int32_t size
+                              , int32_t clipped_size)
+{
+    CBaseMessage msg(NFdbBase::REQ_FDBUS_LOG, this);
+    msg.sendLog(data, log_data, size, clipped_size, false);
+}
+
+void CFdbBaseObject::sendTraceLog(CFdbBasePayload &data
+                                , uint8_t *trace_data
+                                , int32_t size)
+{
+    CBaseMessage *msg = new CBaseMessage(NFdbBase::REQ_TRACE_LOG, this);
+     msg->sendLog(data, trace_data, size, -1, true);
+}
+
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const char *filter
                               , const void *buffer
@@ -82,6 +99,22 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
     }
     msg->setLogData(log_data);
     return msg->broadcast();
+}
+
+void CFdbBaseObject::broadcastFdbLog(CFdbBasePayload &data
+                                   , const uint8_t *log_data
+                                   , int32_t size)
+{
+    CFdbBroadcastMsg msg(NFdbBase::NTF_FDBUS_LOG, this, 0, FDB_INVALID_ID);
+    msg.broadcastLog(data, log_data, size, false);
+}
+
+void CFdbBaseObject::broadcastTraceLog(CFdbBasePayload &data
+                                     , const uint8_t *trace_data
+                                     , int32_t size)
+{
+    CFdbBroadcastMsg msg(NFdbBase::NTF_TRACE_LOG, this, 0, FDB_INVALID_ID);
+    msg.broadcastLog(data, trace_data, size, false);
 }
 
 bool CFdbBaseObject::unsubscribe(CFdbMsgSubscribeList &msg_list)
