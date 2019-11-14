@@ -17,67 +17,129 @@
 #ifndef __CSIMPLESERIALIZER_H__
 #define __CSIMPLESERIALIZER_H__
 #include <string.h>
+#include <stdlib.h>
 #include <vector>
 #include <string>
+
+static const uint16_t fdb_endian_check_word = 0xaa55;
+static const uint8_t *fdb_endian_check_ptr = (uint8_t *)&fdb_endian_check_word;
+#define fdb_is_little_endian() (*fdb_endian_check_ptr == 0x55)
+#define FDB_SER_BUFFER_BLOCK_SIZE 512
+typedef uint16_t fdb_ser_strlen_t;
 
 class CFdbSimpleSerializer
 {
 public:
+    CFdbSimpleSerializer()
+        : mBuffer(0)
+        , mTotalSize(0)
+        , mPos(0)
+    {
+    }
     template<typename T>
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const T& data)
     {
-        const uint8_t *p_data = (const uint8_t *)&data;
-        serializer.mBuffer.insert(serializer.mBuffer.end(), p_data, p_data + sizeof(T));
+        serializer.addBasicType((const uint8_t *)&data, sizeof(T));
         return serializer;
     }
 
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const std::string& data)
     {
-        serializeString(serializer, data.c_str(), (int32_t)data.size());
+        serializer.serializeString(data.c_str(), (fdb_ser_strlen_t)data.size());
         return serializer;
     }
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, std::string& data)
     {
-        return operator<<(serializer, (const std::string&)data);
+        return serializer << (const std::string&)data;
     }
 
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const char *data)
     {
-        serializeString(serializer, data, (int32_t)strlen(data));
+        serializer.serializeString(data, (fdb_ser_strlen_t)strlen(data));
         return serializer;
     }
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, char *data)
     {
-        return operator<<(serializer, (const uint8_t *)data);
+        return serializer << (const char *)data;
     }
 
     int32_t toBuffer(uint8_t *buffer, int32_t size)
     {
-        if (size > (int32_t)mBuffer.size())
+        if (size > (int32_t)mPos)
         {
-            size = (int32_t)mBuffer.size();
+            size = mPos;
         }
         
-        memcpy(buffer, mBuffer.data(), size);
+        memcpy(buffer, mBuffer, size);
         return size;
     }
     int32_t bufferSize() const
     {
-        return (int32_t)mBuffer.size();
+        return mPos;
     }
 
     void reset()
     {
-        mBuffer.clear();
+        mTotalSize = 0;
+        mPos = 0;
     }
     
 private:
-    std::vector<uint8_t> mBuffer;
-    friend void serializeString(CFdbSimpleSerializer &serializer, const char *string, int32_t len)
+    uint8_t *mBuffer;
+    uint32_t mTotalSize;
+    uint32_t mPos;
+    void serializeString(const char *string, fdb_ser_strlen_t str_len)
     {
-        serializer.mBuffer.push_back(len + 1);
-        serializer.mBuffer.insert(serializer.mBuffer.end(), string, string + len);
-        serializer.mBuffer.push_back('\0');
+        fdb_ser_strlen_t l = str_len + 1;
+        *this << l;
+        addRawData((const uint8_t *)string, l);
+    }
+    void addMemory(uint32_t size)
+    {
+        uint32_t old_size = mTotalSize;
+        if ((mPos + size) > mTotalSize)
+        {
+            if (size < FDB_SER_BUFFER_BLOCK_SIZE)
+            {
+                mTotalSize += FDB_SER_BUFFER_BLOCK_SIZE;
+            }
+            else
+            {
+                mTotalSize += size + FDB_SER_BUFFER_BLOCK_SIZE;
+            }
+        }
+        if (mTotalSize != old_size)
+        {
+            mBuffer = (uint8_t*)realloc(mBuffer, mTotalSize);
+        }
+    }
+    void addBasicType(const uint8_t *p_data, int32_t size)
+    {
+        addMemory(size);
+        if (fdb_is_little_endian())
+        {
+            for (int32_t i = 0; i < size; ++i)
+            {
+                mBuffer[mPos + i] = p_data[i];
+            }
+        }
+        else
+        {
+            for (int32_t i = 0; i < size; ++i)
+            {
+                mBuffer[mPos + i] = p_data[size - 1 - i];
+            }
+        }
+        mPos += size;
+    }
+    void addRawData(const uint8_t *p_data, int32_t size)
+    {
+        addMemory(size);
+        for (int32_t i = 0; i < size; ++i)
+        {
+            mBuffer[mPos + i] = p_data[i];
+        }
+        mPos += size;
     }
 };
 
@@ -106,37 +168,44 @@ public:
             return deserializer;
         }
         
-        int32_t len = sizeof(T);
-        if (deserializer.mSize && ((deserializer.mPos + len) > deserializer.mSize))
+        int32_t size = (int32_t)sizeof(T);
+        if (deserializer.mSize && ((deserializer.mPos + size) > deserializer.mSize))
         {
             deserializer.mError = true;
             return deserializer;
         }
 
         uint8_t *p_data = (uint8_t *)&data;
-        memcpy(p_data, deserializer.mBuffer + deserializer.mPos, len);
-        deserializer.mPos += len;
+        if (fdb_is_little_endian())
+        {
+            for (int32_t i = 0; i < size; ++i)
+            {
+                p_data[i] = deserializer.mBuffer[deserializer.mPos + i];
+            }
+        }
+        else
+        {
+            for (int32_t i = 0; i < size; ++i)
+            {
+                p_data[i] = deserializer.mBuffer[deserializer.mPos + size - 1 - i];
+            }
+        }
+        deserializer.mPos += size;
         return deserializer;
     }
 
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::string& data)
     {
-        if (deserializer.mError)
+        fdb_ser_strlen_t len = 0;
+        deserializer >> len;
+        if (deserializer.mError || !len)
         {
             return deserializer;
         }
-        
-        int32_t len = deserializer.mBuffer[deserializer.mPos];
-        deserializer.mPos++;
         
         if (deserializer.mSize && ((deserializer.mPos + len) > deserializer.mSize))
         {
             deserializer.mError = true;
-            return deserializer;
-        }
-
-        if (!len)
-        {
             return deserializer;
         }
 
