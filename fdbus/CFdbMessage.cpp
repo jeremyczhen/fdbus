@@ -335,7 +335,7 @@ bool CFdbMessage::send()
     return invoke(msg_ref, FDB_MSG_TX_NO_REPLY, -1);
 }
 
-bool CFdbMessage::sendLog(const CFdbBasePayload &data
+bool CFdbMessage::sendLog(IFdbMsgBuilder &data
                            , uint8_t *log_data
                            , int32_t size
                            , int32_t clipped_size
@@ -397,20 +397,21 @@ bool CFdbMessage::sendLog(const CFdbBasePayload &data
     return false;
 }
 
-void CFdbMessage::broadcastLog(const CFdbBasePayload &data
-                                , const uint8_t *log_data
-                                , int32_t size
-                                , bool send_as_job)
+void CFdbMessage::broadcastLog(const uint8_t *head_data
+                               , int32_t head_size
+                               , const uint8_t *log_data
+                               , int32_t log_size
+                               , bool send_as_job)
 {
     mType = FDB_MT_BROADCAST;
     mFlag &= ~MSG_FLAG_ENABLE_LOG;
-    mExtraSize = size;
-    if (!serialize(data))
+    mExtraSize = log_size;
+    if (!serialize(head_data, head_size))
     {
         return;
     }
 
-    if (log_data && size)
+    if (log_data && log_size)
     {
         memcpy(getExtraBuffer(), log_data, mExtraSize);
     }
@@ -1130,51 +1131,9 @@ void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
     }
 }
 
-CFdbDebugMsg::CFdbDebugMsg(FdbMsgCode_t code, EFdbMessageEncoding enc)
-    : CFdbMessage(code, enc)
-    , mSendTime(0)
-    , mArriveTime(0)
-    , mReplyTime(0)
-    , mReceiveTime(0)
+void CFdbMessage::encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
 {
-    mFlag |= MSG_FLAG_DEBUG;
-}
-
-CFdbDebugMsg::CFdbDebugMsg(FdbMsgCode_t code
-                         , CFdbBaseObject *obj
-                         , FdbSessionId_t alt_receiver
-                         , EFdbMessageEncoding enc)
-    : CFdbMessage(code, obj, alt_receiver, enc)
-    , mSendTime(0)
-    , mArriveTime(0)
-    , mReplyTime(0)
-    , mReceiveTime(0)
-{
-    mFlag |= MSG_FLAG_DEBUG;
-}
-
-CFdbDebugMsg::CFdbDebugMsg(CFdbMessageHeader &head
-                           , CFdbMsgPrefix &prefix
-                           , uint8_t *buffer
-                           , FdbSessionId_t sid)
-    : CFdbMessage(head, prefix, buffer, sid)
-    , mSendTime(0)
-    , mArriveTime(0)
-    , mReplyTime(0)
-    , mReceiveTime(0)
-{
-}
-
-CFdbDebugMsg:: CFdbDebugMsg(FdbMsgCode_t code
-                          , CFdbMessage *msg
-                          , EFdbMessageEncoding enc)
-    : CFdbMessage(code, msg, enc)
-{
-    mFlag |= MSG_FLAG_DEBUG;
-}
-
-void CFdbDebugMsg::encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
-{
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
     switch (msg_hdr.type())
     {
         case FDB_MT_REPLY:
@@ -1191,39 +1150,54 @@ void CFdbDebugMsg::encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *sess
         default:
             break;
     }
+#endif
 }
 
-void CFdbDebugMsg::decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
+void CFdbMessage::decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
 {
-    if (!msg_hdr.has_debug_info())
-    {
-        return;
-    }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
     switch (msg_hdr.type())
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
-            mArriveTime = msg_hdr.send_or_arrive_time();
-            mReplyTime = msg_hdr.reply_time();
+            if (msg_hdr.has_send_or_arrive_time())
+            {
+                mArriveTime = msg_hdr.send_or_arrive_time();
+            }
+            if (msg_hdr.has_reply_time())
+            {
+                mReplyTime = msg_hdr.reply_time();
+            }
             mReceiveTime = CNanoTimer::getNanoSecTimer();
             break;
         case FDB_MT_REQUEST:
         case FDB_MT_SUBSCRIBE_REQ:
         case FDB_MT_BROADCAST:
             mArriveTime = CNanoTimer::getNanoSecTimer();
-            mSendTime = msg_hdr.send_or_arrive_time();
+            if (msg_hdr.has_send_or_arrive_time())
+            {
+                mSendTime = msg_hdr.send_or_arrive_time();
+            }
             break;
         default:
             break;
     }
+#endif
 }
 
-void CFdbDebugMsg::metadata(CFdbMsgMetadata &metadata)
+void CFdbMessage::metadata(CFdbMsgMetadata &metadata)
 {
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
     metadata.mSendTime = mSendTime;
     metadata.mArriveTime = mArriveTime;
     metadata.mReplyTime = mReplyTime;
     metadata.mReceiveTime = mReceiveTime;
+#else
+    metadata.mSendTime = 0;
+    metadata.mArriveTime = 0;
+    metadata.mReplyTime = 0;
+    metadata.mReceiveTime = 0;
+#endif
 }
 
 CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
@@ -1232,7 +1206,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
                                  , FdbSessionId_t alt_sid
                                  , FdbObjectId_t alt_oid
                                  , EFdbMessageEncoding enc)
-    : _CBaseMessage(code, obj, FDB_INVALID_ID, enc)
+    : CFdbMessage(code, obj, FDB_INVALID_ID, enc)
 {
     if (filter)
     {
@@ -1261,7 +1235,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
                                  , CFdbMessage *msg
                                  , const char *filter
                                  , EFdbMessageEncoding enc)
-    : _CBaseMessage(code, msg, enc)
+    : CFdbMessage(code, msg, enc)
 {
     if (filter)
     {

@@ -18,12 +18,12 @@
 #define __CFDBMESSAGEHEADER_H__
 
 #include <string>
-#include <common_base/CFdbSimpleSerializer.h>
-#include <common_base/IFdbMsgSerializer.h>
+#include <common_base/CFdbSimpleMsgBuilder.h>
 
-#define FDB_OPT_HAS_SENDER_NAME     (1 << 0)
-#define FDB_OPT_HAS_HEAD_FILTER     (1 << 1)
-#define FDB_OPT_HAS_DEBUG_INFO      (1 << 2)
+#define FDB_OPT_HAS_SENDER_NAME         (1 << 0)
+#define FDB_OPT_HAS_HEAD_FILTER         (1 << 1)
+#define FDB_OPT_HAS_SEND_ARRIVE_TIME    (1 << 2)
+#define FDB_OPT_HAS_REPLY_TIME          (1 << 3)
 
 class CFdbMessageHeader
 {
@@ -105,9 +105,9 @@ public:
         mFilter.assign(filter);
         mOptions |= FDB_OPT_HAS_HEAD_FILTER;
     }
-    bool has_debug_info() const
+    bool has_send_or_arrive_time() const
     {
-        return !!(mOptions & FDB_OPT_HAS_DEBUG_INFO);
+        return !!(mOptions & FDB_OPT_HAS_SEND_ARRIVE_TIME);
     }
     uint64_t send_or_arrive_time() const
     {
@@ -116,7 +116,11 @@ public:
     void set_send_or_arrive_time(uint64_t send_or_arrive_time)
     {
         mSendArriveTime = send_or_arrive_time;
-        mOptions |= FDB_OPT_HAS_DEBUG_INFO;
+        mOptions |= FDB_OPT_HAS_SEND_ARRIVE_TIME;
+    }
+    bool has_reply_time() const
+    {
+        return !!(mOptions & FDB_OPT_HAS_REPLY_TIME);
     }
     const uint64_t reply_time() const
     {
@@ -125,6 +129,7 @@ public:
     void set_reply_time(uint64_t reply_time)
     {
         mReplyTime = reply_time;
+        mOptions |= FDB_OPT_HAS_REPLY_TIME;
     }
     
 protected:
@@ -151,9 +156,12 @@ protected:
         {
             serializer << mFilter;
         }
-        if (mOptions & FDB_OPT_HAS_DEBUG_INFO)
+        if (mOptions & FDB_OPT_HAS_SEND_ARRIVE_TIME)
         {
             serializer << mSendArriveTime;
+        }
+        if (mOptions & FDB_OPT_HAS_REPLY_TIME)
+        {
             serializer << mReplyTime;
         }
     }
@@ -169,15 +177,18 @@ protected:
         {
             deserializer >> mFilter;
         }
-        if (mOptions & FDB_OPT_HAS_DEBUG_INFO)
+        if (mOptions & FDB_OPT_HAS_SEND_ARRIVE_TIME)
         {
             deserializer >> mSendArriveTime;
+        }
+        if (mOptions & FDB_OPT_HAS_REPLY_TIME)
+        {
             deserializer >> mReplyTime;
         }
     }
 };
 
-class CFdbMessageHeaderBuilder : public CFdbMessageHeader, IFdbMsgBuilder
+class CFdbMessageHeaderBuilder : public CFdbMessageHeader, public CFdbSimpleMsgBuilder
 {
 public:
     int32_t build()
@@ -185,19 +196,13 @@ public:
         serialize(mSerializer);
         return mSerializer.bufferSize();
     }
-    void toBuffer(uint8_t *buffer, int32_t size)
-    {
-        mSerializer.toBuffer(buffer, size);
-    }
-private:
-    CFdbSimpleSerializer mSerializer;
 };
 
-class CFdbMessageHeaderParser : public CFdbMessageHeader, IFdbMsgParser
+class CFdbMessageHeaderParser : public CFdbMessageHeader, public CFdbSimpleMsgParser
 {
 public:
     CFdbMessageHeaderParser(const uint8_t *buffer, int32_t size)
-        : mDeserializer(buffer, size)
+        : CFdbSimpleMsgParser(buffer, size)
     {
     }
     void prepare(uint8_t *buffer, int32_t size)
@@ -209,8 +214,6 @@ public:
         deserialize(mDeserializer);
         return mDeserializer.error() ? -1 : mDeserializer.size();
     }
-private:
-    CFdbSimpleDeserializer mDeserializer;
 };
 
 #endif

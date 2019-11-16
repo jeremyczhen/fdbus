@@ -148,7 +148,7 @@ public class FdbusTestClient
                 {
                     usr_data.add(new String("a quick fox dump over brown dog " + i));
                 }
-                mClient.invokeAsync(REQ_METADATA, song_id.toByteArray(), usr_data, 0);
+                mClient.invokeAsync(REQ_METADATA, song_id, usr_data, 0);
             }
             else
             {

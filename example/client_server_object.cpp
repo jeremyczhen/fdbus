@@ -116,7 +116,7 @@ void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
     uint64_t time_r2c;
     uint64_t time_total;
     CFdbMessage::parseTimestamp(metadata, time_c2s, time_s2r, time_r2c, time_total);
-    FDB_LOG_I("OBJ %d , client->server: %" PRIu64 ", arrive->reply: %" PRIu64 ", reply->receive: %" PRIu64 ", total: %" PRIu64 "\n",
+    FDB_LOG_I("OBJ %d, client->server: %" PRIu64 ", arrive->reply: %" PRIu64 ", reply->receive: %" PRIu64 ", total: %" PRIu64 "\n",
                 obj_id, time_c2s, time_s2r, time_r2c, time_total);
 }
 
@@ -223,13 +223,6 @@ protected:
          * 首先转换成CBaseMessage。onInvoke()里只能转换成该类型。
          */
         CBaseMessage *msg = castToMessage<CBaseMessage *>(msg_ref);
-        /*
-         * 如果CBaseMessage定义成CFdbDebugMsg类型，则发送端和接收端都会
-         * 在消息中加上时间戳，便于跟踪系统性能。
-         */
-        CFdbMsgMetadata md;
-        msg->metadata(md);
-        printMetadata(this->objId(), md);
         /*
          * 接下来就要case by case地处理收到的请求了。msg->code()表示消息对应的码。
          *

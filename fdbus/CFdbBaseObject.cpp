@@ -49,12 +49,12 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , const char *log_data)
 {
     CBaseMessage *msg = new CBaseMessage(code, this, receiver, enc);
+    msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
     }
-    msg->setLogData(log_data);
     return msg->send();
 }
 
@@ -67,7 +67,7 @@ bool CFdbBaseObject::send(FdbMsgCode_t code
     return send(FDB_INVALID_ID, code, buffer, size, enc, log_data);
 }
 
-void CFdbBaseObject::sendFdbLog(CFdbBasePayload &data
+void CFdbBaseObject::sendFdbLog(IFdbMsgBuilder &data
                               , uint8_t *log_data
                               , int32_t size
                               , int32_t clipped_size)
@@ -76,7 +76,7 @@ void CFdbBaseObject::sendFdbLog(CFdbBasePayload &data
     msg.sendLog(data, log_data, size, clipped_size, false);
 }
 
-void CFdbBaseObject::sendTraceLog(CFdbBasePayload &data
+void CFdbBaseObject::sendTraceLog(IFdbMsgBuilder &data
                                 , uint8_t *trace_data
                                 , int32_t size)
 {
@@ -92,29 +92,31 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const char *log_data)
 {
     CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, enc);
+    msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
     }
-    msg->setLogData(log_data);
     return msg->broadcast();
 }
 
-void CFdbBaseObject::broadcastFdbLog(CFdbBasePayload &data
+void CFdbBaseObject::broadcastFdbLog(const uint8_t *head_data
+                                   , int32_t head_size
                                    , const uint8_t *log_data
-                                   , int32_t size)
+                                   , int32_t log_size)
 {
     CFdbBroadcastMsg msg(NFdbBase::NTF_FDBUS_LOG, this, 0, FDB_INVALID_ID);
-    msg.broadcastLog(data, log_data, size, false);
+    msg.broadcastLog(head_data, head_size, log_data, log_size, false);
 }
 
-void CFdbBaseObject::broadcastTraceLog(CFdbBasePayload &data
+void CFdbBaseObject::broadcastTraceLog(const uint8_t *head_data
+                                     , int32_t head_size
                                      , const uint8_t *trace_data
-                                     , int32_t size)
+                                     , int32_t trace_size)
 {
     CFdbBroadcastMsg msg(NFdbBase::NTF_TRACE_LOG, this, 0, FDB_INVALID_ID);
-    msg.broadcastLog(data, trace_data, size, false);
+    msg.broadcastLog(head_data, head_size, trace_data, trace_size, false);
 }
 
 bool CFdbBaseObject::unsubscribe(CFdbMsgSubscribeList &msg_list)
@@ -524,12 +526,12 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , const char *log_data)
 {
     CBaseMessage *msg = new CBaseMessage(code, this, receiver, enc);
+    msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
     }
-    msg->setLogData(log_data);
     return msg->invoke(timeout);
 }
 
@@ -1254,12 +1256,12 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                       , const char *log_data)
 {
     CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
+    msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
     }
-    msg->setLogData(log_data);
     return msg->broadcast();
 }
 

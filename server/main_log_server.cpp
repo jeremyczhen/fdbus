@@ -93,19 +93,15 @@ protected:
         {
             case NFdbBase::REQ_FDBUS_LOG:
             {
-                NFdbBase::FdbLogProducerData log_data;
-                if (!msg->deserialize(log_data))
-                {
-                    LOG_E("CLogServer: Unable to deserialize fdbus message!\n");
-                    return;
-                }
                 if (!fdb_disable_output)
                 {
-                    mLogPrinter.outputFdbLog(log_data, msg);
+                    CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
+                    mLogPrinter.outputFdbLog(deserializer, msg);
                 }
                 if (!mLoggerClientTbl.empty())
                 {
-                    broadcastFdbLog(log_data, msg->getExtraBuffer(), msg->getExtraDataSize());
+                    broadcastFdbLog(msg->getPayloadBuffer(), msg->getPayloadSize(),
+                                    msg->getExtraBuffer(), msg->getExtraDataSize());
                 }
             }
             break;
@@ -135,19 +131,15 @@ protected:
             break;
             case NFdbBase::REQ_TRACE_LOG:
             {
-                NFdbBase::FdbTraceProducerData trace_data;
-                if (!msg->deserialize(trace_data))
-                {
-                    LOG_E("CLogServer: Unable to deserialize trace message!\n");
-                    return;
-                }
                 if (!fdb_disable_output)
                 {
-                    mLogPrinter.outputTraceLog(trace_data, msg);
+                    CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
+                    mLogPrinter.outputTraceLog(deserializer, msg);
                 }
                 if (!mLoggerClientTbl.empty())
                 {
-                    broadcastTraceLog(trace_data, msg->getExtraBuffer(), msg->getExtraDataSize());
+                    broadcastTraceLog(msg->getPayloadBuffer(), msg->getPayloadSize(),
+                                      msg->getExtraBuffer(), msg->getExtraDataSize());
                 }
             }
             break;

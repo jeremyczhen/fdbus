@@ -256,9 +256,7 @@ void CFdbSession::onHup()
 void CFdbSession::doRequest(CFdbMessageHeader &head,
                             CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    CFdbMessage *msg = (head.flag() & MSG_FLAG_DEBUG) ?
-                       new CFdbDebugMsg(head, prefix, buffer, mSid) :
-                       new CFdbMessage(head, prefix, buffer, mSid);
+    CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
     CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
@@ -380,9 +378,7 @@ void CFdbSession::doSubscribeReq(CFdbMessageHeader &head,
                                  uint8_t *buffer, bool subscribe)
 {
     FdbObjectId_t object_id = head.object_id();
-    CFdbMessage *msg = (head.flag() & MSG_FLAG_DEBUG) ?
-                       new CFdbDebugMsg(head, prefix, buffer, mSid) :
-                       new CFdbMessage(head, prefix, buffer, mSid);
+    CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
     CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
     
@@ -481,9 +477,7 @@ void CFdbSession::doUpdate(CFdbMessageHeader &head,
                            CFdbMessage::CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {
-    CFdbMessage *msg = (head.flag() & MSG_FLAG_DEBUG) ?
-                       new CFdbDebugMsg(head, prefix, buffer, mSid) :
-                       new CFdbMessage(head, prefix, buffer, mSid);
+    CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
     CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 

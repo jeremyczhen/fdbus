@@ -157,7 +157,6 @@ private:
 #define MSG_FLAG_NOREPLY_EXPECTED   (1 << 0)
 #define MSG_FLAG_AUTO_REPLY         (1 << 1)
 #define MSG_FLAG_SYNC_REPLY         (1 << 2)
-#define MSG_FLAG_DEBUG              (1 << 3)
 #define MSG_FLAG_ERROR              (1 << 4)
 #define MSG_FLAG_STATUS             (1 << 5)
 #define MSG_FLAG_INITIAL_RESPONSE   (1 << 6)
@@ -445,21 +444,14 @@ public:
     }
 
     /*
-     * Retrieve metadata associated with the message. Valid only if CBaseMessage
-     *      is defined as CFdbDebugMsg.
+     * Retrieve metadata associated with the message.
      * @oparam metadata: retrieved metadata
      *      mSendTime - the time when message is sent
      *      mArriveTime - the time when message arrives at receiver
      *      mReplyTime - the time when message is replied by receiver
      *      mReceiveTime - the time when reply is received by the sender
      */
-    virtual void metadata(CFdbMsgMetadata &metadata)
-    {
-        metadata.mSendTime = 0;
-        metadata.mArriveTime = 0;
-        metadata.mReplyTime = 0;
-        metadata.mReceiveTime = 0;
-    }
+    virtual void metadata(CFdbMsgMetadata &metadata);
 
     /*
      * Parse timestamp to time span.
@@ -505,11 +497,6 @@ public:
     void checkLogEnabled(const CFdbBaseObject *object, bool lock = true);
 
 protected:
-    virtual void encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
-    {}
-
-    virtual void decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session)
-    {}
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
     virtual void onAsyncError(Ptr &ref, NFdbBase::FdbMsgStatusCode code, const char *reason) {}
@@ -641,12 +628,13 @@ private:
         }
     }
 
-    bool sendLog(const CFdbBasePayload &data
+    bool sendLog(IFdbMsgBuilder &data
                , uint8_t *log_data
                , int32_t size
                , int32_t clipped_size
                , bool send_as_job);
-    void broadcastLog(const CFdbBasePayload &data
+    void broadcastLog(const uint8_t *head_data
+                    , int32_t head_size
                     , const uint8_t *log_data
                     , int32_t size
                     , bool send_as_johb);
@@ -655,6 +643,8 @@ private:
     bool sendSideband();
     template<typename T>
     static bool replySideband(CBaseJob::Ptr &msg_ref, T &data);
+    void encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session);
+    void decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session);
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -675,57 +665,25 @@ private:
     std::string mSenderName;
     std::string *mStringData;
 
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    uint64_t mSendTime;     // the time when message is sent from client
+    uint64_t mArriveTime;   // the time when message is arrived at server
+    uint64_t mReplyTime;    // the time when message is replied by server
+    uint64_t mReceiveTime;     // the time when message is received by client
+#endif
+
     friend class CFdbSession;
     friend class CFdbBaseObject;
     friend class CFdbBroadcastMsg;
-    friend class CFdbDebugMsg;
     friend class CLogProducer;
     friend class CLogPrinter;
     friend class CLogServer;
     friend class CLogClient;
 };
 
-class CFdbDebugMsg : public CFdbMessage
-{
-public:
-    CFdbDebugMsg(FdbMsgCode_t code = FDB_INVALID_ID, EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
-    
-    void metadata(CFdbMsgMetadata &metadata);
-protected:
-    void encodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session);
-    void decodeDebugInfo(CFdbMessageHeader &msg_hdr, CFdbSession *session);
-private:
-    CFdbDebugMsg(FdbMsgCode_t code
-                , CFdbBaseObject *obj
-                , FdbSessionId_t alt_receiver = FDB_INVALID_ID
-                , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
-    CFdbDebugMsg(CFdbMessageHeader &head
-                 , CFdbMsgPrefix &prefix
-                 , uint8_t *buffer
-                 , FdbSessionId_t sid);
-    CFdbDebugMsg(FdbMsgCode_t code
-              , CFdbMessage *msg
-              , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
-
-    uint64_t mSendTime;     // the time when message is sent from client
-    uint64_t mArriveTime;   // the time when message is arrived at server
-    uint64_t mReplyTime;    // the time when message is replied by server
-    uint64_t mReceiveTime;     // the time when message is received by client
-
-    friend class CFdbSession;
-    friend class CFdbBroadcastMsg;
-    friend class CFdbBaseObject;
-};
-
 typedef CFdbMessage CBaseMessage;
 
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-typedef CFdbDebugMsg _CBaseMessage;
-#else
-typedef CFdbMessage _CBaseMessage;
-#endif
-
-class CFdbBroadcastMsg : public _CBaseMessage
+class CFdbBroadcastMsg : public CFdbMessage
 {
 public:
     CFdbBroadcastMsg(FdbMsgCode_t code
@@ -751,7 +709,7 @@ protected:
                      , uint8_t *buffer
                      , FdbSessionId_t sid
                      , const char *filter)
-        : _CBaseMessage(head, prefix, buffer, sid)
+        : CFdbMessage(head, prefix, buffer, sid)
     {
         if (filter)
         {

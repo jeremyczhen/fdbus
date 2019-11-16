@@ -127,24 +127,14 @@ protected:
         {
             case NFdbBase::NTF_FDBUS_LOG:
             {
-                NFdbBase::FdbLogProducerData log_data;
-                if (!msg->deserialize(log_data))
-                {
-                    LOG_E("CLogServer: Unable to deserialize fdbus message!\n");
-                    return;
-                }
-                mLogPrinter.outputFdbLog(log_data, msg);
+                CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
+                mLogPrinter.outputFdbLog(deserializer, msg);
             }
             break;
             case NFdbBase::NTF_TRACE_LOG:
             {
-                NFdbBase::FdbTraceProducerData trace_data;
-                if (!msg->deserialize(trace_data))
-                {
-                    LOG_E("CLogServer: Unable to deserialize trace message!\n");
-                    return;
-                }
-                mLogPrinter.outputTraceLog(trace_data, msg);
+                CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
+                mLogPrinter.outputTraceLog(deserializer, msg);
             }
             break;
             default:

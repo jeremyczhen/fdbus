@@ -20,6 +20,7 @@
 #include <common_base/CBaseThread.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CIntraNameProxy.h>
+#include <common_base/CFdbSimpleMsgBuilder.h>
 #include <google/protobuf/text_format.h>
 #include <idl-gen/common.base.MessageHeader.pb.h>
 #include <stdio.h>
@@ -246,33 +247,33 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
     const char *sender = endpoint->name().c_str();
     const char *receiver = getReceiverName(msg->type(), msg->senderName().c_str(), endpoint);
     const char *busname = endpoint->nsName().c_str();
-
-    NFdbBase::FdbLogProducerData logger_data;
-    logger_data.set_logger_pid(mPid);
     CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
-    logger_data.set_sender_host_name(proxy ? proxy->hostName().c_str() : "Unknown");
 
-    logger_data.set_sender_name(sender);
-    logger_data.set_receiver_name(receiver);
-    logger_data.set_service_name(busname);
-    logger_data.set_type((int32_t)msg->type());
-    logger_data.set_code(msg->code());
-    logger_data.set_time_stamp(sysdep_getsystemtime_milli());
-    logger_data.set_msg_payload_size(msg->getPayloadSize());
-    logger_data.set_serial_number(msg->sn());
-    logger_data.set_object_id(msg->objectId());
-    
+    CFdbSimpleMsgBuilder builder;
+    builder.serializer() << mPid
+                         << (proxy ? proxy->hostName().c_str() : "Unknown")
+                         << sender
+                         << receiver
+                         << busname
+                         << msg->type()
+                         << msg->code()
+                         << sysdep_getsystemtime_milli()
+                         << msg->getPayloadSize()
+                         << msg->sn()
+                         << msg->objectId()
+                         ;
+
     if (msg->mStringData)
     {
-        logger_data.set_is_string(true);
-        sendFdbLog(logger_data, (uint8_t *)msg->mStringData->c_str(), (int32_t)(msg->mStringData->length() + 1));
+        builder.serializer() << true;
+        sendFdbLog(builder, (uint8_t *)msg->mStringData->c_str(), (int32_t)(msg->mStringData->length() + 1));
         delete msg->mStringData;
         msg->mStringData = 0;
     }
     else
     {
-        logger_data.set_is_string(false);
-        sendFdbLog(logger_data, msg->getRawBuffer(), msg->getRawDataSize(), mRawDataClippingSize);
+        builder.serializer() << false;
+        sendFdbLog(builder, msg->getRawBuffer(), msg->getRawDataSize(), mRawDataClippingSize);
     }
 }
 
@@ -303,13 +304,14 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
         tag = "None";
     }
 
-    NFdbBase::FdbTraceProducerData trace_data;
-    trace_data.set_trace_pid(mPid);
-    trace_data.set_tag(tag);
     CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
-    trace_data.set_sender_host_name(proxy ? proxy->hostName().c_str() : "Unknown");
-    trace_data.set_time_stamp(sysdep_getsystemtime_milli());
-    trace_data.set_trace_level((NFdbBase::FdbTraceLogLevel)log_level);
+    CFdbSimpleMsgBuilder builder;
+    builder.serializer() << mPid
+                         << tag
+                         << (proxy ? proxy->hostName().c_str() : "Unknown")
+                         << sysdep_getsystemtime_milli()
+                         << log_level
+                         ;
 
     char buffer[mMaxTraceLogSize];
     buffer[0] = '\0';
@@ -318,7 +320,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     vsnprintf(buffer, mMaxTraceLogSize, format, args);
     va_end(args);
 
-    sendTraceLog(trace_data, (uint8_t *)buffer, (int32_t)(strlen(buffer) + 1));
+    sendTraceLog(builder, (uint8_t *)buffer, (int32_t)(strlen(buffer) + 1));
 }
 
 bool CLogProducer::printToString(std::string *str_msg, const CFdbBasePayload &pb_msg)

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#ifndef __CNANOTIMER_H__
+#define __CNANOTIMER_H__
+
 #ifdef  __cplusplus
 #include "CBaseSysDep.h"
 class CNanoTimer
@@ -124,4 +127,5 @@ static inline uint32_t getCurrentSeconds(struct sNanoTimer *timer)
     return (timer->totalTimer_ + (timer->startTimer_ > 0 ? getNanoSecTimer() - timer->startTimer_ : 0)) / 1000000000;
 }
 
+#endif
 #endif
