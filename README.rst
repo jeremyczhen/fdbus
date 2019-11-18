@@ -176,6 +176,13 @@ Dependence:
    2.5 copy c:\workspace\protobuf\cbuild\install\bin\protoc.exe to the directory in PATH environment variable
    2.6 open fdbus.sln in c:\workspace\fdbus\build and build project INSTALL
 
+For cross compiling on Windows (target version)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1. you should have cross-compiling toolchain installed (such as linaro ARM complier)
+2. you should have 'make.exe' installed
+3. run 'cmake' as before, adding "-DCMAKE_TOOLCHAIN_FILE=../../toolchain.cmake". Makefiles will be generated.
+4. if you have visual studio installed, cmake will by default generate visual studio solution rather than makefiles. To avoid this, adding -G "Unix Makefiles" option, which forces cmake to generate makefile.
+
 How to run
 ----------
 For single host

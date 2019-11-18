@@ -37,36 +37,6 @@ message FdbMsgErrorInfo
     optional string description = 2;
 }
 
-message FdbLogProducerData
-{
-    required int32 logger_pid = 1;
-    required string sender_host_name = 2;
-
-    required string sender_name = 3;
-    required string receiver_name = 4;
-    required string service_name = 5;
-
-    required int32 type = 6;
-    required int32 code = 7;
-    required int32 serial_number = 8;
-    required int64 time_stamp = 9;
-    required bool is_string = 10;
-    
-    required int32 msg_payload_size = 11;
-    required int32 object_id = 12;
-}
-
-message FdbTraceProducerData
-{
-    required int32 trace_pid = 1;
-    required string sender_host_name = 2;
-
-    required string tag = 3;
-    required int64 time_stamp = 4;
-
-    required FdbTraceLogLevel trace_level = 5;
-}
-
 message FdbMsgLogConfig
 {
     required bool global_enable = 1;

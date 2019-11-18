@@ -19,12 +19,6 @@
 #include <string>
 #include <common_base/CFdbMessage.h>
 
-namespace NFdbBase
-{
-    class FdbLogProducerData;
-    class FdbTraceProducerData;
-}
-
 #define LOG_MODE_STDOUT         (1 << 0)
 #define LOG_MODE_FILE           (1 << 1)
 
