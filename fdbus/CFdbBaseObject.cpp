@@ -80,13 +80,12 @@ bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 
 bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this);
-    if (!msg->serialize(data))
+    CBaseMessage msg(code, this);
+    if (!msg.serialize(data))
     {
-        delete msg;
         return false;
     }
-    return msg->sendLogNoQueue();
+    return msg.sendLogNoQueue();
 }
 
 
@@ -109,13 +108,12 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
 
 bool CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_data, int32_t log_size)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, 0, FDB_INVALID_ID, FDB_INVALID_ID, FDB_MSG_ENC_SIMPLE);
-    if (!msg->serialize(log_data, log_size))
+    CFdbBroadcastMsg msg(code, this, 0, FDB_INVALID_ID, FDB_INVALID_ID, FDB_MSG_ENC_SIMPLE);
+    if (!msg.serialize(log_data, log_size))
     {
-        delete msg;
         return false;
     }
-    return msg->broadcastLogNoQueue();
+    return msg.broadcastLogNoQueue();
 }
 
 bool CFdbBaseObject::unsubscribe(CFdbMsgSubscribeList &msg_list)
