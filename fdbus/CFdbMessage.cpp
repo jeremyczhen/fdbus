@@ -335,134 +335,18 @@ bool CFdbMessage::send()
     return invoke(msg_ref, FDB_MSG_TX_NO_REPLY, -1);
 }
 
-bool CFdbMessage::sendLog(IFdbMsgBuilder &data
-                           , uint8_t *log_data
-                           , int32_t size
-                           , int32_t clipped_size
-                           , bool send_as_job)
+bool CFdbMessage::sendLogNoQueue()
 {
     mFlag |= MSG_FLAG_NOREPLY_EXPECTED;
     mFlag &= ~MSG_FLAG_ENABLE_LOG;
     mType = FDB_MT_REQUEST;
 
-    if (clipped_size < 0)
+    CFdbSession *session = getSession();
+    if (session)
     {
-        mExtraSize = size;
-    }
-    else
-    {
-        CFdbMsgPrefix prefix;
-        prefix.deserialize(log_data);
-        int32_t payload_size = prefix.mTotalLength - prefix.mHeadLength - mPrefixSize;
-        if (clipped_size == 0)
-        {
-            prefix.mTotalLength = mPrefixSize + prefix.mHeadLength;
-            mExtraSize = prefix.mTotalLength;
-            prefix.serialize(log_data);
-        }
-        else if (clipped_size < payload_size)
-        {
-            prefix.mTotalLength = mPrefixSize + prefix.mHeadLength + clipped_size;
-            mExtraSize = prefix.mTotalLength;
-            prefix.serialize(log_data);
-        }
-        else
-        {
-            mExtraSize = size;
-        }
-    }
-
-    if (!serialize(data))
-    {
-        return false;
-    }
-
-    if (log_data && size)
-    {
-        memcpy(getExtraBuffer(), log_data, mExtraSize);
-    }
-
-    if (send_as_job)
-    {
-        return CFdbContext::getInstance()->sendAsync(this);
-    }
-    else
-    {
-        CFdbSession *session = getSession();
-        if (session)
-        {
-            return session->sendMessage(this);
-        }
+        return session->sendMessage(this);
     }
     return false;
-}
-
-void CFdbMessage::broadcastLog(const uint8_t *head_data
-                               , int32_t head_size
-                               , const uint8_t *log_data
-                               , int32_t log_size
-                               , bool send_as_job)
-{
-    mType = FDB_MT_BROADCAST;
-    mFlag &= ~MSG_FLAG_ENABLE_LOG;
-    mExtraSize = log_size;
-    if (!serialize(head_data, head_size))
-    {
-        return;
-    }
-
-    if (log_data && log_size)
-    {
-        memcpy(getExtraBuffer(), log_data, mExtraSize);
-    }
-
-    if (send_as_job)
-    {
-        CFdbContext::getInstance()->sendAsyncEndeavor(this);
-    }
-    else
-    {
-        CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
-        if (endpoint)
-        {
-            // Broadcast per object!!!
-            CFdbBaseObject *object = endpoint->getObject(this, true);
-            if (object)
-            {
-                object->broadcast(this);
-            }
-        }
-    }
-}
-
-CFdbMessage *CFdbMessage::parseFdbLog(uint8_t *buffer, int32_t size)
-{
-    if (!buffer || !size)
-    {
-        return 0;
-    }
-
-    CFdbMessage::CFdbMsgPrefix prefix;
-    prefix.deserialize(buffer);
-    
-    CFdbMessageHeaderParser head(buffer + CFdbMessage::mPrefixSize, prefix.mHeadLength);
-    if (head.parse() < 0)
-    {
-        return 0;
-    }
-
-    int32_t payload_size = head.payload_size();
-    int32_t extra_size = prefix.mTotalLength - mPrefixSize - prefix.mHeadLength - payload_size;
-    if (extra_size < 0)
-    {
-        payload_size += extra_size;
-        if (payload_size < 0)
-        {
-            return 0;
-        }
-        head.set_payload_size(payload_size);
-    }
-    return new CFdbMessage(head, prefix, buffer, session());
 }
 
 bool CFdbMessage::broadcast(FdbMsgCode_t code
@@ -481,6 +365,28 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
     }
     msg->setLogData(log_data);
     return msg->broadcast();
+}
+
+bool CFdbMessage::broadcastLogNoQueue()
+{
+    mType = FDB_MT_BROADCAST;
+    mFlag &= ~MSG_FLAG_ENABLE_LOG;
+
+    CBaseEndpoint *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
+    if (endpoint)
+    {
+        // Broadcast per object!!!
+        CFdbBaseObject *object = endpoint->getObject(this, true);
+        if (object)
+        {
+            object->broadcast(this);
+        }
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool CFdbMessage::broadcast()

@@ -212,7 +212,7 @@ public:
     int32_t parse()
     {
         deserialize(mDeserializer);
-        return mDeserializer.error() ? -1 : mDeserializer.size();
+        return mDeserializer.error() ? -1 : mDeserializer.index();
     }
 };
 

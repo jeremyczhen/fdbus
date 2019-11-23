@@ -65,32 +65,24 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
               << payload_size << "]["
               << timestamp << "]{"
               << std::endl;
+    if (deserializer.error())
+    {
+        return;
+    }
     if (is_string)
     {
-        std::cout << (char *)log_msg->getExtraBuffer() << "}"
-                  << std::endl;
+        fdb_ser_strlen_t str_len = 0;
+        deserializer >> str_len;
+        if (str_len)
+        {
+            std::cout << (const char *)deserializer.pos() << "}" << std::endl;
+        }
     }
     else
     {
-        int32_t clipped_payload_size = 0;
-        CFdbMessage *log = log_msg->parseFdbLog(log_msg->getExtraBuffer(), log_msg->getExtraDataSize());
-        if (log)
-        {
-            clipped_payload_size = log->getPayloadSize();
-        }
-        else
-        {
-            clipped_payload_size = -1;
-            LOG_E("CLogServer: Unable to decode log data!\n");
-            return;
-        }
-
-        std::cout << "Raw data of size " << payload_size
-                  << " is clipped to "
-                  << clipped_payload_size << " bytes"
-                  << std::endl << "}" << std::endl;
-        log->ownBuffer();
-        delete log;
+        int32_t log_size;
+        deserializer >> log_size;
+        std::cout << "Raw data is received. Size: " << log_size << std::endl << "}" << std::endl;
     }
 }
 
@@ -120,8 +112,12 @@ void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessa
         return;
     }
 
+    fdb_ser_strlen_t str_len = 0;
+    deserializer >> str_len;
+    const char *trace_log = str_len ? (const char *)deserializer.pos() : "\n";
+
     std::cout << "[D]" << level_name[log_level] << "["
               << tag << "-" << pid << "-" << host_name << "]["
               << timestamp << "] "
-              << trace_msg->getExtraBuffer();
+              << trace_log;
 }

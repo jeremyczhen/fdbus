@@ -36,7 +36,7 @@ CFdbSimpleSerializer::~CFdbSimpleSerializer()
 
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const std::string& data)
 {
-    serializer.serializeString(data.c_str(), (fdb_ser_strlen_t)data.size());
+    serializer.addString(data.c_str(), (fdb_ser_strlen_t)data.size());
     return serializer;
 }
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, std::string& data)
@@ -46,7 +46,7 @@ CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, std::string& 
 
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const char *data)
 {
-    serializer.serializeString(data, (fdb_ser_strlen_t)strlen(data));
+    serializer.addString(data, (fdb_ser_strlen_t)strlen(data));
     return serializer;
 }
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, char *data)
@@ -71,7 +71,7 @@ void CFdbSimpleSerializer::reset()
     mPos = 0;
 }
 
-void CFdbSimpleSerializer::serializeString(const char *string, fdb_ser_strlen_t str_len)
+void CFdbSimpleSerializer::addString(const char *string, fdb_ser_strlen_t str_len)
 {
     fdb_ser_strlen_t l = str_len + 1;
     *this << l;
@@ -177,7 +177,7 @@ CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::st
     return deserializer;
 }
 
-void CFdbSimpleDeserializer::retrieveData(uint8_t *p_data, int32_t size)
+void CFdbSimpleDeserializer::retrieveBasicData(uint8_t *p_data, int32_t size)
 {
     if (fdb_is_little_endian())
     {
@@ -195,3 +195,16 @@ void CFdbSimpleDeserializer::retrieveData(uint8_t *p_data, int32_t size)
     }
     mPos += size;
 }
+
+bool CFdbSimpleDeserializer::retrieveRawData(uint8_t *p_data, int32_t size)
+{
+    if (mSize && ((mPos + size) > mSize))
+    {
+        return false;
+    }
+
+    memcpy(p_data, mBuffer + mPos, size);
+    mPos += size;
+    return true;
+}
+

@@ -265,15 +265,22 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
 
     if (msg->mStringData)
     {
-        builder.serializer() << true;
-        sendFdbLog(builder, (uint8_t *)msg->mStringData->c_str(), (int32_t)(msg->mStringData->length() + 1));
+        builder.serializer() << true << *(msg->mStringData);
         delete msg->mStringData;
         msg->mStringData = 0;
+        sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
     }
     else
     {
         builder.serializer() << false;
-        sendFdbLog(builder, msg->getRawBuffer(), msg->getRawDataSize(), mRawDataClippingSize);
+        int32_t log_size = msg->getPayloadSize();
+        if ((mRawDataClippingSize >= 0) && (mRawDataClippingSize < log_size))
+        {
+            log_size = mRawDataClippingSize;
+        }
+        builder.serializer() << log_size;
+        builder.serializer().addRawData(msg->getPayloadBuffer(), log_size);
+        sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
     }
 }
 
@@ -319,8 +326,9 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     va_start(args, format);
     vsnprintf(buffer, mMaxTraceLogSize, format, args);
     va_end(args);
+    builder.serializer() << buffer;
 
-    sendTraceLog(builder, (uint8_t *)buffer, (int32_t)(strlen(buffer) + 1));
+    sendLog(NFdbBase::REQ_TRACE_LOG, builder);
 }
 
 bool CLogProducer::printToString(std::string *str_msg, const CFdbBasePayload &pb_msg)

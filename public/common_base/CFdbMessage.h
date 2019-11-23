@@ -628,17 +628,9 @@ private:
         }
     }
 
-    bool sendLog(IFdbMsgBuilder &data
-               , uint8_t *log_data
-               , int32_t size
-               , int32_t clipped_size
-               , bool send_as_job);
-    void broadcastLog(const uint8_t *head_data
-                    , int32_t head_size
-                    , const uint8_t *log_data
-                    , int32_t size
-                    , bool send_as_johb);
-    CFdbMessage *parseFdbLog(uint8_t *buffer, int32_t size);
+    bool sendLogNoQueue();
+    bool broadcastLogNoQueue();
+
     bool invokeSideband(int32_t timeout = 0);
     bool sendSideband();
     template<typename T>

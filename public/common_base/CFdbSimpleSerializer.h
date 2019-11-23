@@ -47,16 +47,16 @@ public:
         return mPos;
     }
     void reset();
-    
+    void addRawData(const uint8_t *p_data, int32_t size);
+    void addString(const char *string, fdb_ser_strlen_t str_len);
+
 private:
     uint8_t *mBuffer;
     uint32_t mTotalSize;
     uint32_t mPos;
     uint8_t mScratchCache[FDB_SCRATCH_CACHE_SIZE];
-    void serializeString(const char *string, fdb_ser_strlen_t str_len);
     void addMemory(uint32_t size);
     void addBasicType(const uint8_t *p_data, int32_t size);
-    void addRawData(const uint8_t *p_data, int32_t size);
 };
 
 class CFdbSimpleDeserializer
@@ -78,10 +78,9 @@ public:
             deserializer.mError = true;
             return deserializer;
         }
-        deserializer.retrieveData((uint8_t *)&data, size);
+        deserializer.retrieveBasicData((uint8_t *)&data, size);
         return deserializer;
     }
-    void retrieveData(uint8_t *p_data, int32_t size);
 
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::string& data);
 
@@ -95,16 +94,25 @@ public:
         mError = status;
     }
 
-    int32_t size() const
+    int32_t index() const
     {
         return mPos;
     }
+
+    const uint8_t *pos() const
+    {
+        return mBuffer ? mBuffer + mPos : 0;
+    }
+    
+    bool retrieveRawData(uint8_t *p_data, int32_t size);
 
 private:
     const uint8_t *mBuffer;
     int32_t mSize;
     int32_t mPos;
     bool mError;
+
+    void retrieveBasicData(uint8_t *p_data, int32_t size);
 };
 
 #endif

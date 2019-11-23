@@ -752,25 +752,11 @@ private:
     void unsubscribe(CFdbSession *session);
     void unsubscribe(FdbObjectId_t obj_id);
     void broadcast(CFdbMessage *msg);
-    void sendFdbLog(IFdbMsgBuilder &data
-                  , uint8_t *log_data
-                  , int32_t size
-                  , int32_t clipped_size = -1);
-                  
-    void sendTraceLog(IFdbMsgBuilder &data
-                  , uint8_t *trace_data
-                  , int32_t size);
-                  
-    void broadcastFdbLog(const uint8_t *head_data
-                       , int32_t head_size
-                       , const uint8_t *log_data
-                       , int32_t log_size);
-                       
-    void broadcastTraceLog(const uint8_t *head_data
-                         , int32_t head_size
-                         , const uint8_t *trace_data
-                         , int32_t trace_size);
 
+    bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_data, int32_t log_size);
+                       
     void getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filters);
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
     
