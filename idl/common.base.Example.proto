@@ -1,6 +1,20 @@
 syntax = "proto2";
+option java_outer_classname = "NFdbExample";
+option java_package = "ipc.fdbus";
 
 package NFdbExample;
+
+message FdbMsgObjectInfo
+{
+    required uint32 obj_id = 1; 
+    optional string obj_name = 2; 
+}
+
+message FdbMsgObjectInfoTbl
+{
+    repeated FdbMsgObjectInfo info = 1;
+}
+
 
 message SongId
 {

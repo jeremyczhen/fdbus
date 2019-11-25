@@ -19,6 +19,7 @@ It is something like ``DBus`` or ``SOME/IP``, but with its own characteristic:
 - **Address allocation** : service address is allocated dynamically
 - **Networking** : communication inside host and cross hosts
 - **IDL and code generation** : using protocol buffer
+- **Language binding** : C++ Java
 - **Total slution** : it is more than an ``IPC`` machanism. it is a middleware development framework
 
 Its usage can be found in the following fields:
@@ -37,9 +38,10 @@ Supported system
 
 Dependence
 ----------
-- cmake - 3.1.3 or above
+- cmake - 3.1.3 or above for non-jni build
+- cmake - 3.11.1 or above for jni build
 - protocol buffer
-- compiler supporting C++11
+- compiler supporting C++11 (gcc 4.7+ for Linux; Visual Studio for Windows)
 
 Download
 --------
@@ -160,7 +162,7 @@ Dependence:
    1.1 cd c:\workspace
    1.2 #suppose source code of protocol buffer is already downloaded and placed at c:\workspace\protobuf
    1.3 cd protobuf;mkdir -p cbuild\install;cd cbuild #create directory for out-of-source build
-   1.4 cmake -DCMAKE_INSTALL_PREFIX=install ..\cmake
+   1.4 cmake -DCMAKE_INSTALL_PREFIX=install -Dprotobuf_WITH_ZLIB=OFF ..\cmake
    1.5 open protobuf.sln in c:\workspace\protobuf\cbuild and build project INSTALL
 
 2. build fdbus
@@ -173,6 +175,13 @@ Dependence:
    2.4 cmake -DSYSTEM_ROOT=c:\workspace\protobuf\build\install -DCMAKE_INSTALL_PREFIX=install ..\cmake
    2.5 copy c:\workspace\protobuf\cbuild\install\bin\protoc.exe to the directory in PATH environment variable
    2.6 open fdbus.sln in c:\workspace\fdbus\build and build project INSTALL
+
+For cross compiling on Windows (target version)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1. you should have cross-compiling toolchain installed (such as linaro ARM complier)
+2. you should have 'make.exe' installed
+3. run 'cmake' as before, adding "-DCMAKE_TOOLCHAIN_FILE=../../toolchain.cmake". Makefiles will be generated.
+4. if you have visual studio installed, cmake will by default generate visual studio solution rather than makefiles. To avoid this, adding -G "Unix Makefiles" option, which forces cmake to generate makefile.
 
 How to run
 ----------
@@ -239,6 +248,9 @@ cmake options
 ``fdbus_SECURITY``
  | ``ON`` : enable security
  | *``OFF``: disable security
+``fdbus_BUILD_JNI``
+ | ``ON`` : build JNI shared library and jar package
+ | *``OFF``: don't build JNI artifacts
 
 .. note::
 
@@ -280,4 +292,8 @@ Authenication of host
 
 TBD
 
+Known issues
+^^^^^^^^^^^^^^^^^^^^^
 
+ | 1. Issue: sem_timedwait() is used as notifier and blocker of event loop, leading to timer failure when TOD is changed since sem_wait() take CLOCK_REALTIME clock for timeout control.
+ |    Solution: When creating worker thread, pass FDB_WORKER_ENABLE_FD_LOOP as parameter, forcing poll() instead of sem_timedwait() as loop notifier and blocker

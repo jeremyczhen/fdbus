@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <common_base/fdbus.h>
 #define FDB_LOG_TAG "JOB_TEST"
-#include <common_base/fdb_log_trace.h>
+#include <common_base/fdbus.h>
 
 static CBaseWorker sender;
 static CBaseWorker receiver;

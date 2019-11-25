@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <common_base/fdbus.h>
 #define FDB_LOG_TAG "FDB_TEST_CLIENT"
-#include <common_base/fdb_log_trace.h>
+#include <common_base/fdbus.h>
 #include <idl-gen/common.base.Example.pb.h>
 
 #define FDB_INVOKE_SYNC 1
@@ -152,7 +151,7 @@ public:
          * trigger update manually; onBroadcast() will be called followed by
          * onStatus().
          */
-        NFdbBase::FdbMsgSubscribe update_list;
+        CFdbMsgTriggerList update_list;
         addManualTrigger(update_list, NTF_MANUAL_UPDATE);
         update(update_list);
     }
@@ -167,7 +166,7 @@ protected:
             mTimer->enable(); /* enable timer to invoke the server periodically */
 
             /* add all events to subscribe list */
-            NFdbBase::FdbMsgSubscribe subscribe_list;
+            CFdbMsgSubscribeList subscribe_list;
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
             /*
@@ -220,7 +219,7 @@ protected:
                 }
                 else if (!filter.compare("raw_buffer"))
                 {
-                    if (!msg->isRawData())
+                    if (msg->getDataEncoding() != FDB_MSG_ENC_PROTOBUF)
                     {
                         FDB_LOG_E("Error! Raw data is expected but protobuf is received.\n");
                         return;

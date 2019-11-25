@@ -36,7 +36,14 @@ public:
     CLogProducer();
     void logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *format, ...);
-    void printToString(CFdbMessage *fdb_msg, const CFdbBasePayload &pb_msg);
+
+    bool checkLogEnabled(EFdbMessageType type,
+                         const char *sender_name,
+                         const CBaseEndpoint *endpoint,
+                         bool lock = true);
+    bool checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock = true);
+    
+    bool printToString(std::string *str_msg, const CFdbBasePayload &pb_msg);
 
     static std::string mTagName;
 protected:
@@ -45,8 +52,16 @@ protected:
     void onOffline(FdbSessionId_t sid, bool is_last);
 private:
     typedef std::set<std::string> tFilterTbl;
+    
+    const char *getReceiverName(EFdbMessageType type,
+                                const char *sender_name,
+                                const CBaseEndpoint *endpoint);
+    
+    bool checkLogEnabledGlobally();
+    bool checkLogEnabledByMessageType(EFdbMessageType type);
+    bool checkLogEnabledByEndpoint(const char *sender, const char *receiver, const char *busname);
+    
     uint32_t mFlag;
-    bool mRecursive;
     CBASE_tProcId mPid;
     bool mLoggerDisableGlobal;
     bool mDisableRequest;
@@ -58,6 +73,7 @@ private:
     bool mTraceDisableGlobal;
 
     tFilterTbl mLogEndpointWhiteList;
+    tFilterTbl mLogBusnameWhiteList;
     bool mLogHostEnabled;
 
     tFilterTbl mTraceTagWhiteList;
@@ -65,7 +81,6 @@ private:
     CBaseMutexLock mTraceLock;
 
     static const int32_t mMaxTraceLogSize = 4096;
-    bool checkLogEnabled(const CFdbMessage *msg);
     bool checkHostEnabled(const ::google::protobuf::RepeatedPtrField< ::std::string> &host_tbl);
     void populateWhiteList(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_filter
                          , tFilterTbl &white_list);

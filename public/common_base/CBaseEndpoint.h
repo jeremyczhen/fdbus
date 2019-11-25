@@ -28,6 +28,13 @@
 class CBaseWorker;
 class CFdbSessionContainer;
 class CFdbMessage;
+namespace google
+{
+    namespace protobuf
+    {
+        template <typename Element> class RepeatedPtrField;
+    }
+}
 
 class CBaseEndpoint : public CEntityContainer<FdbSocketId_t, CFdbSessionContainer *>
                     , public CFdbBaseObject
@@ -36,7 +43,7 @@ public:
     CBaseEndpoint(const char *name, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     ~CBaseEndpoint();
 
-    std::string &nsName()
+    const std::string &nsName() const
     {
         return mNsName;
     }
@@ -58,12 +65,22 @@ public:
         return !!mSessionCnt;
     }
 
+    FdbEndpointId_t epid() const
+    {
+        return mEpid;
+    }
+
 protected:
     void deleteSocket(FdbSocketId_t skid = FDB_INVALID_ID);
     void addSocket(CFdbSessionContainer *container);
     void getDefaultSvcUrl(std::string &url);
 
     virtual void reconnectToNs(bool connect) {}
+
+    void epid(FdbEndpointId_t epid)
+    {
+        mEpid = epid;
+    }
 
     std::string mNsName;
 
@@ -108,6 +125,7 @@ private:
     uint32_t mSessionCnt;
     FdbObjectId_t mSnAllocator;
     CFdbToken::tTokenList mTokens;
+    FdbEndpointId_t mEpid;
 
     friend class CFdbSession;
     friend class CFdbMessage;

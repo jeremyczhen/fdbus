@@ -109,7 +109,7 @@ void CHostProxy::subscribeListener(NFdbBase::FdbHsMsgCode code, bool sub)
         return;
     }
 
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, code);
     if (sub)
     {

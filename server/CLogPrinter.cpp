@@ -16,58 +16,77 @@
 
 #include "CLogPrinter.h"
 #include <common_base/CNanoTimer.h>
+#include <common_base/CBaseSysDep.h>
+#include <common_base/CFdbSimpleMsgBuilder.h>
 #include <utils/Log.h>
 #include <iostream>
 #include <stdlib.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include <string>
 
 CLogPrinter::CLogPrinter(uint32_t mode)
     : mPrintMode(mode)
 {
 }
 
-void CLogPrinter::outputFdbLog(const NFdbBase::FdbLogProducerData &log_info, CFdbMessage *log_msg)
+void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *log_msg)
 {
-    std::cout << "[F][" << log_info.logger_pid() << "@" << log_info.sender_host_name() << "]["
-              << log_info.sender_name() << "->" << log_info.receiver_name() << "]["
-              << log_info.service_name() << "]["
-              << log_info.object_id() << "]["
-              << CFdbMessage::getMsgTypeName(log_info.type()) << "]["
-              << log_info.code() << "]["
-              << log_info.serial_number() << "]["
-              << log_info.msg_payload_size() << "]["
-              << log_info.time_stamp() << "]{"
+    CBASE_tProcId pid;
+    std::string host_name;
+    std::string sender;
+    std::string receiver;
+    std::string busname;
+    EFdbMessageType msg_type;
+    FdbMsgCode_t msg_code;
+    uint64_t timestamp;
+    int32_t payload_size;
+    FdbMsgSn_t msg_sn;
+    FdbObjectId_t obj_id;
+    bool is_string;
+    deserializer >> pid
+                 >> host_name
+                 >> sender
+                 >> receiver
+                 >> busname
+                 >> msg_type
+                 >> msg_code
+                 >> timestamp
+                 >> payload_size
+                 >> msg_sn
+                 >> obj_id
+                 >> is_string;
+
+    std::cout << "[F][" << pid << "@" << host_name << "]["
+              << sender << "->" << receiver << "]["
+              << busname << "]["
+              << obj_id << "]["
+              << CFdbMessage::getMsgTypeName(msg_type) << "]["
+              << msg_code << "]["
+              << msg_sn << "]["
+              << payload_size << "]["
+              << timestamp << "]{"
               << std::endl;
-    if (log_info.is_string())
+    if (deserializer.error())
     {
-        std::cout << (char *)log_msg->getExtraBuffer() << "}"
-                  << std::endl;
+        return;
+    }
+    if (is_string)
+    {
+        fdb_ser_strlen_t str_len = 0;
+        deserializer >> str_len;
+        if (str_len)
+        {
+            std::cout << (const char *)deserializer.pos() << "}" << std::endl;
+        }
     }
     else
     {
-        int32_t clipped_payload_size = 0;
-        CFdbMessage *log = log_msg->parseFdbLog(log_msg->getExtraBuffer(), log_msg->getExtraDataSize());
-        if (log)
-        {
-            clipped_payload_size = log->getPayloadSize();
-        }
-        else
-        {
-            clipped_payload_size = -1;
-            LOG_E("CLogServer: Unable to decode log data!\n");
-            return;
-        }
-
-        std::cout << "Raw data of size " << log_info.msg_payload_size()
-                  << " is clipped to "
-                  << clipped_payload_size << " bytes"
-                  << std::endl << "}" << std::endl;
-        log->ownBuffer();
-        delete log;
+        int32_t log_size;
+        deserializer >> log_size;
+        std::cout << "Raw data is received. Size: " << log_size << std::endl << "}" << std::endl;
     }
 }
 
-void CLogPrinter::outputTraceLog(const NFdbBase::FdbTraceProducerData &trace_info, CFdbMessage *trace_msg)
+void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *trace_msg)
 {
     const char *level_name[] = {
         "[V]",
@@ -78,9 +97,27 @@ void CLogPrinter::outputTraceLog(const NFdbBase::FdbTraceProducerData &trace_inf
         "[F]",
         "[S]"
     };
+    CBASE_tProcId pid;
+    std::string tag;
+    std::string host_name;
+    uint64_t timestamp;
+    EFdbLogLevel log_level;
+    deserializer >> pid
+                 >> tag
+                 >> host_name
+                 >> timestamp
+                 >> log_level;
+    if (log_level >= FDB_LL_MAX)
+    {
+        return;
+    }
 
-    std::cout << "[D]" << level_name[trace_info.trace_level()] << "["
-              << trace_info.tag() << "-" << trace_info.trace_pid() << "-" << trace_info.sender_host_name() << "]["
-              << trace_info.time_stamp() << "] "
-              << trace_msg->getExtraBuffer();
+    fdb_ser_strlen_t str_len = 0;
+    deserializer >> str_len;
+    const char *trace_log = str_len ? (const char *)deserializer.pos() : "\n";
+
+    std::cout << "[D]" << level_name[log_level] << "["
+              << tag << "-" << pid << "-" << host_name << "]["
+              << timestamp << "] "
+              << trace_log;
 }

@@ -275,7 +275,7 @@ void CInterNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code
 {
     if (isValidFdbId(subscriber))
     {
-        NFdbBase::FdbMsgSubscribe subscribe_list;
+        CFdbMsgSubscribeList subscribe_list;
         addNotifyItem(subscribe_list, code, svc_name);
         CFdbMessage *msg = new CServiceSubscribeMsg(subscriber);
         subscribe(subscribe_list, msg);

@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <common_base/fdbus.h>
 #define FDB_LOG_TAG "FDB_TEST_SERVER"
-#include <common_base/fdb_log_trace.h>
+#include <common_base/fdbus.h>
 #include <idl-gen/common.base.Example.pb.h>
 
 /* Define message ID; should be the same as server. */
@@ -144,7 +143,7 @@ protected:
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
         CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+        const CFdbMsgSubscribeItem *sub_item;
         /* iterate all message id subscribed */
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {

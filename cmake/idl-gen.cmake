@@ -25,8 +25,3 @@ foreach(idl ${PROTO_SOURCES})
     set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${gen_header};${gen_source}")
 endforeach()
 
-set(PROTO_INSTALL_DIR "../dist/usr/include")
-set(PROTO_INSTALL_TARGET "${PROTO_TARGET}.install")
-add_custom_target(${PROTO_INSTALL_TARGET}
-                  mkdir -p ${PROTO_INSTALL_DIR} && cp -r ${GEN_DIR} ${PROTO_INSTALL_DIR}
-)

@@ -158,7 +158,7 @@ protected:
     {
         if (ls_follow)
         {
-            NFdbBase::FdbMsgSubscribe subscribe_list;
+            CFdbMsgSubscribeList subscribe_list;
             addNotifyItem(subscribe_list, NFdbBase::NTF_SERVICE_ONLINE_MONITOR);
             subscribe(subscribe_list);
         }

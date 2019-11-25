@@ -19,21 +19,16 @@
 #include <string>
 #include <common_base/CFdbMessage.h>
 
-namespace NFdbBase
-{
-    class FdbLogProducerData;
-    class FdbTraceProducerData;
-}
-
 #define LOG_MODE_STDOUT         (1 << 0)
 #define LOG_MODE_FILE           (1 << 1)
 
+class CFdbSimpleDeserializer;
 class CLogPrinter
 {
 public:
     CLogPrinter(uint32_t mode = LOG_MODE_STDOUT);
-    void outputFdbLog(const NFdbBase::FdbLogProducerData &log_info, CFdbMessage *log_msg);
-    void outputTraceLog(const NFdbBase::FdbTraceProducerData &trace_info, CFdbMessage *trace_msg);
+    void outputFdbLog(CFdbSimpleDeserializer &log_info, CFdbMessage *log_msg);
+    void outputTraceLog(CFdbSimpleDeserializer &trace_info, CFdbMessage *trace_msg);
     void setPrintMode(uint32_t print_mode)
     {
         mPrintMode = print_mode;

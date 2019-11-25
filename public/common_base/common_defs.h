@@ -20,9 +20,9 @@
 #include <iostream>
 #include <stdint.h>
 
-#define FDB_VERSION_MAJOR 2
+#define FDB_VERSION_MAJOR 3
 #define FDB_VERSION_MINOR 0
-#define FDB_VERSION_BUILD 0
+#define FDB_VERSION_BUILD 1
 
 #define FDB_INVALID_ID (~0)
 typedef uint16_t FdbEndpointId_t;

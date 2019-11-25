@@ -38,6 +38,7 @@ static int32_t fdb_debug_trace_level = FDB_LL_INFO;
 static int32_t fdb_disable_global_trace = 0;
 static std::vector<std::string> fdb_log_host_white_list;
 static std::vector<std::string> fdb_log_endpoint_white_list;
+static std::vector<std::string> fdb_log_busname_white_list;
 static std::vector<std::string> fdb_trace_host_white_list;
 static std::vector<std::string> fdb_trace_tag_white_list;
 
@@ -92,19 +93,14 @@ protected:
         {
             case NFdbBase::REQ_FDBUS_LOG:
             {
-                NFdbBase::FdbLogProducerData log_data;
-                if (!msg->deserialize(log_data))
-                {
-                    LOG_E("CLogServer: Unable to deserialize fdbus message!\n");
-                    return;
-                }
                 if (!fdb_disable_output)
                 {
-                    mLogPrinter.outputFdbLog(log_data, msg);
+                    CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
+                    mLogPrinter.outputFdbLog(deserializer, msg);
                 }
                 if (!mLoggerClientTbl.empty())
                 {
-                    broadcastFdbLog(log_data, msg->getExtraBuffer(), msg->getExtraDataSize());
+                    broadcastLogNoQueue(NFdbBase::NTF_FDBUS_LOG, msg->getPayloadBuffer(), msg->getPayloadSize());
                 }
             }
             break;
@@ -122,8 +118,9 @@ protected:
                 fdb_disable_broadcast = !in_config.enable_broadcast();
                 fdb_disable_subscribe = !in_config.enable_subscribe();
                 fdb_raw_data_clipping_size = in_config.raw_data_clipping_size();
-                fdb_dump_white_list_cmd(in_config.host_while_list(), fdb_log_host_white_list);
-                fdb_dump_white_list_cmd(in_config.endpoint_while_list(), fdb_log_endpoint_white_list);
+                fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_log_host_white_list);
+                fdb_dump_white_list_cmd(in_config.endpoint_white_list(), fdb_log_endpoint_white_list);
+                fdb_dump_white_list_cmd(in_config.busname_white_list(), fdb_log_busname_white_list);
 
                 NFdbBase::FdbMsgLogConfig out_config;
                 fillLoggerConfigs(out_config);
@@ -133,19 +130,14 @@ protected:
             break;
             case NFdbBase::REQ_TRACE_LOG:
             {
-                NFdbBase::FdbTraceProducerData trace_data;
-                if (!msg->deserialize(trace_data))
-                {
-                    LOG_E("CLogServer: Unable to deserialize trace message!\n");
-                    return;
-                }
                 if (!fdb_disable_output)
                 {
-                    mLogPrinter.outputTraceLog(trace_data, msg);
+                    CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
+                    mLogPrinter.outputTraceLog(deserializer, msg);
                 }
                 if (!mLoggerClientTbl.empty())
                 {
-                    broadcastTraceLog(trace_data, msg->getExtraBuffer(), msg->getExtraDataSize());
+                    broadcastLogNoQueue(NFdbBase::NTF_TRACE_LOG, msg->getPayloadBuffer(), msg->getPayloadSize());
                 }
             }
             break;
@@ -159,8 +151,8 @@ protected:
                 }
                 fdb_disable_global_trace = !in_config.global_enable();
                 fdb_debug_trace_level = in_config.log_level();
-                fdb_dump_white_list_cmd(in_config.host_while_list(), fdb_trace_host_white_list);
-                fdb_dump_white_list_cmd(in_config.tag_while_list(), fdb_trace_tag_white_list);
+                fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_trace_host_white_list);
+                fdb_dump_white_list_cmd(in_config.tag_white_list(), fdb_trace_tag_white_list);
 
                 NFdbBase::FdbTraceConfig out_config;
                 fillTraceConfigs(out_config);
@@ -176,7 +168,7 @@ protected:
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
         CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+        const CFdbMsgSubscribeItem *sub_item;
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
             switch (sub_item->msg_code())
@@ -319,8 +311,9 @@ private:
         config.set_enable_broadcast(!fdb_disable_broadcast);
         config.set_enable_subscribe(!fdb_disable_subscribe);
         config.set_raw_data_clipping_size(fdb_raw_data_clipping_size);
-        fdb_populate_white_list_cmd(*config.mutable_host_while_list(), fdb_log_host_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_endpoint_while_list(), fdb_log_endpoint_white_list);
+        fdb_populate_white_list_cmd(*config.mutable_host_white_list(), fdb_log_host_white_list);
+        fdb_populate_white_list_cmd(*config.mutable_endpoint_white_list(), fdb_log_endpoint_white_list);
+        fdb_populate_white_list_cmd(*config.mutable_busname_white_list(), fdb_log_busname_white_list);
     }
 
     void fillTraceConfigs(NFdbBase::FdbTraceConfig &config)
@@ -328,8 +321,8 @@ private:
         config.set_global_enable(checkLogEnabled(fdb_disable_global_trace,
                                                  mTraceClientTbl.empty()));
         config.set_log_level((NFdbBase::FdbTraceLogLevel)fdb_debug_trace_level);
-        fdb_populate_white_list_cmd(*config.mutable_host_while_list(), fdb_trace_host_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_tag_while_list(), fdb_trace_tag_white_list);
+        fdb_populate_white_list_cmd(*config.mutable_host_white_list(), fdb_trace_host_white_list);
+        fdb_populate_white_list_cmd(*config.mutable_tag_white_list(), fdb_trace_tag_white_list);
     }
 };
 
@@ -360,6 +353,7 @@ int main(int argc, char **argv)
     int32_t help = 0;
     char *log_host_filters = 0;
     char *log_endpoint_filters = 0;
+    char *log_busname_filters = 0;
     char *trace_host_filters = 0;
     char *trace_tag_filters = 0;
 
@@ -372,6 +366,7 @@ int main(int argc, char **argv)
         { FDB_OPTION_BOOLEAN, "output", 'o', &fdb_disable_output },
         { FDB_OPTION_INTEGER, "clip", 'c', &fdb_raw_data_clipping_size },
         { FDB_OPTION_STRING, "log_endpoint", 'e', &log_endpoint_filters },
+            { FDB_OPTION_STRING, "log_busname", 'n', &log_busname_filters },
         { FDB_OPTION_STRING, "log_hosts", 'm', &log_host_filters },
         { FDB_OPTION_INTEGER, "level", 'l', &fdb_debug_trace_level },
         { FDB_OPTION_BOOLEAN, "no_trace", 'd', &fdb_disable_global_trace },
@@ -397,6 +392,7 @@ int main(int argc, char **argv)
         std::cout << "    -o: disable terminal output" << std::endl;
         std::cout << "    -c: specify size of raw data to be clipped" << std::endl;
         std::cout << "    -e: specify a list of endpoints separated by ',' as white list for fdbus logging" << std::endl;
+        std::cout << "    -n: specify a list of bus name separated by ',' as white list for fdbus logging" << std::endl;
         std::cout << "    -m: specify a list of host names separated by ',' as white list for fdbus logging" << std::endl;
         std::cout << "    ==== Options for debug trace   ====" << std::endl;
         std::cout << "    -l: specify debug trace level: 0-verbose 1-debug 2-info 3-warning 4-error 5-fatal 6-silent" << std::endl;
@@ -430,6 +426,7 @@ int main(int argc, char **argv)
 
     fdb_populate_white_list(log_host_filters, fdb_log_host_white_list);
     fdb_populate_white_list(log_endpoint_filters, fdb_log_endpoint_white_list);
+    fdb_populate_white_list(log_busname_filters, fdb_log_busname_white_list);
     fdb_populate_white_list(trace_host_filters, fdb_trace_host_white_list);
     fdb_populate_white_list(trace_tag_filters, fdb_trace_tag_white_list);
 

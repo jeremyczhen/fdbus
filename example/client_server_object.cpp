@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#define FDB_LOG_TAG "FDBTEST"
 #include <common_base/fdbus.h>
 #define OBJ_FROM_SERVER_TO_CLIENT 1
 
@@ -26,10 +27,6 @@
  * 项目所有的接口描述文件都统一放在该目录下，在使用时包含进来。
  */
 #include <idl-gen/common.base.Example.pb.h>
-
-
-#define FDB_LOG_TAG "FDBTEST"
-#include <common_base/fdb_log_trace.h>
 
 #if 1
 CBaseNotificationCenter<void *> nc;
@@ -119,7 +116,7 @@ void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
     uint64_t time_r2c;
     uint64_t time_total;
     CFdbMessage::parseTimestamp(metadata, time_c2s, time_s2r, time_r2c, time_total);
-    FDB_LOG_I("OBJ %d , client->server: %" PRIu64 ", arrive->reply: %" PRIu64 ", reply->receive: %" PRIu64 ", total: %" PRIu64 "\n",
+    FDB_LOG_I("OBJ %d, client->server: %" PRIu64 ", arrive->reply: %" PRIu64 ", reply->receive: %" PRIu64 ", total: %" PRIu64 "\n",
                 obj_id, time_c2s, time_s2r, time_r2c, time_total);
 }
 
@@ -227,13 +224,6 @@ protected:
          */
         CBaseMessage *msg = castToMessage<CBaseMessage *>(msg_ref);
         /*
-         * 如果CBaseMessage定义成CFdbDebugMsg类型，则发送端和接收端都会
-         * 在消息中加上时间戳，便于跟踪系统性能。
-         */
-        CFdbMsgMetadata md;
-        msg->metadata(md);
-        printMetadata(this->objId(), md);
-        /*
          * 接下来就要case by case地处理收到的请求了。msg->code()表示消息对应的码。
          *
          * 为了让代码结构更加美观及高效，可以使用类CFdbMessageHandle
@@ -294,7 +284,7 @@ protected:
                 {
                     CMyServer<CFdbBaseObject> *obj = new CMyServer<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
                     FdbObjectId_t obj_id = obj->bind(dynamic_cast<CBaseEndpoint *>(this));
-                    NFdbBase::FdbMsgObjectInfo obj_info;
+                    NFdbExample::FdbMsgObjectInfo obj_info;
                     obj_info.set_obj_id(obj_id);
                     this->broadcast(NTF_MEDIAPLAYER_CREATED, obj_info);
                     my_server_objects.push_back(obj);
@@ -314,7 +304,7 @@ protected:
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
         CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+        const CFdbMsgSubscribeItem *sub_item;
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
             FdbMsgCode_t msg_code = sub_item->msg_code();
@@ -513,9 +503,9 @@ public:
          * trigger update manually; onBroadcast() will be called followed by
          * onStatus().
          */
-        NFdbBase::FdbMsgSubscribe update_list;
-	this->addManualTrigger(update_list, NTF_MANUAL_UPDATE);
-	this->update(update_list);
+        CFdbMsgTriggerList update_list;
+        this->addManualTrigger(update_list, NTF_MANUAL_UPDATE);
+        this->update(update_list);
     }
 
 protected:
@@ -538,7 +528,7 @@ protected:
              * 通知；add_filter_list()可以添加多个filter，与msg_code_list()消息的
              * 位置一一对应。如果没有filter则不调用add_filter_list()。
              */
-            NFdbBase::FdbMsgSubscribe subscribe_list;
+            CFdbMsgSubscribeList subscribe_list;
             this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
             this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
             this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME);
@@ -623,7 +613,7 @@ protected:
                 }
                 else if (!filter.compare("raw_buffer"))
                 {
-                    if (!msg->isRawData())
+                    if (msg->getDataEncoding() != FDB_MSG_ENC_PROTOBUF)
                     {
                         FDB_LOG_E("OBJ %d Error! Raw data is expected but protobuf is received.\n", this->objId());
                         return;
@@ -637,7 +627,7 @@ protected:
             break;
             case NTF_MEDIAPLAYER_CREATED:
             {
-                NFdbBase::FdbMsgObjectInfo obj_info;
+                NFdbExample::FdbMsgObjectInfo obj_info;
                 msg->deserialize(obj_info);
                 CMyClient<CFdbBaseObject> *obj = new CMyClient<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
                 obj->connect(dynamic_cast<CBaseEndpoint *>(this), obj_info.obj_id());

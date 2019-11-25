@@ -20,6 +20,7 @@
 #include <common_base/CBaseThread.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CIntraNameProxy.h>
+#include <common_base/CFdbSimpleMsgBuilder.h>
 #include <google/protobuf/text_format.h>
 #include <idl-gen/common.base.MessageHeader.pb.h>
 #include <stdio.h>
@@ -31,7 +32,6 @@ std::string CLogProducer::mTagName = "Unknown";
 
 CLogProducer::CLogProducer()
     : CBaseClient(FDB_LOG_SERVER_NAME)
-    , mRecursive(false)
     , mPid(CBaseThread::getPid())
     , mLoggerDisableGlobal(false)
     , mDisableRequest(false)
@@ -48,7 +48,7 @@ CLogProducer::CLogProducer()
 
 void CLogProducer::onOnline(FdbSessionId_t sid, bool is_first)
 {
-    NFdbBase::FdbMsgSubscribe subscribe_list;
+    CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, NFdbBase::NTF_LOGGER_CONFIG);
     addNotifyItem(subscribe_list, NFdbBase::NTF_TRACE_CONFIG);
     subscribe(subscribe_list);
@@ -77,8 +77,10 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             mDisableBroadcast = !cfg.enable_broadcast();
             mDisableSubscribe = !cfg.enable_subscribe();
             mRawDataClippingSize = cfg.raw_data_clipping_size();
-            mLogHostEnabled = checkHostEnabled(cfg.host_while_list());
-            populateWhiteList(cfg.endpoint_while_list(), mLogEndpointWhiteList);
+            mLogHostEnabled = checkHostEnabled(cfg.host_white_list());
+            CAutoLock _l(mTraceLock);
+            populateWhiteList(cfg.endpoint_white_list(), mLogEndpointWhiteList);
+            populateWhiteList(cfg.busname_white_list(), mLogBusnameWhiteList);
         }
         break;
         case NFdbBase::NTF_TRACE_CONFIG:
@@ -91,9 +93,9 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             }
             mLogLevel = (EFdbLogLevel)cfg.log_level();
             mTraceDisableGlobal = !cfg.global_enable();
-            mTraceHostEnabled = checkHostEnabled(cfg.host_while_list());
+            mTraceHostEnabled = checkHostEnabled(cfg.host_white_list());
             CAutoLock _l(mTraceLock);
-            populateWhiteList(cfg.tag_while_list(), mTraceTagWhiteList);
+            populateWhiteList(cfg.tag_white_list(), mTraceTagWhiteList);
         }
         break;
         default:
@@ -101,126 +103,194 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
     }
 }
 
-bool CLogProducer::checkLogEnabled(const CFdbMessage *msg)
+const char *CLogProducer::getReceiverName(EFdbMessageType type,
+                                          const char *sender_name,
+                                          const CBaseEndpoint *endpoint)
 {
-    if (!getSessionCount() || mLoggerDisableGlobal || (msg->mFlag & MSG_FLAG_DO_NOT_LOG) || !mLogHostEnabled)
+    const char *receiver;
+    
+    switch (type)
     {
-        return false;
+        case FDB_MT_REQUEST:
+        case FDB_MT_SUBSCRIBE_REQ:
+        case FDB_MT_SIDEBAND_REQUEST:
+            receiver = endpoint->nsName().c_str();
+        break;
+        default:
+            if (!sender_name || (sender_name[0] == '\0'))
+            {
+                receiver = "__ANY__";
+            }
+            else
+            {
+                receiver = sender_name;
+            }
+        break;
     }
 
+    return receiver;
+}
+
+bool CLogProducer::checkLogEnabledGlobally()
+{
+    return getSessionCount() && !mLoggerDisableGlobal && mLogHostEnabled;
+}
+
+bool CLogProducer::checkLogEnabledByMessageType(EFdbMessageType type)
+{
     bool match = true;
-    switch (msg->type())
+    switch (type)
     {
-        case NFdbBase::MT_REQUEST:
+        case FDB_MT_REQUEST:
+        case FDB_MT_SIDEBAND_REQUEST:
             if (mDisableRequest)
             {
                 match = false;
             }
         break;
-        case NFdbBase::MT_REPLY:
+        case FDB_MT_REPLY:
+        case FDB_MT_STATUS:
+        case FDB_MT_SIDEBAND_REPLY:
             if (mDisableReply)
             {
                 match = false;
             }
         break;
-        case NFdbBase::MT_BROADCAST:
+        case FDB_MT_BROADCAST:
             if (mDisableBroadcast)
             {
                 match = false;
             }
         break;
-        case NFdbBase::MT_SUBSCRIBE_REQ:
+        case FDB_MT_SUBSCRIBE_REQ:
             if (mDisableSubscribe)
             {
                 match = false;
             }
         break;
         default:
-            match = false;
+            match = true;
         break;
     }
+    
     return match;
 }
 
-void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
+bool CLogProducer::checkLogEnabledByEndpoint(const char *sender, const char *receiver, const char *busname)
 {
-    if (mRecursive)
-    {
-        return;
-    }
-    if (!checkLogEnabled(msg))
-    {
-        if (msg->mStringData)
-        {
-            delete msg->mStringData;
-            msg->mStringData = 0;
-        }
-        return;
-    }
-
-    NFdbBase::FdbLogProducerData logger_data;
-    logger_data.set_logger_pid(mPid);
-    CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
-    logger_data.set_sender_host_name(proxy ? proxy->hostName().c_str() : "Unknown");
-    const char *sender = endpoint->name().c_str();
-    const char *receiver;
-    switch (msg->type())
-    {
-        case NFdbBase::MT_REQUEST:
-        case NFdbBase::MT_SUBSCRIBE_REQ:
-            receiver = endpoint->nsName().c_str();
-        break;
-        case NFdbBase::MT_BROADCAST:
-            receiver = (msg->mFlag & MSG_FLAG_INITIAL_RESPONSE) ? msg->senderName().c_str() :  "__ANY__";
-        break;
-        default:
-            receiver = msg->senderName().c_str();
-        break;
-    }
-
     if (!mLogEndpointWhiteList.empty())
     {
         if ((mLogEndpointWhiteList.find(sender) == mLogEndpointWhiteList.end()) &&
             (mLogEndpointWhiteList.find(receiver) == mLogEndpointWhiteList.end()))
         {
-            if (msg->mStringData)
-            {
-                delete msg->mStringData;
-                msg->mStringData = 0;
-            }
-            return;
+            return false;
+        }
+    }
+    if (!mLogBusnameWhiteList.empty())
+    {
+        if (mLogBusnameWhiteList.find(busname) == mLogBusnameWhiteList.end())
+        {
+            return false;
         }
     }
 
-    logger_data.set_sender_name(sender);
-    logger_data.set_receiver_name(receiver);
-    logger_data.set_service_name(endpoint->nsName());
-    logger_data.set_type((NFdbBase::FdbMessageType)msg->type());
-    logger_data.set_code(msg->code());
-    logger_data.set_time_stamp(sysdep_getsystemtime_milli());
-    logger_data.set_msg_payload_size(msg->getPayloadSize());
-    logger_data.set_serial_number(msg->sn());
-    logger_data.set_object_id(msg->objectId());
-    
-    mRecursive = true;
-    if (msg->mStringData)
+    return true;
+}
+
+bool CLogProducer::checkLogEnabled(EFdbMessageType type,
+                                    const char *sender_name,
+                                    const CBaseEndpoint *endpoint,
+                                    bool lock)
+{
+    if (!checkLogEnabledGlobally())
     {
-        logger_data.set_is_string(true);
-        sendFdbLog(logger_data, (uint8_t *)msg->mStringData->c_str(), (int32_t)(msg->mStringData->length() + 1));
-        delete msg->mStringData;
-        msg->mStringData = 0;
+        return false;
+    }
+    
+    if (!checkLogEnabledByMessageType(type))
+    {
+        return false;
+    }
+
+    if (!endpoint)
+    {
+        return true;
+    }
+
+    const char *sender = endpoint->name().c_str();
+    const char *receiver = getReceiverName(type, sender_name, endpoint);
+    const char *busname = endpoint->nsName().c_str();
+    
+    if (lock)
+    {
+        CAutoLock _l(mTraceLock);
+        return checkLogEnabledByEndpoint(sender, receiver, busname);
     }
     else
     {
-        logger_data.set_is_string(false);
-        sendFdbLog(logger_data, msg->getRawBuffer(), msg->getRawDataSize(), mRawDataClippingSize);
+        return checkLogEnabledByEndpoint(sender, receiver, busname);
     }
-    mRecursive = false;
+}
+
+bool CLogProducer::checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock)
+{
+    return checkLogEnabled(msg->type(), msg->senderName().c_str(), endpoint, lock);
+}
+
+void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
+{
+    if (!msg->isLogEnabled())
+    {
+        return;
+    }
+    
+    const char *sender = endpoint->name().c_str();
+    const char *receiver = getReceiverName(msg->type(), msg->senderName().c_str(), endpoint);
+    const char *busname = endpoint->nsName().c_str();
+    CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
+
+    CFdbSimpleMsgBuilder builder;
+    builder.serializer() << mPid
+                         << (proxy ? proxy->hostName().c_str() : "Unknown")
+                         << sender
+                         << receiver
+                         << busname
+                         << msg->type()
+                         << msg->code()
+                         << sysdep_getsystemtime_milli()
+                         << msg->getPayloadSize()
+                         << msg->sn()
+                         << msg->objectId()
+                         ;
+
+    if (msg->mStringData)
+    {
+        builder.serializer() << true << *(msg->mStringData);
+        delete msg->mStringData;
+        msg->mStringData = 0;
+        sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
+    }
+    else
+    {
+        builder.serializer() << false;
+        int32_t log_size = msg->getPayloadSize();
+        if ((mRawDataClippingSize >= 0) && (mRawDataClippingSize < log_size))
+        {
+            log_size = mRawDataClippingSize;
+        }
+        builder.serializer() << log_size;
+        builder.serializer().addRawData(msg->getPayloadBuffer(), log_size);
+        sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
+    }
 }
 
 void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char *format, ...)
 {
-    if (!getSessionCount() || mTraceDisableGlobal || (log_level < mLogLevel) || (log_level == FDB_LL_SILENT) || !mTraceHostEnabled)
+    if (!getSessionCount()
+        || mTraceDisableGlobal
+        || (log_level < mLogLevel)
+        || (log_level >= FDB_LL_SILENT)
+        || !mTraceHostEnabled)
     {
         return;
     }
@@ -241,13 +311,14 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
         tag = "None";
     }
 
-    NFdbBase::FdbTraceProducerData trace_data;
-    trace_data.set_trace_pid(mPid);
-    trace_data.set_tag(tag);
     CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
-    trace_data.set_sender_host_name(proxy ? proxy->hostName().c_str() : "Unknown");
-    trace_data.set_time_stamp(sysdep_getsystemtime_milli());
-    trace_data.set_trace_level((NFdbBase::FdbTraceLogLevel)log_level);
+    CFdbSimpleMsgBuilder builder;
+    builder.serializer() << mPid
+                         << tag
+                         << (proxy ? proxy->hostName().c_str() : "Unknown")
+                         << sysdep_getsystemtime_milli()
+                         << log_level
+                         ;
 
     char buffer[mMaxTraceLogSize];
     buffer[0] = '\0';
@@ -255,48 +326,35 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     va_start(args, format);
     vsnprintf(buffer, mMaxTraceLogSize, format, args);
     va_end(args);
+    builder.serializer() << buffer;
 
-    sendTraceLog(trace_data, (uint8_t *)buffer, (int32_t)(strlen(buffer) + 1));
+    sendLog(NFdbBase::REQ_TRACE_LOG, builder);
 }
 
-void CLogProducer::printToString(CFdbMessage *fdb_msg, const CFdbBasePayload &pb_msg)
+bool CLogProducer::printToString(std::string *str_msg, const CFdbBasePayload &pb_msg)
 {
-    if (!checkLogEnabled(fdb_msg))
-    {
-        return;
-    }
-
-    if (fdb_msg->mStringData)
-    {
-        delete fdb_msg->mStringData;
-        fdb_msg->mStringData = 0;
-    }
-
+    bool ret = true;
     try
     {
         const ::google::protobuf::Message &full_msg = dynamic_cast<const ::google::protobuf::Message &>(pb_msg);
-        fdb_msg->mStringData = new std::string();
         try
         {
-            if (!google::protobuf::TextFormat::PrintToString(full_msg, fdb_msg->mStringData))
+            if (!google::protobuf::TextFormat::PrintToString(full_msg, str_msg))
             {
-                goto _failed;
+                ret = false;
             }
         }
         catch (...)
         {
-            goto _failed;
+            ret = false;
         }
-        return;
-
-_failed:
-        delete fdb_msg->mStringData;
-        fdb_msg->mStringData = 0;
     }
     catch (std::bad_cast exp)
     {
-        fdb_msg->mStringData = new std::string("Lite version does not support logging. You can remove \"option optimize_for = LITE_RUNTIME;\" from .proto file.\n");
+        str_msg->assign("Lite version does not support logging. You can remove \"option optimize_for = LITE_RUNTIME;\" from .proto file.\n");
     }
+
+    return ret;
 }
 
 bool CLogProducer::checkHostEnabled(const ::google::protobuf::RepeatedPtrField< ::std::string> &host_tbl)

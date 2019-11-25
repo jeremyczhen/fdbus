@@ -46,7 +46,7 @@ CHostServer::~CHostServer()
 void CHostServer::onSubscribe(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-    const ::NFdbBase::FdbMsgSubscribeItem *sub_item;
+    const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
         mSubscribeHdl.processMessage(this, msg, sub_item, sub_item->msg_code());
@@ -231,7 +231,7 @@ void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
     }
 }
 
-void CHostServer::onHostOnlineReg(CFdbMessage *msg, const ::NFdbBase::FdbMsgSubscribeItem *sub_item)
+void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     ::NFdbBase::FdbMsgHostAddressList addr_list;
     CFdbSession *session = FDB_CONTEXT->getSession(msg->session());

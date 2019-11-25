@@ -19,6 +19,7 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
+#include <idl-gen/common.base.MessageHeader.pb.h>
 #include <utils/Log.h>
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
@@ -26,8 +27,10 @@ CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpoint
     , mNsConnStatus(DISCONNECTED)
     , mSessionCnt(0)
     , mSnAllocator(1)
+    , mEpid(FDB_INVALID_ID)
 {
     mObjId = FDB_OBJECT_MAIN;
+    mEndpoint = this;
     registerSelf();
 }
 
