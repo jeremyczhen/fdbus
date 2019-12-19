@@ -27,6 +27,9 @@ public:
     virtual void toBuffer(uint8_t *buffer, int32_t size)
     {
     }
+    virtual ~IFdbMsgBuilder()
+    {
+    }
 };
 
 class IFdbMsgParser
@@ -38,6 +41,9 @@ public:
     virtual int32_t parse()
     {
         return -1;
+    }
+    virtual ~IFdbMsgParser()
+    {
     }
 };
     

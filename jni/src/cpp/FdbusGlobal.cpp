@@ -20,11 +20,14 @@
 #include <common_base/CLogProducer.h>
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
-#include <idl-gen/ipc_fdbus_Fdbus.h>
 
 #if __WIN32__
 // Need to link with Ws2_32.lib
 #pragma comment(lib, "ws2_32.lib")
+#endif
+
+#if !defined(CFG_JNI_ANDROID)
+#include <idl-gen/ipc_fdbus_Fdbus.h>
 #endif
 
 JavaVM* CGlobalParam::mJvm = 0;
@@ -68,7 +71,7 @@ JNIEnv *CGlobalParam::obtainJniEnv()
         int getEnvStat = mJvm->GetEnv((void **)&env, JNI_VERSION_1_6);
         if (getEnvStat == JNI_EDETACHED)
         {
-            if (mJvm->AttachCurrentThread((void **) &env, 0) != 0)
+            if (mJvm->AttachCurrentThread(&env, 0) != 0)
             {
                 FDB_LOG_E("obtainJniEnv: fail to attach!\n");
             }
@@ -253,3 +256,22 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
     }
 }
 
+#if defined(CFG_JNI_ANDROID)
+static const JNINativeMethod gFdbusGlobalMethods[] = {
+    {"fdb_init",
+             "(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
+             (void*) Java_ipc_fdbus_Fdbus_fdb_1init},
+    {"fdb_log_trace",
+             "(Ljava/lang/String;ILjava/lang/String;)V",
+             (void*) Java_ipc_fdbus_Fdbus_fdb_1log_1trace},
+};
+
+int register_fdbus_global(JNIEnv *env)
+{
+    android::RegisterMethodsOrDie(env,
+                         "ipc/fdbus/Fdbus",
+                         gFdbusGlobalMethods,
+                         NELEM(gFdbusGlobalMethods));
+    return 0;
+}
+#endif

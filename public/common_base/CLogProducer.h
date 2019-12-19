@@ -61,7 +61,6 @@ private:
     bool checkLogEnabledByMessageType(EFdbMessageType type);
     bool checkLogEnabledByEndpoint(const char *sender, const char *receiver, const char *busname);
     
-    uint32_t mFlag;
     CBASE_tProcId mPid;
     bool mLoggerDisableGlobal;
     bool mDisableRequest;

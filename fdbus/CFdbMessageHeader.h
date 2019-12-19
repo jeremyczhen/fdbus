@@ -122,7 +122,7 @@ public:
     {
         return !!(mOptions & FDB_OPT_HAS_REPLY_TIME);
     }
-    const uint64_t reply_time() const
+    uint64_t reply_time() const
     {
         return mReplyTime;
     }
