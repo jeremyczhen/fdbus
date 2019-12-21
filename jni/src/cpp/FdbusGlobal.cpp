@@ -30,6 +30,8 @@
 #include <idl-gen/ipc_fdbus_Fdbus.h>
 #endif
 
+#define FDB_JNI_VERSION            JNI_VERSION_1_4
+
 JavaVM* CGlobalParam::mJvm = 0;
 
 jmethodID CFdbusClientParam::mOnOnline = 0;
@@ -68,7 +70,7 @@ JNIEnv *CGlobalParam::obtainJniEnv()
     JNIEnv *env = 0;
     if (mJvm)
     {
-        int getEnvStat = mJvm->GetEnv((void **)&env, JNI_VERSION_1_6);
+        int getEnvStat = mJvm->GetEnv((void **)&env, FDB_JNI_VERSION);
         if (getEnvStat == JNI_EDETACHED)
         {
             if (mJvm->AttachCurrentThread(&env, 0) != 0)
@@ -273,5 +275,23 @@ int register_fdbus_global(JNIEnv *env)
                          gFdbusGlobalMethods,
                          NELEM(gFdbusGlobalMethods));
     return 0;
+}
+#endif
+
+#if defined(CFG_JNI_ANDROID)
+extern int register_fdbus_client(JNIEnv *env);
+extern int register_fdbus_server(JNIEnv *env);
+extern int register_fdbus_message(JNIEnv *env);
+jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
+{
+    JNIEnv *env = CGlobalParam::obtainJniEnv();
+    if (env)
+    {
+        register_fdbus_global(env);
+        register_fdbus_client(env);
+        register_fdbus_server(env);
+        register_fdbus_message(env);
+    }
+    return FDB_JNI_VERSION;
 }
 #endif
