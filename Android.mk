@@ -19,6 +19,14 @@ LOCAL_SRC_FILES := $(SRC_FILES:$(LOCAL_PATH)/%=%)
 LOCAL_SRC_FILES += server/CBaseNameProxy.cpp \
                    server/CIntraNameProxy.cpp \
                    security/cJSON/cJSON.c
+
+ANDROID_FIX_DIR := $(LOCAL_PATH)/idl/android_fix
+$(LOCAL_PATH)/idl/android_fix/common.base.MessageHeader.proto : $(LOCAL_PATH)/idl/common.base.MessageHeader.proto
+	sed 's#common.base.Token.proto#vendor/bosch/fdbus/idl/common.base.Token.proto#g' $< > $@
+
+$(LOCAL_PATH)/idl/android_fix/common.base.NameServer.proto : $(LOCAL_PATH)/idl/common.base.NameServer.proto
+	sed 's#common.base.Token.proto#vendor/bosch/fdbus/idl/common.base.Token.proto#g' $< > $@
+
 LOCAL_SRC_FILES += idl/android_fix/common.base.MessageHeader.proto \
                    idl/android_fix/common.base.NameServer.proto \
                    idl/common.base.Token.proto
@@ -32,8 +40,7 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
                    $(LOCAL_PATH)/public
 
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/public \
-                    prebuilts/tools/linux-x86_64/protoc-3.0.0/include
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/public
 
 LOCAL_PROTOC_OPTIMIZE_TYPE := lite 
 LOCAL_PROTOC_FLAGS := -I.
@@ -46,19 +53,19 @@ LOCAL_MODULE:= fdbus-jni
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID
 LOCAL_SRC_FILES:= \
-          jni/src/cpp/CJniClient.cpp \
-          jni/src/cpp/CJniMessage.cpp \
-          jni/src/cpp/CJniServer.cpp \
-          jni/src/cpp/FdbusGlobal.cpp
+              jni/src/cpp/CJniClient.cpp \
+              jni/src/cpp/CJniMessage.cpp \
+              jni/src/cpp/CJniServer.cpp \
+              jni/src/cpp/FdbusGlobal.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-          libcommon-base \
-          libandroid_runtime \
-          liblog
+              libcommon-base \
+              libandroid_runtime \
+              liblog
           
 LOCAL_C_INCLUDES += \
-          frameworks/base/core/jni \
-          frameworks/base/core/jni/include
+              frameworks/base/core/jni \
+              frameworks/base/core/jni/include
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -75,9 +82,9 @@ LOCAL_PROTOC_OPTIMIZE_TYPE := lite
 LOCAL_PROTOC_FLAGS := -Iidl
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_SRC_FILES := jni/test/FdbusTestClient.java \
-           idl/common.base.Example.proto 
+            idl/common.base.Example.proto 
 LOCAL_JAVA_LIBRARIES := fdbus-jni \
-           libprotobuf-java-lite
+            libprotobuf-java-lite
 include $(BUILD_JAVA_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -98,15 +105,15 @@ LOCAL_MODULE:= name-server
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
-                        server/main_ns.cpp \
-                        server/CNameServer.cpp \
-                        server/CInterNameProxy.cpp \
-                        server/CHostProxy.cpp \
-                        security/CServerSecurityConfig.cpp
+		server/main_ns.cpp \
+		server/CNameServer.cpp \
+		server/CInterNameProxy.cpp \
+		server/CHostProxy.cpp \
+		security/CServerSecurityConfig.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                        libprotobuf-cpp-full-rtti \
-                libcommon-base
+		libprotobuf-cpp-full-rtti \
+		libcommon-base
 
 include $(BUILD_EXECUTABLE)
 
@@ -115,12 +122,12 @@ LOCAL_MODULE:= host-server
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
-                        server/main_hs.cpp \
-                        server/CHostServer.cpp \
-                        security/CHostSecurityConfig.cpp
+		server/main_hs.cpp \
+		server/CHostServer.cpp \
+		security/CHostSecurityConfig.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                        libprotobuf-cpp-full-rtti \
+                libprotobuf-cpp-full-rtti \
                 libcommon-base
 
 include $(BUILD_EXECUTABLE)
@@ -168,12 +175,12 @@ LOCAL_MODULE:= logviewer
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
-                 server/main_log_client.cpp \
-                 server/CLogPrinter.cpp
+                server/main_log_client.cpp \
+                server/CLogPrinter.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                 libprotobuf-cpp-full-rtti \
-                 libcommon-base
+                libprotobuf-cpp-full-rtti \
+                libcommon-base
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
