@@ -26,7 +26,7 @@
  * 该文件由描述文件workspace/pb_idl/common.base.Example.proto自动生成。
  * 项目所有的接口描述文件都统一放在该目录下，在使用时包含进来。
  */
-#include <idl-gen/common.base.Example.pb.h>
+#include FDB_IDL_EXAMPLE_H
 
 #if 1
 CBaseNotificationCenter<void *> nc;

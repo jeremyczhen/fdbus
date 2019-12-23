@@ -23,7 +23,7 @@
 #include <set>
 #include <vector>
 #include <common_base/CBaseServer.h>
-#include <idl-gen/common.base.NameServer.pb.h>
+#include FDB_IDL_NAMESERVER_H
 #include <common_base/CSocketImp.h>
 #include <security/CServerSecurityConfig.h>
 

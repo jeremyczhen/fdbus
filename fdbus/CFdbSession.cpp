@@ -19,7 +19,7 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CLogProducer.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 #include "CFdbMessageHeader.h"
 

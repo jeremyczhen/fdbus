@@ -17,7 +17,7 @@
 #include <vector>
 #include <common_base/CBaseNameProxy.h>
 #include <common_base/CFdbMessage.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include "CNsConfig.h"
 
 CBaseNameProxy::CBaseNameProxy()

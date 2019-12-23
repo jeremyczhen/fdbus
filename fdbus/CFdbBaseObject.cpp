@@ -20,7 +20,7 @@
 #include <common_base/CBaseWorker.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbContext.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)

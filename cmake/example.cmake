@@ -1,3 +1,4 @@
+add_definitions("-DFDB_IDL_EXAMPLE_H=<idl-gen/common.base.Example.pb.h>")
 
 add_executable(fdbobjtest
     ${PROJECT_ROOT}/example/client_server_object.cpp

@@ -19,7 +19,7 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include "CNsConfig.h"
 #include <utils/Log.h>
 

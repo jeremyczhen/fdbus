@@ -16,7 +16,7 @@
 
 #define FDB_LOG_TAG "FDB_TEST_CLIENT"
 #include <common_base/fdbus.h>
-#include <idl-gen/common.base.Example.pb.h>
+#include FDB_IDL_EXAMPLE_H
 
 #define FDB_INVOKE_SYNC 1
 

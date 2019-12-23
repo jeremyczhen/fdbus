@@ -19,7 +19,7 @@
 #include <common_base/CFdbSession.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CIntraNameProxy.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 
 CServerSocket::CServerSocket(CBaseServer *owner

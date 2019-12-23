@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 #include <common_base/CBaseServer.h>
-#include <idl-gen/common.base.NameServer.pb.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_NAMESERVER_H
+#include FDB_IDL_MSGHDR_H
 #include <common_base/CMethodLoopTimer.h>
 #include "CNsConfig.h"
 #include <security/CHostSecurityConfig.h>

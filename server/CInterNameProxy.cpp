@@ -20,7 +20,7 @@
 #include <common_base/CFdbSession.h>
 #include "CHostProxy.h"
 #include "CNameServer.h"
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 
 class CServiceSubscribeMsg : public CFdbMessage

@@ -20,7 +20,7 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <security/CFdbusSecurityConfig.h>
 #include "CHostProxy.h"
 #include "CNsConfig.h"

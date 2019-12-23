@@ -16,7 +16,7 @@
 
 #define FDB_LOG_TAG "FDB_TEST_SERVER"
 #include <common_base/fdbus.h>
-#include <idl-gen/common.base.Example.pb.h>
+#include FDB_IDL_EXAMPLE_H
 
 /* Define message ID; should be the same as server. */
 enum EMessageId

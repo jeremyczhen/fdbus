@@ -20,7 +20,7 @@
 #include <map>
 #include <common_base/CBaseClient.h>
 #include <common_base/CMethodLoopTimer.h>
-#include <idl-gen/common.base.NameServer.pb.h>
+#include FDB_IDL_NAMESERVER_H
 #include "CNsConfig.h"
 
 class CInterNameProxy;

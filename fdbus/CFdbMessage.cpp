@@ -22,7 +22,7 @@
 #include <common_base/CFdbSession.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CFdbBaseObject.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <utils/Log.h>

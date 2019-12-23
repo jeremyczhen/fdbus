@@ -19,7 +19,7 @@
 
 #include "common_defs.h"
 #include "CBaseClient.h"
-#include <idl-gen/common.base.NameServer.pb.h>
+#include FDB_IDL_NAMESERVER_H
 
 class CBaseNameProxy : public CBaseClient
 {

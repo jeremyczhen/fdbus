@@ -22,7 +22,7 @@
 #include <common_base/CIntraNameProxy.h>
 #include <common_base/CFdbSimpleMsgBuilder.h>
 #include <google/protobuf/text_format.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <stdio.h>
 #include <stdarg.h>
 #include <inttypes.h>

@@ -16,12 +16,12 @@
 
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include <idl-gen/common.base.NameServer.pb.h>
+#include FDB_IDL_NAMESERVER_H
 #include <iostream>
 #include <stdlib.h>
 #include <common_base/fdb_option_parser.h>
 #include <utils/Log.h>
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 
 static int32_t ls_follow = 0;
 

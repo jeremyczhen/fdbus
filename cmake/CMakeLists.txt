@@ -11,6 +11,7 @@ option(fdbus_SECURITY "Enable security of FDBus" OFF)
 option(fdbus_ANDROID "build Android version" OFF)
 option(fdbus_PIPE_AS_EVENTFD "Do not use event FD" OFF)
 option(fdbus_BUILD_JNI "Build jni" OFF)
+option(fdbus_LINK_SOCKET_LIB "specify -lsocket to link" OFF)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
@@ -128,7 +129,13 @@ install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
 install(DIRECTORY ${IDL_GEN_ROOT}/idl-gen/ DESTINATION usr/include/idl-gen)
 
+add_definitions("-DFDB_IDL_MSGHDR_H=<idl-gen/common.base.MessageHeader.pb.h>")
+add_definitions("-DFDB_IDL_NAMESERVER_H=<idl-gen/common.base.NameServer.pb.h>")
+
 link_libraries(common_base)
+if (fdbus_LINK_SOCKET_LIB)
+    link_libraries(socket)
+endif()
 
 include(service.cmake)
 if (fdbus_BUILD_TESTS)

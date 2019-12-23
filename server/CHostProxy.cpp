@@ -18,7 +18,7 @@
 #include <common_base/CInterNameProxy.h>
 #include <common_base/CFdbContext.h>
 #include "CNameServer.h"
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>

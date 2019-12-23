@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <vector>
 #include "CLogPrinter.h"
-#include <idl-gen/common.base.MessageHeader.pb.h>
+#include FDB_IDL_MSGHDR_H
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
