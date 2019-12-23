@@ -49,6 +49,10 @@ jclass CFdbusMessageParam::mClass = 0;
 bool CGlobalParam::init(JNIEnv *env)
 {
     FDB_CONTEXT->start();
+    if (mJvm)
+    {
+        return true;
+    }
     env->GetJavaVM(&mJvm);
     if (mJvm)
     {
@@ -121,6 +125,25 @@ jbyteArray CGlobalParam::createRawPayloadBuffer(JNIEnv *env, const CFdbMessage *
         }
     }
     return payload;
+}
+
+int CGlobalParam::jniRegisterNativeMethods(JNIEnv* env,
+                                           const char* className,
+                                           const JNINativeMethod* gMethods,
+                                           int numMethods)
+{
+    jclass clz = env->FindClass(className);
+    if (clz)
+    {
+        if (env->RegisterNatives(clz, gMethods, numMethods) >= 0)
+        {
+            return 0;
+        }
+        FDB_LOG_E("RegisterNatives failed for '%s': unable to register. aborting...\n", className);
+        return -1;
+    }
+    FDB_LOG_E("RegisterNatives failed for '%s': class not found. aborting...\n", className);
+    return -1;
 }
 
 bool CFdbusClientParam::init(JNIEnv *env, jclass clazz)
@@ -257,3 +280,37 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
         logger->logTrace((EFdbLogLevel)level, c_tag, "%s", c_data);
     }
 }
+
+static const JNINativeMethod gFdbusGlobalMethods[] = {
+    {"fdb_init",
+             "(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
+             (void*) Java_ipc_fdbus_Fdbus_fdb_1init},
+    {"fdb_log_trace",
+             "(Ljava/lang/String;ILjava/lang/String;)V",
+             (void*) Java_ipc_fdbus_Fdbus_fdb_1log_1trace},
+};
+  
+int register_fdbus_global(JNIEnv *env)
+{
+    return CGlobalParam::jniRegisterNativeMethods(env,
+                         "ipc/fdbus/Fdbus",
+                         gFdbusGlobalMethods,
+                         Num_Elems(gFdbusGlobalMethods));
+}
+extern int register_fdbus_client(JNIEnv *env);
+extern int register_fdbus_server(JNIEnv *env);
+extern int register_fdbus_message(JNIEnv *env);
+jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
+{
+    CGlobalParam::mJvm = vm;
+    JNIEnv *env = CGlobalParam::obtainJniEnv();
+    if (env)
+    {
+        register_fdbus_global(env);
+        register_fdbus_client(env);
+        register_fdbus_server(env);
+        register_fdbus_message(env);
+    }
+    return FDB_JNI_VERSION;
+}
+

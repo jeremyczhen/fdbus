@@ -173,3 +173,26 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled
     return msg->isLogEnabled();
 }
 
+static const JNINativeMethod gFdbusMessageMethods[] = {
+    {"fdb_reply",
+             "(J[BILjava/lang/String;)Z",
+             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1reply},
+    {"fdb_broadcast",
+             "(JILjava/lang/String;[BILjava/lang/String;)Z",
+             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1broadcast},
+    {"fdb_destroy",
+             "(J)V",
+             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1destroy},
+    {"fdb_log_enabled",
+             "(J)Z",
+             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled},
+};
+  
+int register_fdbus_message(JNIEnv *env)
+{
+    return CGlobalParam::jniRegisterNativeMethods(env,
+                         "ipc/fdbus/FdbusMessage",
+                         gFdbusMessageMethods,
+                         Num_Elems(gFdbusMessageMethods));
+}
+

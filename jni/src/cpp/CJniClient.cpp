@@ -535,3 +535,52 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1log_1enabled
 
     return false;
 }
+
+static const JNINativeMethod gFdbusClientMethods[] = {
+    {"fdb_create",
+             "(Ljava/lang/String;)J",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1create},
+    {"fdb_destroy",
+             "(J)V",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1destroy},
+    {"fdb_connect",
+             "(JLjava/lang/String;)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1connect},
+    {"fdb_disconnect",
+             "(J)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1disconnect},
+    {"fdb_invoke_async",
+             "(JI[BILjava/lang/String;Ljava/lang/Object;I)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async},
+    {"fdb_invoke_sync",
+             "(JI[BILjava/lang/String;I)Lipc/fdbus/FdbusMessage;",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync},
+    {"fdb_send",
+             "(JI[BILjava/lang/String;)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1send},
+    {"fdb_subscribe",
+             "(JLjava/util/ArrayList;)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1subscribe},
+    {"fdb_unsubscribe",
+             "(JLjava/util/ArrayList;)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1unsubscribe},
+    {"fdb_endpoint_name",
+             "(J)Ljava/lang/String;",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1endpoint_1name},
+    {"fdb_bus_name",
+             "(J)Ljava/lang/String;",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1bus_1name},
+    {"fdb_log_enabled",
+             "(JI)Z",
+             (void*) Java_ipc_fdbus_FdbusClient_fdb_1log_1enabled}
+};
+  
+int register_fdbus_client(JNIEnv *env)
+{
+    return CGlobalParam::jniRegisterNativeMethods(env,
+                         "ipc/fdbus/FdbusClient",
+                         gFdbusClientMethods,
+                         Num_Elems(gFdbusClientMethods));
+    return 0;
+}
+  

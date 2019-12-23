@@ -75,7 +75,7 @@ bool isValidFdbId(T id)
     }
 
 #ifndef Num_Elems
-#define Num_Elems(_arr_) sizeof(_arr_)/sizeof(_arr_[0])
+#define Num_Elems(_arr_) ((int32_t) (sizeof(_arr_) / sizeof((_arr_)[0])))
 #endif
 
 #if !defined(FDB_CFG_CONFIG_PATH)

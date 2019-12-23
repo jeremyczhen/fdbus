@@ -17,6 +17,17 @@
 #ifndef __FDBUS_GLOBAL__H__
 #define __FDBUS_GLOBAL__H__
 #include <jni.h>
+#include <common_base/common_defs.h>
+
+#ifdef JNIEXPORT
+    #undef JNIEXPORT
+#endif
+#define JNIEXPORT static
+
+#ifdef JNICALL
+    #undef JNICALL
+#endif
+#define JNICALL
 
 class CFdbMessage;
 
@@ -28,6 +39,10 @@ public:
     static JNIEnv *obtainJniEnv();
     static void releaseJniEnv(JNIEnv *env);
     static jbyteArray createRawPayloadBuffer(JNIEnv *env, const CFdbMessage *msg);
+    static int32_t jniRegisterNativeMethods(JNIEnv* env,
+                                    const char* className,
+                                    const JNINativeMethod* gMethods,
+                                    int32_t numMethods);
 };
 
 class CFdbusClientParam

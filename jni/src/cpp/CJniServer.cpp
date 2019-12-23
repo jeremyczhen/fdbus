@@ -340,3 +340,39 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
     
     return false;
 }
+
+static const JNINativeMethod gFdbusServerMethods[] = {
+    {"fdb_create",
+             "(Ljava/lang/String;)J",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1create},
+    {"fdb_destroy",
+             "(J)V",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1destroy},
+    {"fdb_bind",
+             "(JLjava/lang/String;)Z",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1bind},
+    {"fdb_unbind",
+             "(J)Z",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1unbind},
+    {"fdb_broadcast",
+             "(JILjava/lang/String;[BILjava/lang/String;)Z",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1broadcast},
+    {"fdb_endpoint_name",
+             "(J)Ljava/lang/String;",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1endpoint_1name},
+    {"fdb_bus_name",
+             "(J)Ljava/lang/String;",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1bus_1name},
+    {"fdb_log_enabled",
+             "(JI)Z",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled},
+};
+  
+int register_fdbus_server(JNIEnv *env)
+{
+    return CGlobalParam::jniRegisterNativeMethods(env,
+                         "ipc/fdbus/FdbusServer",
+                         gFdbusServerMethods,
+                         Num_Elems(gFdbusServerMethods));
+}
+  
