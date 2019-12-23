@@ -22,10 +22,6 @@
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
 
-#if !defined(CFG_JNI_ANDROID)
-#include <ipc_fdbus_FdbusServer.h>
-#endif
-
 class CJniServer : public CBaseServer
 {
 public:
@@ -344,41 +340,3 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
     
     return false;
 }
-
-#if defined(CFG_JNI_ANDROID)
-static const JNINativeMethod gFdbusServerMethods[] = {
-    {"fdb_create",
-             "(Ljava/lang/String;)J",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1create},
-    {"fdb_destroy",
-             "(J)V",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1destroy},
-    {"fdb_bind",
-             "(JLjava/lang/String;)Z",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1bind},
-    {"fdb_unbind",
-             "(J)Z",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1unbind},
-    {"fdb_broadcast",
-             "(J)Z",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1broadcast},
-    {"fdb_endpoint_name",
-             "(J)Ljava/lang/String",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1endpoint_1name},
-    {"fdb_bus_name",
-             "(J)Ljava/lang/String;",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1bus_1name},
-    {"fdb_log_enabled",
-             "(JI)Z",
-             (void*) Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled},
-};
-
-int register_fdbus_server(JNIEnv *env)
-{
-    android::RegisterMethodsOrDie(env,
-                         "ipc/fdbus/FdbusServer",
-                         gFdbusServerMethods,
-                         NELEM(gFdbusServerMethods));
-    return 0;
-}
-#endif

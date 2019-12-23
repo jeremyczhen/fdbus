@@ -19,10 +19,6 @@
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
 
-#if !defined(CFG_JNI_ANDROID)
-#include <idl-gen/ipc_fdbus_FdbusMessage.h>
-#endif
-
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1reply
                             (JNIEnv *env,
                             jobject,
@@ -177,28 +173,3 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled
     return msg->isLogEnabled();
 }
 
-#if defined(CFG_JNI_ANDROID)
-static const JNINativeMethod gFdbusMessageMethods[] = {
-    {"fdb_reply",
-             "(J[BILjava/lang/String;)Z",
-             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1reply},
-    {"fdb_broadcast",
-             "(JILjava/lang/String;[BILjava/lang/String;)Z",
-             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1broadcast},
-    {"fdb_destroy",
-             "(J)V",
-             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1destroy},
-    {"fdb_log_enabled",
-             "(J)Z",
-             (void*) Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled},
-};
-
-int register_fdbus_message(JNIEnv *env)
-{
-    android::RegisterMethodsOrDie(env,
-                         "ipc/fdbus/FdbusMessage",
-                         gFdbusMessageMethods,
-                         NELEM(gFdbusMessageMethods));
-    return 0;
-}
-#endif

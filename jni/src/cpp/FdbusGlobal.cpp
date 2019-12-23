@@ -26,10 +26,6 @@
 #pragma comment(lib, "ws2_32.lib")
 #endif
 
-#if !defined(CFG_JNI_ANDROID)
-#include <idl-gen/ipc_fdbus_Fdbus.h>
-#endif
-
 #define FDB_JNI_VERSION            JNI_VERSION_1_4
 
 JavaVM* CGlobalParam::mJvm = 0;
@@ -73,7 +69,11 @@ JNIEnv *CGlobalParam::obtainJniEnv()
         int getEnvStat = mJvm->GetEnv((void **)&env, FDB_JNI_VERSION);
         if (getEnvStat == JNI_EDETACHED)
         {
+#ifdef FDB_CFG_KEEP_ENV_TYPE
             if (mJvm->AttachCurrentThread(&env, 0) != 0)
+#else
+            if (mJvm->AttachCurrentThread((void **)&env, 0) != 0)
+#endif
             {
                 FDB_LOG_E("obtainJniEnv: fail to attach!\n");
             }
@@ -257,41 +257,3 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
         logger->logTrace((EFdbLogLevel)level, c_tag, "%s", c_data);
     }
 }
-
-#if defined(CFG_JNI_ANDROID)
-static const JNINativeMethod gFdbusGlobalMethods[] = {
-    {"fdb_init",
-             "(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
-             (void*) Java_ipc_fdbus_Fdbus_fdb_1init},
-    {"fdb_log_trace",
-             "(Ljava/lang/String;ILjava/lang/String;)V",
-             (void*) Java_ipc_fdbus_Fdbus_fdb_1log_1trace},
-};
-
-int register_fdbus_global(JNIEnv *env)
-{
-    android::RegisterMethodsOrDie(env,
-                         "ipc/fdbus/Fdbus",
-                         gFdbusGlobalMethods,
-                         NELEM(gFdbusGlobalMethods));
-    return 0;
-}
-#endif
-
-#if defined(CFG_JNI_ANDROID)
-extern int register_fdbus_client(JNIEnv *env);
-extern int register_fdbus_server(JNIEnv *env);
-extern int register_fdbus_message(JNIEnv *env);
-jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
-{
-    JNIEnv *env = CGlobalParam::obtainJniEnv();
-    if (env)
-    {
-        register_fdbus_global(env);
-        register_fdbus_client(env);
-        register_fdbus_server(env);
-        register_fdbus_message(env);
-    }
-    return FDB_JNI_VERSION;
-}
-#endif

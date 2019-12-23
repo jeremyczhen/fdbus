@@ -53,8 +53,8 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE:= fdbus-jni
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID -DFDB_IDL_MSGHDR_H=$(FDB_IDL_MSGHDR_H) -DFDB_IDL_NAMESERVER_H=$(FDB_IDL_NAMESERVER_H)
-LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID -DFDB_IDL_MSGHDR_H=$(FDB_IDL_MSGHDR_H) -DFDB_IDL_NAMESERVER_H=$(FDB_IDL_NAMESERVER_H)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID -DFDB_IDL_MSGHDR_H=$(FDB_IDL_MSGHDR_H) -DFDB_IDL_NAMESERVER_H=$(FDB_IDL_NAMESERVER_H) -DFDB_CFG_KEEP_ENV_TYPE
+LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID -DFDB_IDL_MSGHDR_H=$(FDB_IDL_MSGHDR_H) -DFDB_IDL_NAMESERVER_H=$(FDB_IDL_NAMESERVER_H) -DFDB_CFG_KEEP_ENV_TYPE
 LOCAL_SRC_FILES:= \
               jni/src/cpp/CJniClient.cpp \
               jni/src/cpp/CJniMessage.cpp \
@@ -62,9 +62,7 @@ LOCAL_SRC_FILES:= \
               jni/src/cpp/FdbusGlobal.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-              libcommon-base \
-              libandroid_runtime \
-              liblog
+              libcommon-base
           
 LOCAL_C_INCLUDES += \
               frameworks/base/core/jni \

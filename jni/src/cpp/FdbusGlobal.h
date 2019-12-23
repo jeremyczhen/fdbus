@@ -18,20 +18,6 @@
 #define __FDBUS_GLOBAL__H__
 #include <jni.h>
 
-#if defined(CFG_JNI_ANDROID)
-    #include "core_jni_helpers.h"
-    #ifdef JNIEXPORT
-        #undef JNIEXPORT
-    #endif
-    #define JNIEXPORT static
-
-    #ifdef JNICALL
-        #undef JNICALL
-    #endif
-    #define JNICALL
-#endif
-
-
 class CFdbMessage;
 
 class CGlobalParam
