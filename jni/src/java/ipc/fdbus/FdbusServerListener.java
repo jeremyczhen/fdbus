@@ -20,8 +20,29 @@ import java.util.ArrayList;
 
 public interface FdbusServerListener
 {
+    /*
+     * called when client is connected with the server
+     * @sid - session id of the connection
+     * @is_first - whether this is the first connected client
+     */
     public void onOnline(int sid, boolean is_first);
+
+    /*
+     * called when client is disconnected with the server
+     * @sid - session id of the connection
+     * @is_last - whether this is the last connected client
+     */
     public void onOffline(int sid, boolean is_last);
+
+    /*
+     * called when invokeAsync(), invokeSync() or send() is called by client
+     * @msg - the message sent from client
+     */
     public void onInvoke(FdbusMessage msg);
+
+    /*
+     * called when subscribe() is called from client
+     * @sub_list - the list of events (and topics) subscribed by client
+     */
     public void onSubscribe(FdbusMessage msg, ArrayList<SubscribeItem> sub_list);
 }

@@ -14,16 +14,37 @@
  * limitations under the License.
  */
 
-package ipc.fdbus;
+package ipc.fdbus.Example;
+import ipc.fdbus.FdbusMessageEncoder;
+import com.google.protobuf.AbstractMessageLite;
+//import com.google.protobuf.nano.MessageNano;
 
-public class FdbusMessageParser
+public class MyFdbusMessageEncoder extends FdbusMessageEncoder
 {
     public byte[] serialize(Object msg, int encoding)
     {
+        if (msg instanceof AbstractMessageLite)
+        {
+       	    return ((AbstractMessageLite) msg).toByteArray();
+        }
+        //else if (msg instanceof MessageNano)
+        //{
+        //    return MessageNano.toByteArray((MessageNano) msg);
+        //}
         return null;
     }
+
     public String toString(Object msg, int encoding)
     {
+        if (msg instanceof AbstractMessageLite)
+        {
+            return ((AbstractMessageLite) msg).toString();
+        }
+        //else if (msg instanceof MessageNano)
+        //{
+        //    return ((MessageNano) msg).toString();
+        //}
         return null;
     }
 }
+

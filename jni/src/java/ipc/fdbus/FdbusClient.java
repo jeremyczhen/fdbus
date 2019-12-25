@@ -63,11 +63,19 @@ public class FdbusClient
         mFdbusListener = listener;
     }
     
+    /*
+     * create fdbus client
+     * @name - name of the client for debugging; can be any string
+     * @listener - callbacks to handle events from server
+     */
     public FdbusClient(String name, FdbusClientListener listener)
     {
         initialize(name, listener);
     }
 
+    /*
+     * create fdbus client with default name
+     */
     public FdbusClient(FdbusClientListener listener)
     {
         initialize(null, listener);
@@ -83,11 +91,18 @@ public class FdbusClient
         initialize(null, null);
     }
 
+    /*
+     * set server event listener
+     * @listener - callbacks to handle events from server
+     */
     public void setListener(FdbusClientListener listener)
     {
         mFdbusListener = listener;
     }
 
+    /*
+     * destroy a client
+     */
     public void destroy()
     {
         long handle = mNativeHandle;
@@ -98,34 +113,39 @@ public class FdbusClient
         }
     }
 
+    /*
+     * connect to server
+     * @url - url of server to connect in the following format:
+     *     tcp://ip address:port number
+     *     ipc://directory to unix domain socket
+     *     svc://server name: own server name and get address dynamically
+     *         allocated by name server
+     */
     public boolean connect(String url)
     {
         return fdb_connect(mNativeHandle, url);
     }
-	
+
+    /*
+     * disconnect to server
+     */
     public boolean disconnect()
     {
         return fdb_disconnect(mNativeHandle);
     }
-	
-    public boolean invokeAsync(int msg_code, byte[] pb_data, Object user_data, int timeout)
-    {
-        return fdb_invoke_async(mNativeHandle,
-                                msg_code,
-                                pb_data,
-                                Fdbus.FDB_MSG_ENC_PROTOBUF,
-                                null,
-                                user_data,
-                                timeout);
-    }
-    public boolean invokeAsync(int msg_code, byte[] pb_data, Object user_data)
-    {
-        return invokeAsync(msg_code, pb_data, user_data, 0);
-    }
 
+    /*
+     * invoke method call upon connected server asynchronously
+     * @msg_code - message id
+     * @msg - message to send (protobuf format by default)
+     * @user_data - user data that will be returned at onReply()
+     * @timeout - how long onReply() should be called (0 - forever)
+     * The method return immediately without blocking. reply from server is
+     *    received from onReply()
+     */
     public boolean invokeAsync(int msg_code, Object msg, Object user_data, int timeout)
     {
-        if (Fdbus.messageParser() == null)
+        if (Fdbus.messageEncoder() == null)
         {
             return false;
         }
@@ -133,39 +153,36 @@ public class FdbusClient
         String log_data = null;
         if (logEnabled(Fdbus.FDB_MT_REQUEST))
         {
-            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
 
         return fdb_invoke_async(mNativeHandle,
                                 msg_code,
-                                Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                                Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
                                 Fdbus.FDB_MSG_ENC_PROTOBUF,
                                 log_data,
                                 user_data,
                                 timeout);
     }
+
+    /*
+     * invoke method call upon connected server asynchronously without a timer
+     */
     public boolean invokeAsync(int msg_code, Object msg, Object user_data)
     {
         return invokeAsync(msg_code, msg, user_data, 0);
     }
 
-    public FdbusMessage invokeSync(int msg_code, byte[] pb_data, int timeout)
-    {
-        return fdb_invoke_sync(mNativeHandle,
-                               msg_code,
-                               pb_data,
-                               Fdbus.FDB_MSG_ENC_PROTOBUF,
-                               null,
-                               timeout);
-    }
-    public FdbusMessage invokeSync(int msg_code, byte[] pb_data)
-    {
-        return invokeSync(msg_code, pb_data, 0);
-    }
-
+    /*
+     * invoke method call upon connected server synchronously
+     * @msg_code - message id
+     * @msg - message to send (protobuf format by default)
+     * @timeout - how long onReply() should be called (0 - forever)
+     * The method blocks until server replies or timer expires.
+     */
     public FdbusMessage invokeSync(int msg_code, Object msg, int timeout)
     {
-        if (Fdbus.messageParser() == null)
+        if (Fdbus.messageEncoder() == null)
         {
             return null;
         }
@@ -173,29 +190,35 @@ public class FdbusClient
         String log_data = null;
         if (logEnabled(Fdbus.FDB_MT_REQUEST))
         {
-            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
         
         return fdb_invoke_sync(mNativeHandle,
                                msg_code,
-                               Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                               Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
                                Fdbus.FDB_MSG_ENC_PROTOBUF,
                                log_data,
                                timeout);
     }
+
+    /*
+     * invoke method call upon connected server synchronously without a timer
+     */
     public FdbusMessage invokeSync(int msg_code, Object msg)
     {
         return invokeSync(msg_code, msg, 0);
     }
-	
-    public boolean send(int msg_code, byte[] pb_data)
-    {
-        return fdb_send(mNativeHandle, msg_code, pb_data, Fdbus.FDB_MSG_ENC_PROTOBUF, null);
-    }
 
+    /*
+     * send message to server without reply expected (one-shot)
+     * @msg_code - message id
+     * @msg - message to send (protobuf format by default)
+     * The method sends message to server and return immediately without reply
+     *      from server
+     */
     public boolean send(int msg_code, Object msg)
     {
-        if (Fdbus.messageParser() == null)
+        if (Fdbus.messageEncoder() == null)
         {
             return false;
         }
@@ -203,31 +226,49 @@ public class FdbusClient
         String log_data = null;
         if (logEnabled(Fdbus.FDB_MT_REQUEST))
         {
-            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
     
         return fdb_send(mNativeHandle,
                         msg_code,
-                        Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                        Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
                         Fdbus.FDB_MSG_ENC_PROTOBUF,
                         log_data);
     }
-	
+
+    /*
+     * subscribe a list of events from server
+     * @sub_list - list of events to be subscribed
+     * The method is typically called at onOnline() to subscribe a list of
+     *     events when a server is connected
+     */
     public boolean subscribe(ArrayList<SubscribeItem> sub_list)
     {
         return fdb_subscribe(mNativeHandle, sub_list);
     }
-	
+
+    /*
+     * unsubscribe a list of events from server
+     * @sub_list - list of events to be unsubscribed
+     */
     public boolean unsubscribe(ArrayList<SubscribeItem> sub_list)
     {
         return fdb_unsubscribe(mNativeHandle, sub_list);
     }
 
+    /*
+     * get endpoint name of the client
+     */
     public String endpointName()
     {
         return fdb_endpoint_name(mNativeHandle);
     }
 
+    /*
+     * get bus name the client is connected
+     * Note that only the client connected with svc://svc_name have bus name,
+     * , e.g., svc_name
+     */
     public String busName()
     {
         return fdb_bus_name(mNativeHandle);

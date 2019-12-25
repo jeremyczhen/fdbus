@@ -4,6 +4,16 @@ option java_package = "ipc.fdbus";
 
 package NFdbExample;
 
+enum FdbMediaSvcMsgId
+{
+    REQ_METADATA               = 0;
+    REQ_RAWDATA                = 1;
+    REQ_CREATE_MEDIAPLAYER     = 2;
+    NTF_ELAPSE_TIME            = 3;
+    NTF_MEDIAPLAYER_CREATED    = 4;
+    NTF_MANUAL_UPDATE          = 5;
+}
+
 message FdbMsgObjectInfo
 {
     required uint32 obj_id = 1; 

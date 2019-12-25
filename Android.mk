@@ -99,8 +99,9 @@ LOCAL_MODULE := fdbus-java-client
 LOCAL_PROTOC_OPTIMIZE_TYPE := lite 
 LOCAL_PROTOC_FLAGS := -Iidl
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
-LOCAL_SRC_FILES := jni/test/FdbusTestClient.java \
-            idl/common.base.Example.proto 
+LOCAL_SRC_FILES := jni/test/MediaClient.java \
+            jni/test/MyFdbusMessageEncoder.java \
+            idl/common.base.Example.proto
 LOCAL_JAVA_LIBRARIES := fdbus-jni \
             libprotobuf-java-lite
 include $(BUILD_JAVA_LIBRARY)
@@ -114,10 +115,11 @@ LOCAL_MODULE := fdbus-java-server
 LOCAL_PROTOC_OPTIMIZE_TYPE := lite 
 LOCAL_PROTOC_FLAGS := -Iidl
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
-LOCAL_SRC_FILES := jni/test/FdbusTestServer.java \
-           idl/common.base.Example.proto 
+LOCAL_SRC_FILES := jni/test/MediaServer.java \
+            jni/test/MyFdbusMessageEncoder.java \
+            idl/common.base.Example.proto
 LOCAL_JAVA_LIBRARIES := fdbus-jni \
-           libprotobuf-java-lite
+            libprotobuf-java-lite
 include $(BUILD_JAVA_LIBRARY)
 
 #=====================================================================================

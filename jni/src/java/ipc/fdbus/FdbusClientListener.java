@@ -18,8 +18,27 @@ package ipc.fdbus;
 
 public interface FdbusClientListener
 {
+    /*
+     * called when a client is connected with a server
+     * @sid - session id of the connection
+     */
     public void onOnline(int sid);
+
+    /*
+     * called when a client is disconnected with a server
+     * @sid - session id of the connection
+     */
     public void onOffline(int sid);
+
+    /*
+     * called when reply is received from server
+     * @msg - the message replied from server
+     */
     public void onReply(FdbusMessage msg);
+
+    /*
+     * called when event is broadcasted from server
+     * @msg - the message broadcasted by server
+     */
     public void onBroadcast(FdbusMessage msg);
 }

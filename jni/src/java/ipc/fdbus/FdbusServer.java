@@ -46,12 +46,20 @@ public class FdbusServer
         mNativeHandle = fdb_create(name);
         mFdbusListener = listener;
     }
-    
+
+    /*
+     * create fdbus server 
+     * @name - name of the server for debugging; can be any string
+     * @listener - callbacks to handle events from client 
+     */
     public FdbusServer(String name, FdbusServerListener listener)
     {
         initialize(name, listener);
     }
 
+    /*
+     * create fdbus client with default name
+     */
     public FdbusServer(FdbusServerListener listener)
     {
         initialize(null, listener);
@@ -67,11 +75,18 @@ public class FdbusServer
         initialize(null, null);
     }
 
+    /*
+     * set client event listener
+     * @listener - callbacks to handle events from server
+     */
     public void setListener(FdbusServerListener listener)
     {
         mFdbusListener = listener;
     }
 
+    /*
+     * destroy a server 
+     */
     public void destroy()
     {
         long handle = mNativeHandle;
@@ -82,39 +97,38 @@ public class FdbusServer
         }
     }
 
+    /*
+     * bind an address
+     * @url - url of server to connect in the following format:
+     *     tcp://ip address:port number
+     *     ipc://directory to unix domain socket
+     *     svc://server name: own server name and get address dynamically
+     *         allocated by name server
+     */
     public boolean bind(String url)
     {
         return fdb_bind(mNativeHandle, url);
     }
 
+    /*
+     * release bound address
+     */
     public boolean unbind()
     {
         return fdb_unbind(mNativeHandle);
     }
 
-    public boolean broadcast(int msg_code, String topic, byte[] pb_data)
-    {
-        return fdb_broadcast(mNativeHandle,
-                            msg_code,
-                            topic,
-                            pb_data,
-                            Fdbus.FDB_MSG_ENC_PROTOBUF,
-                            null);
-    }
-
-    public boolean broadcast(int msg_code, byte[] pb_data)
-    {
-        return fdb_broadcast(mNativeHandle,
-                             msg_code,
-                             null,
-                             pb_data,
-                             Fdbus.FDB_MSG_ENC_PROTOBUF,
-                             null);
-    }
-
+    /*
+     * broadcast event to client
+     * @msg_code - message id
+     * @topic - topic of the event
+     * @msg - message to be broadcasted
+     * Note that only the clients subscribed the message code and topic
+     *    can receive the message at onBroadcast()
+     */
     public boolean broadcast(int msg_code, String topic, Object msg)
     {
-        if (Fdbus.messageParser() == null)
+        if (Fdbus.messageEncoder() == null)
         {
             return false;
         }
@@ -122,27 +136,38 @@ public class FdbusServer
         String log_data = null;
         if (logEnabled(Fdbus.FDB_MT_BROADCAST))
         {
-            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
 
         return fdb_broadcast(mNativeHandle,
                             msg_code,
                             topic,
-                            Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                            Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
                             Fdbus.FDB_MSG_ENC_PROTOBUF,
                             log_data);
     }
 
+    /*
+     * broadcast event to client without topic
+     */
     public boolean broadcast(int msg_code, Object msg)
     {
         return broadcast(msg_code, null, msg);
     }
 
+    /*
+     * get endpoint name of the server 
+     */
     public String endpointName()
     {
         return fdb_endpoint_name(mNativeHandle);
     }
 
+    /*
+     * get bus name the server is owned
+     * Note that only the server bound with svc://svc_name have bus name,
+     * , e.g., svc_name
+     */
     public String busName()
     {
         return fdb_bus_name(mNativeHandle);

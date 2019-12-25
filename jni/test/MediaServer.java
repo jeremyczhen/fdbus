@@ -20,27 +20,20 @@ import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
 import ipc.fdbus.FdbusMessage;
 import ipc.fdbus.NFdbExample;
+import ipc.fdbus.Example.MyFdbusMessageEncoder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class FdbusTestServer 
+public class MediaServer
 {
-    private class myTestServer extends TimerTask implements FdbusServerListener
+    private class FdbusMediaServer extends TimerTask implements FdbusServerListener
     {
-        public final static int REQ_METADATA = 0;
-        public final static int REQ_RAWDATA = 1;
-        public final static int REQ_CREATE_MEDIAPLAYER = 2;
-        public final static int NTF_ELAPSE_TIME = 3;
-        public final static int NTF_MEDIAPLAYER_CREATED = 4;
-        public final static int NTF_MANUAL_UPDATE = 5;
-
-        
         int mElapseTime;
     
         private FdbusServer mServer;
         
-        public myTestServer(String name)
+        public FdbusMediaServer(String name)
         {
             mServer = new FdbusServer(name);
             mElapseTime = 0;
@@ -65,7 +58,7 @@ public class FdbusTestServer
         {
             switch (msg.code())
             {
-                case REQ_METADATA:
+                case NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE:
                 {
                     try {
                         NFdbExample.SongId song_id = NFdbExample.SongId.parseFrom(msg.byteArray());
@@ -83,7 +76,7 @@ public class FdbusTestServer
                     builder.setFileName("Filename from Java");
                     builder.setElapseTime(mElapseTime++);
                     NFdbExample.NowPlayingDetails now_playing = builder.build();
-                    msg.reply(now_playing.toByteArray());
+                    msg.reply(now_playing);
                 }
                 break;
                 default:
@@ -101,7 +94,7 @@ public class FdbusTestServer
                             ": onSubscribe: code: " + item.code() + ", topic: " + item.topic());
                 switch (item.code())
                 {
-                    case NTF_ELAPSE_TIME:
+                    case NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE:
                     {
                         if (item.topic().equals("my_filter"))
                         {
@@ -110,7 +103,7 @@ public class FdbusTestServer
                             builder.setMinute(0);
                             builder.setSecond(0);
                             NFdbExample.ElapseTime et = builder.build();
-                            msg.broadcast(item.code(), item.topic(), et.toByteArray());
+                            msg.broadcast(item.code(), item.topic(), et);
                         }
                         else if (item.topic().equals("raw_buffer"))
                         {
@@ -118,7 +111,7 @@ public class FdbusTestServer
                         }
                     }
                     break;
-                    case NTF_MANUAL_UPDATE:
+                    case NFdbExample.FdbMediaSvcMsgId.NTF_MANUAL_UPDATE_VALUE:
                     break;
                     default:
                     break;
@@ -133,7 +126,7 @@ public class FdbusTestServer
             builder.setMinute(0);
             builder.setSecond(mElapseTime++);
             NFdbExample.ElapseTime et = builder.build();
-            mServer.broadcast(NTF_ELAPSE_TIME, "my_filter", et.toByteArray());
+            mServer.broadcast(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter", et);
         }
     }
 
@@ -144,22 +137,22 @@ public class FdbusTestServer
         mTimer.schedule(tt, 400, 400);
     }
     
-    private myTestServer createServer(String name)
+    private FdbusMediaServer createServer(String name)
     {
-        myTestServer svr = new myTestServer(name);
+        FdbusMediaServer svr = new FdbusMediaServer(name);
         svr.server().setListener(svr);
         return svr;
     }
 
     public static void main(String[] args)
     {
-        Fdbus fdbus = new Fdbus();
-        FdbusTestServer svr = new FdbusTestServer();
+        Fdbus fdbus = new Fdbus(new MyFdbusMessageEncoder());
+        MediaServer svr = new MediaServer();
 
-        ArrayList<myTestServer> servers = new ArrayList<myTestServer>();
+        ArrayList<FdbusMediaServer> servers = new ArrayList<FdbusMediaServer>();
         for (String arg : args)
         {
-            myTestServer server = svr.createServer(arg + "_server");
+            FdbusMediaServer server = svr.createServer(arg + "_server");
             server.server().bind("svc://" + arg);
             svr.startBroadcast(server);
             

@@ -20,7 +20,7 @@ import ipc.fdbus.FdbusServer;
 import ipc.fdbus.FdbusClient;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.FdbusMessage;
-import ipc.fdbus.FdbusMessageParser;
+import ipc.fdbus.FdbusMessageEncoder;
 
 public class Fdbus
 {
@@ -86,16 +86,16 @@ public class Fdbus
     private native void fdb_init(Class server, Class client, Class sub_item, Class msg);
     private static native void fdb_log_trace(String tag, int level, String data);
     
-    private static FdbusMessageParser mMessageParser;
+    private static FdbusMessageEncoder mMessageEncoder;
 
-    private void initialize(FdbusMessageParser msg_parser)
+    private void initialize(FdbusMessageEncoder msg_parser)
     {
         System.loadLibrary("fdbus-jni");
         fdb_init(FdbusServer.class, FdbusClient.class, SubscribeItem.class, FdbusMessage.class);
-        mMessageParser = msg_parser;
+        mMessageEncoder = msg_parser;
     }
 
-    public Fdbus(FdbusMessageParser msg_parser)
+    public Fdbus(FdbusMessageEncoder msg_parser)
     {
         initialize(msg_parser);
     }
@@ -105,9 +105,9 @@ public class Fdbus
         initialize(null);
     }
 
-    public static FdbusMessageParser messageParser()
+    public static FdbusMessageEncoder messageEncoder()
     {
-        return mMessageParser;
+        return mMessageEncoder;
     }
 
     public static void LOG_D(String tag, String data)

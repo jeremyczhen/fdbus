@@ -19,31 +19,23 @@ import ipc.fdbus.FdbusClientListener;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
 import ipc.fdbus.FdbusMessage;
-import ipc.fdbus.FdbusMessageParser;
 import ipc.fdbus.NFdbExample;
-import com.google.protobuf.AbstractMessageLite;
+import ipc.fdbus.Example.MyFdbusMessageEncoder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class FdbusTestClient 
+public class MediaClient 
 {
-    private class myTestClient extends TimerTask implements FdbusClientListener
+    private class FdbusMediaClient extends TimerTask implements FdbusClientListener
     {
         public final static int CONFIG_SYNC_INVOKE = 0;
-
-        public final static int REQ_METADATA = 0;
-        public final static int REQ_RAWDATA = 1;
-        public final static int REQ_CREATE_MEDIAPLAYER = 2;
-        public final static int NTF_ELAPSE_TIME = 3;
-        public final static int NTF_MEDIAPLAYER_CREATED = 4;
-        public final static int NTF_MANUAL_UPDATE = 5;
 
         int mSongId;
         
         private FdbusClient mClient;
         
-        public myTestClient(String name)
+        public FdbusMediaClient(String name)
         {
             mClient = new FdbusClient(name);
             mSongId = 0;
@@ -58,8 +50,8 @@ public class FdbusTestClient
         {
             System.out.println(mClient.endpointName() + ": onOnline is received.");
             ArrayList<SubscribeItem> subscribe_items = new ArrayList<SubscribeItem>();
-            subscribe_items.add(new SubscribeItem(NTF_ELAPSE_TIME, "my_filter"));
-            subscribe_items.add(new SubscribeItem(NTF_ELAPSE_TIME, "raw_buffer"));
+            subscribe_items.add(new SubscribeItem(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter"));
+            subscribe_items.add(new SubscribeItem(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "raw_buffer"));
             mClient.subscribe(subscribe_items);
         }
         public void onOffline(int sid)
@@ -78,7 +70,7 @@ public class FdbusTestClient
 
             switch (msg.code())
             {
-                case REQ_METADATA:
+                case NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE:
                 {
                     try {
                         NFdbExample.NowPlayingDetails np =
@@ -115,7 +107,7 @@ public class FdbusTestClient
         {
             switch (msg.code())
             {
-                case NTF_ELAPSE_TIME:
+                case NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE:
                 {
                     if (msg.topic().equals("my_filter"))
                     {
@@ -148,11 +140,11 @@ public class FdbusTestClient
                 {
                     usr_data.add(new String("a quick fox dump over brown dog " + i));
                 }
-                mClient.invokeAsync(REQ_METADATA, song_id, usr_data, 0);
+                mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, song_id, usr_data, 0);
             }
             else
             {
-                FdbusMessage msg = mClient.invokeSync(REQ_METADATA, song_id, 0);
+                FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, song_id, 0);
                 handleReplyMsg(msg);
             }
         }
@@ -165,41 +157,22 @@ public class FdbusTestClient
         mTimer.schedule(tt, 500, 500);
     }
 
-    private myTestClient createClient(String name)
+    private FdbusMediaClient createClient(String name)
     {
-        myTestClient clt = new myTestClient(name);
+        FdbusMediaClient clt = new FdbusMediaClient(name);
         clt.client().setListener(clt);
         return clt;
     }
 
     public static void main(String[] args)
     {
-        Fdbus fdbus = new Fdbus(new FdbusMessageParser() {
-                public byte[] serialize(Object msg, int encoding)
-                {
-                    if (msg instanceof AbstractMessageLite)
-                    {
-                        return ((AbstractMessageLite) msg).toByteArray();
-                    }
-                    return null;
-                }
+        Fdbus fdbus = new Fdbus(new MyFdbusMessageEncoder());
+        MediaClient clt = new MediaClient();
 
-                public String toString(Object msg, int encoding)
-                {
-                    if (msg instanceof AbstractMessageLite)
-                    {
-                        return ((AbstractMessageLite) msg).toString();
-                    }
-                    return null;
-                }
-            }
-            );
-        FdbusTestClient clt = new FdbusTestClient();
-
-        ArrayList<myTestClient> clients = new ArrayList<myTestClient>();
+        ArrayList<FdbusMediaClient> clients = new ArrayList<FdbusMediaClient>();
         for (String arg : args)
         {
-            myTestClient client = clt.createClient(arg + "_client");
+            FdbusMediaClient client = clt.createClient(arg + "_client");
             client.client().connect("svc://" + arg);
             clt.startServerInvoker(client);
 

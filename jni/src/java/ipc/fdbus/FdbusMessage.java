@@ -75,27 +75,46 @@ public class FdbusMessage
     {
         initialize(handle, sid, msg_code, payload, encoding, null, Fdbus.FDB_ST_OK);
     }
-    
+
+    /*
+     * get raw data received from remote
+     */
     public byte[] byteArray()
     {
         return mPayload;
     }
-    
+
+    /*
+     * get message id
+     * message id is uniquely identify a message between client and server
+     */
     public int code()
     {
         return mMsgCode;
     }
     
+    /*
+     * get session id
+     * session id is uniquely identify a connection between client and server
+     */
     public int sid()
     {
         return mSid;
     }
-    
+
+    /*
+     * get user data from onReply()
+     * The user data can be any object set at invokeAsync(). When server
+     *     reply the invoke, it can be retrieved here
+     */
     public Object userData()
     {
         return mUserData;
     }
 
+    /*
+     * get topic from onBroadcast() at client side
+     */
     public String topic()
     {
         return mTopic;
@@ -106,16 +125,13 @@ public class FdbusMessage
         mTopic = tpc;
     }
     
-    public boolean reply(byte[] pb_data)
-    {
-        boolean ret = fdb_reply(mNativeHandle, pb_data, Fdbus.FDB_MSG_ENC_PROTOBUF, null);
-        destroy();
-        return ret;
-    }
-
+    /*
+     * send reply to client at onInvoke() at server side
+     * @msg - the message to be reply
+     */
     public boolean reply(Object msg)
     {
-        if (Fdbus.messageParser() == null)
+        if (Fdbus.messageEncoder() == null)
         {
             destroy();
             return false;
@@ -124,37 +140,30 @@ public class FdbusMessage
         String log_data = null;
         if (logEnabled())
         {
-            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
 
         boolean ret = fdb_reply(mNativeHandle,
-                                Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                                Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
                                 Fdbus.FDB_MSG_ENC_PROTOBUF,
                                 null);
         destroy();
         return ret;
     }
-    
-    public boolean broadcast(int msg_code, String topic, byte[] pb_data)
-    {
-        boolean ret = fdb_broadcast(mNativeHandle,
-                                    msg_code,
-                                    topic,
-                                    pb_data,
-                                    Fdbus.FDB_MSG_ENC_PROTOBUF,
-                                    null);
-        destroy();
-        return ret;
-    }
-    
-    public boolean broadcast(int msg_code, byte[] pb_data)
-    {
-        return broadcast(msg_code, null, pb_data);
-    }
 
+    /*
+     * broadcast initial value to the client in onSubscribe()
+     * @msg_code - message id
+     * @topic - the topic to be broadcast
+     * @msg - the message to be broadcast (protobuf format by default)
+     * When client subscribe a list of events, onSubscribe() will be called
+     *    at server side, in which initial value of the subscribed event
+     *    should be sent to the client
+     * onBroadcast() of the client will be called.
+     */
     public boolean broadcast(int msg_code, String topic, Object msg)
     {
-        if (Fdbus.messageParser() == null)
+        if (Fdbus.messageEncoder() == null)
         {
             destroy();
             return false;
@@ -163,19 +172,22 @@ public class FdbusMessage
         String log_data = null;
         if (logEnabled())
         {
-            log_data = Fdbus.messageParser().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
         }
 
         boolean ret = fdb_broadcast(mNativeHandle,
                                     msg_code,
                                     topic,
-                                    Fdbus.messageParser().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
+                                    Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
                                     Fdbus.FDB_MSG_ENC_PROTOBUF,
                                     log_data);
         destroy();
         return ret;
     }
 
+    /*
+     * broadcast initial value to the client in onSubscribe() without topic
+     */
     public boolean broadcast(int msg_code, Object msg)
     {
         return broadcast(msg_code, null, msg);
