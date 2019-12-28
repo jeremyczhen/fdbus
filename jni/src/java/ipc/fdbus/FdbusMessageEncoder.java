@@ -18,11 +18,11 @@ package ipc.fdbus;
 
 public class FdbusMessageEncoder
 {
-    public byte[] serialize(Object msg, int encoding)
+    public byte[] serialize(Object msg)
     {
         return null;
     }
-    public String toString(Object msg, int encoding)
+    public String toString(Object msg)
     {
         return null;
     }

@@ -31,7 +31,6 @@ public class FdbusServer
                                          int msg_code,
                                          String filter,
                                          byte[] pb_data,
-                                         int encoding,
                                          String log_msg);
 
     private native String fdb_endpoint_name(long native_handle);
@@ -128,22 +127,26 @@ public class FdbusServer
      */
     public boolean broadcast(int msg_code, String topic, Object msg)
     {
-        if (Fdbus.messageEncoder() == null)
+        String log_data = null;
+        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_BROADCAST))
         {
-            return false;
+            log_data = Fdbus.messageEncoder().toString(msg);
         }
 
-        String log_data = null;
-        if (logEnabled(Fdbus.FDB_MT_BROADCAST))
+        byte[] raw_data = null;
+        if (msg != null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            raw_data = Fdbus.encodeMessage(msg);
+            if (raw_data == null)
+            {
+                return false;
+            }
         }
 
         return fdb_broadcast(mNativeHandle,
                             msg_code,
                             topic,
-                            Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
-                            Fdbus.FDB_MSG_ENC_PROTOBUF,
+                            raw_data,
                             log_data);
     }
 
@@ -194,11 +197,11 @@ public class FdbusServer
         }
     }
     
-    private void callbackInvoke(int sid, int msg_code, byte[] payload, int encoding, long msg_handle)
+    private void callbackInvoke(int sid, int msg_code, byte[] payload, long msg_handle)
     {
         if (mFdbusListener != null)
         {
-            FdbusMessage msg = new FdbusMessage(msg_handle, sid, msg_code, payload, encoding);
+            FdbusMessage msg = new FdbusMessage(msg_handle, sid, msg_code, payload);
             mFdbusListener.onInvoke(msg);
         }
     }
@@ -207,7 +210,7 @@ public class FdbusServer
     {
         if (mFdbusListener != null)
         {
-            FdbusMessage msg = new FdbusMessage(msg_handle, sid, 0, null, 0);
+            FdbusMessage msg = new FdbusMessage(msg_handle, sid, 0, null);
             mFdbusListener.onSubscribe(msg, sub_list);
         }
     }

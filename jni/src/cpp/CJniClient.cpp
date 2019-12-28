@@ -39,8 +39,8 @@ private:
 class CJniInvokeMsg : public CBaseMessage
 {
 public:
-    CJniInvokeMsg(FdbMsgCode_t code, EFdbMessageEncoding enc, jobject user_data)
-        : CBaseMessage(code, enc)
+    CJniInvokeMsg(FdbMsgCode_t code, jobject user_data)
+        : CBaseMessage(code)
         , mUserData(user_data)
     {
     }
@@ -131,7 +131,6 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
                                 msg->session(),
                                 msg->code(),
                                 CGlobalParam::createRawPayloadBuffer(env, msg),
-                                msg->getDataEncoding(),
                                 error_code,
                                 user_data
                                 );
@@ -155,8 +154,7 @@ void CJniClient::onBroadcast(CBaseJob::Ptr &msg_ref)
                                 msg->session(),
                                 msg->code(),
                                 filter,
-                                CGlobalParam::createRawPayloadBuffer(env, msg),
-                                msg->getDataEncoding()
+                                CGlobalParam::createRawPayloadBuffer(env, msg)
                                 );
         }
     }
@@ -232,7 +230,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
                               jlong handle,
                               jint code,
                               jbyteArray pb_data,
-                              jint encoding,
                               jstring log_data,
                               jobject user_data,
                               jint timeout)
@@ -240,12 +237,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
     CJniClient *client = (CJniClient *)handle;
     if (!client)
     {
-        return false;
-    }
-    
-    if (encoding >= FDB_MSG_ENC_MAX)
-    {
-        FDB_LOG_E("Java_FdbusClient_fdb_1invoke_1async: encoding %d out of range!\n", encoding);
         return false;
     }
     
@@ -257,8 +248,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
         len_arr = env->GetArrayLength(pb_data);
     }
     
-    CJniInvokeMsg *msg = new CJniInvokeMsg(code, (EFdbMessageEncoding)encoding,
-                                           user_data ? env->NewGlobalRef(user_data) : 0);
+    CJniInvokeMsg *msg = new CJniInvokeMsg(code, user_data ? env->NewGlobalRef(user_data) : 0);
 
     const char* c_log_data = 0;
     if (log_data)
@@ -287,7 +277,6 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
                                jlong handle,
                                jint code,
                                jbyteArray pb_data,
-                               jint encoding,
                                jstring log_data,
                                jint timeout)
 {
@@ -295,12 +284,6 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
     CJniClient *client = (CJniClient *)handle;
     if (!client)
     {
-        return 0;
-    }
-
-    if (encoding >= FDB_MSG_ENC_MAX)
-    {
-        FDB_LOG_E("Java_FdbusClient_fdb_1invoke_1async: encoding %d out of range!\n", encoding);
         return 0;
     }
 
@@ -318,7 +301,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
         c_log_data = env->GetStringUTFChars(log_data, 0);
     }
 
-    CBaseMessage *invoke_msg = new CBaseMessage(code, (EFdbMessageEncoding)encoding);
+    CBaseMessage *invoke_msg = new CBaseMessage(code);
     CBaseJob::Ptr ref(invoke_msg);
 
     if (c_log_data)
@@ -352,7 +335,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
     jmethodID constructor = env->GetMethodID(
                                     CFdbusMessageParam::mClass,
                                     "<init>",
-                                    "(II[BII)V");
+                                    "(II[BI)V");
     if (!constructor)
     {
         FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync: unable to get constructor: %d\n", ret);
@@ -363,7 +346,6 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
                                     invoke_msg->session(),
                                     code,
                                     CGlobalParam::createRawPayloadBuffer(env, invoke_msg),
-                                    encoding,
                                     error_code);
 }
 
@@ -373,7 +355,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
                                jlong handle,
                                jint code,
                                jbyteArray pb_data,
-                               jint encoding,
                                jstring log_data)
 {
     CJniClient *client = (CJniClient *)handle;
@@ -382,12 +363,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
         return false;
     }
     
-    if (encoding >= FDB_MSG_ENC_MAX)
-    {
-        FDB_LOG_E("Java_FdbusClient_fdb_1send: encoding %d out of range!\n", encoding);
-        return false;
-    }
-
     jbyte *c_array = 0;
     int len_arr = 0;
     if (pb_data)
@@ -405,7 +380,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
     jboolean ret = client->send((FdbMsgCode_t)code,
                         (const void *)c_array,
                         len_arr,
-                        (EFdbMessageEncoding)encoding,
                         c_log_data);
     if (c_array)
     {
@@ -550,13 +524,13 @@ static const JNINativeMethod gFdbusClientMethods[] = {
              "(J)Z",
              (void*) Java_ipc_fdbus_FdbusClient_fdb_1disconnect},
     {"fdb_invoke_async",
-             "(JI[BILjava/lang/String;Ljava/lang/Object;I)Z",
+             "(JI[BLjava/lang/String;Ljava/lang/Object;I)Z",
              (void*) Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async},
     {"fdb_invoke_sync",
-             "(JI[BILjava/lang/String;I)Lipc/fdbus/FdbusMessage;",
+             "(JI[BLjava/lang/String;I)Lipc/fdbus/FdbusMessage;",
              (void*) Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync},
     {"fdb_send",
-             "(JI[BILjava/lang/String;)Z",
+             "(JI[BLjava/lang/String;)Z",
              (void*) Java_ipc_fdbus_FdbusClient_fdb_1send},
     {"fdb_subscribe",
              "(JLjava/util/ArrayList;)Z",

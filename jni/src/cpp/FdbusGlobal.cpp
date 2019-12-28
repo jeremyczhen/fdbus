@@ -162,13 +162,13 @@ bool CFdbusClientParam::init(JNIEnv *env, jclass clazz)
         FDB_LOG_E("CFdbusClientParam::init: fail to get method mOnOffline!\n");
         goto _quit;
     }
-    mOnReply = env->GetMethodID(clazz, "callbackReply", "(II[BIILjava/lang/Object;)V");
+    mOnReply = env->GetMethodID(clazz, "callbackReply", "(II[BILjava/lang/Object;)V");
     if (!mOnReply)
     {
         FDB_LOG_E("CFdbusClientParam::init: fail to get method mOnReply!\n");
         goto _quit;
     }
-    mOnBroadcast = env->GetMethodID(clazz, "callbackBroadcast", "(IILjava/lang/String;[BI)V");
+    mOnBroadcast = env->GetMethodID(clazz, "callbackBroadcast", "(IILjava/lang/String;[B)V");
     if (!mOnBroadcast)
     {
         FDB_LOG_E("CFdbusClientParam::init: fail to get method mOnBroadcast!\n");
@@ -195,7 +195,7 @@ bool CFdbusServerParam::init(JNIEnv *env, jclass clazz)
         FDB_LOG_E("CFdbusServerParam::init: fail to get method mOnOffline!\n");
         goto _quit;
     }
-    mOnInvoke = env->GetMethodID(clazz, "callbackInvoke", "(II[BIJ)V");
+    mOnInvoke = env->GetMethodID(clazz, "callbackInvoke", "(II[BJ)V");
     if (!mOnInvoke)
     {
         FDB_LOG_E("CFdbusServerParam::init: fail to get method mOnInvoke!\n");

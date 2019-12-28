@@ -78,19 +78,6 @@ enum EFdbSidebandMessage
     FDB_SIDEBAND_USER_MIN = FDB_SIDEBAND_SYSTEM_MAX + 1
 };
 
-enum EFdbMessageEncoding
-{
-    FDB_MSG_ENC_RAW,
-    FDB_MSG_ENC_PROTOBUF,
-    FDB_MSG_ENC_SIMPLE,
-    FDB_MSG_ENC_CUSTOM2,
-    FDB_MSG_ENC_CUSTOM3,
-    FDB_MSG_ENC_CUSTOM4,
-    FDB_MSG_ENC_CUSTOM5,
-    FDB_MSG_ENC_CUSTOM6,
-    FDB_MSG_ENC_MAX
-};
-
 typedef ::google::protobuf::MessageLite CFdbBasePayload;
 
 struct CFdbMsgMetadata
@@ -160,16 +147,6 @@ private:
 #define MSG_FLAG_ERROR              (1 << 4)
 #define MSG_FLAG_STATUS             (1 << 5)
 #define MSG_FLAG_INITIAL_RESPONSE   (1 << 6)
-#define MSG_FLAG_ENCODING           16
-    #define MSG_FLAG_ENC_RAW_DATA   (FDB_MSG_ENC_RAW << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_PROTOBUF   (FDB_MSG_ENC_PROTOBUF << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_SIMPLE     (FDB_MSG_ENC_SIMPLE << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_CUSTOM2    (FDB_MSG_ENC_CUSTOM2 << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_CUSTOM3    (FDB_MSG_ENC_CUSTOM3 << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_CUSTOM4    (FDB_MSG_ENC_CUSTOM4 << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_CUSTOM5    (FDB_MSG_ENC_CUSTOM5 << MSG_FLAG_ENCODING)
-    #define MSG_FLAG_ENC_CUSTOM6    (FDB_MSG_ENC_CUSTOM6 << MSG_FLAG_ENCODING)
-#define MSG_FLAG_ENCODING_MASK      (7 << MSG_FLAG_ENCODING)
 
 #define MSG_FLAG_HEAD_OK            (1 << (MSG_LOCAL_FLAG_SHIFT + 0))
 #define MSG_FLAG_ENDPOINT           (1 << (MSG_LOCAL_FLAG_SHIFT + 1))
@@ -230,7 +207,7 @@ private:
     static const int32_t mMaxHeadSize = 128;
 
 public:
-    CFdbMessage(FdbMsgCode_t code = FDB_INVALID_ID, EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
+    CFdbMessage(FdbMsgCode_t code = FDB_INVALID_ID);
     virtual ~CFdbMessage();
 
     /*
@@ -250,7 +227,6 @@ public:
     static bool reply(CBaseJob::Ptr &msg_ref
                     , const void *buffer = 0
                     , int32_t size = 0
-                    , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
                     , const char *log_data = 0);
     /*
      * Act as reply but just reply error_code and description to the sender.
@@ -270,7 +246,6 @@ public:
                    , const char *filter = 0
                    , const void *buffer = 0
                    , int32_t size = 0
-                   , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
                    , const char *log_data = 0);
     /*
      * Deserialize received buffer into protocol buffer of particular type.
@@ -363,11 +338,6 @@ public:
         {
             delete[] buffer;
         }
-    }
-
-    EFdbMessageEncoding getDataEncoding() const
-    {
-        return (EFdbMessageEncoding)((mFlag & MSG_FLAG_ENCODING_MASK) >> MSG_FLAG_ENCODING);
     }
 
     /*
@@ -509,12 +479,10 @@ private:
 
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
-              , FdbSessionId_t alt_receiver = FDB_INVALID_ID
-              , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
+              , FdbSessionId_t alt_receiver = FDB_INVALID_ID);
 
     CFdbMessage(FdbMsgCode_t code
-              , CFdbMessage *msg
-              , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
+              , CFdbMessage *msg);
 
     bool invoke(int32_t timeout = 0);
     static bool invoke(CBaseJob::Ptr &msg_ref
@@ -682,13 +650,11 @@ public:
                      , CFdbBaseObject *obj
                      , const char *filter
                      , FdbSessionId_t alt_sid = FDB_INVALID_ID
-                     , FdbObjectId_t alt_oid = FDB_INVALID_ID
-                     , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
+                     , FdbObjectId_t alt_oid = FDB_INVALID_ID);
 
     CFdbBroadcastMsg(FdbMsgCode_t code
                      , CFdbMessage *msg
-                     , const char *filter
-                     , EFdbMessageEncoding enc = FDB_MSG_ENC_PROTOBUF);
+                     , const char *filter);
     
     const char *getFilter() const
     {

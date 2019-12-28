@@ -39,17 +39,6 @@ public class Fdbus
     public final static int FDB_MT_STATUS           = 7;
     public final static int FDB_MT_MAX              = 8;
 
-    // definition for encoding
-    public final static int FDB_MSG_ENC_RAW         = 0;
-    public final static int FDB_MSG_ENC_PROTOBUF    = 1;
-    public final static int FDB_MSG_ENC_SIMPLE      = 2;
-    public final static int FDB_MSG_ENC_CUSTOM2     = 3;
-    public final static int FDB_MSG_ENC_CUSTOM3     = 4;
-    public final static int FDB_MSG_ENC_CUSTOM4     = 5;
-    public final static int FDB_MSG_ENC_CUSTOM5     = 6;
-    public final static int FDB_MSG_ENC_CUSTOM6     = 7;
-    public final static int FDB_MSG_ENC_MAX         = 8;
-
     // Fdbus Message invoke Status
     public final static int FDB_ST_OK               = 0;
     public final static int FDB_ST_AUTO_REPLY_OK    = -11;
@@ -133,5 +122,28 @@ public class Fdbus
     public static void LOG_F(String tag, String data)
     {
         fdb_log_trace(tag, FDB_LL_FATAL, data);
+    }
+
+    public static byte[] encodeMessage(Object msg)
+    {
+        if (msg instanceof byte[])
+        {
+            return (byte[]) msg;
+        }
+        
+        byte[] raw_data = null;
+        if (mMessageEncoder == null)
+        {
+            LOG_E("fdbus-jni", "Fail to serialization: encoder is not installed\n");
+        }
+        else
+        {
+            raw_data = mMessageEncoder.serialize(msg);
+            if (raw_data == null)
+            {
+                LOG_E("fdbus-jni", "Fail to serialization: message type is not supported\n");
+            }
+        }
+        return raw_data;
     }
 }

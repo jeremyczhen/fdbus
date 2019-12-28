@@ -21,7 +21,7 @@ import com.google.protobuf.AbstractMessageLite;
 
 public class MyFdbusMessageEncoder extends FdbusMessageEncoder
 {
-    public byte[] serialize(Object msg, int encoding)
+    public byte[] serialize(Object msg)
     {
         if (msg instanceof AbstractMessageLite)
         {
@@ -34,7 +34,7 @@ public class MyFdbusMessageEncoder extends FdbusMessageEncoder
         return null;
     }
 
-    public String toString(Object msg, int encoding)
+    public String toString(Object msg)
     {
         if (msg instanceof AbstractMessageLite)
         {

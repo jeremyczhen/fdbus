@@ -26,13 +26,11 @@ public class FdbusMessage
 
     private native boolean fdb_reply(long native_handle,
                                     byte[] pb_data,
-                                    int encoding,
                                     String log_msg);
     private native boolean fdb_broadcast(long native_handle,
                                          int msg_code,
                                          String filter,
                                          byte[] pb_data,
-                                         int encoding,
                                          String log_msg);
     private native void fdb_destroy(long native_handle);
     private native boolean fdb_log_enabled(long native_handle);
@@ -41,7 +39,6 @@ public class FdbusMessage
                             int sid,
                             int msg_code,
                             byte[] payload,
-                            int encoding,
                             Object user_data,
                             int status)
     {
@@ -49,31 +46,30 @@ public class FdbusMessage
         mSid = sid;
         mMsgCode = msg_code;
         mPayload = payload;
-        mEncoding = encoding;
         mUserData = user_data;
         mTopic = null;
         mStatus = status;
     }
     
-    public FdbusMessage(int sid, int msg_code, byte[] payload, int encoding, Object user_data, int status)
+    public FdbusMessage(int sid, int msg_code, byte[] payload, Object user_data, int status)
     {
-        initialize(0, sid, msg_code, payload, encoding, user_data, status);
+        initialize(0, sid, msg_code, payload, user_data, status);
     }
-    public FdbusMessage(int sid, int msg_code, byte[] payload, int encoding, Object user_data)
+    public FdbusMessage(int sid, int msg_code, byte[] payload, Object user_data)
     {
-        initialize(0, sid, msg_code, payload, encoding, user_data, Fdbus.FDB_ST_OK);
+        initialize(0, sid, msg_code, payload, user_data, Fdbus.FDB_ST_OK);
     }
-    public FdbusMessage(int sid, int msg_code, byte[] payload, int encoding, int status)
+    public FdbusMessage(int sid, int msg_code, byte[] payload, int status)
     {
-        initialize(0, sid, msg_code, payload, encoding, null, status);
+        initialize(0, sid, msg_code, payload, null, status);
     }
-    public FdbusMessage(int sid, int msg_code, byte[] payload, int encoding)
+    public FdbusMessage(int sid, int msg_code, byte[] payload)
     {
-        initialize(0, sid, msg_code, payload, encoding, null, Fdbus.FDB_ST_OK);
+        initialize(0, sid, msg_code, payload, null, Fdbus.FDB_ST_OK);
     }
-    public FdbusMessage(long handle, int sid, int msg_code, byte[] payload, int encoding)
+    public FdbusMessage(long handle, int sid, int msg_code, byte[] payload)
     {
-        initialize(handle, sid, msg_code, payload, encoding, null, Fdbus.FDB_ST_OK);
+        initialize(handle, sid, msg_code, payload, null, Fdbus.FDB_ST_OK);
     }
 
     /*
@@ -131,22 +127,26 @@ public class FdbusMessage
      */
     public boolean reply(Object msg)
     {
-        if (Fdbus.messageEncoder() == null)
+        String log_data = null;
+        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled())
         {
-            destroy();
-            return false;
+            log_data = Fdbus.messageEncoder().toString(msg);
         }
 
-        String log_data = null;
-        if (logEnabled())
+        byte[] raw_data = null;
+        if (msg != null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            raw_data = Fdbus.encodeMessage(msg);
+            if (raw_data == null)
+            {
+                destroy();
+                return false;
+            }
         }
 
         boolean ret = fdb_reply(mNativeHandle,
-                                Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
-                                Fdbus.FDB_MSG_ENC_PROTOBUF,
-                                null);
+                                raw_data,
+                                log_data);
         destroy();
         return ret;
     }
@@ -163,23 +163,27 @@ public class FdbusMessage
      */
     public boolean broadcast(int msg_code, String topic, Object msg)
     {
-        if (Fdbus.messageEncoder() == null)
+        String log_data = null;
+        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled())
         {
-            destroy();
-            return false;
+            log_data = Fdbus.messageEncoder().toString(msg);
         }
 
-        String log_data = null;
-        if (logEnabled())
+        byte[] raw_data = null;
+        if (msg != null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            raw_data = Fdbus.encodeMessage(msg);
+            if (raw_data == null)
+            {
+                destroy();
+                return false;
+            }
         }
 
         boolean ret = fdb_broadcast(mNativeHandle,
                                     msg_code,
                                     topic,
-                                    Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
-                                    Fdbus.FDB_MSG_ENC_PROTOBUF,
+                                    raw_data,
                                     log_data);
         destroy();
         return ret;
@@ -212,7 +216,6 @@ public class FdbusMessage
     private int mSid;
     private int mMsgCode;
     private byte[] mPayload;
-    private int mEncoding;
     private Object mUserData;
     private String mTopic;
     private int mStatus;

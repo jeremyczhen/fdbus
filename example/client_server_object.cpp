@@ -613,11 +613,6 @@ protected:
                 }
                 else if (!filter.compare("raw_buffer"))
                 {
-                    if (msg->getDataEncoding() != FDB_MSG_ENC_PROTOBUF)
-                    {
-                        FDB_LOG_E("OBJ %d Error! Raw data is expected but protobuf is received.\n", this->objId());
-                        return;
-                    }
                     // const char *buffer = (char *)msg->getPayloadBuffer();
                     int32_t size = msg->getPayloadSize();
                     //std::cout << "OBJ " << this->objId() << " Broadcast of raw buffer is received: size: " << size << ", data: " << buffer << std::endl;

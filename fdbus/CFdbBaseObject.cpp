@@ -45,10 +45,9 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , FdbMsgCode_t code
                          , const void *buffer
                          , int32_t size
-                         , EFdbMessageEncoding enc
                          , const char *log_data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver, enc);
+    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -61,10 +60,9 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
 bool CFdbBaseObject::send(FdbMsgCode_t code
                          , const void *buffer
                          , int32_t size
-                         , EFdbMessageEncoding enc
                          , const char *log_data)
 {
-    return send(FDB_INVALID_ID, code, buffer, size, enc, log_data);
+    return send(FDB_INVALID_ID, code, buffer, size, log_data);
 }
 
 bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
@@ -93,10 +91,9 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const char *filter
                               , const void *buffer
                               , int32_t size
-                              , EFdbMessageEncoding enc
                               , const char *log_data)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, enc);
+    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -108,7 +105,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
 
 bool CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_data, int32_t log_size)
 {
-    CFdbBroadcastMsg msg(code, this, 0, FDB_INVALID_ID, FDB_INVALID_ID, FDB_MSG_ENC_SIMPLE);
+    CFdbBroadcastMsg msg(code, this, 0, FDB_INVALID_ID, FDB_INVALID_ID);
     if (!msg.serialize(log_data, log_size))
     {
         return false;
@@ -519,10 +516,9 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , const void *buffer
                            , int32_t size
                            , int32_t timeout
-                           , EFdbMessageEncoding enc
                            , const char *log_data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver, enc);
+    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -536,10 +532,9 @@ bool CFdbBaseObject::invoke(FdbMsgCode_t code
                            , const void *buffer
                            , int32_t size
                            , int32_t timeout
-                           , EFdbMessageEncoding enc
                            , const char *log_data)
 {
-    return invoke(FDB_INVALID_ID, code, buffer, size, timeout, enc, log_data);
+    return invoke(FDB_INVALID_ID, code, buffer, size, timeout, log_data);
 }
 
 

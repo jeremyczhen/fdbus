@@ -50,7 +50,7 @@ private:
     friend class CFdbMessage;
 };
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, EFdbMessageEncoding enc)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
@@ -61,13 +61,13 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, EFdbMessageEncoding enc)
     , mSid(FDB_INVALID_ID)
     , mOid(FDB_INVALID_ID)
     , mBuffer(0)
-    , mFlag((enc << MSG_FLAG_ENCODING) & MSG_FLAG_ENCODING_MASK)
+    , mFlag(0)
     , mTimer(0)
     , mStringData(0)
 {
 }
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, EFdbMessageEncoding enc)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver)
     : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
@@ -76,14 +76,14 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mOffset(0)
     , mExtraSize(0)
     , mBuffer(0)
-    , mFlag((enc << MSG_FLAG_ENCODING) & MSG_FLAG_ENCODING_MASK)
+    , mFlag(0)
     , mTimer(0)
     , mStringData(0)
 {
     setDestination(obj, alt_receiver);
 }
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, EFdbMessageEncoding enc)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg)
     : mType(FDB_MT_BROADCAST)
     , mCode(code)
     , mSn(msg->mSn)
@@ -94,7 +94,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, EFdbMessageEncodin
     , mSid(msg->mSid)
     , mOid(msg->mOid)
     , mBuffer(0)
-    , mFlag((enc << MSG_FLAG_ENCODING) & MSG_FLAG_ENCODING_MASK)
+    , mFlag(0)
     , mTimer(0)
     , mSenderName(msg->mSenderName)
     , mStringData(0)
@@ -208,8 +208,7 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
                          , EFdbMessageType type)
 {
     mType = type;
-    mFlag &= ~MSG_FLAG_ENCODING_MASK;
-    mFlag |= MSG_FLAG_REPLIED | MSG_FLAG_ENC_PROTOBUF;
+    mFlag |= MSG_FLAG_REPLIED;
     if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
     {
         mFlag &= ~MSG_FLAG_REPLIED;
@@ -222,7 +221,6 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
 bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
                       , const void *buffer
                       , int32_t size
-                      , EFdbMessageEncoding enc
                       , const char *log_data)
 {
     CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
@@ -237,8 +235,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     fdb_msg->setLogData(log_data);
     
     fdb_msg->mType = FDB_MT_REPLY;
-    fdb_msg->mFlag &= ~MSG_FLAG_ENCODING_MASK;
-    fdb_msg->mFlag |= MSG_FLAG_REPLIED | ((enc << MSG_FLAG_ENCODING) & MSG_FLAG_ENCODING_MASK);
+    fdb_msg->mFlag |= MSG_FLAG_REPLIED;
     if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
     {
         fdb_msg->mFlag &= ~MSG_FLAG_REPLIED;
@@ -353,10 +350,9 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , const char *filter
                            , const void *buffer
                            , int32_t size
-                           , EFdbMessageEncoding enc
                            , const char *log_data)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, enc);
+    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
     msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
     if (!msg->serialize(buffer, size))
     {
@@ -544,9 +540,6 @@ bool CFdbMessage::serialize(const CFdbBasePayload &data, const CFdbBaseObject *o
         return false;
     }
 
-    mFlag &= ~MSG_FLAG_ENCODING_MASK;
-    mFlag |= MSG_FLAG_ENC_PROTOBUF;
-
     if (object)
     {
         checkLogEnabled(object);
@@ -594,9 +587,6 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
     {
         data.toBuffer(mBuffer + maxReservedSize(), mPayloadSize);
     }
-    
-    mFlag &= ~MSG_FLAG_ENCODING_MASK;
-    mFlag |= MSG_FLAG_ENC_SIMPLE;
     return true;
 }
 
@@ -933,34 +923,27 @@ CFdbSession *CFdbMessage::getSession()
 
 bool CFdbMessage::deserialize(CFdbBasePayload &payload) const
 {
-    if (!mBuffer || ((mFlag & MSG_FLAG_ENCODING_MASK) != MSG_FLAG_ENC_PROTOBUF))
+    if (!mBuffer || !mPayloadSize)
     {
         return false;
     }
 
     bool ret;
-    if (!mPayloadSize)
+    uint8_t *buffer = mBuffer + mOffset + mPrefixSize + mHeadSize;
+    try
     {
-        ret = true;
+        //Assign ArrayInputStream with enough memory
+        google::protobuf::io::ArrayInputStream ais(buffer, mPayloadSize);
+        google::protobuf::io::CodedInputStream coded_input(&ais);
+        google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(mPayloadSize);
+        // De-Serialize
+        ret = payload.ParseFromCodedStream(&coded_input);
+        //Once the embedded message has been parsed, PopLimit() is called to undo the limit
+        coded_input.PopLimit(msgLimit);
     }
-    else
+    catch (...)
     {
-        uint8_t *buffer = mBuffer + mOffset + mPrefixSize + mHeadSize;
-        try
-        {
-            //Assign ArrayInputStream with enough memory
-            google::protobuf::io::ArrayInputStream ais(buffer, mPayloadSize);
-            google::protobuf::io::CodedInputStream coded_input(&ais);
-            google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(mPayloadSize);
-            // De-Serialize
-            ret = payload.ParseFromCodedStream(&coded_input);
-            //Once the embedded message has been parsed, PopLimit() is called to undo the limit
-            coded_input.PopLimit(msgLimit);
-        }
-        catch (...)
-        {
-            ret = false;
-        }
+        ret = false;
     }
     
     return ret;
@@ -968,7 +951,7 @@ bool CFdbMessage::deserialize(CFdbBasePayload &payload) const
 
 bool CFdbMessage::deserialize(IFdbMsgParser &payload) const
 {
-    if (!mBuffer || !mPayloadSize || ((mFlag & MSG_FLAG_ENCODING_MASK) != MSG_FLAG_ENC_SIMPLE))
+    if (!mBuffer || !mPayloadSize)
     {
         return false;
     }
@@ -1110,9 +1093,8 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
                                  , CFdbBaseObject *obj
                                  , const char *filter
                                  , FdbSessionId_t alt_sid
-                                 , FdbObjectId_t alt_oid
-                                 , EFdbMessageEncoding enc)
-    : CFdbMessage(code, obj, FDB_INVALID_ID, enc)
+                                 , FdbObjectId_t alt_oid)
+    : CFdbMessage(code, obj, FDB_INVALID_ID)
 {
     if (filter)
     {
@@ -1139,9 +1121,8 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
 
 CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
                                  , CFdbMessage *msg
-                                 , const char *filter
-                                 , EFdbMessageEncoding enc)
-    : CFdbMessage(code, msg, enc)
+                                 , const char *filter)
+    : CFdbMessage(code, msg)
 {
     if (filter)
     {

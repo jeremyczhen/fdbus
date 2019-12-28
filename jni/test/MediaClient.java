@@ -29,7 +29,7 @@ public class MediaClient
 {
     private class FdbusMediaClient extends TimerTask implements FdbusClientListener
     {
-        public final static int CONFIG_SYNC_INVOKE = 0;
+        public final static int CONFIG_SYNC_INVOKE = 1;
 
         int mSongId;
         
@@ -59,7 +59,7 @@ public class MediaClient
             System.out.println(mClient.endpointName() + ": onOffline is received.");
         }
 
-        private void handleReplyMsg(FdbusMessage msg)
+        private void handleReplyMsg(FdbusMessage msg, boolean sync)
         {
             if (msg.returnValue() != Fdbus.FDB_ST_OK)
             {
@@ -75,7 +75,10 @@ public class MediaClient
                     try {
                         NFdbExample.NowPlayingDetails np =
                                 NFdbExample.NowPlayingDetails.parseFrom(msg.byteArray());
-                        System.out.println(mClient.endpointName() + ": now playing info: " + np.toString());
+                        System.out.println((sync ? "sync reply - " : "async reply - ") + 
+                                           mClient.endpointName() +
+                                           ": now playing info: " +
+                                           np.toString());
                     } catch (Exception e) {
                         System.out.println(e);
                     }
@@ -100,7 +103,7 @@ public class MediaClient
                     }
                 }
             }
-            handleReplyMsg(msg);
+            handleReplyMsg(msg, false);
         }
         
         public void onBroadcast(FdbusMessage msg)
@@ -145,7 +148,7 @@ public class MediaClient
             else
             {
                 FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, song_id, 0);
-                handleReplyMsg(msg);
+                handleReplyMsg(msg, true);
             }
         }
     }

@@ -90,7 +90,6 @@ void CJniServer::onInvoke(CBaseJob::Ptr &msg_ref)
                                 msg->session(),
                                 msg->code(),
                                 CGlobalParam::createRawPayloadBuffer(env, msg),
-                                msg->getDataEncoding(),
                                 msg_handle
                                 );
         }
@@ -243,7 +242,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1broadcast
                            jint msg_code,
                            jstring filter,
                            jbyteArray pb_data,
-                           jint encoding,
                            jstring log_data)
 {
     CJniServer *server = (CJniServer *)handle;
@@ -252,12 +250,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1broadcast
         return false;
     }
 
-    if (encoding >= FDB_MSG_ENC_MAX)
-    {
-        FDB_LOG_E("Java_FdbusServer_fdb_1broadcast: encoding %d out of range!\n", encoding);
-        return false;
-    }
-    
     const char *c_log_data = 0;
     if (log_data)
     {
@@ -278,8 +270,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1broadcast
         len_arr = env->GetArrayLength(pb_data);
     }
 
-    bool ret = server->broadcast(msg_code, c_filter, c_array, len_arr, 
-                             (EFdbMessageEncoding)encoding, c_log_data);
+    bool ret = server->broadcast(msg_code, c_filter, c_array, len_arr, c_log_data);
 
     if (c_log_data)
     {
@@ -355,7 +346,7 @@ static const JNINativeMethod gFdbusServerMethods[] = {
              "(J)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1unbind},
     {"fdb_broadcast",
-             "(JILjava/lang/String;[BILjava/lang/String;)Z",
+             "(JILjava/lang/String;[BLjava/lang/String;)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1broadcast},
     {"fdb_endpoint_name",
              "(J)Ljava/lang/String;",

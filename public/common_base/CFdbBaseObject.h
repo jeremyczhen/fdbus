@@ -147,7 +147,6 @@ public:
                 , const void *buffer = 0
                 , int32_t size = 0
                 , int32_t timeout = 0
-                , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
                 , const char *log_info = 0);
 
     bool invoke(FdbSessionId_t receiver
@@ -166,7 +165,6 @@ public:
                 , const void *buffer = 0
                 , int32_t size = 0
                 , int32_t timeout = 0
-                , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
                 , const char *log_data = 0);
 
     bool invoke(CFdbMessage *msg
@@ -227,7 +225,6 @@ public:
               , FdbMsgCode_t code
               , const void *buffer = 0
               , int32_t size = 0
-              , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
               , const char *log_data = 0);
     /*
      * send[4]
@@ -238,7 +235,6 @@ public:
     bool send(FdbMsgCode_t code
               , const void *buffer = 0
               , int32_t size = 0
-              , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
               , const char *log_data = 0);
 
     /*
@@ -264,7 +260,6 @@ public:
                    , const char *filter = 0
                    , const void *buffer = 0
                    , int32_t size = 0
-                   , EFdbMessageEncoding enc = FDB_MSG_ENC_RAW
                    , const char *log_data = 0);
     /*
      * Build subscribe list before calling subscribe().

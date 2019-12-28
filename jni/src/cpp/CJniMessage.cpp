@@ -24,7 +24,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1reply
                             jobject,
                             jlong handle,
                             jbyteArray pb_data,
-                            jint encoding,
                             jstring log_data)
 {
     CBaseJob::Ptr *msg_ref = (CBaseJob::Ptr *)handle;
@@ -37,12 +36,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1reply
     if (!msg)
     {
         FDB_LOG_E("Java_FdbusMessage_fdb_1reply: msg pointer is corrupted!\n");
-        return false;
-    }
-
-    if (encoding >= FDB_MSG_ENC_MAX)
-    {
-        FDB_LOG_E("Java_FdbusMessage_fdb_1reply: encoding %d out of range!\n", encoding);
         return false;
     }
 
@@ -60,8 +53,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1reply
         c_log_data = env->GetStringUTFChars(log_data, 0);
     }
 
-    bool ret = msg->reply(*msg_ref, (const void *)c_array, len_arr,
-                            (EFdbMessageEncoding)encoding, c_log_data);
+    bool ret = msg->reply(*msg_ref, (const void *)c_array, len_arr, c_log_data);
     if (c_log_data)
     {
         env->ReleaseStringUTFChars(log_data, c_log_data);
@@ -81,7 +73,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
                              jint msg_code,
                              jstring filter,
                              jbyteArray pb_data,
-                             jint encoding,
                              jstring log_data)
 {
     CBaseJob::Ptr *msg_ref = (CBaseJob::Ptr *)handle;
@@ -94,12 +85,6 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
     if (!msg)
     {
         FDB_LOG_E("Java_FdbusMessage_fdb_1broadcast: msg pointer is corrupted!\n");
-        return false;
-    }
-
-    if (encoding >= FDB_MSG_ENC_MAX)
-    {
-        FDB_LOG_E("Java_FdbusMessage_fdb_1broadcast: encoding %d out of range!\n", encoding);
         return false;
     }
 
@@ -123,8 +108,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
         c_filter = env->GetStringUTFChars(filter, 0);
     }
     
-    bool ret = msg->broadcast(msg_code, c_filter, (const void *)c_array, len_arr,
-                            (EFdbMessageEncoding)encoding, c_log_data);
+    bool ret = msg->broadcast(msg_code, c_filter, (const void *)c_array, len_arr, c_log_data);
     if (c_log_data)
     {
         env->ReleaseStringUTFChars(log_data, c_log_data);
@@ -175,10 +159,10 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled
 
 static const JNINativeMethod gFdbusMessageMethods[] = {
     {"fdb_reply",
-             "(J[BILjava/lang/String;)Z",
+             "(J[BLjava/lang/String;)Z",
              (void*) Java_ipc_fdbus_FdbusMessage_fdb_1reply},
     {"fdb_broadcast",
-             "(JILjava/lang/String;[BILjava/lang/String;)Z",
+             "(JILjava/lang/String;[BLjava/lang/String;)Z",
              (void*) Java_ipc_fdbus_FdbusMessage_fdb_1broadcast},
     {"fdb_destroy",
              "(J)V",

@@ -30,20 +30,17 @@ public class FdbusClient
     private native boolean fdb_invoke_async(long native_handle,
                                             int msg_code,
                                             byte[] pb_data,
-                                            int encoding,
                                             String log_msg,
                                             Object user_data,
                                             int timeout);
     private native FdbusMessage fdb_invoke_sync(long native_handle,
                                                 int msg_code,
                                                 byte[] pb_data,
-                                                int encoding,
                                                 String log_msg,
                                                 int timeout);
     private native boolean fdb_send(long native_handle,
                                     int msg_code,
                                     byte[] pb_data,
-                                    int encoding,
                                     String log_msg);
     private native boolean fdb_subscribe(long native_handle, 
                                          ArrayList<SubscribeItem> sub_list);
@@ -145,21 +142,25 @@ public class FdbusClient
      */
     public boolean invokeAsync(int msg_code, Object msg, Object user_data, int timeout)
     {
-        if (Fdbus.messageEncoder() == null)
-        {
-            return false;
-        }
-    
         String log_data = null;
-        if (logEnabled(Fdbus.FDB_MT_REQUEST))
+        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_REQUEST))
         {
-            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg);
+        }
+
+        byte[] raw_data = null;
+        if (msg != null)
+        {
+            raw_data = Fdbus.encodeMessage(msg);
+            if (raw_data == null)
+            {
+                return false;
+            }
         }
 
         return fdb_invoke_async(mNativeHandle,
                                 msg_code,
-                                Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
-                                Fdbus.FDB_MSG_ENC_PROTOBUF,
+                                raw_data,
                                 log_data,
                                 user_data,
                                 timeout);
@@ -182,21 +183,25 @@ public class FdbusClient
      */
     public FdbusMessage invokeSync(int msg_code, Object msg, int timeout)
     {
-        if (Fdbus.messageEncoder() == null)
-        {
-            return null;
-        }
-    
         String log_data = null;
-        if (logEnabled(Fdbus.FDB_MT_REQUEST))
+        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_REQUEST))
         {
-            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg);
+        }
+
+        byte[] raw_data = null;
+        if (msg != null)
+        {
+            raw_data = Fdbus.encodeMessage(msg);
+            if (raw_data == null)
+            {
+                return null;
+            }
         }
         
         return fdb_invoke_sync(mNativeHandle,
                                msg_code,
-                               Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
-                               Fdbus.FDB_MSG_ENC_PROTOBUF,
+                               raw_data,
                                log_data,
                                timeout);
     }
@@ -218,21 +223,25 @@ public class FdbusClient
      */
     public boolean send(int msg_code, Object msg)
     {
-        if (Fdbus.messageEncoder() == null)
-        {
-            return false;
-        }
-    
         String log_data = null;
-        if (logEnabled(Fdbus.FDB_MT_REQUEST))
+        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_REQUEST))
         {
-            log_data = Fdbus.messageEncoder().toString(msg, Fdbus.FDB_MSG_ENC_PROTOBUF);
+            log_data = Fdbus.messageEncoder().toString(msg);
         }
-    
+        
+        byte[] raw_data = null;
+        if (msg != null)
+        {
+            raw_data = Fdbus.encodeMessage(msg);
+            if (raw_data == null)
+            {
+                return false;
+            }
+        }
+        
         return fdb_send(mNativeHandle,
                         msg_code,
-                        Fdbus.messageEncoder().serialize(msg, Fdbus.FDB_MSG_ENC_PROTOBUF),
-                        Fdbus.FDB_MSG_ENC_PROTOBUF,
+                        raw_data,
                         log_data);
     }
 
@@ -298,13 +307,12 @@ public class FdbusClient
     private void callbackReply(int sid,
                                int msg_code,
                                byte[] payload,
-                               int encoding,
                                int status,
                                Object user_data)
     {
         if (mFdbusListener != null)
         {
-            FdbusMessage msg = new FdbusMessage(sid, msg_code, payload, encoding, user_data, status);
+            FdbusMessage msg = new FdbusMessage(sid, msg_code, payload, user_data, status);
             mFdbusListener.onReply(msg);
         }
     }
@@ -312,12 +320,11 @@ public class FdbusClient
     private void callbackBroadcast(int sid,
                                    int msg_code,
                                    String filter,
-                                   byte[] payload,
-                                   int encoding)
+                                   byte[] payload)
     {   
         if (mFdbusListener != null)
         {
-            FdbusMessage msg = new FdbusMessage(sid, msg_code, payload, encoding);
+            FdbusMessage msg = new FdbusMessage(sid, msg_code, payload);
             msg.topic(filter);
             mFdbusListener.onBroadcast(msg);
         }
