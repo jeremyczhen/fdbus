@@ -52,7 +52,14 @@ public:
 protected:
     void onInput(bool &io_error)
     {
-        mWorker->processNotifyWatch(io_error);
+        if (mEventLoop->mEventFd.pickEvent())
+        {
+            mWorker->processJobQueue(false);
+        }
+        else
+        {
+            //TODO: do something???
+        }
     }
     void onHup()
     {
@@ -326,11 +333,6 @@ bool CFdEventLoop::notify()
     return mEventFd.triggerEvent();
 }
 
-bool CFdEventLoop::acknowledge()
-{
-    return mEventFd.pickEvent();
-}
-
 bool CFdEventLoop::init(CBaseWorker *worker)
 {
     if (!mNotifyWatch)
@@ -347,4 +349,3 @@ bool CFdEventLoop::init(CBaseWorker *worker)
     }
     return true;
 }
-

@@ -35,7 +35,6 @@ public:
     void removeWatch(CSysFdWatch *watch);
     void dispatch();
     bool notify();
-    bool acknowledge();
     bool init(CBaseWorker *worker);
 protected:
     typedef std::list< CSysFdWatch *> tCFdWatchList;
@@ -56,14 +55,15 @@ protected:
     CSysFdWatch **mWatches;
     tWatchTbl *mWatchBlackList;
 private:
-    CNotifyFdWatch *mNotifyWatch;
-    CEventFd mEventFd;
-    void processNotifyWatch(bool &io_error);
     int32_t buildFdArray();
     void processWatches(int32_t nr_watches);
     bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);
 
+    CNotifyFdWatch *mNotifyWatch;
+    CEventFd mEventFd;
+
     friend CSysFdWatch;
+    friend CNotifyFdWatch;
 };
 
 #endif

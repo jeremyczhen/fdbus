@@ -19,8 +19,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include "CBaseSemaphore.h"
-#include "CBaseMutexLock.h"
 
 class CBaseWorker;
 class CBaseJob
@@ -130,7 +130,7 @@ private:
     void wakeup(Ptr &ref);
 
     int32_t mFlag;
-    CBaseMutexLock mSyncLock;
+    std::mutex mSyncLock;
     CSyncRequest *mSyncReq;
     friend class CBaseWorker;
 };

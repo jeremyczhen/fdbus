@@ -20,7 +20,7 @@
 #include <set>
 #include "CBaseClient.h"
 #include "CFdbMessage.h"
-#include "CBaseMutexLock.h"
+#include <mutex>
 
 class CBaseEndpoint;
 namespace google
@@ -77,7 +77,7 @@ private:
 
     tFilterTbl mTraceTagWhiteList;
     bool mTraceHostEnabled;
-    CBaseMutexLock mTraceLock;
+    std::mutex mTraceLock;
 
     static const int32_t mMaxTraceLogSize = 4096;
     bool checkHostEnabled(const ::google::protobuf::RepeatedPtrField< ::std::string> &host_tbl);

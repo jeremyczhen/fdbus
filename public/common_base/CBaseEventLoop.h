@@ -19,6 +19,7 @@
 
 #include <list>
 #include <set>
+#include <mutex>
 
 class CSysLoopTimer;
 class CBaseWorker;
@@ -33,14 +34,24 @@ public:
     void addTimer(CSysLoopTimer *timer, bool enb);
     void removeTimer(CSysLoopTimer *timer);
 
-    virtual void dispatch() = 0;
-    virtual bool notify() = 0;
-    virtual bool acknowledge() = 0;
-    virtual bool init(CBaseWorker *worker) = 0;
+    virtual void dispatch()
+    {}
+    virtual bool notify()
+    {
+        return true;
+    }
+    virtual bool init(CBaseWorker *worker)
+    {
+        return true;
+    }
+    void lock();
+    void unlock();
 
 protected:
     int32_t getMostRecentTime();
     void processTimers();
+    std::mutex mMutex;
+    
 #define LOOP_DEFAULT_INTERVAL       20
 private:
     typedef std::list< CSysLoopTimer *> tLoopTimerList;
@@ -53,11 +64,11 @@ private:
     {
         mTimerBlackList = black_list;
     }
-    
 
     tLoopTimerList mTimerList;
     tLoopTimerList mTimerWorkingList;
     tTimerTbl *mTimerBlackList;
+    
     friend CSysLoopTimer;
 };
 

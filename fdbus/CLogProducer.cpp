@@ -78,7 +78,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             mDisableSubscribe = !cfg.enable_subscribe();
             mRawDataClippingSize = cfg.raw_data_clipping_size();
             mLogHostEnabled = checkHostEnabled(cfg.host_white_list());
-            CAutoLock _l(mTraceLock);
+            std::lock_guard<std::mutex> _l(mTraceLock);
             populateWhiteList(cfg.endpoint_white_list(), mLogEndpointWhiteList);
             populateWhiteList(cfg.busname_white_list(), mLogBusnameWhiteList);
         }
@@ -94,7 +94,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             mLogLevel = (EFdbLogLevel)cfg.log_level();
             mTraceDisableGlobal = !cfg.global_enable();
             mTraceHostEnabled = checkHostEnabled(cfg.host_white_list());
-            CAutoLock _l(mTraceLock);
+            std::lock_guard<std::mutex> _l(mTraceLock);
             populateWhiteList(cfg.tag_white_list(), mTraceTagWhiteList);
         }
         break;
@@ -223,7 +223,7 @@ bool CLogProducer::checkLogEnabled(EFdbMessageType type,
     
     if (lock)
     {
-        CAutoLock _l(mTraceLock);
+        std::lock_guard<std::mutex> _l(mTraceLock);
         return checkLogEnabledByEndpoint(sender, receiver, busname);
     }
     else
@@ -299,7 +299,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     {
         if (!mTraceTagWhiteList.empty())
         {
-            CAutoLock _l(mTraceLock);
+            std::lock_guard<std::mutex> _l(mTraceLock);
             if (!mTraceTagWhiteList.empty() && (mTraceTagWhiteList.find(tag) == mTraceTagWhiteList.end()))
             {
                 return;

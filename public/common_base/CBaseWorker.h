@@ -20,7 +20,6 @@
 #include <vector>
 #include "CBaseThread.h"
 #include "CBaseJob.h"
-#include "CBaseMutexLock.h"
 
 /*
  * If set, the worker thread can run jobs, timers and watches;
@@ -201,25 +200,28 @@ private:
     public:
         CJobQueue(uint32_t max_size = 0);
         bool enqueue(CBaseJob::Ptr &job);
-        void dumpJobs(tJobContainer &job_queue);
+        void dumpJobs(tJobContainer &job_queue, bool already_locked);
         void discardJobs();
         void pickupJobs();
         bool jobDiscarded();
         void jobQueueSize(uint32_t size);
         uint32_t jobQueueSize();
+        void eventLoop(CBaseEventLoop *event_loop)
+        {
+            mEventLoop = event_loop;
+        }
     private:
         uint32_t mMaxSize;
         uint32_t mCurrentSize;
         int32_t mDiscardCnt;
-        CBaseMutexLock mMutex;
+        CBaseEventLoop *mEventLoop;
         tJobContainer mJobQueue;
     };
     
     bool send(CBaseJob::Ptr &job, bool urgent);
     void run();
-    void processJobQueue();
+    void processJobQueue(bool initial_locked);
     void processUrgentJobQueue();
-    void processNotifyWatch(bool &io_error);
     void doExit(int32_t exit_code = 1);
     void discardJobs(bool urgent);
     void updateDiscardStatus(bool discard, bool urgent);

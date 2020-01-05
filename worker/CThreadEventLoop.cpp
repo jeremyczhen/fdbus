@@ -14,54 +14,51 @@
  * limitations under the License.
  */
 
-#include <common_base/CBaseSemaphore.h>
 #include <common_base/CThreadEventLoop.h>
 #include <common_base/CBaseWorker.h>
 
 CThreadEventLoop::CThreadEventLoop()
-    : mSemaphore(0)
-    , mWorker(0)
+    : mWorker(0)
 {
 }
 
 CThreadEventLoop::~CThreadEventLoop()
 {
-    if (mSemaphore)
-    {
-        delete mSemaphore;
-    }
 }
 
 void CThreadEventLoop::dispatch()
 {
     int32_t wait_time = getMostRecentTime();
-    if (wait_time == 0)
+    mMutex.lock();
+    if (wait_time < 0)
     {
-        wait_time = 1;
+        mWakeupSignal.wait(mMutex);
+        mWorker->processJobQueue(true);
     }
-    mSemaphore->wait(wait_time);
-    processTimers();
-    bool io_error;
-    mWorker->processNotifyWatch(io_error);
+    else
+    {
+        if (!wait_time || (mWakeupSignal.wait_for(mMutex, std::chrono::milliseconds(wait_time)) ==
+                std::cv_status::timeout))
+        {
+            mMutex.unlock();
+            processTimers();
+            mWorker->processJobQueue(false);
+        }
+        else
+        {
+            mWorker->processJobQueue(true);
+        }
+    }
 }
 
 bool CThreadEventLoop::notify()
 {
-    return mSemaphore->post();
-}
-
-bool CThreadEventLoop::acknowledge()
-{
+    mWakeupSignal.notify_all();
     return true;
 }
 
 bool CThreadEventLoop::init(CBaseWorker *worker)
 {
-    if (!mSemaphore)
-    {
-        mSemaphore = new CBaseSemaphore(0);
-        mWorker = worker;
-    }
+    mWorker = worker;
     return true;
 }
-
