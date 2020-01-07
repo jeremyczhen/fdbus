@@ -125,9 +125,9 @@ The same as cross compiling, but when building fdbus, should add the following o
 
 For Android NDK
 ^^^^^^^^^^^^^^^
- Dependence:
+Dependence:
  
- - cmake, gcc are installed, also need android NDK
+- cmake, gcc are installed, also need android NDK
 
 1 build protocol buffer
 
