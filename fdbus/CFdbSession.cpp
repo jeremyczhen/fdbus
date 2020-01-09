@@ -264,12 +264,13 @@ void CFdbSession::doRequest(CFdbMessageHeader &head,
     msg->checkLogEnabled(mContainer->owner(), false);
     if (object)
     {
-        NFdbBase::FdbMsgStatusCode status_code = NFdbBase::FDB_ST_AUTO_REPLY_OK;
-        const char *status_msg = "Automatically reply to request.";
         msg->decodeDebugInfo(head, this);
         if (msg->type() == FDB_MT_SIDEBAND_REQUEST)
         {
             object->onSidebandInvoke(msg_ref);
+            // check if auto-reply is required
+            msg->autoReply(this, msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK,
+                           "Automatically reply to request.");
         }
         else
         {
@@ -279,12 +280,10 @@ void CFdbSession::doRequest(CFdbMessageHeader &head,
             }
             else
             {
-                status_code = NFdbBase::FDB_ST_AUTHENTICATION_FAIL;
-                status_msg = "Authentication failed!";
+                msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
+                                "Authentication failed!");
             }
         }
-        // check if auto-reply is required
-        msg->autoReply(this, msg_ref, status_code, status_msg);
     }
     else
     {

@@ -808,8 +808,7 @@ void CFdbMessage::autoReply(CFdbSession *session
 {
     CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (((fdb_msg->mFlag & (MSG_FLAG_AUTO_REPLY | MSG_FLAG_REPLIED)) == MSG_FLAG_AUTO_REPLY)
-            && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
-            && (msg_ref.use_count() == 1))
+            && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED) && msg_ref.unique())
     {
         fdb_msg->sendStatus(session, error_code, description);
     }
@@ -819,8 +818,7 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
 {
     CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (((fdb_msg->mFlag & (MSG_FLAG_AUTO_REPLY | MSG_FLAG_REPLIED)) == MSG_FLAG_AUTO_REPLY)
-            && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
-            && (msg_ref.use_count() == 1))
+            && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED) && msg_ref.unique())
     {
         CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
         fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
