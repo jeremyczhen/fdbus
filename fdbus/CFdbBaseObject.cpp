@@ -140,8 +140,8 @@ class COnSubscribeJob : public CMethodJob<CFdbBaseObject>
 public:
     COnSubscribeJob(CFdbBaseObject *object, CBaseJob::Ptr &msg_ref)
         : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnSubscribe, JOB_FORCE_RUN)
-        , mMsgRef(msg_ref)
     {
+        mMsgRef.swap(msg_ref);
     }
     CBaseJob::Ptr mMsgRef;
 };
@@ -181,8 +181,9 @@ class COnBroadcastJob : public CMethodJob<CFdbBaseObject>
 public:
     COnBroadcastJob(CFdbBaseObject *object, CBaseJob::Ptr &msg_ref)
         : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnBroadcast, JOB_FORCE_RUN)
-        , mMsgRef(msg_ref)
-    {}
+    {
+        mMsgRef.swap(msg_ref);
+    }
 
     CBaseJob::Ptr mMsgRef;
 };
@@ -221,8 +222,9 @@ class COnInvokeJob : public CMethodJob<CFdbBaseObject>
 public:
     COnInvokeJob(CFdbBaseObject *object, CBaseJob::Ptr &msg_ref)
         : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnInvoke, JOB_FORCE_RUN)
-        , mMsgRef(msg_ref)
-    {}
+    {
+        mMsgRef.swap(msg_ref);
+    }
 
     CBaseJob::Ptr mMsgRef;
 };
