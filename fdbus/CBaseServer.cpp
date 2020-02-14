@@ -19,7 +19,7 @@
 #include <common_base/CFdbSession.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CIntraNameProxy.h>
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbIfMessageHeader.h>
 #include <utils/Log.h>
 
 CServerSocket::CServerSocket(CBaseServer *owner
@@ -311,7 +311,8 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
         case FDB_SIDEBAND_AUTH:
         {
             NFdbBase::FdbAuthentication authen;
-            if (!msg->deserialize(authen))
+            CFdbSimpleMsgParser parser(authen);
+            if (!msg->deserialize(parser))
             {
                 msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
                 return;
@@ -326,10 +327,9 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             const char *token = "";
             if (authen.has_token_list() && !authen.token_list().tokens().empty())
             {
-                const ::google::protobuf::RepeatedPtrField< ::std::string> &tokens =
-                    authen.token_list().tokens();
+                const CFdbScalarArray<std::string> &tokens = authen.token_list().tokens();
                 // only use the first token in case more than 1 tokens are received
-                token = tokens.begin()->c_str();
+                token = tokens.pool().begin()->c_str();
                 security_level = checkSecurityLevel(token);
             }
             // update security level and token

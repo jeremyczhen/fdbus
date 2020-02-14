@@ -20,16 +20,9 @@
 #include <set>
 #include "CBaseClient.h"
 #include "CFdbMessage.h"
-#include "CBaseMutexLock.h"
+#include "CFdbSimpleSerializer.h"
 
 class CBaseEndpoint;
-namespace google
-{
-    namespace protobuf
-    {
-        template <typename Element> class RepeatedPtrField;
-    }
-}
 class CLogProducer : public CBaseClient
 {
 public:
@@ -43,8 +36,6 @@ public:
                          bool lock = true);
     bool checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock = true);
     
-    bool printToString(std::string *str_msg, const CFdbBasePayload &pb_msg);
-
     static std::string mTagName;
 protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref);
@@ -80,8 +71,8 @@ private:
     CBaseMutexLock mTraceLock;
 
     static const int32_t mMaxTraceLogSize = 4096;
-    bool checkHostEnabled(const ::google::protobuf::RepeatedPtrField< ::std::string> &host_tbl);
-    void populateWhiteList(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_filter
+    bool checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl);
+    void populateWhiteList(const CFdbScalarArray<std::string> &in_filter
                          , tFilterTbl &white_list);
 };
 #endif

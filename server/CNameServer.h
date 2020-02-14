@@ -23,10 +23,14 @@
 #include <set>
 #include <vector>
 #include <common_base/CBaseServer.h>
-#include FDB_IDL_NAMESERVER_H
 #include <common_base/CSocketImp.h>
 #include <security/CServerSecurityConfig.h>
 
+namespace NFdbBase {
+    class FdbMsgServiceTable;
+    class FdbMsgAddressList;
+    class FdbMsgServiceInfo;
+}
 class CFdbMessage;
 class CHostProxy;
 class CFdbSession;
@@ -141,7 +145,7 @@ private:
     int32_t getSecurityLevel(CFdbSession *session, const char *svc_name);
 
     void dumpTokens(CFdbToken::tTokenList &tokens,
-                    const NFdbBase::FdbMsgAddressList &list);
+                    NFdbBase::FdbMsgAddressList &list);
 
     uint32_t mTcpPortAllocator;
     uint32_t mIpcAllocator;

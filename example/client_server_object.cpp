@@ -20,13 +20,15 @@
 #include <vector>
 #define FDB_LOG_TAG "FDBTEST"
 #include <common_base/fdbus.h>
+#include FDB_IDL_EXAMPLE_H
+#include "CFdbProtoMsgBuilder.h"
+
 #define OBJ_FROM_SERVER_TO_CLIENT 1
 
 /*
  * 该文件由描述文件workspace/pb_idl/common.base.Example.proto自动生成。
  * 项目所有的接口描述文件都统一放在该目录下，在使用时包含进来。
  */
-#include FDB_IDL_EXAMPLE_H
 
 #if 1
 CBaseNotificationCenter<void *> nc;
@@ -176,7 +178,8 @@ public:
          * 为了更精细地控制广播的颗粒度，还增加了一可选的个字符串。在现在的
          * 例子中，只有用户注册NTF_ELAPSE_TIME时附带了my_filter才能收到该广播。
          */
-        this->broadcast(NTF_ELAPSE_TIME, et, "my_filter");
+        CFdbProtoMsgBuilder builder(et);
+        this->broadcast(NTF_ELAPSE_TIME, builder, "my_filter");
         char raw_data[1920];
         memset(raw_data, '=', sizeof(raw_data));
         raw_data[1919] = '\0';
@@ -240,7 +243,8 @@ protected:
                  * 并转换成指定的格式。
                  */
                 NFdbExample::SongId song_id;
-                if (!msg->deserialize(song_id))
+                CFdbProtoMsgParser parser(song_id);
+                if (!msg->deserialize(parser))
                 {
                     // 格式解析失败，返回错误状态给对方。
                     msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL, "Fail to decode request!");
@@ -266,7 +270,8 @@ protected:
                 rep_msg.set_file_name("Lau Dewa");
                 rep_msg.set_elapse_time(elapse_time++);
                 // 将结果返回给对方；处理结束。
-                msg->reply(msg_ref, rep_msg);
+                CFdbProtoMsgBuilder builder(rep_msg);
+                msg->reply(msg_ref, builder);
             }
             break;
             case REQ_RAWDATA:
@@ -336,7 +341,8 @@ protected:
                         et.set_hour(1);
                         et.set_minute(10);
                         et.set_second(35);
-                        msg->broadcast(msg_code, et, filter);
+                        CFdbProtoMsgBuilder builder(et);
+                        msg->broadcast(msg_code, builder, filter);
                     }
                     else if (!str_filter.compare("raw_buffer"))
                     {
@@ -432,7 +438,8 @@ public:
          * 发送的目的地址。
          */
         CBaseJob::Ptr ref(new CMyMessage(REQ_METADATA));
-        this->invoke(ref, song_id);
+        CFdbProtoMsgBuilder builder(song_id);
+        this->invoke(ref, builder);
         CMyMessage *msg = castToMessage<CMyMessage *>(ref);
         CFdbMsgMetadata md;
         msg->metadata(md);
@@ -471,7 +478,8 @@ public:
          * 如果格式不匹配会返回false，就要检查一下是什么原因了。
          */
         NFdbExample::NowPlayingDetails now_playing;
-        if (msg->deserialize(now_playing))
+        CFdbProtoMsgParser parser(now_playing);
+        if (msg->deserialize(parser))
         {
             const char *artist = now_playing.artist().c_str();
             const char *album = now_playing.album().c_str();
@@ -601,7 +609,8 @@ protected:
                 if (!filter.compare("my_filter"))
                 {
                     NFdbExample::ElapseTime et;
-                    if (msg->deserialize(et))
+                    CFdbProtoMsgParser parser(et);
+                    if (msg->deserialize(parser))
                     {
                         FDB_LOG_I("OBJ %d elapse time is received: hour: %d, minute: %d, second: %d\n",
                                     this->objId(), et.hour(), et.minute(), et.second());
@@ -623,7 +632,8 @@ protected:
             case NTF_MEDIAPLAYER_CREATED:
             {
                 NFdbExample::FdbMsgObjectInfo obj_info;
-                msg->deserialize(obj_info);
+                CFdbProtoMsgParser parser(obj_info);
+                msg->deserialize(parser);
                 CMyClient<CFdbBaseObject> *obj = new CMyClient<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
                 obj->connect(dynamic_cast<CBaseEndpoint *>(this), obj_info.obj_id());
                 my_client_objects.push_back(obj);
@@ -691,7 +701,8 @@ protected:
                     return;
                 }
                 NFdbExample::NowPlayingDetails now_playing;
-                if (msg->deserialize(now_playing))
+                CFdbProtoMsgParser parser(now_playing);
+                if (msg->deserialize(parser))
                 {
                     const char *artist = now_playing.artist().c_str();
                     const char *album = now_playing.album().c_str();

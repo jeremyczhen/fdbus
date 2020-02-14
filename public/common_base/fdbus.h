@@ -57,6 +57,8 @@
 #include "CThreadEventLoop.h"
 #include "fdb_option_parser.h"
 #include "CFdbMsgSubscribe.h"
+#include "CFdbRawMsgBuilder.h"
+#include "IFdbMsgBuilder.h"
 #include "fdb_log_trace.h"
 
 #endif

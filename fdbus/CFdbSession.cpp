@@ -19,9 +19,8 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CLogProducer.h>
-#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
-#include "CFdbMessageHeader.h"
+#include <common_base/CFdbIfMessageHeader.h>
 
 #define FDB_SEND_RETRIES 65535
 #define FDB_RECV_RETRIES 65535
@@ -190,8 +189,9 @@ void CFdbSession::onInput(bool &io_error)
         return;
     }
 
-    CFdbMessageHeaderParser head(head_start, prefix.mHeadLength);
-    if (head.parse() < 0)
+    NFdbBase::CFdbMessageHeader head;
+    CFdbSimpleMsgParser parser(head);
+    if (parser.parse(head_start, prefix.mHeadLength) < 0)
     {
         LOG_E("CFdbSession: Session %d: Unable to deserialize message head!\n", mSid);
         delete[] whole_buf;
@@ -253,7 +253,7 @@ void CFdbSession::onHup()
     endpoint->checkAutoRemove();
 }
 
-void CFdbSession::doRequest(CFdbMessageHeader &head,
+void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
                             CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
@@ -291,7 +291,7 @@ void CFdbSession::doRequest(CFdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doResponse(CFdbMessageHeader &head,
+void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
                              CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     bool found;
@@ -354,7 +354,7 @@ void CFdbSession::doResponse(CFdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doBroadcast(CFdbMessageHeader &head,
+void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
                               CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     const char *filter = "";
@@ -372,7 +372,7 @@ void CFdbSession::doBroadcast(CFdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doSubscribeReq(CFdbMessageHeader &head,
+void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
                                  CFdbMessage::CFdbMsgPrefix &prefix,
                                  uint8_t *buffer, bool subscribe)
 {
@@ -472,7 +472,7 @@ _reply_status:
     msg->sendStatus(this, error_code, error_msg);
 }
 
-void CFdbSession::doUpdate(CFdbMessageHeader &head,
+void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head,
                            CFdbMessage::CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {

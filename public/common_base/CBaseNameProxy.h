@@ -19,7 +19,7 @@
 
 #include "common_defs.h"
 #include "CBaseClient.h"
-#include FDB_IDL_NAMESERVER_H
+#include "CFdbIfNameServer.h"
 
 class CBaseNameProxy : public CBaseClient
 {

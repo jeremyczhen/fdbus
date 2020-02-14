@@ -22,12 +22,14 @@ if (DEFINED MACRO_DEF)
 endif()
 
 if (DEFINED SYSTEM_ROOT)
-    file(TO_CMAKE_PATH ${SYSTEM_ROOT} SYSTEM_ROOT)
-    # where is the target environment 
-    set(CMAKE_FIND_ROOT_PATH ${SYSTEM_ROOT})
+    foreach (root ${SYSTEM_ROOT})
+        file(TO_CMAKE_PATH ${root} root)
+        # where is the target environment 
+        set(CMAKE_FIND_ROOT_PATH ${root})
 
-    include_directories(${SYSTEM_ROOT}/usr/include ${SYSTEM_ROOT}/include)
-    link_directories(${SYSTEM_ROOT}/usr/lib/. ${SYSTEM_ROOT}/lib/.)
+        include_directories(${root}/usr/include ${root}/include)
+        link_directories(${root}/usr/lib/. ${root}/lib/.)
+    endforeach()
 else()
     set(SYSTEM_ROOT /.)
 endif()
@@ -49,11 +51,6 @@ if(NOT DEFINED PROJECT_ROOT)
     message(FATAL_ERROR "Project Root is not defined. Please set environment variable PROOT.")
 endif()
 file(TO_CMAKE_PATH ${PROJECT_ROOT} PROJECT_ROOT)
-
-set(PROJECT_SYSROOT ${PROJECT_ROOT}/project/projroot)
-set(PROJECT_EXTERNAL_ROOT ${PROJECT_ROOT}/external)
-set(INSTALL_ROOT ${PROJECT_SYSROOT}/${TARGET_ARCH}-${TARGET_OS})
-#set(CMAKE_INSTALL_PREFIX ${INSTALL_ROOT})
 
 file(TO_CMAKE_PATH ${RULE_DIR} RULE_DIR)
 # uninstall target

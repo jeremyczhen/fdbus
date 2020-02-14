@@ -19,7 +19,7 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CIntraNameProxy.h>
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbIfMessageHeader.h>
 #include <utils/Log.h>
 
 #define FDB_CLIENT_RECONNECT_WAIT_MS    1
@@ -340,12 +340,13 @@ void CBaseClient::updateSecurityLevel()
     if (!mTokens.empty())
     {
         NFdbBase::FdbAuthentication authen;
-        authen.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE); 
+        authen.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE); 
         for (CFdbToken::tTokenList::const_iterator it = mTokens.begin(); it != mTokens.end(); ++it)
         {
-            authen.mutable_token_list()->add_tokens(*it);
+            authen.token_list().add_tokens(*it);
         }
-        sendSideband(FDB_SIDEBAND_AUTH, authen);
+        CFdbSimpleMsgBuilder builder(authen);
+        sendSideband(FDB_SIDEBAND_AUTH, builder);
     }
 }
 

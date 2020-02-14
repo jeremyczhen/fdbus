@@ -17,6 +17,7 @@
 #define FDB_LOG_TAG "FDB_TEST_CLIENT"
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
+#include "CFdbProtoMsgBuilder.h"
 
 #define FDB_INVOKE_SYNC 1
 
@@ -83,7 +84,8 @@ public:
 #if defined(FDB_INVOKE_SYNC)
         /* this version of invoke() is synchronous: once called, it blocks until server call reply() */
         CBaseJob::Ptr ref(new CBaseMessage(REQ_METADATA));
-        invoke(ref, song_id); /* onInvoke() will be called at server */
+        CFdbProtoMsgBuilder builder(song_id);
+        invoke(ref, builder); /* onInvoke() will be called at server */
 
         /* we return from invoke(); must get reply from server. Check it. */
         CBaseMessage *msg = castToMessage<CBaseMessage *>(ref);
@@ -115,7 +117,8 @@ public:
          * it should match the type replied from server 
          */
         NFdbExample::NowPlayingDetails now_playing;
-        if (msg->deserialize(now_playing))
+        CFdbProtoMsgParser parser(now_playing);
+        if (msg->deserialize(parser))
         {
             const char *artist = now_playing.artist().c_str();
             const char *album = now_playing.album().c_str();
@@ -207,7 +210,8 @@ protected:
                      * it should match the type broadcasted from server 
                      */
                     NFdbExample::ElapseTime et;
-                    if (msg->deserialize(et))
+                    CFdbProtoMsgParser parser(et);
+                    if (msg->deserialize(parser))
                     {
                         FDB_LOG_I("elapse time is received: hour: %d, minute: %d, second: %d\n",
                                     et.hour(), et.minute(), et.second());
@@ -271,7 +275,8 @@ protected:
                  * it should match the type replied from server 
                  */
                 NFdbExample::NowPlayingDetails now_playing;
-                if (msg->deserialize(now_playing))
+                CFdbProtoMsgParser parser(now_playing);
+                if (msg->deserialize(parser))
                 {
                     const char *artist = now_playing.artist().c_str();
                     const char *album = now_playing.album().c_str();

@@ -20,7 +20,8 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbIfMessageHeader.h>
+#include <common_base/CFdbIfNameServer.h>
 #include <security/CFdbusSecurityConfig.h>
 #include "CHostProxy.h"
 #include "CNsConfig.h"
@@ -116,10 +117,10 @@ void CNameServer::setHostInfo(CFdbSession *session, NFdbBase::FdbMsgServiceInfo 
     }
     std::string ns_url;
     CBaseSocketFactory::buildUrl(ns_url, FDB_SOCKET_TCP, host_ip.c_str(), mNsPort);
-    msg_svc_info->mutable_host_addr()->set_ip_address(host_ip);
-    msg_svc_info->mutable_host_addr()->set_ns_url(ns_url);
-    msg_svc_info->mutable_host_addr()->set_host_name(mHostProxy->hostName());
-    msg_svc_info->mutable_service_addr()->set_service_name(svc_name ? svc_name : "");
+    msg_svc_info->host_addr().set_ip_address(host_ip);
+    msg_svc_info->host_addr().set_ns_url(ns_url);
+    msg_svc_info->host_addr().set_host_name(mHostProxy->hostName());
+    msg_svc_info->service_addr().set_service_name(svc_name ? svc_name : "");
 }
 
 void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local)
@@ -128,9 +129,9 @@ void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServ
     {
         NFdbBase::FdbMsgServiceInfo *msg_svc_info = svc_tbl.add_service_tbl();
         setHostInfo(session, msg_svc_info, 0);
-        msg_svc_info->mutable_service_addr()->set_service_name("");
-        msg_svc_info->mutable_service_addr()->set_host_name("");
-        msg_svc_info->mutable_service_addr()->set_is_local(is_local);
+        msg_svc_info->service_addr().set_service_name("");
+        msg_svc_info->service_addr().set_host_name("");
+        msg_svc_info->service_addr().set_is_local(is_local);
     }
     else
     {
@@ -138,10 +139,10 @@ void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServ
         {
             NFdbBase::FdbMsgServiceInfo *msg_svc_info = svc_tbl.add_service_tbl();
             setHostInfo(session, msg_svc_info, it->first.c_str());
-            populateAddrList(it->second.mAddrTbl, *msg_svc_info->mutable_service_addr(), FDB_SOCKET_MAX);
-            msg_svc_info->mutable_service_addr()->set_service_name(it->first);
-            msg_svc_info->mutable_service_addr()->set_host_name(mHostProxy->hostName());
-            msg_svc_info->mutable_service_addr()->set_is_local(is_local);
+            populateAddrList(it->second.mAddrTbl, msg_svc_info->service_addr(), FDB_SOCKET_MAX);
+            msg_svc_info->service_addr().set_service_name(it->first);
+            msg_svc_info->service_addr().set_host_name(mHostProxy->hostName());
+            msg_svc_info->service_addr().set_is_local(is_local);
         }
     }
 }
@@ -198,8 +199,8 @@ void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServerName svc_name;
     FdbSessionId_t sid = msg->session();
-    
-    if (!msg->deserialize(svc_name))
+    CFdbSimpleMsgParser parser(svc_name);
+    if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
@@ -219,8 +220,9 @@ void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
         msg->status(msg_ref, NFdbBase::FDB_ST_NOT_AVAILABLE);
         return;
     }
-    
-    msg->reply(msg_ref, reply_addr_list);
+
+    CFdbSimpleMsgBuilder builder(reply_addr_list);
+    msg->reply(msg_ref, builder);
 }
 
 void CNameServer::buildSpecificTcpAddress(CFdbSession *session,
@@ -264,8 +266,8 @@ void CNameServer::populateTokensRemote(const CFdbToken::tTokenList &tokens,
                                        NFdbBase::FdbMsgAddressList &addr_list,
                                        CFdbSession *session)
 {
-    addr_list.mutable_token_list()->clear_tokens();
-    addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    addr_list.token_list().clear_tokens();
+    addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     // send token matching security level to local clients
     int32_t security_level = session->securityLevel();
     if ((security_level >= 0) && (int32_t)tokens.size())
@@ -277,7 +279,7 @@ void CNameServer::populateTokensRemote(const CFdbToken::tTokenList &tokens,
         // only give the tokens matching secure level of the host
         for (int32_t i = 0; i <= security_level; ++i) 
         {
-            addr_list.mutable_token_list()->add_tokens(tokens[i].c_str());
+            addr_list.token_list().add_tokens(tokens[i].c_str());
         }    
     }    
 }
@@ -291,8 +293,9 @@ void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
     if (session)
     {    
         populateTokensRemote(tokens, addr_list, session);
-        msg->broadcast(NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE, addr_list, svc_name);
-        addr_list.mutable_token_list()->clear_tokens();
+        CFdbSimpleMsgBuilder builder(addr_list);
+        msg->broadcast(NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE, builder, svc_name);
+        addr_list.token_list().clear_tokens();
     }
 }
 
@@ -302,9 +305,10 @@ void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
 {
     const char *svc_name = addr_list.service_name().c_str();
     populateTokensRemote(tokens, addr_list, session);
+    CFdbSimpleMsgBuilder builder(addr_list);
     broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE,
-              addr_list, svc_name);
-    addr_list.mutable_token_list()->clear_tokens();
+              builder, svc_name);
+    addr_list.token_list().clear_tokens();
 }
 
 void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
@@ -325,8 +329,8 @@ void CNameServer::populateTokensLocal(const CFdbToken::tTokenList &tokens,
                                       CFdbSession *session)
 {
     const char *svc_name = addr_list.service_name().c_str();
-    addr_list.mutable_token_list()->clear_tokens();
-    addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    addr_list.token_list().clear_tokens();
+    addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     // send token matching security level to local clients
     int32_t security_level = getSecurityLevel(session, svc_name);
     if ((security_level >= 0) && (int32_t)tokens.size())
@@ -335,7 +339,7 @@ void CNameServer::populateTokensLocal(const CFdbToken::tTokenList &tokens,
         {
             security_level = (int32_t)tokens.size() - 1; 
         }
-        addr_list.mutable_token_list()->add_tokens(tokens[security_level].c_str());
+        addr_list.token_list().add_tokens(tokens[security_level].c_str());
     }    
 }
 
@@ -348,8 +352,9 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
     if (session)
     {    
         populateTokensLocal(tokens, addr_list, session);
-        msg->broadcast(NFdbBase::NTF_SERVICE_ONLINE, addr_list, svc_name);
-        addr_list.mutable_token_list()->clear_tokens();
+        CFdbSimpleMsgBuilder builder(addr_list);
+        msg->broadcast(NFdbBase::NTF_SERVICE_ONLINE, builder, svc_name);
+        addr_list.token_list().clear_tokens();
     }
 }
 
@@ -359,9 +364,10 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
 {
     const char *svc_name = addr_list.service_name().c_str();
     populateTokensLocal(tokens, addr_list, session);
+    CFdbSimpleMsgBuilder builder(addr_list);
     broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_SERVICE_ONLINE,
-              addr_list, svc_name);
-    addr_list.mutable_token_list()->clear_tokens();
+              builder, svc_name);
+    addr_list.token_list().clear_tokens();
 }
 
 void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
@@ -381,7 +387,8 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgAddressList addr_list;
-    if (!msg->deserialize(addr_list))
+    CFdbSimpleMsgParser parser(addr_list);
+    if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
@@ -423,10 +430,9 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     std::string hs_ipc_url;
     std::string hs_tcp_url;
     
-    const ::google::protobuf::RepeatedPtrField< ::std::string> &addrs =
-        addr_list.address_list();
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator msg_it = addrs.begin();
-            msg_it != addrs.end(); ++msg_it)
+    CFdbScalarArray<std::string> &addrs = addr_list.address_list();
+    for (CFdbScalarArray<std::string>::tPool::const_iterator msg_it = addrs.pool().begin();
+            msg_it != addrs.pool().end(); ++msg_it)
     {
         CFdbAddressDesc *desc = 0;
         for (tAddressDescTbl::iterator addr_it = addr_tbl.mAddrTbl.begin();
@@ -534,14 +540,20 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
 
     if (!broadcast_all_addr_list.address_list().empty())
     {
-        broadcast_all_addr_list.mutable_token_list()->clear_tokens(); // never broadcast token to monitors!!!
-        broadcast_all_addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+        broadcast_all_addr_list.token_list().clear_tokens(); // never broadcast token to monitors!!!
+        broadcast_all_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
         broadcast_all_addr_list.set_is_local(true);
+        {
+        CFdbSimpleMsgBuilder builder(broadcast_all_addr_list);
         broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR,
-                  broadcast_all_addr_list, svc_name.c_str());
+                  builder, svc_name.c_str());
+        }
         broadcast_all_addr_list.set_is_local(false);
+        {
+        CFdbSimpleMsgBuilder builder(broadcast_all_addr_list);
         broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE,
-                  broadcast_all_addr_list, svc_name.c_str());
+                  builder, svc_name.c_str());
+        }
     }
     if (broadcast_ipc_addr_list.address_list().empty())
     {
@@ -624,7 +636,8 @@ void CNameServer::checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const cha
         addr_list.set_service_name(svc_name);
         addr_list.set_host_name((mHostProxy->hostName()));
         addr_list.set_is_local(true);
-        broadcast(NFdbBase::NTF_MORE_ADDRESS, addr_list, svc_name);
+        CFdbSimpleMsgBuilder builder(addr_list);
+        broadcast(NFdbBase::NTF_MORE_ADDRESS, builder, svc_name);
         LOG_E("CNameServer: Service %s: fail to bind address and retry...\n", svc_name);
     }
 }
@@ -638,7 +651,8 @@ void CNameServer::notifyRemoteNameServerDrop(const char *host_name)
     broadcast_addr_list.set_host_name(host_name);
 
     broadcast_addr_list.set_is_local(false);
-    broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, broadcast_addr_list, svc_name);
+    CFdbSimpleMsgBuilder builder(broadcast_addr_list);
+    broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, builder, svc_name);
 }
 
 void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
@@ -653,17 +667,23 @@ void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
 
     broadcast_addr_list.set_is_local(true);
     broadcastSvcAddrLocal(reg_it->second.mTokens, broadcast_addr_list);
-    broadcast_addr_list.mutable_token_list()->clear_tokens(); // never broadcast token to monitors!!!
-    broadcast_addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
-    broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, broadcast_addr_list, svc_name);
+    broadcast_addr_list.token_list().clear_tokens(); // never broadcast token to monitors!!!
+    broadcast_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    {
+    CFdbSimpleMsgBuilder builder(broadcast_addr_list);
+    broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, builder, svc_name);
+    }
 
     broadcast_addr_list.set_is_local(false);
     // send all tokens to the local name server, which will send appropiate
     // token to local clients according to security level
     broadcastSvcAddrRemote(reg_it->second.mTokens, broadcast_addr_list);
-    broadcast_addr_list.mutable_token_list()->clear_tokens(); // never broadcast token to monitors!!!
-    broadcast_addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
-    broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, broadcast_addr_list, svc_name);
+    broadcast_addr_list.token_list().clear_tokens(); // never broadcast token to monitors!!!
+    broadcast_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    {
+    CFdbSimpleMsgBuilder builder(broadcast_addr_list);
+    broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, builder, svc_name);
+    }
     
     for (tAddressDescTbl::iterator desc_it = desc_tbl.mAddrTbl.begin();
             desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
@@ -677,7 +697,8 @@ void CNameServer::onUnegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServerName msg_svc_name;
-    if (!msg->deserialize(msg_svc_name))
+    CFdbSimpleMsgParser parser(msg_svc_name);
+    if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
@@ -701,9 +722,9 @@ void CNameServer::onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref)
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServiceTable svc_tbl;
     CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
-    
     populateServerTable(session, svc_tbl, false);
-    msg->reply(msg_ref, svc_tbl);
+    CFdbSimpleMsgBuilder builder(svc_tbl);
+    msg->reply(msg_ref, builder);
 }
 
 void CNameServer::onQueryHostReq(CBaseJob::Ptr &msg_ref)
@@ -711,7 +732,8 @@ void CNameServer::onQueryHostReq(CBaseJob::Ptr &msg_ref)
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
-    msg->reply(msg_ref, host_tbl);
+    CFdbSimpleMsgBuilder builder(host_tbl);
+    msg->reply(msg_ref, builder);
 }
 
 void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessage *msg,
@@ -768,7 +790,8 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
     }
     else
     {
-        msg->broadcast(msg_code, addr_list, reg_it->first.c_str());
+        CFdbSimpleMsgBuilder builder(addr_list);
+        msg->broadcast(msg_code, builder, reg_it->first.c_str());
     }
 }
 
@@ -810,14 +833,16 @@ void CNameServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *
 {
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
-    msg->broadcast(sub_item->msg_code(), host_tbl);
+    CFdbSimpleMsgBuilder builder(host_tbl);
+    msg->broadcast(sub_item->msg_code(), builder);
 }
 
 void CNameServer::onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     NFdbBase::FdbMsgHostInfo msg_host_info;
     msg_host_info.set_name(mHostProxy->hostName());
-    msg->broadcast(sub_item->msg_code(), msg_host_info);
+    CFdbSimpleMsgBuilder builder(msg_host_info);
+    msg->broadcast(sub_item->msg_code(), builder);
 }
 
 CNameServer::CFdbAddressDesc *CNameServer::findAddress(EFdbSocketType type, const char *url)
@@ -1117,21 +1142,20 @@ int32_t CNameServer::getSecurityLevel(CFdbSession *session, const char *svc_name
 void CNameServer::populateTokens(const CFdbToken::tTokenList &tokens,
                                  NFdbBase::FdbMsgAddressList &list)
 {
-    list.mutable_token_list()->clear_tokens();
-    list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    list.token_list().clear_tokens();
+    list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     for (CFdbToken::tTokenList::const_iterator it = tokens.begin(); it != tokens.end(); ++it)
     {
-        list.mutable_token_list()->add_tokens(*it);
+        list.token_list().add_tokens(*it);
     }
 }
 
 void CNameServer::dumpTokens(CFdbToken::tTokenList &tokens,
-                             const NFdbBase::FdbMsgAddressList &list)
+                             NFdbBase::FdbMsgAddressList &list)
 {
-    const ::google::protobuf::RepeatedPtrField< ::std::string> &t =
-        list.token_list().tokens();
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = t.begin();
-            it != t.end(); ++it)
+    const CFdbScalarArray<std::string> &t = list.token_list().tokens();
+    for (CFdbScalarArray<std::string>::tPool::const_iterator it = t.pool().begin();
+            it != t.pool().end(); ++it)
     {
         tokens.push_back(*it);
     }

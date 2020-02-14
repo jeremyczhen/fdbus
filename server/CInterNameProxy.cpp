@@ -20,7 +20,6 @@
 #include <common_base/CFdbSession.h>
 #include "CHostProxy.h"
 #include "CNameServer.h"
-#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 
 class CServiceSubscribeMsg : public CFdbMessage
@@ -142,7 +141,8 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            if (!msg->deserialize(msg_addr_list))
+            CFdbSimpleMsgParser parser(msg_addr_list);
+            if (!msg->deserialize(parser))
             {
                 return;
             }
@@ -206,10 +206,11 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             else
             {
                 // never broadcast token to monitors!!!
-                msg_addr_list.mutable_token_list()->clear_tokens();
-                msg_addr_list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+                msg_addr_list.token_list().clear_tokens();
+                msg_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+                CFdbSimpleMsgBuilder builder(msg_addr_list);
                 name_server->broadcast(subscriber, FDB_OBJECT_MAIN, code,
-                                msg_addr_list, msg_addr_list.service_name().c_str());
+                                builder, msg_addr_list.service_name().c_str());
             }
         }
         break;
@@ -249,16 +250,16 @@ void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
         case NFdbBase::REQ_QUERY_SERVICE_INTER_MACHINE:
         {
             NFdbBase::FdbMsgServiceTable svc_tbl;
-            if (!msg->deserialize(svc_tbl))
+            CFdbSimpleMsgParser parser(svc_tbl);
+            if (!msg->deserialize(parser))
             {
                 return;
             }
-            ::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgServiceInfo> *svc_list =
-                svc_tbl.mutable_service_tbl();
-            for (::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgServiceInfo>::iterator it = svc_list->begin();
-                    it != svc_list->end(); ++it)
+            CFdbComplexArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
+            for (CFdbComplexArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator it = svc_list.vpool().begin();
+                    it != svc_list.vpool().end(); ++it)
             {
-                replaceSourceUrl(*it->mutable_service_addr(),
+                replaceSourceUrl(it->service_addr(),
                                  FDB_CONTEXT->getSession(msg->session()));
             }
             mHostProxy->finalizeServiceQuery(&svc_tbl, msg);

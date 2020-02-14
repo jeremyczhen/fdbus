@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <vector>
 #include "CLogPrinter.h"
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbIfMessageHeader.h>
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
@@ -100,7 +100,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
     endstrsplit(filters, num_filters);
 }
 
-static void fdb_populate_white_list_cmd(::google::protobuf::RepeatedPtrField< ::std::string> &out_filter
+static void fdb_populate_white_list_cmd(CFdbScalarArray<std::string> &out_filter
                                       , const std::vector<std::string> &white_list)
 {
     for (std::vector<std::string>::const_iterator it = white_list.begin(); it != white_list.end(); ++it)
@@ -148,11 +148,17 @@ protected:
         {
             NFdbBase::FdbMsgLogConfig msg_cfg;
             fillLoggerConfigs(msg_cfg);
-            invoke(NFdbBase::REQ_LOGGER_CONFIG, msg_cfg);
+            {
+            CFdbSimpleMsgBuilder builder(msg_cfg);
+            invoke(NFdbBase::REQ_LOGGER_CONFIG, builder);
+            }
 
             NFdbBase::FdbTraceConfig trace_cfg;
             fillTraceConfigs(trace_cfg);
-            invoke(NFdbBase::REQ_TRACE_CONFIG, trace_cfg);
+            {
+            CFdbSimpleMsgBuilder builder(trace_cfg);
+            invoke(NFdbBase::REQ_TRACE_CONFIG, builder);
+            }
         }
         else
         {
@@ -200,17 +206,17 @@ private:
         config.set_enable_broadcast(!fdb_disable_broadcast);
         config.set_enable_subscribe(!fdb_disable_subscribe);
         config.set_raw_data_clipping_size(fdb_raw_data_clipping_size);
-        fdb_populate_white_list_cmd(*config.mutable_host_white_list(), fdb_log_host_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_endpoint_white_list(), fdb_log_endpoint_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_busname_white_list(), fdb_log_busname_white_list);
+        fdb_populate_white_list_cmd(config.host_white_list(), fdb_log_host_white_list);
+        fdb_populate_white_list_cmd(config.endpoint_white_list(), fdb_log_endpoint_white_list);
+        fdb_populate_white_list_cmd(config.busname_white_list(), fdb_log_busname_white_list);
     }
 
     void fillTraceConfigs(NFdbBase::FdbTraceConfig &config)
     {
-        config.set_log_level((NFdbBase::FdbTraceLogLevel)fdb_debug_trace_level);
+        config.set_log_level((EFdbLogLevel)fdb_debug_trace_level);
         config.set_global_enable(!fdb_disable_global_trace);
-        fdb_populate_white_list_cmd(*config.mutable_host_white_list(), fdb_trace_host_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_tag_white_list(), fdb_trace_tag_white_list);
+        fdb_populate_white_list_cmd(config.host_white_list(), fdb_trace_host_white_list);
+        fdb_populate_white_list_cmd(config.tag_white_list(), fdb_trace_tag_white_list);
     }
 
     void Exit()

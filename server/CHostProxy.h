@@ -20,7 +20,7 @@
 #include <map>
 #include <common_base/CBaseClient.h>
 #include <common_base/CMethodLoopTimer.h>
-#include FDB_IDL_NAMESERVER_H
+#include <common_base/CFdbIfNameServer.h>
 #include "CNsConfig.h"
 
 class CInterNameProxy;
@@ -109,7 +109,7 @@ private:
     CConnectTimer mConnectTimer;
 
     void onConnectTimer(CMethodLoopTimer<CHostProxy> *timer);
-    bool importTokens(const ::NFdbBase::FdbMsgHostAddress &host_addr,
+    bool importTokens(const NFdbBase::FdbMsgHostAddress &host_addr,
                                         CBaseEndpoint *endpoint);
 };
 

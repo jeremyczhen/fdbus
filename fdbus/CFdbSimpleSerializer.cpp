@@ -15,6 +15,7 @@
  */
 
 #include <common_base/CFdbSimpleSerializer.h>
+
 #define FDB_SER_BUFFER_BLOCK_SIZE 1024
 static const uint16_t fdb_endian_check_word = 0xaa55;
 static const uint8_t *fdb_endian_check_ptr = (uint8_t *)&fdb_endian_check_word;
@@ -26,12 +27,10 @@ CFdbSimpleSerializer::CFdbSimpleSerializer()
     , mPos(0)
 {
 }
+
 CFdbSimpleSerializer::~CFdbSimpleSerializer()
 {
-    if (mBuffer && (mBuffer != mScratchCache))
-    {
-        free(mBuffer);
-    }
+    reset();
 }
 
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const std::string& data)
@@ -39,19 +38,17 @@ CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const std::st
     serializer.addString(data.c_str(), (fdb_ser_strlen_t)data.size());
     return serializer;
 }
-CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, std::string& data)
-{
-    return serializer << (const std::string&)data;
-}
 
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const char *data)
 {
     serializer.addString(data, (fdb_ser_strlen_t)strlen(data));
     return serializer;
 }
-CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, char *data)
+
+CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable &data)
 {
-    return serializer << (const char *)data;
+    data.serialize(serializer);
+    return serializer;
 }
 
 int32_t CFdbSimpleSerializer::toBuffer(uint8_t *buffer, int32_t size)
@@ -69,6 +66,11 @@ void CFdbSimpleSerializer::reset()
 {
     mTotalSize = 0;
     mPos = 0;
+    if (mBuffer && (mBuffer != mScratchCache))
+    {
+        free(mBuffer);
+        mBuffer = mScratchCache;
+    }
 }
 
 void CFdbSimpleSerializer::addString(const char *string, fdb_ser_strlen_t str_len)
@@ -77,6 +79,7 @@ void CFdbSimpleSerializer::addString(const char *string, fdb_ser_strlen_t str_le
     *this << l;
     addRawData((const uint8_t *)string, l);
 }
+
 void CFdbSimpleSerializer::addMemory(uint32_t size)
 {
     uint32_t new_pos = mPos + size;
@@ -108,6 +111,7 @@ void CFdbSimpleSerializer::addMemory(uint32_t size)
         mBuffer = (uint8_t*)realloc(mBuffer, mTotalSize);
     }
 }
+
 void CFdbSimpleSerializer::addBasicType(const uint8_t *p_data, int32_t size)
 {
     addMemory(size);
@@ -127,6 +131,7 @@ void CFdbSimpleSerializer::addBasicType(const uint8_t *p_data, int32_t size)
     }
     mPos += size;
 }
+
 void CFdbSimpleSerializer::addRawData(const uint8_t *p_data, int32_t size)
 {
     addMemory(size);
@@ -141,15 +146,16 @@ CFdbSimpleDeserializer::CFdbSimpleDeserializer(const uint8_t *buffer, int32_t si
     : mBuffer(buffer)
     , mSize(size)
     , mPos(0)
-    , mError(false)
 {
+    mError = mBuffer ? false : true;
 }
+
 void CFdbSimpleDeserializer::reset(const uint8_t *buffer, int32_t size)
 {
     mBuffer = buffer;
     mSize = size;
     mPos = 0;
-    mError = false;
+    mError = mBuffer ? false : true;
 }
 
 CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::string& data)
@@ -174,6 +180,12 @@ CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::st
     }
     data.assign((char *)(deserializer.mBuffer + deserializer.mPos));
     deserializer.mPos += len;
+    return deserializer;
+}
+
+CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable &data)
+{
+    data.deserialize(deserializer);
     return deserializer;
 }
 

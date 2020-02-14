@@ -20,7 +20,7 @@
 #include <string>
 #include <set>
 #include "CBaseNameProxy.h"
-#include FDB_IDL_NAMESERVER_H
+#include "CFdbIfNameServer.h"
 
 class CHostProxy;
 class CQueryServiceMsg : public CFdbMessage

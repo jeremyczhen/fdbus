@@ -17,6 +17,7 @@
 #define FDB_LOG_TAG "FDB_TEST_SERVER"
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
+#include "CFdbProtoMsgBuilder.h"
 
 /* Define message ID; should be the same as server. */
 enum EMessageId
@@ -64,7 +65,8 @@ public:
         et.set_minute(10);
         et.set_second(35);
         /* broadcast elapse time; "my_filter" have no mean but test */
-        broadcast(NTF_ELAPSE_TIME, et, "my_filter");
+        CFdbProtoMsgBuilder builder(et);
+        broadcast(NTF_ELAPSE_TIME, builder, "my_filter");
 
         /* another test: broadcast raw data */
         char raw_data[256];
@@ -107,7 +109,8 @@ protected:
                  * it should match the type sent from client
                  */
                 NFdbExample::SongId song_id;
-                if (!msg->deserialize(song_id))
+                CFdbProtoMsgParser parser(song_id);
+                if (!msg->deserialize(parser))
                 {
                     msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL, "Fail to decode request!");
                     return;
@@ -122,7 +125,8 @@ protected:
                 rep_msg.set_title("Wang Qing Shui");
                 rep_msg.set_file_name("Lau Dewa");
                 rep_msg.set_elapse_time(elapse_time++);
-                msg->reply(msg_ref, rep_msg);
+                CFdbProtoMsgBuilder builder(rep_msg);
+                msg->reply(msg_ref, builder);
             }
             break;
             case REQ_RAWDATA:
@@ -169,7 +173,8 @@ protected:
                         et.set_hour(1);
                         et.set_minute(10);
                         et.set_second(35);
-                        msg->broadcast(msg_code, et, filter);
+                        CFdbProtoMsgBuilder builder(et);
+                        msg->broadcast(msg_code, builder, filter);
                     }
                     else if (!str_filter.compare("raw_buffer"))
                     {

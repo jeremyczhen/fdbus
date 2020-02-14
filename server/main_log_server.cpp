@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 #include "CLogPrinter.h"
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbIfMessageHeader.h>
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
@@ -57,7 +57,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
     endstrsplit(filters, num_filters);
 }
 
-static void fdb_populate_white_list_cmd(::google::protobuf::RepeatedPtrField< ::std::string> &out_filter
+static void fdb_populate_white_list_cmd(CFdbScalarArray<std::string> &out_filter
                                       , const std::vector<std::string> &white_list)
 {
     for (std::vector<std::string>::const_iterator it = white_list.begin(); it != white_list.end(); ++it)
@@ -67,12 +67,12 @@ static void fdb_populate_white_list_cmd(::google::protobuf::RepeatedPtrField< ::
     }
 }
 
-void fdb_dump_white_list_cmd(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_filter
+void fdb_dump_white_list_cmd(CFdbScalarArray<std::string> &in_filter
                            , std::vector<std::string> &white_list)
 {
     white_list.clear();
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = in_filter.begin();
-            it != in_filter.end(); ++it)
+    for (CFdbScalarArray<std::string>::tPool::const_iterator it = in_filter.pool().begin();
+            it != in_filter.pool().end(); ++it)
     {
         white_list.push_back(*it);
     }
@@ -107,7 +107,8 @@ protected:
             case NFdbBase::REQ_LOGGER_CONFIG:
             {
                 NFdbBase::FdbMsgLogConfig in_config;
-                if (!msg->deserialize(in_config))
+                CFdbSimpleMsgParser parser(in_config);
+                if (!msg->deserialize(parser))
                 {
                     LOG_E("CLogServer: Unable to deserialize message!\n");
                     return;
@@ -124,7 +125,8 @@ protected:
 
                 NFdbBase::FdbMsgLogConfig out_config;
                 fillLoggerConfigs(out_config);
-                broadcast(NFdbBase::NTF_LOGGER_CONFIG, out_config);
+                CFdbSimpleMsgBuilder builder(out_config);
+                broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
                 msg->reply(msg_ref);
             }
             break;
@@ -144,7 +146,8 @@ protected:
             case NFdbBase::REQ_TRACE_CONFIG:
             {
                 NFdbBase::FdbTraceConfig in_config;
-                if (!msg->deserialize(in_config))
+                CFdbSimpleMsgParser parser(in_config);
+                if (!msg->deserialize(parser))
                 {
                     LOG_E("CLogServer: Unable to deserialize message!\n");
                     return;
@@ -156,7 +159,8 @@ protected:
 
                 NFdbBase::FdbTraceConfig out_config;
                 fillTraceConfigs(out_config);
-                broadcast(NFdbBase::NTF_TRACE_CONFIG, out_config);
+                CFdbSimpleMsgBuilder builder(out_config);
+                broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
                 msg->reply(msg_ref);
             }
             break;
@@ -177,14 +181,16 @@ protected:
                 {
                     NFdbBase::FdbMsgLogConfig cfg;
                     fillLoggerConfigs(cfg);
-                    msg->broadcast(NFdbBase::NTF_LOGGER_CONFIG, cfg);
+                    CFdbSimpleMsgBuilder builder(cfg);
+                    msg->broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
                 }
                 break;
                 case NFdbBase::NTF_TRACE_CONFIG:
                 {
                     NFdbBase::FdbTraceConfig cfg;
                     fillTraceConfigs(cfg);
-                    msg->broadcast(NFdbBase::NTF_TRACE_CONFIG, cfg);
+                    CFdbSimpleMsgBuilder builder(cfg);
+                    msg->broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
                 }
                 break;
                 case NFdbBase::NTF_FDBUS_LOG:
@@ -199,7 +205,8 @@ protected:
                     {
                         NFdbBase::FdbMsgLogConfig cfg;
                         fillLoggerConfigs(cfg);
-                        broadcast(NFdbBase::NTF_LOGGER_CONFIG, cfg);
+                        CFdbSimpleMsgBuilder builder(cfg);
+                        broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
                     }
                 }
                 break;
@@ -215,7 +222,8 @@ protected:
                     {
                         NFdbBase::FdbTraceConfig cfg;
                         fillTraceConfigs(cfg);
-                        broadcast(NFdbBase::NTF_TRACE_CONFIG, cfg);
+                        CFdbSimpleMsgBuilder builder(cfg);
+                        broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
                     }
                 }
                 break;
@@ -240,7 +248,8 @@ protected:
             {
                 NFdbBase::FdbMsgLogConfig cfg;
                 fillLoggerConfigs(cfg);
-                broadcast(NFdbBase::NTF_LOGGER_CONFIG, cfg);
+                CFdbSimpleMsgBuilder builder(cfg);
+                broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
             }
         }
         }
@@ -254,7 +263,8 @@ protected:
             {
                 NFdbBase::FdbTraceConfig cfg;
                 fillTraceConfigs(cfg);
-                broadcast(NFdbBase::NTF_TRACE_CONFIG, cfg);
+                CFdbSimpleMsgBuilder builder(cfg);
+                broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
             }
         }
         }
@@ -311,18 +321,18 @@ private:
         config.set_enable_broadcast(!fdb_disable_broadcast);
         config.set_enable_subscribe(!fdb_disable_subscribe);
         config.set_raw_data_clipping_size(fdb_raw_data_clipping_size);
-        fdb_populate_white_list_cmd(*config.mutable_host_white_list(), fdb_log_host_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_endpoint_white_list(), fdb_log_endpoint_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_busname_white_list(), fdb_log_busname_white_list);
+        fdb_populate_white_list_cmd(config.host_white_list(), fdb_log_host_white_list);
+        fdb_populate_white_list_cmd(config.endpoint_white_list(), fdb_log_endpoint_white_list);
+        fdb_populate_white_list_cmd(config.busname_white_list(), fdb_log_busname_white_list);
     }
 
     void fillTraceConfigs(NFdbBase::FdbTraceConfig &config)
     {
         config.set_global_enable(checkLogEnabled(fdb_disable_global_trace,
                                                  mTraceClientTbl.empty()));
-        config.set_log_level((NFdbBase::FdbTraceLogLevel)fdb_debug_trace_level);
-        fdb_populate_white_list_cmd(*config.mutable_host_white_list(), fdb_trace_host_white_list);
-        fdb_populate_white_list_cmd(*config.mutable_tag_white_list(), fdb_trace_tag_white_list);
+        config.set_log_level((EFdbLogLevel)fdb_debug_trace_level);
+        fdb_populate_white_list_cmd(config.host_white_list(), fdb_trace_host_white_list);
+        fdb_populate_white_list_cmd(config.tag_white_list(), fdb_trace_tag_white_list);
     }
 };
 

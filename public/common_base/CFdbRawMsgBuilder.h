@@ -14,21 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef __IFDBSIMPLEMSGBUILDER_H__ 
-#define __IFDBSIMPLEMSGBUILDER_H__
+#ifndef __IFDBRAWMSGBUILDER_H__ 
+#define __IFDBRAWMSGBUILDER_H__
 
 #include "IFdbMsgBuilder.h"
-#include "CFdbSimpleSerializer.h"
 
-class CFdbSimpleMsgBuilder : public IFdbMsgBuilder
+class CFdbRawMsgBuilder : public IFdbMsgBuilder
 {
 public:
-    CFdbSimpleMsgBuilder(const IFdbParcelable &message)
-        : mMessage(message)
-    {}
     int32_t build()
     {
-        mMessage.serialize(mSerializer);
         return mSerializer.bufferSize();
     }
     void toBuffer(uint8_t *buffer, int32_t size)
@@ -42,22 +37,19 @@ public:
     
 protected:
     CFdbSimpleSerializer mSerializer;
- 
-private:
-    const IFdbParcelable &mMessage;
 };
 
-class CFdbSimpleMsgParser : public IFdbMsgParser
+class CFdbRawMsgParser : public IFdbMsgParser
 {
 public:
-    CFdbSimpleMsgParser(IFdbParcelable &message)
-        : mMessage(message)
+    CFdbRawMsgParser(const uint8_t *buffer = 0,
+                        int32_t size = 0)
+        : mDeserializer(buffer, size)
     {}
     int32_t parse(const uint8_t *buffer, int32_t size)
     {
         mDeserializer.reset(buffer, size);
-        mMessage.deserialize(mDeserializer);
-        return mDeserializer.error() ? -1 : mDeserializer.index();
+        return 0;
     }
     CFdbSimpleDeserializer &deserializer()
     {
@@ -66,9 +58,6 @@ public:
 
 protected:
     CFdbSimpleDeserializer mDeserializer;
- 
-private:
-    IFdbParcelable &mMessage;
 };
 
 #endif

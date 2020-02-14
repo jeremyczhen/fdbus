@@ -16,12 +16,12 @@
 
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include FDB_IDL_NAMESERVER_H
+#include <common_base/CFdbIfNameServer.h>
 #include <iostream>
 #include <stdlib.h>
 #include <common_base/fdb_option_parser.h>
 #include <utils/Log.h>
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbSimpleMsgBuilder.h>
 
 static int32_t ls_verbose = 0;
 static int32_t ls_follow = 0;
@@ -60,21 +60,21 @@ protected:
             case NFdbBase::REQ_QUERY_SERVICE:
             {
                 NFdbBase::FdbMsgServiceTable svc_tbl;
-                if (!msg->deserialize(svc_tbl))
+                CFdbSimpleMsgParser parser(svc_tbl);
+                if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgServiceTable.\n");
                     quit();
                 }
                 const char *prev_ip = "";
                 const char *prev_host = "";
-                const ::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgServiceInfo> svc_list =
-                    svc_tbl.service_tbl();
-                for (::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgServiceInfo>::const_iterator svc_it = svc_list.begin();
-                        svc_it != svc_list.end(); ++svc_it)
+                CFdbComplexArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
+                for (CFdbComplexArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator svc_it = svc_list.vpool().begin();
+                        svc_it != svc_list.vpool().end(); ++svc_it)
 
                 {
-                    const NFdbBase::FdbMsgHostAddress &host_addr = svc_it->host_addr();
-                    const NFdbBase::FdbMsgAddressList &service_addr = svc_it->service_addr();
+                    NFdbBase::FdbMsgHostAddress &host_addr = svc_it->host_addr();
+                    NFdbBase::FdbMsgAddressList &service_addr = svc_it->service_addr();
                     const char *location = service_addr.is_local() ? "(local)" : "(remote)";
 
                     if (host_addr.ip_address().compare(prev_ip) || host_addr.host_name().compare(prev_host))
@@ -87,11 +87,9 @@ protected:
                         prev_host = host_addr.host_name().c_str();
                     }
                     std::cout << "    [" << service_addr.service_name() << "]" << std::endl;
-                    const ::google::protobuf::RepeatedPtrField< ::std::string> addr_list =
-                        service_addr.address_list();
-                    
-                    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator addr_it = addr_list.begin();
-                            addr_it != addr_list.end(); ++addr_it)
+                    const CFdbScalarArray<std::string> &addr_list = service_addr.address_list();
+                    for (CFdbScalarArray<std::string>::tPool::const_iterator addr_it = addr_list.pool().begin();
+                            addr_it != addr_list.pool().end(); ++addr_it)
 
                     {
                         std::cout << "        > " << *addr_it << std::endl;
@@ -116,7 +114,8 @@ protected:
             case NFdbBase::NTF_SERVICE_ONLINE_MONITOR:
             {
                 NFdbBase::FdbMsgAddressList msg_addr_list;
-                if (!msg->deserialize(msg_addr_list))
+                CFdbSimpleMsgParser parser(msg_addr_list);
+                if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgAddressList.\n");
                     return;
@@ -134,10 +133,9 @@ protected:
                     std::cout << "[" << msg_addr_list.service_name()
                               << "]@" << msg_addr_list.host_name() << location
                               << " - Online" << std::endl;
-                    const ::google::protobuf::RepeatedPtrField< ::std::string> &addr_list =
-                        msg_addr_list.address_list();
-                    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = addr_list.begin();
-                            it != addr_list.end(); ++it)
+                    const CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
+                    for (CFdbScalarArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
+                            it != addr_list.pool().end(); ++it)
                     {
                         std::cout << "    > " << *it << std::endl;
                     }

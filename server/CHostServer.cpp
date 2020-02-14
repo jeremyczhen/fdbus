@@ -22,6 +22,7 @@
 #include <security/CFdbusSecurityConfig.h>
 #include "CNsConfig.h"
 #include <utils/Log.h>
+#include <common_base/CFdbIfNameServer.h>
 
 CHostServer::CHostServer()
     : CBaseServer(CNsConfig::getHostServerName())
@@ -81,27 +82,28 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
-    if (!msg->deserialize(host_addr))
+    CFdbSimpleMsgParser parser(host_addr);
+    if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
     }
     const char *ip_addr = host_addr.ip_address().c_str();
     const char *host_name = ip_addr;
-    if (host_addr.has_host_name())
+    if (!host_addr.host_name().empty())
     {
         host_name = host_addr.host_name().c_str();
     }
     std::string str_ns_url;
     const char *ns_url;
-    if (host_addr.has_ns_url())
-    {
-        ns_url = host_addr.ns_url().c_str();
-    }
-    else
+    if (host_addr.ns_url().empty())
     {
         CBaseSocketFactory::buildUrl(str_ns_url, FDB_SOCKET_TCP, ip_addr, CNsConfig::getNameServerTcpPort());
         ns_url = str_ns_url.c_str();
+    }
+    else
+    {
+        ns_url = host_addr.ns_url().c_str();
     }
     LOG_I("HostServer: host is registered: name: %s; ip: %s, ns: %s\n.", host_name, ip_addr, ns_url);
     for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
@@ -123,7 +125,8 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 
     NFdbBase::FdbMsgHostRegisterAck ack;
     populateTokens(info.mTokens, ack);
-    msg->reply(msg_ref, ack);
+    CFdbSimpleMsgBuilder builder(ack);
+    msg->reply(msg_ref, builder);
 
     if (mHostTbl.size() == 1)
     {
@@ -146,7 +149,7 @@ void CHostServer::onHostReady(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::addToken(const CFdbSession *session,
                           const CHostInfo &host_info,
-                          ::NFdbBase::FdbMsgHostAddress &host_addr)
+                          NFdbBase::FdbMsgHostAddress &host_addr)
 {
     int32_t security_level = getSecurityLevel(session, host_info.mHostName.c_str());
     const char *token = 0;
@@ -154,18 +157,18 @@ void CHostServer::addToken(const CFdbSession *session,
     {
         token = host_info.mTokens[security_level].c_str();
     }
-    host_addr.mutable_token_list()->clear_tokens();
-    host_addr.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    host_addr.token_list().clear_tokens();
+    host_addr.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     if (token)
     {
-        host_addr.mutable_token_list()->add_tokens(token);
+        host_addr.token_list().add_tokens(token);
     }
 }
 
 void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo &info)
 {
-    ::NFdbBase::FdbMsgHostAddressList addr_list;
-    ::NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
+    NFdbBase::FdbMsgHostAddressList addr_list;
+    NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
     addr->set_host_name(info.mHostName);
     addr->set_ip_address(info.mIpAddress);
     addr->set_ns_url(online ? info.mNsUrl : ""); // ns_url being empty means offline
@@ -178,12 +181,14 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
         {
             CFdbSession *session = *it;
             addToken(session, info, *addr);
-            broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_HOST_ONLINE, addr_list);
+            CFdbSimpleMsgBuilder builder(addr_list);
+            broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_HOST_ONLINE, builder);
         }
     }
     else
     {
-        broadcast(NFdbBase::NTF_HOST_ONLINE, addr_list);
+        CFdbSimpleMsgBuilder builder(addr_list);
+        broadcast(NFdbBase::NTF_HOST_ONLINE, builder);
     }
 }
 
@@ -191,7 +196,8 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
-    if (!msg->deserialize(host_addr))
+    CFdbSimpleMsgParser parser(host_addr);
+    if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
@@ -233,14 +239,14 @@ void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
-    ::NFdbBase::FdbMsgHostAddressList addr_list;
+    NFdbBase::FdbMsgHostAddressList addr_list;
     CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
     for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         CHostInfo &info = it->second;
         if (info.ready)
         {
-            ::NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
+            NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
             addr->set_ip_address(info.mIpAddress);
             addr->set_ns_url(info.mNsUrl); // ns_url being empty means offline
             addr->set_host_name(info.mHostName);
@@ -250,7 +256,8 @@ void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *
     }
     if (!addr_list.address_list().empty())
     {
-        msg->broadcast(NFdbBase::NTF_HOST_ONLINE, addr_list);
+        CFdbSimpleMsgBuilder builder(addr_list);
+        msg->broadcast(NFdbBase::NTF_HOST_ONLINE, builder);
     }
 }
 
@@ -286,11 +293,11 @@ int32_t CHostServer::getSecurityLevel(const CFdbSession *session, const char *ho
 void CHostServer::populateTokens(const CFdbToken::tTokenList &tokens,
                                  NFdbBase::FdbMsgHostRegisterAck &list)
 {
-    list.mutable_token_list()->clear_tokens();
-    list.mutable_token_list()->set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
+    list.token_list().clear_tokens();
+    list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     for (CFdbToken::tTokenList::const_iterator it = tokens.begin(); it != tokens.end(); ++it)
     {
-        list.mutable_token_list()->add_tokens(*it);
+        list.token_list().add_tokens(*it);
     }
 }
 

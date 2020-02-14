@@ -24,17 +24,11 @@
 #include "CFdbBaseObject.h"
 #include "CMethodJob.h"
 #include "CFdbToken.h"
+#include "CFdbSimpleSerializer.h"
 
 class CBaseWorker;
 class CFdbSessionContainer;
 class CFdbMessage;
-namespace google
-{
-    namespace protobuf
-    {
-        template <typename Element> class RepeatedPtrField;
-    }
-}
 
 class CBaseEndpoint : public CEntityContainer<FdbSocketId_t, CFdbSessionContainer *>
                     , public CFdbBaseObject
@@ -116,7 +110,7 @@ private:
     void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     void callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     CFdbBaseObject *findObject(FdbObjectId_t obj_id, bool server_only);
-    bool importTokens(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_tokens);
+    bool importTokens(const CFdbScalarArray<std::string> &in_tokens);
     int32_t checkSecurityLevel(const char *token);
     void updateSecurityLevel();
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1.3)
 project(fdbus C CXX)
 
-option(fdbus_BUILD_TESTS "Build tests" ON)
+option(fdbus_BUILD_TESTS "Build tests" OFF)
 option(fdbus_ENABLE_LOG "Enable log" ON)
 option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
 option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" OFF)
@@ -86,17 +86,11 @@ set(SECURITY_SOURCES
 set(OTHER_SOURCES
     ${PROJECT_ROOT}/server/CBaseNameProxy.cpp
     ${PROJECT_ROOT}/server/CIntraNameProxy.cpp
-    ${IDL_GEN_ROOT}/idl-gen/common.base.NameServer.pb.cc
-    ${IDL_GEN_ROOT}/idl-gen/common.base.MessageHeader.pb.cc
-    ${IDL_GEN_ROOT}/idl-gen/common.base.Token.pb.cc
 )
-
-include(idl-gen.cmake)
 
 include_directories(
     ${PROJECT_ROOT}
     ${PROJECT_ROOT}/public
-    ${IDL_GEN_ROOT}
     )
 
 if (MSVC)
@@ -108,10 +102,10 @@ if (MSVC)
         endif(${flag_var} MATCHES "/MD")
     endforeach(flag_var)
 
-    link_libraries(libprotobufd ws2_32.lib)
+    link_libraries(ws2_32.lib)
     set(LIB_BUILD_TYPE "STATIC")
 else()
-    link_libraries(protobuf)
+    link_libraries(pthread)
     set(LIB_BUILD_TYPE "SHARED")
 endif()
 
@@ -127,14 +121,9 @@ add_library(common_base ${LIB_BUILD_TYPE}
 )
 install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
-install(DIRECTORY ${IDL_GEN_ROOT}/idl-gen/ DESTINATION usr/include/idl-gen)
 
-add_definitions("-DFDB_IDL_MSGHDR_H=<idl-gen/common.base.MessageHeader.pb.h>")
-add_definitions("-DFDB_IDL_NAMESERVER_H=<idl-gen/common.base.NameServer.pb.h>")
-
-link_libraries(common_base)
 if (fdbus_LINK_SOCKET_LIB)
-    link_libraries(socket)
+    #    link_libraries(socket)
 endif()
 
 include(service.cmake)

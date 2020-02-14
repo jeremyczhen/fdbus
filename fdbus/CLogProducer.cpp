@@ -20,9 +20,8 @@
 #include <common_base/CBaseThread.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CIntraNameProxy.h>
-#include <common_base/CFdbSimpleMsgBuilder.h>
-#include <google/protobuf/text_format.h>
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbRawMsgBuilder.h>
+#include <common_base/CFdbIfMessageHeader.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <inttypes.h>
@@ -66,7 +65,8 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_LOGGER_CONFIG:
         {
             NFdbBase::FdbMsgLogConfig cfg;
-            if (!msg->deserialize(cfg))
+            CFdbSimpleMsgParser parser(cfg);
+            if (!msg->deserialize(parser))
             {
                 LOG_E("CLogProducer: Unable to deserialize FdbMsgLogConfig!\n");
                 return;
@@ -86,7 +86,8 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_TRACE_CONFIG:
         {
             NFdbBase::FdbTraceConfig cfg;
-            if (!msg->deserialize(cfg))
+            CFdbSimpleMsgParser parser(cfg);
+            if (!msg->deserialize(parser))
             {
                 LOG_E("CLogProducer: Unable to deserialize FdbTraceConfig!\n");
                 return;
@@ -249,13 +250,13 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
     const char *busname = endpoint->nsName().c_str();
     CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
 
-    CFdbSimpleMsgBuilder builder;
-    builder.serializer() << mPid
+    CFdbRawMsgBuilder builder;
+    builder.serializer() << (uint32_t)mPid
                          << (proxy ? proxy->hostName().c_str() : "Unknown")
                          << sender
                          << receiver
                          << busname
-                         << msg->type()
+                         << (uint8_t)msg->type()
                          << msg->code()
                          << sysdep_getsystemtime_milli()
                          << msg->getPayloadSize()
@@ -312,12 +313,12 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     }
 
     CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
-    CFdbSimpleMsgBuilder builder;
-    builder.serializer() << mPid
+    CFdbRawMsgBuilder builder;
+    builder.serializer() << (uint32_t)mPid
                          << tag
                          << (proxy ? proxy->hostName().c_str() : "Unknown")
                          << sysdep_getsystemtime_milli()
-                         << log_level
+                         << (uint8_t)log_level
                          ;
 
     char buffer[mMaxTraceLogSize];
@@ -331,33 +332,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     sendLog(NFdbBase::REQ_TRACE_LOG, builder);
 }
 
-bool CLogProducer::printToString(std::string *str_msg, const CFdbBasePayload &pb_msg)
-{
-    bool ret = true;
-    try
-    {
-        const ::google::protobuf::Message &full_msg = dynamic_cast<const ::google::protobuf::Message &>(pb_msg);
-        try
-        {
-            if (!google::protobuf::TextFormat::PrintToString(full_msg, str_msg))
-            {
-                ret = false;
-            }
-        }
-        catch (...)
-        {
-            ret = false;
-        }
-    }
-    catch (std::bad_cast exp)
-    {
-        str_msg->assign("Lite version does not support logging. You can remove \"option optimize_for = LITE_RUNTIME;\" from .proto file.\n");
-    }
-
-    return ret;
-}
-
-bool CLogProducer::checkHostEnabled(const ::google::protobuf::RepeatedPtrField< ::std::string> &host_tbl)
+bool CLogProducer::checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl)
 {
     if (host_tbl.empty())
     {
@@ -370,8 +345,8 @@ bool CLogProducer::checkHostEnabled(const ::google::protobuf::RepeatedPtrField< 
         return true;
     }
 
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = host_tbl.begin();
-            it != host_tbl.end(); ++it)
+    for (CFdbScalarArray<std::string>::tPool::const_iterator it = host_tbl.pool().begin();
+            it != host_tbl.pool().end(); ++it)
     {
         if (!it->compare(proxy->hostName()))
         {
@@ -382,12 +357,12 @@ bool CLogProducer::checkHostEnabled(const ::google::protobuf::RepeatedPtrField< 
     return false;
 }
 
-void CLogProducer::populateWhiteList(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_filter
+void CLogProducer::populateWhiteList(const CFdbScalarArray<std::string> &in_filter
                                    , tFilterTbl &white_list)
 {
     white_list.clear();
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = in_filter.begin();
-            it != in_filter.end(); ++it)
+    for (CFdbScalarArray<std::string>::tPool::const_iterator it = in_filter.pool().begin();
+            it != in_filter.pool().end(); ++it)
     {
         white_list.insert(*it);
     }

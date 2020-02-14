@@ -19,7 +19,6 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
-#include FDB_IDL_MSGHDR_H
 #include <utils/Log.h>
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
@@ -533,19 +532,19 @@ void CBaseEndpoint::unregisterSelf()
     }
 }
 
-bool CBaseEndpoint::importTokens(const ::google::protobuf::RepeatedPtrField< ::std::string> &in_tokens)
+bool CBaseEndpoint::importTokens(const CFdbScalarArray<std::string> &in_tokens)
 {
     bool need_update = false;
     
-    if (in_tokens.size() != (int32_t)mTokens.size())
+    if (in_tokens.size() != (uint32_t)mTokens.size())
     {
         need_update = true;
     }
     else
     {
         CFdbToken::tTokenList::const_iterator it = mTokens.begin();
-        ::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator in_it = in_tokens.begin();
-         for (; in_it != in_tokens.end(); ++in_it, ++it)
+        CFdbScalarArray<std::string>::tPool::const_iterator in_it = in_tokens.pool().begin();
+         for (; in_it != in_tokens.pool().end(); ++in_it, ++it)
         {
             if (it->compare(*in_it))
             {
@@ -558,8 +557,8 @@ bool CBaseEndpoint::importTokens(const ::google::protobuf::RepeatedPtrField< ::s
     if (need_update)
     {
         mTokens.clear();
-        for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator in_it = in_tokens.begin();
-             in_it != in_tokens.end(); ++in_it)
+        for (CFdbScalarArray<std::string>::tPool::const_iterator in_it = in_tokens.pool().begin();
+             in_it != in_tokens.pool().end(); ++in_it)
         {
             mTokens.push_back(*in_it);
         }

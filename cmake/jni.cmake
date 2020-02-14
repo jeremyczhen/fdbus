@@ -1,3 +1,4 @@
+link_libraries(common_base)
 
 find_package(Java REQUIRED)
 find_package(JNI REQUIRED)

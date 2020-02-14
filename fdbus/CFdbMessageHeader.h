@@ -25,7 +25,7 @@
 #define FDB_OPT_HAS_SEND_ARRIVE_TIME    (1 << 2)
 #define FDB_OPT_HAS_REPLY_TIME          (1 << 3)
 
-class CFdbMessageHeader
+class CFdbMessageHeader : public IFdbParcelable
 {
 public:
     CFdbMessageHeader()
@@ -131,21 +131,8 @@ public:
         mReplyTime = reply_time;
         mOptions |= FDB_OPT_HAS_REPLY_TIME;
     }
-    
-protected:
-    EFdbMessageType mType;
-    int32_t mSn;
-    int32_t mCode;
-    uint32_t mFlag;
-    uint32_t mObjId;
-    uint32_t mPayloadSize;
-    std::string mSenderName;
-    std::string mFilter;
-    uint64_t mSendArriveTime;
-    uint64_t mReplyTime;
-    uint8_t mOptions;
 
-    void serialize(CFdbSimpleSerializer &serializer)
+    void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mType << mSn << mCode << mFlag << mObjId << mPayloadSize << mOptions;
         if (mOptions & FDB_OPT_HAS_SENDER_NAME)
@@ -165,7 +152,7 @@ protected:
             serializer << mReplyTime;
         }
     }
-    
+
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         deserializer >> mType >> mSn >> mCode >> mFlag >> mObjId >> mPayloadSize >> mOptions;
@@ -186,34 +173,19 @@ protected:
             deserializer >> mReplyTime;
         }
     }
-};
-
-class CFdbMessageHeaderBuilder : public CFdbMessageHeader, public CFdbSimpleMsgBuilder
-{
-public:
-    int32_t build()
-    {
-        serialize(mSerializer);
-        return mSerializer.bufferSize();
-    }
-};
-
-class CFdbMessageHeaderParser : public CFdbMessageHeader, public CFdbSimpleMsgParser
-{
-public:
-    CFdbMessageHeaderParser(const uint8_t *buffer, int32_t size)
-        : CFdbSimpleMsgParser(buffer, size)
-    {
-    }
-    void prepare(uint8_t *buffer, int32_t size)
-    {
-        mDeserializer.reset(buffer, size);
-    }
-    int32_t parse()
-    {
-        deserialize(mDeserializer);
-        return mDeserializer.error() ? -1 : mDeserializer.index();
-    }
+    
+protected:
+    EFdbMessageType mType;
+    int32_t mSn;
+    int32_t mCode;
+    uint32_t mFlag;
+    uint32_t mObjId;
+    uint32_t mPayloadSize;
+    std::string mSenderName;
+    std::string mFilter;
+    uint64_t mSendArriveTime;
+    uint64_t mReplyTime;
+    uint8_t mOptions;
 };
 
 #endif

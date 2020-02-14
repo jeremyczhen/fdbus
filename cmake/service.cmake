@@ -1,3 +1,4 @@
+link_libraries(common_base)
 
 add_executable(name_server
     ${PROJECT_ROOT}/server/main_ns.cpp

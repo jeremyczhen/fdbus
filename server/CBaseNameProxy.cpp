@@ -17,7 +17,6 @@
 #include <vector>
 #include <common_base/CBaseNameProxy.h>
 #include <common_base/CFdbMessage.h>
-#include FDB_IDL_MSGHDR_H
 #include "CNsConfig.h"
 
 CBaseNameProxy::CBaseNameProxy()
@@ -40,10 +39,9 @@ void CBaseNameProxy::unsubscribeListener(NFdbBase::FdbNsMsgCode code, const char
 
 void CBaseNameProxy::replaceSourceUrl(NFdbBase::FdbMsgAddressList &msg_addr_list, CFdbSession *session)
 {
-    ::google::protobuf::RepeatedPtrField< ::std::string> *addr_list =
-                        msg_addr_list.mutable_address_list();
-    for (::google::protobuf::RepeatedPtrField< ::std::string>::iterator it = addr_list->begin();
-            it != addr_list->end(); ++it)
+    CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
+    for (CFdbScalarArray<std::string>::tPool::iterator it = addr_list.vpool().begin();
+            it != addr_list.vpool().end(); ++it)
     {
         replaceUrlIpAddress(*it, session);
     }

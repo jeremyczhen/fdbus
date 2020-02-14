@@ -30,12 +30,12 @@ CLogPrinter::CLogPrinter(uint32_t mode)
 
 void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *log_msg)
 {
-    CBASE_tProcId pid;
+    uint32_t pid;
     std::string host_name;
     std::string sender;
     std::string receiver;
     std::string busname;
-    EFdbMessageType msg_type;
+    uint8_t msg_type;
     FdbMsgCode_t msg_code;
     uint64_t timestamp;
     int32_t payload_size;
@@ -59,7 +59,7 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
               << sender << "->" << receiver << "]["
               << busname << "]["
               << obj_id << "]["
-              << CFdbMessage::getMsgTypeName(msg_type) << "]["
+              << CFdbMessage::getMsgTypeName((EFdbMessageType)msg_type) << "]["
               << msg_code << "]["
               << msg_sn << "]["
               << payload_size << "]["
@@ -97,11 +97,11 @@ void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessa
         "[F]",
         "[S]"
     };
-    CBASE_tProcId pid;
+    uint32_t pid;
     std::string tag;
     std::string host_name;
     uint64_t timestamp;
-    EFdbLogLevel log_level;
+    uint8_t log_level;
     deserializer >> pid
                  >> tag
                  >> host_name

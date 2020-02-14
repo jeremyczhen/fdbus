@@ -32,7 +32,9 @@ struct CFdbSessionInfo
 };
 
 class CFdbSessionContainer;
-class CFdbMessageHeader;
+namespace NFdbBase {
+    class CFdbMessageHeader;
+}
 class CFdbSession : public CBaseFdWatch
 {
 public:
@@ -89,11 +91,11 @@ protected:
 private:
     typedef CEntityContainer<FdbMsgSn_t, CBaseJob::Ptr> PendingMsgTable_t;
 
-    void doRequest(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doResponse(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doBroadcast(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doSubscribeReq(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
-    void doUpdate(CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doRequest(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doResponse(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
+    void doUpdate(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
 
     PendingMsgTable_t mPendingMsgTable;
     FdbSessionId_t mSid;

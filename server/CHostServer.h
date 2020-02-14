@@ -20,12 +20,14 @@
 #include <string>
 #include <vector>
 #include <common_base/CBaseServer.h>
-#include FDB_IDL_NAMESERVER_H
-#include FDB_IDL_MSGHDR_H
 #include <common_base/CMethodLoopTimer.h>
 #include "CNsConfig.h"
 #include <security/CHostSecurityConfig.h>
 
+namespace NFdbBase {
+    class FdbMsgHostRegisterAck;
+    class FdbMsgHostAddress;
+}
 class CFdbMessage;
 class CHostServer : public CBaseServer
 {
@@ -80,7 +82,7 @@ private:
                         NFdbBase::FdbMsgHostRegisterAck &list);
     void addToken(const CFdbSession *session,
                     const CHostInfo &host_info,
-                    ::NFdbBase::FdbMsgHostAddress &host_addr);
+                    NFdbBase::FdbMsgHostAddress &host_addr);
 };
 
 #endif

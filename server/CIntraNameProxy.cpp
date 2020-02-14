@@ -19,7 +19,6 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CBaseSocketFactory.h>
-#include FDB_IDL_MSGHDR_H
 #include "CNsConfig.h"
 #include <utils/Log.h>
 
@@ -104,7 +103,8 @@ void CIntraNameProxy::registerService(const char *svc_name)
     }
     NFdbBase::FdbMsgServerName msg_svc_name;
     msg_svc_name.set_name(svc_name);
-    invoke(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS, msg_svc_name);
+    CFdbSimpleMsgBuilder builder(msg_svc_name);
+    invoke(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS, builder);
 }
 
 void CIntraNameProxy::registerService(const char *svc_name, std::vector<std::string> &addr_tbl)
@@ -122,8 +122,9 @@ void CIntraNameProxy::registerService(const char *svc_name, std::vector<std::str
     {
         addr_list.add_address_list(*it);
     }
-    
-    send(NFdbBase::REQ_REGISTER_SERVICE, addr_list);
+
+    CFdbSimpleMsgBuilder builder(addr_list);
+    send(NFdbBase::REQ_REGISTER_SERVICE, builder);
 }
 
 void CIntraNameProxy::unregisterService(const char *svc_name)
@@ -134,7 +135,8 @@ void CIntraNameProxy::unregisterService(const char *svc_name)
     }
     NFdbBase::FdbMsgServerName msg_svc_name;
     msg_svc_name.set_name(svc_name);
-    send(NFdbBase::REQ_UNREGISTER_SERVICE, msg_svc_name);
+    CFdbSimpleMsgBuilder builder(msg_svc_name);
+    send(NFdbBase::REQ_UNREGISTER_SERVICE, builder);
 }
 
 void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect)
@@ -209,10 +211,9 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 client->local(msg_addr_list.is_local());
 
                 replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
-                const ::google::protobuf::RepeatedPtrField< ::std::string> &addr_list =
-                    msg_addr_list.address_list();
-                for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = addr_list.begin();
-                        it != addr_list.end(); ++it)
+                const CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
+                for (CFdbScalarArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
+                        it != addr_list.pool().end(); ++it)
                 {
                     if (!client->doConnect(it->c_str()))
                     {
@@ -245,7 +246,8 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_SERVICE_ONLINE:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            if (!msg->deserialize(msg_addr_list))
+            CFdbSimpleMsgParser parser(msg_addr_list);
+            if (!msg->deserialize(parser))
             {
                 return;
             }
@@ -255,7 +257,8 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_MORE_ADDRESS:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            if (!msg->deserialize(msg_addr_list))
+            CFdbSimpleMsgParser parser(msg_addr_list);
+            if (!msg->deserialize(parser))
             {
                 return;
             }
@@ -265,7 +268,8 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_HOST_INFO:
         {
             NFdbBase::FdbMsgHostInfo msg_host_info;
-            if (!msg->deserialize(msg_host_info))
+            CFdbSimpleMsgParser parser(msg_host_info);
+            if (!msg->deserialize(parser))
             {
                 return;
             }
@@ -309,10 +313,9 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
-        const ::google::protobuf::RepeatedPtrField< ::std::string> &addr_list =
-            msg_addr_list.address_list();
-        for (::google::protobuf::RepeatedPtrField< ::std::string>::const_iterator it = addr_list.begin();
-                it != addr_list.end(); ++it)
+        const CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
+        for (CFdbScalarArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
+                it != addr_list.pool().end(); ++it)
         {
             do
             {
@@ -365,7 +368,8 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
     }
 
-    send(msg->session(), NFdbBase::REQ_REGISTER_SERVICE, bound_list);
+    CFdbSimpleMsgBuilder builder(bound_list);
+    send(msg->session(), NFdbBase::REQ_REGISTER_SERVICE, builder);
 }
 
 void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
@@ -390,7 +394,8 @@ void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
         case NFdbBase::REQ_ALLOC_SERVICE_ADDRESS:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            if (!msg->deserialize(msg_addr_list))
+            CFdbSimpleMsgParser parser(msg_addr_list);
+            if (!msg->deserialize(parser))
             {
                 LOG_E("CIntraNameProxy: unable to decode message for REQ_ALLOC_SERVICE_ADDRESS!\n");
                 return;

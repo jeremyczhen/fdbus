@@ -19,17 +19,15 @@
 
 #include <string>
 #include "CFdbSimpleSerializer.h"
-#include "IFdbMsgSerializer.h"
+#include "IFdbMsgBuilder.h"
 #include <vector>
+#include <common_base/CFdbSimpleMsgBuilder.h>
 
-#define FDB_OPT_HAS_SUB_FILTER      (1 << 0)
-#define FDB_OPT_HAS_TYPE            (1 << 1)
-
-class CFdbMsgSubscribeItem
+class CFdbMsgSubscribeItem : public IFdbParcelable
 {
 public:
     CFdbMsgSubscribeItem()
-        : mOptions(false)
+        : mOptions(0)
     {
     }
     int32_t msg_code() const
@@ -42,7 +40,7 @@ public:
     }
     bool has_filter() const
     {
-        return !!(mOptions & FDB_OPT_HAS_SUB_FILTER);
+        return !!(mOptions & mMaskFilter);
     }
     const std::string &filter() const
     {
@@ -51,11 +49,11 @@ public:
     void set_filter(const char *filter)
     {
         mFilter.assign(filter);
-        mOptions |= FDB_OPT_HAS_SUB_FILTER;
+        mOptions |= mMaskFilter;
     }
     bool has_type() const
     {
-        return !!(mOptions & FDB_OPT_HAS_TYPE);
+        return !!(mOptions & mMaskType);
     }
     CFdbSubscribeType type() const
     {
@@ -64,7 +62,32 @@ public:
     void set_type(CFdbSubscribeType type)
     {
         mType = type;
-        mOptions |= FDB_OPT_HAS_TYPE;
+        mOptions |= mMaskType;
+    }
+
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mCode << mOptions;
+        if (mOptions & mMaskFilter)
+        {
+            serializer << mFilter;
+        }
+        if (mOptions & mMaskType)
+        {
+            serializer << (uint8_t)mType;
+        }
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mCode >> mOptions;
+        if (mOptions & mMaskFilter)
+        {
+            deserializer >> mFilter;
+        }
+        if (mOptions & mMaskType)
+        {
+            deserializer >> (uint8_t &)mType;
+        }
     }
     
 private:
@@ -72,121 +95,32 @@ private:
     std::string mFilter;
     CFdbSubscribeType mType;
     uint8_t mOptions;
+        static const uint8_t mMaskFilter = 1 << 0;
+        static const uint8_t mMaskType = 1 << 1;
+};
 
-    void serialize(CFdbSimpleSerializer &serializer)
+class CFdbMsgTable : public IFdbParcelable
+{
+public:
+    CFdbComplexArray<CFdbMsgSubscribeItem> &subscribe_tbl()
     {
-        serializer << mCode << mOptions;
-        if (mOptions & FDB_OPT_HAS_SUB_FILTER)
-        {
-            serializer << mFilter;
-        }
-        if (mOptions & FDB_OPT_HAS_TYPE)
-        {
-            serializer << mType;
-        }
+        return mSubscribeTbl;
+    }
+    CFdbMsgSubscribeItem *add_subscribe_tbl()
+    {
+        return mSubscribeTbl.Add();
+    }
+
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mSubscribeTbl;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
-        deserializer >> mCode >> mOptions;
-        if (mOptions & FDB_OPT_HAS_SUB_FILTER)
-        {
-            deserializer >> mFilter;
-        }
-        if (mOptions & FDB_OPT_HAS_TYPE)
-        {
-            deserializer >> mType;
-        }
-    }
-    
-    friend class CFdbMsgSubscribe;
-};
-
-class CFdbMsgSubscribe
-{
-public:
-    typedef std::vector<CFdbMsgSubscribeItem> SubList_t;
-    void addItem(CFdbMsgSubscribeItem &item)
-    {
-        mSubList.push_back(item);
-    }
-    SubList_t &getSubList()
-    {
-        return mSubList;
-    }
-    
-protected:
-    SubList_t mSubList;
-
-    void serialize(CFdbSimpleSerializer &serializer)
-    {
-        uint32_t size = (uint32_t)mSubList.size();
-        if (!size)
-        {
-            return;
-        }
-        serializer << size;
-        for (SubList_t::iterator it = mSubList.begin(); it != mSubList.end(); ++it)
-        {
-            CFdbMsgSubscribeItem &item = *it;
-            item.serialize(serializer);
-        }
-    }
-    
-    void deserialize(CFdbSimpleDeserializer &deserializer)
-    {
-        uint32_t size = 0;
-        deserializer >> size;
-        if (!size)
-        {
-            return;
-        }
-        try {
-            mSubList.resize(size);
-        } catch (...) {
-            deserializer.error(true);
-            return;
-        }
-        
-        for (uint32_t i = 0; i < size; ++i)
-        {
-            mSubList[i].deserialize(deserializer);
-        }
-    }
-};
-
-class CFdbMsgSubscribeBuilder : public CFdbMsgSubscribe, public IFdbMsgBuilder
-{
-public:
-    int32_t build()
-    {
-        serialize(mSerializer);
-        return mSerializer.bufferSize();
-    }
-    void toBuffer(uint8_t *buffer, int32_t size)
-    {
-        mSerializer.toBuffer(buffer, size);
+        deserializer >> mSubscribeTbl;
     }
 private:
-    CFdbSimpleSerializer mSerializer;
-};
-
-class CFdbMsgSubscribeParser : public CFdbMsgSubscribe, public IFdbMsgParser
-{
-public:
-	CFdbMsgSubscribeParser(uint8_t *buffer = 0, int32_t size = 0)
-        : mDeserializer(buffer, size)
-    {}
-    void prepare(uint8_t *buffer, int32_t size)
-    {
-        mDeserializer.reset(buffer, size);
-    }
-    int32_t parse()
-    {
-        deserialize(mDeserializer);
-        return mDeserializer.error() ? -1 : mDeserializer.index();
-    }
-private:
-    CFdbSimpleDeserializer mDeserializer;
+    CFdbComplexArray<CFdbMsgSubscribeItem> mSubscribeTbl;
 };
 
 #endif

@@ -16,12 +16,12 @@
 
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include FDB_IDL_NAMESERVER_H
+#include <common_base/CFdbIfNameServer.h>
 #include <iostream>
 #include <stdlib.h>
 #include <common_base/fdb_option_parser.h>
 #include <utils/Log.h>
-#include FDB_IDL_MSGHDR_H
+#include <common_base/CFdbSimpleMsgBuilder.h>
 
 static int32_t ls_follow = 0;
 
@@ -60,7 +60,8 @@ protected:
             case NFdbBase::REQ_QUERY_HOST_LOCAL:
             {
                 NFdbBase::FdbMsgHostAddressList host_list;
-                if (!msg->deserialize(host_list))
+                CFdbSimpleMsgParser parser(host_list);
+                if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgHostAddressList.\n");
                 }
@@ -85,7 +86,8 @@ protected:
             case NFdbBase::NTF_HOST_ONLINE_LOCAL:
             {
                 NFdbBase::FdbMsgHostAddressList host_list;
-                if (!msg->deserialize(host_list))
+                CFdbSimpleMsgParser parser(host_list);
+                if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgHostAddressList.\n");
                 }
@@ -122,12 +124,11 @@ private:
 
     void printHosts(NFdbBase::FdbMsgHostAddressList &host_list, bool monitor)
     {
-        const ::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgHostAddress> &addr_list =
-        host_list.address_list();
-        for (::google::protobuf::RepeatedPtrField< ::NFdbBase::FdbMsgHostAddress>::const_iterator it = addr_list.begin();
-                it != addr_list.end(); ++it)
+        CFdbComplexArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
+        for (CFdbComplexArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
+                it != addr_list.vpool().end(); ++it)
         {
-            const ::NFdbBase::FdbMsgHostAddress &addr = *it;
+            NFdbBase::FdbMsgHostAddress &addr = *it;
             bool is_offline = addr.ns_url().empty();
             if (is_offline)
             {
