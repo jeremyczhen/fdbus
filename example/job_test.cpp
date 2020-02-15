@@ -17,8 +17,8 @@
 #define FDB_LOG_TAG "JOB_TEST"
 #include <common_base/fdbus.h>
 
-static CBaseWorker sender;
-static CBaseWorker receiver;
+static CBaseWorker sender("peer1");
+static CBaseWorker receiver("peer2");
 
 /* create a job which print message at worker thread */
 class CGreetingJob : public CBaseJob
@@ -33,7 +33,7 @@ protected:
     void run(CBaseWorker *worker, Ptr &ref)
     {
         std::cout << mGreetingWord << std::endl;
-        FDB_LOG_I("Job is received.\n");
+        FDB_LOG_I("Job is received at %s.\n", worker->name().c_str());
     }
 private:
     std::string mGreetingWord;
@@ -43,7 +43,11 @@ private:
 class CSenderTimer : public CBaseLoopTimer
 {
 public:
-    CSenderTimer() : CBaseLoopTimer(200, true)
+    CSenderTimer(CBaseWorker &receiver, int32_t interval, bool sync, bool urgent)
+        : CBaseLoopTimer(interval, true)
+        , mReceiver(receiver)
+        , mSync(sync)
+        , mUrgent(urgent)
     {}
 protected:
     /* called when timeout */
@@ -52,9 +56,20 @@ protected:
         /* send job to receiver worker thread asynchronously
          * it just throws the job to receiver and will not block
          */
-        receiver.sendAsync(new CGreetingJob("hello, world!"));
+        if (mSync)
+        {
+            mReceiver.sendSync(new CGreetingJob("hello, world!"), 0, mUrgent);
+        }
+        else
+        {
+            mReceiver.sendAsync(new CGreetingJob("hello, world!"), mUrgent);
+        }
         FDB_LOG_I("Job is sent.\n");
     }
+private:
+    CBaseWorker &mReceiver;
+    bool mSync;
+    bool mUrgent;
 };
 
 int main(int argc, char **argv)
@@ -80,9 +95,24 @@ int main(int argc, char **argv)
     sender.start(); /* start sender worker thread */
     receiver.start(); /* start receiver worker thread */
 
-    /* create sender timer and attach it with sender worker thread */
-    CSenderTimer *sender_timer = new CSenderTimer();
-    sender_timer->attach(&sender, true);
+    for (int i = 0; i < 20; ++i)
+    {
+        /*
+         * create sender timer and attach it with sender worker thread
+         * job is sent from sender to receiver
+         */
+        CSenderTimer *sender_timer = new CSenderTimer(receiver, 80 + (i << 1), true, !!(i & 1));
+        sender_timer->attach(&sender, true);
+    }
+
+    {
+    /*
+     * create sender timer and attach it with receiver worker thread
+     * job is sent from receiver to sender 
+     */
+    CSenderTimer *sender_timer = new CSenderTimer(sender, 100, false, false);
+    sender_timer->attach(&receiver, true);
+    }
 
     /* convert main thread into worker */
     CBaseWorker background_worker;

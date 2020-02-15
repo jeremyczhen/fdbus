@@ -143,7 +143,9 @@ private:
     int32_t mFlags;
     bool mEnable;
     CFdEventLoop *mEventLoop;
+    
     friend class CFdEventLoop;
+    friend class CNotifyFdWatch;
 };
 
 #endif

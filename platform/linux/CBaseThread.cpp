@@ -66,7 +66,7 @@ bool CBaseThread::start(uint32_t flag)
                 if (!pthread_create(&mThread, &threadAttr, threadFunc, this))
                 {
                     applyPriority(mPriority);
-                    setThreadName(mThreadName.c_str());
+                    name(mThreadName.c_str());
                     ret = true;
                 }
             }
@@ -96,7 +96,7 @@ bool CBaseThread::isSelf() const
     return !!pthread_equal(mThread, pthread_self());
 }
 
-bool CBaseThread::setPriority(int32_t  level)
+bool CBaseThread::priority(int32_t  level)
 {
     bool status(false);
 
@@ -128,7 +128,7 @@ bool CBaseThread::applyPriority(int32_t level)
     return status;
 }
 
-bool CBaseThread::setThreadName(const char* thread_name)
+bool CBaseThread::name(const char* thread_name)
 {
     if (thread_name == 0 || strlen(thread_name) == 0){
         return false;

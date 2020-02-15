@@ -18,8 +18,8 @@
 #define _CTHREADEVENTLOOP_H_
 
 #include "CBaseEventLoop.h"
+#include <condition_variable>
 
-class CBaseSemaphore;
 class CThreadEventLoop : public CBaseEventLoop
 {
 public:
@@ -28,10 +28,9 @@ public:
 
     void dispatch();
     bool notify();
-    bool acknowledge();
     bool init(CBaseWorker *worker);
 private:
-    CBaseSemaphore *mSemaphore;
+    std::condition_variable_any mWakeupSignal;
     CBaseWorker *mWorker;
 };
 

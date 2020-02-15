@@ -792,10 +792,10 @@ protected:
     {
         mCount++;
         if (mCount%2 == 0){
-            worker()->setThreadName("");
+            worker()->name("");
         }else{
             const char* nullp = 0;
-            worker()->setThreadName(nullp);
+            worker()->name(nullp);
         }
         
     #if 0

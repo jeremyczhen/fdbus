@@ -105,16 +105,11 @@ void sysdep_sleep
     return;
 }
 
-
-int
-poll (pollfd *fds,
-      int         n_fds,
-      int         timeout_milliseconds)
+int poll(pollfd *fds, int n_fds, int timeout_milliseconds)
 {
     fd_set read_set, write_set, err_set;
     int max_fd = 0;
     int i;
-    struct timeval tv;
     int ready;
 
     FD_ZERO (&read_set);
@@ -143,12 +138,16 @@ poll (pollfd *fds,
         }
     }
 
+    struct timeval *ptv = 0;
+    struct timeval tv;
+    if (timeout_milliseconds >= 0)
+    {
+        tv.tv_sec = timeout_milliseconds / 1000;
+        tv.tv_usec = (timeout_milliseconds % 1000) * 1000;
+        ptv = &tv;
+    }
 
-    tv.tv_sec = timeout_milliseconds / 1000;
-    tv.tv_usec = (timeout_milliseconds % 1000) * 1000;
-
-    ready = select (max_fd + 1, &read_set, &write_set, &err_set,
-                    timeout_milliseconds < 0 ? 0 : &tv);
+    ready = select (max_fd + 1, &read_set, &write_set, &err_set, ptv);
 
     if (ready > 0)
     {

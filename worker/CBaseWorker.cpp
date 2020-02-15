@@ -29,7 +29,6 @@
  *---------------------------------------------------------------------------*/
 CBaseJob::CBaseJob(uint32_t flag)
     : mFlag(flag)
-    , mSyncLock(false)
     , mSyncReq(0)
 {
 }
@@ -53,7 +52,7 @@ void CBaseJob::terminate(Ptr &ref)
 {
     if (mSyncReq)
     {
-        CAutoLock _l(mSyncLock);
+        std::lock_guard<std::mutex> _l(mSyncLock);
         if (mSyncReq)
         {
             wakeup(ref);
@@ -460,8 +459,8 @@ bool CBaseFdWatch::flags(int32_t flgs)
 
 CBaseWorker::CJobQueue::CJobQueue(uint32_t max_size)
         : mMaxSize(max_size)
-        , mCurrentSize(0)
         , mDiscardCnt(0)
+        , mEventLoop(0)
 {
 }
 
@@ -469,14 +468,18 @@ bool CBaseWorker::CJobQueue::enqueue(CBaseJob::Ptr &job)
 {
     bool ret = false;
     
-    if (!mMaxSize || (mCurrentSize < mMaxSize))
+    if (!mMaxSize || (mJobQueue.size() < mMaxSize))
     {
-        CAutoLock _l(mMutex);
-        if (!mMaxSize || (mCurrentSize < mMaxSize))
+        mEventLoop->lock();
+        if (!mMaxSize || (mJobQueue.size() < mMaxSize))
         {
             mJobQueue.push_back(job);
-            mCurrentSize++;
             ret = true;
+        }
+        mEventLoop->unlock();
+        if (ret)
+        {
+            mEventLoop->notify();
         }
     }
     
@@ -485,30 +488,27 @@ bool CBaseWorker::CJobQueue::enqueue(CBaseJob::Ptr &job)
 
 void CBaseWorker::CJobQueue::dumpJobs(tJobContainer &job_queue)
 {
-    if (!mJobQueue.empty())
-    {
-        CAutoLock _l(mMutex);
-        job_queue = mJobQueue;
-        mJobQueue.clear();
-        mCurrentSize = 0;
-    }
+    job_queue = mJobQueue;
+    mJobQueue.clear();
 }
 
 void CBaseWorker::CJobQueue::discardJobs()
 {
-    CAutoLock _l(mMutex);
+    mEventLoop->lock();
     mDiscardCnt++;
+    mEventLoop->unlock();
 }
 
 void CBaseWorker::CJobQueue::pickupJobs()
 {
     if (mDiscardCnt > 0)
     {
-        CAutoLock _l(mMutex);
+        mEventLoop->lock();
         if (mDiscardCnt > 0)
         {
             mDiscardCnt--;
         }
+        mEventLoop->unlock();
     }
 }
 
@@ -517,14 +517,19 @@ bool CBaseWorker::CJobQueue::jobDiscarded()
     return mDiscardCnt > 0;
 }
 
-void CBaseWorker::CJobQueue::jobQueueSize(uint32_t size)
+void CBaseWorker::CJobQueue::sizeLimit(uint32_t size)
 {
     mMaxSize = size;
 }
 
-uint32_t CBaseWorker::CJobQueue::jobQueueSize()
+uint32_t CBaseWorker::CJobQueue::sizeLimit() const
 {
     return mMaxSize;
+}
+
+uint32_t CBaseWorker::CJobQueue::size() const
+{
+    return mJobQueue.size();
 }
 
 CBaseWorker::CBaseWorker(const char* thread_name, uint32_t normal_queue_size, uint32_t urgent_queue_size)
@@ -556,6 +561,8 @@ bool CBaseWorker::init(uint32_t flag)
         {
             mEventLoop = new CThreadEventLoop();
         }
+        mNormalJobQueue.eventLoop(mEventLoop);
+        mUrgentJobQueue.eventLoop(mEventLoop);
         if (mEventLoop->init(this))
         {
             return asyncReady();
@@ -581,6 +588,7 @@ bool CBaseWorker::start(uint32_t flag)
 
 void CBaseWorker::run()
 {
+    mExitCode = 0;
     try
     {
         if (!tearup())
@@ -594,7 +602,6 @@ void CBaseWorker::run()
         return;
     }
 
-    mExitCode = 0;
     while (!mExitCode)
     {
         try
@@ -617,19 +624,6 @@ void CBaseWorker::run()
     }
 }
 
-void CBaseWorker::processNotifyWatch(bool &io_error)
-{
-    if (!mEventLoop->acknowledge())
-    {
-        LOG_E("CBaseWorker: Error reading from notify FD!\n");
-        io_error = true;
-    }
-    else
-    {
-        processJobQueue();
-    }
-}
-
 void CBaseWorker::runOneJob(tJobContainer::iterator &it, bool run_job)
 {
     if ((*it)->sync())
@@ -642,7 +636,7 @@ void CBaseWorker::runOneJob(tJobContainer::iterator &it, bool run_job)
              * success() will be set to true to indicate that run() has
              * been executed successfully.
              */
-            CAutoLock _l((*it)->mSyncLock);
+            std::lock_guard<std::mutex> _l((*it)->mSyncLock);
             if ((*it)->mSyncReq)
             {
                 if (run_job)
@@ -665,11 +659,13 @@ void CBaseWorker::runOneJob(tJobContainer::iterator &it, bool run_job)
     }
 }
 
-void CBaseWorker::processUrgentJobQueue()
+bool CBaseWorker::jobQueued() const
 {
-    tJobContainer jobs;
+    return mNormalJobQueue.size() || mUrgentJobQueue.size();
+}
 
-    mUrgentJobQueue.dumpJobs(jobs);
+void CBaseWorker::processUrgentJobs(tJobContainer &jobs)
+{
     for (tJobContainer::iterator it = jobs.begin(); it != jobs.end(); ++it)
     {
         (*it)->urgent(true);
@@ -678,20 +674,40 @@ void CBaseWorker::processUrgentJobQueue()
     }
 }
 
+void CBaseWorker::processUrgentJobs()
+{
+    if (!mUrgentJobQueue.jobQueue().empty())
+    {
+        mEventLoop->lock();
+        tJobContainer jobs;
+        mUrgentJobQueue.dumpJobs(jobs);
+        mEventLoop->unlock();
+
+        processUrgentJobs(jobs);
+    }
+}
+
+/*
+ * at the entrace event loop is locked. it should be unlocked before exit!!!
+ */
 void CBaseWorker::processJobQueue()
 {
-    tJobContainer jobs;
+    tJobContainer normal_jobs;
+    tJobContainer urgent_jobs;
+    mNormalJobQueue.dumpJobs(normal_jobs);
+    mUrgentJobQueue.dumpJobs(urgent_jobs);
+    mEventLoop->unlock();
 
-    mNormalJobQueue.dumpJobs(jobs);
-    for (tJobContainer::iterator it = jobs.begin(); it != jobs.end(); ++it)
+    processUrgentJobs(urgent_jobs);
+    for (tJobContainer::iterator it = normal_jobs.begin(); it != normal_jobs.end(); ++it)
     {
-        processUrgentJobQueue();
+        processUrgentJobs();
         (*it)->urgent(false);
         bool run_job = (!mNormalJobQueue.jobDiscarded() || (*it)->forceRun()) && !mExitCode;
         runOneJob(it, run_job);
     }
 
-    processUrgentJobQueue();
+    processUrgentJobs();
 }
 
 bool CBaseWorker::send(CBaseJob::Ptr &job, bool urgent)
@@ -712,7 +728,7 @@ bool CBaseWorker::send(CBaseJob::Ptr &job, bool urgent)
         ret = mNormalJobQueue.enqueue(job);
     }
 
-    return ret ? mEventLoop->notify() : false;
+    return ret;
 }
 
 bool CBaseWorker::sendAsync(CBaseJob::Ptr &job, bool urgent)
@@ -754,7 +770,6 @@ bool CBaseWorker::sendSync(CBaseJob::Ptr &job, int32_t milliseconds, bool urgent
 
     // now we can assure the job is not in any worker queue
     CBaseJob::CSyncRequest sync_req(job.use_count());
-    job->mSyncLock.init();
     job->sync(true);
     job->success(false);
     job->mSyncReq = &sync_req;
@@ -766,7 +781,7 @@ bool CBaseWorker::sendSync(CBaseJob::Ptr &job, int32_t milliseconds, bool urgent
     if (!sync_req.mSem.wait(milliseconds))
     {
         // the job might still in worker queue
-        CAutoLock _l(job->mSyncLock);
+        std::lock_guard<std::mutex> _l(job->mSyncLock);
         job->mSyncReq = 0;
         return job->success();
     }

@@ -94,7 +94,7 @@ bool CBaseThread::isSelf() const
     return GetCurrentThreadId() == mThreadId;
 }
 
-bool CBaseThread::setPriority(int32_t level)
+bool CBaseThread::priority(int32_t level)
 {
     bool status(false);
 
@@ -123,9 +123,9 @@ bool CBaseThread::applyPriority(int32_t level)
     return (0 != SetThreadPriority(mThread, level));
 }
 
-bool CBaseThread::setThreadName(const char* thread_name)
+bool CBaseThread::name(const char* thread_name)
 {
-    return false;
+    return true;
 }
 
 unsigned int __stdcall CBaseThread::threadFunc

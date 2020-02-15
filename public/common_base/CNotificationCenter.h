@@ -19,7 +19,7 @@
 
 #include <map>
 #include <set>
-#include "CBaseMutexLock.h"
+#include <mutex>
 #include "common_defs.h"
 #include "CBaseNotification.h"
 #include "CBaseWorker.h"
@@ -53,7 +53,7 @@ public:
         }
         
         std::pair<typename tNotifications::iterator, bool> ret;
-        CAutoLock _l(mMutex);
+        std::lock_guard<std::mutex> _l(mMutex);
         ret = mNtfTbl[notification->event()].insert(notification);
         
         return ret.second;
@@ -66,7 +66,7 @@ public:
     void unsubscribe(typename CBaseNotification<T>::Ptr &notification)
     {
         FdbEventCode_t event = notification->event();
-        CAutoLock _l(mMutex);
+        std::lock_guard<std::mutex> _l(mMutex);
     	mNtfTbl[event].erase(notification);
         if (mNtfTbl[event].empty())
         {
@@ -106,7 +106,7 @@ public:
     	std::vector<typename CBaseNotification<T>::Ptr> ntf_vec;
     	
         {
-            CAutoLock _l(mMutex);
+            std::lock_guard<std::mutex> _l(mMutex);
             if (mNtfTbl.empty())
             {
                 return;
@@ -174,7 +174,7 @@ private:
     };
     
     tNotificationTbl mNtfTbl;
-    CBaseMutexLock mMutex;
+    std::mutex mMutex;
 };
 
 typedef CBaseNotificationCenter<void *> CGenericNotificationCenter;

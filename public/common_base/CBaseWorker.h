@@ -20,7 +20,6 @@
 #include <vector>
 #include "CBaseThread.h"
 #include "CBaseJob.h"
-#include "CBaseMutexLock.h"
 
 /*
  * If set, the worker thread can run jobs, timers and watches;
@@ -152,20 +151,20 @@ public:
      * have reached the specified size, jobs sent are dropped. The size of
      * 0 means unlimited.
      */
-    void jobQueueSize(uint32_t size, bool urgent = false)
+    void jobQueueSizeLimit(uint32_t size, bool urgent = false)
     {
         if (urgent)
         {
-            mUrgentJobQueue.jobQueueSize(size);
+            mUrgentJobQueue.sizeLimit(size);
         }
         else
         {
-            mNormalJobQueue.jobQueueSize(size);
+            mNormalJobQueue.sizeLimit(size);
         }
     }
-    uint32_t jobQueueSize(bool urgent = false)
+    uint32_t jobQueueSizeLimit(bool urgent = false)
     {
-        return urgent ? mUrgentJobQueue.jobQueueSize() : mNormalJobQueue.jobQueueSize();
+        return urgent ? mUrgentJobQueue.sizeLimit() : mNormalJobQueue.sizeLimit();
     }
 
 protected:
@@ -205,25 +204,36 @@ private:
         void discardJobs();
         void pickupJobs();
         bool jobDiscarded();
-        void jobQueueSize(uint32_t size);
-        uint32_t jobQueueSize();
+        void sizeLimit(uint32_t size);
+        uint32_t sizeLimit() const;
+        uint32_t size() const;
+        void eventLoop(CBaseEventLoop *event_loop)
+        {
+            mEventLoop = event_loop;
+        }
+        tJobContainer &jobQueue()
+        {
+            return mJobQueue;
+        }
     private:
         uint32_t mMaxSize;
-        uint32_t mCurrentSize;
         int32_t mDiscardCnt;
-        CBaseMutexLock mMutex;
+        CBaseEventLoop *mEventLoop;
         tJobContainer mJobQueue;
+
+        friend class CBaseWorker;
     };
     
     bool send(CBaseJob::Ptr &job, bool urgent);
     void run();
     void processJobQueue();
-    void processUrgentJobQueue();
-    void processNotifyWatch(bool &io_error);
+    void processUrgentJobs(tJobContainer &jobs);
+    void processUrgentJobs();
     void doExit(int32_t exit_code = 1);
     void discardJobs(bool urgent);
     void updateDiscardStatus(bool discard, bool urgent);
     void runOneJob(tJobContainer::iterator &it, bool run_job);
+    bool jobQueued() const;
 
     /*
      * exit code: 0 - don't exit

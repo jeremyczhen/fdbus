@@ -231,3 +231,13 @@ void CBaseEventLoop::processTimers()
         enableTimerBlackList(0);
     }
 }
+
+void CBaseEventLoop::lock()
+{
+    mMutex.lock();
+}
+
+void CBaseEventLoop::unlock()
+{
+    mMutex.unlock();
+}

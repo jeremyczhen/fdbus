@@ -14,54 +14,70 @@
  * limitations under the License.
  */
 
-#include <common_base/CBaseSemaphore.h>
 #include <common_base/CThreadEventLoop.h>
 #include <common_base/CBaseWorker.h>
 
 CThreadEventLoop::CThreadEventLoop()
-    : mSemaphore(0)
-    , mWorker(0)
+    : mWorker(0)
 {
 }
 
 CThreadEventLoop::~CThreadEventLoop()
 {
-    if (mSemaphore)
-    {
-        delete mSemaphore;
-    }
 }
 
 void CThreadEventLoop::dispatch()
 {
     int32_t wait_time = getMostRecentTime();
-    if (wait_time == 0)
+    // initially mMutex is unlocked.
+    if (wait_time < 0)
     {
-        wait_time = 1;
+        mMutex.lock();
+        if (mWorker->jobQueued())
+        {
+            mWorker->processJobQueue(); // mutex will be unlocked
+        }
+        else
+        {
+            mWakeupSignal.wait(mMutex); // mutex will be locked 
+            mWorker->processJobQueue(); // mutex will be unlocked
+        }
     }
-    mSemaphore->wait(wait_time);
-    processTimers();
-    bool io_error;
-    mWorker->processNotifyWatch(io_error);
+    else if (wait_time == 0)
+    {
+        processTimers();
+    }
+    {
+        mMutex.lock();
+        if (mWorker->jobQueued())
+        {
+            mWorker->processJobQueue(); // mutex will be unlocked 
+        }
+        else
+        {
+            std::cv_status status = mWakeupSignal.wait_for(mMutex,
+                                        std::chrono::milliseconds(wait_time));
+            if (status == std::cv_status::timeout)
+            {
+                mMutex.unlock();
+                processTimers(); // timer should be processed unlocked
+            }
+            else
+            {
+                mWorker->processJobQueue(); // mutex will be unlocked
+            }
+        }
+    }
 }
 
 bool CThreadEventLoop::notify()
 {
-    return mSemaphore->post();
-}
-
-bool CThreadEventLoop::acknowledge()
-{
+    mWakeupSignal.notify_one();
     return true;
 }
 
 bool CThreadEventLoop::init(CBaseWorker *worker)
 {
-    if (!mSemaphore)
-    {
-        mSemaphore = new CBaseSemaphore(0);
-        mWorker = worker;
-    }
+    mWorker = worker;
     return true;
 }
-

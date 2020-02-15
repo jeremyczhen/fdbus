@@ -42,8 +42,16 @@ public:
     bool started();
     bool join(uint32_t milliseconds = 0);
     bool isSelf() const;
-    bool setPriority(int32_t level);
-    bool setThreadName(const char* thread_name);
+    bool priority(int32_t level);
+    int32_t priority() const
+    {
+        return mPriority;
+    }
+    bool name(const char* thread_name);
+    const std::string &name() const
+    {
+        return mThreadName;
+    }
     static CBASE_tProcId getPid(); 
 
 protected:

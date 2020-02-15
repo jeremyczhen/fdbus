@@ -21,6 +21,7 @@
 #include "CBaseClient.h"
 #include "CFdbMessage.h"
 #include "CFdbSimpleSerializer.h"
+#include <mutex>
 
 class CBaseEndpoint;
 class CLogProducer : public CBaseClient
@@ -68,7 +69,7 @@ private:
 
     tFilterTbl mTraceTagWhiteList;
     bool mTraceHostEnabled;
-    CBaseMutexLock mTraceLock;
+    std::mutex mTraceLock;
 
     static const int32_t mMaxTraceLogSize = 4096;
     bool checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl);
