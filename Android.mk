@@ -9,11 +9,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libcommon-base
 
-FDB_IDL_MSGHDR_H := \<$(LOCAL_PATH)/idl/android_fix/common.base.MessageHeader.pb.h\>
-FDB_IDL_NAMESERVER_H := \<$(LOCAL_PATH)/idl/android_fix/common.base.NameServer.pb.h\>
-FDB_IDL_MACRO_HEAD_FILE := -DFDB_IDL_MSGHDR_H=$(FDB_IDL_MSGHDR_H) -DFDB_IDL_NAMESERVER_H=$(FDB_IDL_NAMESERVER_H)
-
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT
 
 SRC_FILES := 
@@ -32,30 +28,13 @@ LOCAL_SRC_FILES += server/CBaseNameProxy.cpp \
                    security/cJSON/cJSON.c
 
 FDB_IDL_DIR := $(LOCAL_PATH)/idl
-$(FDB_IDL_DIR)/android_fix/common.base.MessageHeader.proto : $(FDB_IDL_DIR)/common.base.MessageHeader.proto
-	sed 's#common.base.Token.proto#$(FDB_IDL_DIR)/common.base.Token.proto#g' $< > $@
-
-$(FDB_IDL_DIR)/android_fix/common.base.NameServer.proto : $(FDB_IDL_DIR)/common.base.NameServer.proto
-	sed 's#common.base.Token.proto#$(FDB_IDL_DIR)/common.base.Token.proto#g' $< > $@
-
-FDB_PROTO_SRC += idl/android_fix/common.base.MessageHeader.proto \
-                   idl/android_fix/common.base.NameServer.proto \
-                   idl/common.base.Token.proto
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SRC_FILES += platform/CEventFd_eventfd.cpp
-
-LOCAL_SHARED_LIBRARIES := \
-                   libprotobuf-cpp-full-rtti 
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
                    $(LOCAL_PATH)/public
 
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/public
-
-LOCAL_PROTOC_OPTIMIZE_TYPE := lite 
-LOCAL_PROTOC_FLAGS := -I.
-#LOCAL_SOURCE_FILES_ALL_GENERATED := true
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -64,7 +43,7 @@ include $(BUILD_SHARED_LIBRARY)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= libfdbus-jni
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID $(FDB_IDL_MACRO_HEAD_FILE) -DFDB_CFG_KEEP_ENV_TYPE
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID -DFDB_CFG_KEEP_ENV_TYPE
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCFG_JNI_ANDROID
 LOCAL_SRC_FILES:= \
               jni/src/cpp/CJniClient.cpp \
@@ -128,7 +107,7 @@ include $(BUILD_JAVA_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE:= name-server
 #LOCAL_INIT_RC := fdbus-name-server.rc
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 server/main_ns.cpp \
@@ -136,7 +115,6 @@ LOCAL_SRC_FILES:= \
                 server/CInterNameProxy.cpp \
                 server/CHostProxy.cpp \
                 security/CServerSecurityConfig.cpp
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \
@@ -149,13 +127,12 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= host-server
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"
 LOCAL_SRC_FILES:= \
                 server/main_hs.cpp \
                 server/CHostServer.cpp \
                 security/CHostSecurityConfig.cpp
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \
@@ -168,11 +145,10 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= lssvc
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 server/main_ls.cpp
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \
@@ -184,11 +160,10 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= lshost
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 server/main_lh.cpp
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \
@@ -200,12 +175,11 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= logsvc 
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 server/main_log_server.cpp \
                 server/CLogPrinter.cpp
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \
@@ -218,12 +192,11 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= logviewer
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 server/main_log_client.cpp \
                 server/CLogPrinter.cpp
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \
@@ -236,12 +209,12 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 LOCAL_MODULE:= fdbtest 
 FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_DIR)/common.base.Example.pb.h\>
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG $(FDB_IDL_MACRO_HEAD_FILE) -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 example/client_server_object.cpp \
+                example/CFdbProtoMsgBuilder.cpp \
                 idl/common.base.Example.proto
-LOCAL_SRC_FILES += $(FDB_PROTO_SRC)
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \

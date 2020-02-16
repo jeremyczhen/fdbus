@@ -12,6 +12,7 @@ option(fdbus_ANDROID "build Android version" OFF)
 option(fdbus_PIPE_AS_EVENTFD "Do not use event FD" OFF)
 option(fdbus_BUILD_JNI "Build jni" OFF)
 option(fdbus_LINK_SOCKET_LIB "specify -lsocket to link" OFF)
+option(fdbus_LINK_PTHREAD_LIB "specify -lsocket to link" ON)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
@@ -105,7 +106,13 @@ if (MSVC)
     link_libraries(ws2_32.lib)
     set(LIB_BUILD_TYPE "STATIC")
 else()
-    link_libraries(pthread)
+    if (fdbus_LINK_PTHREAD_LIB)
+        link_libraries(pthread)
+    endif()
+    if (fdbus_LINK_SOCKET_LIB)
+        link_libraries(socket)
+    endif()
+
     set(LIB_BUILD_TYPE "SHARED")
 endif()
 
@@ -121,10 +128,6 @@ add_library(common_base ${LIB_BUILD_TYPE}
 )
 install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
-
-if (fdbus_LINK_SOCKET_LIB)
-    #    link_libraries(socket)
-endif()
 
 include(service.cmake)
 if (fdbus_BUILD_TESTS)
