@@ -141,7 +141,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            CFdbSimpleMsgParser parser(msg_addr_list);
+            CFdbParcelableParser parser(msg_addr_list);
             if (!msg->deserialize(parser))
             {
                 return;
@@ -208,7 +208,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 // never broadcast token to monitors!!!
                 msg_addr_list.token_list().clear_tokens();
                 msg_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
-                CFdbSimpleMsgBuilder builder(msg_addr_list);
+                CFdbParcelableBuilder builder(msg_addr_list);
                 name_server->broadcast(subscriber, FDB_OBJECT_MAIN, code,
                                 builder, msg_addr_list.service_name().c_str());
             }
@@ -250,7 +250,7 @@ void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
         case NFdbBase::REQ_QUERY_SERVICE_INTER_MACHINE:
         {
             NFdbBase::FdbMsgServiceTable svc_tbl;
-            CFdbSimpleMsgParser parser(svc_tbl);
+            CFdbParcelableParser parser(svc_tbl);
             if (!msg->deserialize(parser))
             {
                 return;

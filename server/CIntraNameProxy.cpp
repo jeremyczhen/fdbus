@@ -103,7 +103,7 @@ void CIntraNameProxy::registerService(const char *svc_name)
     }
     NFdbBase::FdbMsgServerName msg_svc_name;
     msg_svc_name.set_name(svc_name);
-    CFdbSimpleMsgBuilder builder(msg_svc_name);
+    CFdbParcelableBuilder builder(msg_svc_name);
     invoke(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS, builder);
 }
 
@@ -123,7 +123,7 @@ void CIntraNameProxy::registerService(const char *svc_name, std::vector<std::str
         addr_list.add_address_list(*it);
     }
 
-    CFdbSimpleMsgBuilder builder(addr_list);
+    CFdbParcelableBuilder builder(addr_list);
     send(NFdbBase::REQ_REGISTER_SERVICE, builder);
 }
 
@@ -135,7 +135,7 @@ void CIntraNameProxy::unregisterService(const char *svc_name)
     }
     NFdbBase::FdbMsgServerName msg_svc_name;
     msg_svc_name.set_name(svc_name);
-    CFdbSimpleMsgBuilder builder(msg_svc_name);
+    CFdbParcelableBuilder builder(msg_svc_name);
     send(NFdbBase::REQ_UNREGISTER_SERVICE, builder);
 }
 
@@ -246,7 +246,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_SERVICE_ONLINE:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            CFdbSimpleMsgParser parser(msg_addr_list);
+            CFdbParcelableParser parser(msg_addr_list);
             if (!msg->deserialize(parser))
             {
                 return;
@@ -257,7 +257,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_MORE_ADDRESS:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            CFdbSimpleMsgParser parser(msg_addr_list);
+            CFdbParcelableParser parser(msg_addr_list);
             if (!msg->deserialize(parser))
             {
                 return;
@@ -268,7 +268,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_HOST_INFO:
         {
             NFdbBase::FdbMsgHostInfo msg_host_info;
-            CFdbSimpleMsgParser parser(msg_host_info);
+            CFdbParcelableParser parser(msg_host_info);
             if (!msg->deserialize(parser))
             {
                 return;
@@ -368,7 +368,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
     }
 
-    CFdbSimpleMsgBuilder builder(bound_list);
+    CFdbParcelableBuilder builder(bound_list);
     send(msg->session(), NFdbBase::REQ_REGISTER_SERVICE, builder);
 }
 
@@ -394,7 +394,7 @@ void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
         case NFdbBase::REQ_ALLOC_SERVICE_ADDRESS:
         {
             NFdbBase::FdbMsgAddressList msg_addr_list;
-            CFdbSimpleMsgParser parser(msg_addr_list);
+            CFdbParcelableParser parser(msg_addr_list);
             if (!msg->deserialize(parser))
             {
                 LOG_E("CIntraNameProxy: unable to decode message for REQ_ALLOC_SERVICE_ADDRESS!\n");

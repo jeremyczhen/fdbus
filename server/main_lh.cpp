@@ -60,7 +60,7 @@ protected:
             case NFdbBase::REQ_QUERY_HOST_LOCAL:
             {
                 NFdbBase::FdbMsgHostAddressList host_list;
-                CFdbSimpleMsgParser parser(host_list);
+                CFdbParcelableParser parser(host_list);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgHostAddressList.\n");
@@ -86,7 +86,7 @@ protected:
             case NFdbBase::NTF_HOST_ONLINE_LOCAL:
             {
                 NFdbBase::FdbMsgHostAddressList host_list;
-                CFdbSimpleMsgParser parser(host_list);
+                CFdbParcelableParser parser(host_list);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgHostAddressList.\n");

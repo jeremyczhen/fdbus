@@ -107,7 +107,7 @@ protected:
             case NFdbBase::REQ_LOGGER_CONFIG:
             {
                 NFdbBase::FdbMsgLogConfig in_config;
-                CFdbSimpleMsgParser parser(in_config);
+                CFdbParcelableParser parser(in_config);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CLogServer: Unable to deserialize message!\n");
@@ -125,7 +125,7 @@ protected:
 
                 NFdbBase::FdbMsgLogConfig out_config;
                 fillLoggerConfigs(out_config);
-                CFdbSimpleMsgBuilder builder(out_config);
+                CFdbParcelableBuilder builder(out_config);
                 broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
                 msg->reply(msg_ref);
             }
@@ -146,7 +146,7 @@ protected:
             case NFdbBase::REQ_TRACE_CONFIG:
             {
                 NFdbBase::FdbTraceConfig in_config;
-                CFdbSimpleMsgParser parser(in_config);
+                CFdbParcelableParser parser(in_config);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CLogServer: Unable to deserialize message!\n");
@@ -159,7 +159,7 @@ protected:
 
                 NFdbBase::FdbTraceConfig out_config;
                 fillTraceConfigs(out_config);
-                CFdbSimpleMsgBuilder builder(out_config);
+                CFdbParcelableBuilder builder(out_config);
                 broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
                 msg->reply(msg_ref);
             }
@@ -181,7 +181,7 @@ protected:
                 {
                     NFdbBase::FdbMsgLogConfig cfg;
                     fillLoggerConfigs(cfg);
-                    CFdbSimpleMsgBuilder builder(cfg);
+                    CFdbParcelableBuilder builder(cfg);
                     msg->broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
                 }
                 break;
@@ -189,7 +189,7 @@ protected:
                 {
                     NFdbBase::FdbTraceConfig cfg;
                     fillTraceConfigs(cfg);
-                    CFdbSimpleMsgBuilder builder(cfg);
+                    CFdbParcelableBuilder builder(cfg);
                     msg->broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
                 }
                 break;
@@ -205,7 +205,7 @@ protected:
                     {
                         NFdbBase::FdbMsgLogConfig cfg;
                         fillLoggerConfigs(cfg);
-                        CFdbSimpleMsgBuilder builder(cfg);
+                        CFdbParcelableBuilder builder(cfg);
                         broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
                     }
                 }
@@ -222,7 +222,7 @@ protected:
                     {
                         NFdbBase::FdbTraceConfig cfg;
                         fillTraceConfigs(cfg);
-                        CFdbSimpleMsgBuilder builder(cfg);
+                        CFdbParcelableBuilder builder(cfg);
                         broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
                     }
                 }
@@ -248,7 +248,7 @@ protected:
             {
                 NFdbBase::FdbMsgLogConfig cfg;
                 fillLoggerConfigs(cfg);
-                CFdbSimpleMsgBuilder builder(cfg);
+                CFdbParcelableBuilder builder(cfg);
                 broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
             }
         }
@@ -263,7 +263,7 @@ protected:
             {
                 NFdbBase::FdbTraceConfig cfg;
                 fillTraceConfigs(cfg);
-                CFdbSimpleMsgBuilder builder(cfg);
+                CFdbParcelableBuilder builder(cfg);
                 broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
             }
         }

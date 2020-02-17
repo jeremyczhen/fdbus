@@ -60,7 +60,7 @@ protected:
             case NFdbBase::REQ_QUERY_SERVICE:
             {
                 NFdbBase::FdbMsgServiceTable svc_tbl;
-                CFdbSimpleMsgParser parser(svc_tbl);
+                CFdbParcelableParser parser(svc_tbl);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgServiceTable.\n");
@@ -114,7 +114,7 @@ protected:
             case NFdbBase::NTF_SERVICE_ONLINE_MONITOR:
             {
                 NFdbBase::FdbMsgAddressList msg_addr_list;
-                CFdbSimpleMsgParser parser(msg_addr_list);
+                CFdbParcelableParser parser(msg_addr_list);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CNameServerProxy: unable to decode NFdbBase::FdbMsgAddressList.\n");

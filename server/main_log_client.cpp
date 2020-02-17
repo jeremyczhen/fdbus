@@ -149,14 +149,14 @@ protected:
             NFdbBase::FdbMsgLogConfig msg_cfg;
             fillLoggerConfigs(msg_cfg);
             {
-            CFdbSimpleMsgBuilder builder(msg_cfg);
+            CFdbParcelableBuilder builder(msg_cfg);
             invoke(NFdbBase::REQ_LOGGER_CONFIG, builder);
             }
 
             NFdbBase::FdbTraceConfig trace_cfg;
             fillTraceConfigs(trace_cfg);
             {
-            CFdbSimpleMsgBuilder builder(trace_cfg);
+            CFdbParcelableBuilder builder(trace_cfg);
             invoke(NFdbBase::REQ_TRACE_CONFIG, builder);
             }
         }

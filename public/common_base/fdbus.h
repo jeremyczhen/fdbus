@@ -59,5 +59,6 @@
 #include "CFdbRawMsgBuilder.h"
 #include "IFdbMsgBuilder.h"
 #include "fdb_log_trace.h"
+#include "CFdbSimpleSerializer.h"
 
 #endif

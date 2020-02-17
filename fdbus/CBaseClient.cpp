@@ -345,7 +345,7 @@ void CBaseClient::updateSecurityLevel()
         {
             authen.token_list().add_tokens(*it);
         }
-        CFdbSimpleMsgBuilder builder(authen);
+        CFdbParcelableBuilder builder(authen);
         sendSideband(FDB_SIDEBAND_AUTH, builder);
     }
 }

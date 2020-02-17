@@ -190,7 +190,7 @@ void CFdbSession::onInput(bool &io_error)
     }
 
     NFdbBase::CFdbMessageHeader head;
-    CFdbSimpleMsgParser parser(head);
+    CFdbParcelableParser parser(head);
     if (parser.parse(head_start, prefix.mHeadLength) < 0)
     {
         LOG_E("CFdbSession: Session %d: Unable to deserialize message head!\n", mSid);

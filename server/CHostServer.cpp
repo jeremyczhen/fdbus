@@ -82,7 +82,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
-    CFdbSimpleMsgParser parser(host_addr);
+    CFdbParcelableParser parser(host_addr);
     if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
@@ -125,7 +125,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 
     NFdbBase::FdbMsgHostRegisterAck ack;
     populateTokens(info.mTokens, ack);
-    CFdbSimpleMsgBuilder builder(ack);
+    CFdbParcelableBuilder builder(ack);
     msg->reply(msg_ref, builder);
 
     if (mHostTbl.size() == 1)
@@ -181,13 +181,13 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
         {
             CFdbSession *session = *it;
             addToken(session, info, *addr);
-            CFdbSimpleMsgBuilder builder(addr_list);
+            CFdbParcelableBuilder builder(addr_list);
             broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_HOST_ONLINE, builder);
         }
     }
     else
     {
-        CFdbSimpleMsgBuilder builder(addr_list);
+        CFdbParcelableBuilder builder(addr_list);
         broadcast(NFdbBase::NTF_HOST_ONLINE, builder);
     }
 }
@@ -196,7 +196,7 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
-    CFdbSimpleMsgParser parser(host_addr);
+    CFdbParcelableParser parser(host_addr);
     if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
@@ -256,7 +256,7 @@ void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *
     }
     if (!addr_list.address_list().empty())
     {
-        CFdbSimpleMsgBuilder builder(addr_list);
+        CFdbParcelableBuilder builder(addr_list);
         msg->broadcast(NFdbBase::NTF_HOST_ONLINE, builder);
     }
 }

@@ -51,6 +51,12 @@ CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbPar
     return serializer;
 }
 
+CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable *data)
+{
+    data->serialize(serializer);
+    return serializer;
+}
+
 int32_t CFdbSimpleSerializer::toBuffer(uint8_t *buffer, int32_t size)
 {
     if (size > (int32_t)mPos)
@@ -186,6 +192,12 @@ CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::st
 CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable &data)
 {
     data.deserialize(deserializer);
+    return deserializer;
+}
+
+CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable *data)
+{
+    data->deserialize(deserializer);
     return deserializer;
 }
 

@@ -20,6 +20,21 @@
 static CBaseWorker sender("peer1");
 static CBaseWorker receiver("peer2");
 
+class C1 : public IFdbParcelable
+{
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << a << b;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> a >> b;
+    }
+public:
+    int a;
+    CFdbParcelableArray b;
+};
+
 /* create a job which print message at worker thread */
 class CGreetingJob : public CBaseJob
 {
@@ -94,6 +109,15 @@ int main(int argc, char **argv)
     FDB_CONTEXT->start();
     sender.start(); /* start sender worker thread */
     receiver.start(); /* start receiver worker thread */
+
+    C1 a;
+    IFdbParcelable **x;
+    x = a.b.Add();
+    *x = new C1();
+
+    CFdbSimpleMsgBuilder<int> o(3);
+    int p;
+    CFdbSimpleMsgParser<int &>q(p);
 
     for (int i = 0; i < 20; ++i)
     {

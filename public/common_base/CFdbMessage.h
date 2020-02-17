@@ -93,7 +93,7 @@ struct CFdbMsgMetadata
 
 #define FDB_BEGIN_FOREACH_SIGNAL_WITH_RETURN(_msg, _sub_item, _error)     do { \
     CFdbMsgSubscribeList _subscribe_msg; \
-    CFdbSimpleMsgParser _parser(_subscribe_msg); \
+    CFdbParcelableParser _parser(_subscribe_msg); \
     if (!_msg->deserialize(_parser)) \
     { \
         _error = -1; \

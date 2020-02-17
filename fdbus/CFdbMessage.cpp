@@ -498,7 +498,7 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
         }
     }
 
-    CFdbSimpleMsgBuilder builder(msg_hdr);
+    CFdbParcelableBuilder builder(msg_hdr);
     int32_t head_size = builder.build();
     if ((head_size > mMaxHeadSize) || (head_size < 0))
     {
@@ -778,7 +778,7 @@ void CFdbMessage::setErrorMsg(EFdbMessageType type, int32_t error_code, const ch
     {
         error_info.set_description(description);
     }
-    CFdbSimpleMsgBuilder builder(error_info);
+    CFdbParcelableBuilder builder(error_info);
     serialize(builder);
 }
 
@@ -882,7 +882,7 @@ void CFdbMessage::parseTimestamp(const CFdbMsgMetadata &metadata
 bool CFdbMessage::decodeStatus(int32_t &error_code, std::string &description)
 {
     NFdbBase::FdbMsgErrorInfo error_msg;
-    CFdbSimpleMsgParser parser(error_msg);
+    CFdbParcelableParser parser(error_msg);
     bool ret = deserialize(parser);
     if (ret)
     {

@@ -20,15 +20,16 @@
 #include "IFdbMsgBuilder.h"
 #include "CFdbSimpleSerializer.h"
 
+template <typename T>
 class CFdbSimpleMsgBuilder : public IFdbMsgBuilder
 {
 public:
-    CFdbSimpleMsgBuilder(const IFdbParcelable &message)
+    CFdbSimpleMsgBuilder(T message)
         : mMessage(message)
     {}
     int32_t build()
     {
-        mMessage.serialize(mSerializer);
+        mSerializer << mMessage;
         return mSerializer.bufferSize();
     }
     void toBuffer(uint8_t *buffer, int32_t size)
@@ -44,19 +45,22 @@ protected:
     CFdbSimpleSerializer mSerializer;
  
 private:
-    const IFdbParcelable &mMessage;
+    T mMessage;
 };
 
+typedef CFdbSimpleMsgBuilder<const IFdbParcelable &> CFdbParcelableBuilder;
+
+template <typename T>
 class CFdbSimpleMsgParser : public IFdbMsgParser
 {
 public:
-    CFdbSimpleMsgParser(IFdbParcelable &message)
+    CFdbSimpleMsgParser(T message)
         : mMessage(message)
     {}
     int32_t parse(const uint8_t *buffer, int32_t size)
     {
         mDeserializer.reset(buffer, size);
-        mMessage.deserialize(mDeserializer);
+        mDeserializer >> mMessage;
         return mDeserializer.error() ? -1 : mDeserializer.index();
     }
     CFdbSimpleDeserializer &deserializer()
@@ -68,7 +72,9 @@ protected:
     CFdbSimpleDeserializer mDeserializer;
  
 private:
-    IFdbParcelable &mMessage;
+    T mMessage;
 };
+
+typedef CFdbSimpleMsgParser<IFdbParcelable &> CFdbParcelableParser;
 
 #endif

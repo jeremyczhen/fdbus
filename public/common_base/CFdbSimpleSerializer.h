@@ -25,6 +25,19 @@
 typedef uint16_t fdb_ser_strlen_t;
 typedef uint16_t fdb_ser_arrlen_t;
 
+class CFdbSimpleSerializer;
+class CFdbSimpleDeserializer;
+class IFdbParcelable
+{
+public:
+    virtual ~IFdbParcelable()
+    {}
+    
+    virtual void serialize(CFdbSimpleSerializer &serializer) const = 0;
+    virtual void deserialize(CFdbSimpleDeserializer &deserializer) = 0;
+};
+
+
 template<typename T>
 class CFdbScalarArray
 {
@@ -202,7 +215,8 @@ public:
         tPool mPool;
 };
 
-class IFdbParcelable;
+typedef CFdbComplexArray<IFdbParcelable *> CFdbParcelableArray;
+
 class CFdbSimpleSerializer
 {
 public:
@@ -276,12 +290,24 @@ public:
         for (typename CFdbComplexArray<T>::tPool::const_iterator it = data.pool().begin();
                 it != data.pool().end(); ++it)
         {
-            it->serialize(serializer);
+            serializer << (*it);
+        }
+        return serializer;
+    }
+
+    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const CFdbComplexArray<IFdbParcelable *> &data)
+    {
+        serializer << (fdb_ser_arrlen_t)data.size();
+        for (typename CFdbComplexArray<IFdbParcelable *>::tPool::const_iterator it = data.pool().begin();
+                it != data.pool().end(); ++it)
+        {
+            serializer << (**it);
         }
         return serializer;
     }
 
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable &data);
+    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable *data);
 
     int32_t toBuffer(uint8_t *buffer, int32_t size);
     uint8_t *buffer() const
@@ -406,7 +432,30 @@ public:
                 return deserializer;
             }
             T &value = data.vpool()[i];
-            value.deserialize(deserializer);
+            deserializer >> value;
+        }
+        
+        return deserializer;
+    }
+
+    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, CFdbComplexArray<IFdbParcelable *> &data)
+    {
+        if (deserializer.mError)
+        {
+            return deserializer;
+        }
+        
+        fdb_ser_arrlen_t size = 0;
+        deserializer >> size;
+        data.resize(size);
+        for (fdb_ser_arrlen_t i = 0; i < size; ++i)
+        {
+            if (deserializer.mError)
+            {
+                return deserializer;
+            }
+            IFdbParcelable *value = data.vpool()[i];
+            deserializer >> value;
         }
         
         return deserializer;
@@ -415,6 +464,7 @@ public:
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::string& data);
     
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable &data);
+    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable *data);
 
     bool error() const
     {
@@ -462,16 +512,6 @@ private:
         }
         retrieveBasicData((uint8_t *)&data, size);
     }
-};
-
-class IFdbParcelable
-{
-public:
-    virtual ~IFdbParcelable()
-    {}
-    
-    virtual void serialize(CFdbSimpleSerializer &serializer) const = 0;
-    virtual void deserialize(CFdbSimpleDeserializer &deserializer) = 0;
 };
 
 #endif

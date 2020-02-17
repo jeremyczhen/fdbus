@@ -65,7 +65,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_LOGGER_CONFIG:
         {
             NFdbBase::FdbMsgLogConfig cfg;
-            CFdbSimpleMsgParser parser(cfg);
+            CFdbParcelableParser parser(cfg);
             if (!msg->deserialize(parser))
             {
                 LOG_E("CLogProducer: Unable to deserialize FdbMsgLogConfig!\n");
@@ -86,7 +86,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_TRACE_CONFIG:
         {
             NFdbBase::FdbTraceConfig cfg;
-            CFdbSimpleMsgParser parser(cfg);
+            CFdbParcelableParser parser(cfg);
             if (!msg->deserialize(parser))
             {
                 LOG_E("CLogProducer: Unable to deserialize FdbTraceConfig!\n");

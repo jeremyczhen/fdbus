@@ -311,7 +311,7 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
         case FDB_SIDEBAND_AUTH:
         {
             NFdbBase::FdbAuthentication authen;
-            CFdbSimpleMsgParser parser(authen);
+            CFdbParcelableParser parser(authen);
             if (!msg->deserialize(parser))
             {
                 msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);

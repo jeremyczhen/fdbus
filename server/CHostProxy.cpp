@@ -96,7 +96,7 @@ void CHostProxy::onOffline(FdbSessionId_t sid, bool is_last)
     
     NFdbBase::FdbMsgHostAddressList host_list;
     getHostTbl(host_list);
-    CFdbSimpleMsgBuilder builder(host_list);
+    CFdbParcelableBuilder builder(host_list);
     mNameServer->broadcast(NFdbBase::NTF_HOST_ONLINE_LOCAL, builder);
 
     LOG_E("CHostProxy: Name Proxy: Fail to connect address: %s. Reconnecting...\n",
@@ -141,7 +141,7 @@ void CHostProxy::onReply(CBaseJob::Ptr &msg_ref)
         case NFdbBase::REQ_REGISTER_HOST:
         {
             NFdbBase::FdbMsgHostRegisterAck ack;
-            CFdbSimpleMsgParser parser(ack);
+            CFdbParcelableParser parser(ack);
             if (!msg->deserialize(parser))
             {
                 return;
@@ -173,7 +173,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     {
         return; //never happen!!!
     }
-    CFdbSimpleMsgParser parser(host_list);
+    CFdbParcelableParser parser(host_list);
     if (!msg->deserialize(parser))
     {
         return;
@@ -186,7 +186,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE, registered_service_tbl);
     tFdbFilterSets monitored_service_tbl;
     mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, monitored_service_tbl);
-    CFdbSimpleMsgBuilder builder(host_list);
+    CFdbParcelableBuilder builder(host_list);
     mNameServer->broadcast(NFdbBase::NTF_HOST_ONLINE_LOCAL, builder);
     CFdbComplexArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
     for (CFdbComplexArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
@@ -290,7 +290,7 @@ void CHostProxy::hostOnline(FdbMsgCode_t code)
     host_addr.set_ip_address(host_ip);
     host_addr.set_host_name(hostName());
     host_addr.set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
-    CFdbSimpleMsgBuilder builder(host_addr);
+    CFdbParcelableBuilder builder(host_addr);
     invoke(code, builder);
 }
 
@@ -386,7 +386,7 @@ void CHostProxy::queryServiceReq(CBaseJob::Ptr &msg_ref)
     {
         NFdbBase::FdbMsgServiceTable svc_tbl;
         mNameServer->populateServerTable(session, svc_tbl, true);
-        CFdbSimpleMsgBuilder builder(svc_tbl);
+        CFdbParcelableBuilder builder(svc_tbl);
         msg->reply(msg_ref, builder);
         return;
     }
@@ -430,7 +430,7 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
     if (query->mPendingReqTbl->empty())
     {
         CFdbMessage *msg = castToMessage<CFdbMessage *>(query->mReq);
-        CFdbSimpleMsgBuilder builder(*query->mSvcTbl);
+        CFdbParcelableBuilder builder(*query->mSvcTbl);
         msg->reply(query->mReq, builder);
         delete query->mPendingReqTbl;
         delete query->mSvcTbl;

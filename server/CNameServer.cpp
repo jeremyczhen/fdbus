@@ -199,7 +199,7 @@ void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServerName svc_name;
     FdbSessionId_t sid = msg->session();
-    CFdbSimpleMsgParser parser(svc_name);
+    CFdbParcelableParser parser(svc_name);
     if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
@@ -221,7 +221,7 @@ void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
         return;
     }
 
-    CFdbSimpleMsgBuilder builder(reply_addr_list);
+    CFdbParcelableBuilder builder(reply_addr_list);
     msg->reply(msg_ref, builder);
 }
 
@@ -293,7 +293,7 @@ void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
     if (session)
     {    
         populateTokensRemote(tokens, addr_list, session);
-        CFdbSimpleMsgBuilder builder(addr_list);
+        CFdbParcelableBuilder builder(addr_list);
         msg->broadcast(NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE, builder, svc_name);
         addr_list.token_list().clear_tokens();
     }
@@ -305,7 +305,7 @@ void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
 {
     const char *svc_name = addr_list.service_name().c_str();
     populateTokensRemote(tokens, addr_list, session);
-    CFdbSimpleMsgBuilder builder(addr_list);
+    CFdbParcelableBuilder builder(addr_list);
     broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE,
               builder, svc_name);
     addr_list.token_list().clear_tokens();
@@ -352,7 +352,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
     if (session)
     {    
         populateTokensLocal(tokens, addr_list, session);
-        CFdbSimpleMsgBuilder builder(addr_list);
+        CFdbParcelableBuilder builder(addr_list);
         msg->broadcast(NFdbBase::NTF_SERVICE_ONLINE, builder, svc_name);
         addr_list.token_list().clear_tokens();
     }
@@ -364,7 +364,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
 {
     const char *svc_name = addr_list.service_name().c_str();
     populateTokensLocal(tokens, addr_list, session);
-    CFdbSimpleMsgBuilder builder(addr_list);
+    CFdbParcelableBuilder builder(addr_list);
     broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_SERVICE_ONLINE,
               builder, svc_name);
     addr_list.token_list().clear_tokens();
@@ -387,7 +387,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgAddressList addr_list;
-    CFdbSimpleMsgParser parser(addr_list);
+    CFdbParcelableParser parser(addr_list);
     if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
@@ -544,13 +544,13 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         broadcast_all_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
         broadcast_all_addr_list.set_is_local(true);
         {
-        CFdbSimpleMsgBuilder builder(broadcast_all_addr_list);
+        CFdbParcelableBuilder builder(broadcast_all_addr_list);
         broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR,
                   builder, svc_name.c_str());
         }
         broadcast_all_addr_list.set_is_local(false);
         {
-        CFdbSimpleMsgBuilder builder(broadcast_all_addr_list);
+        CFdbParcelableBuilder builder(broadcast_all_addr_list);
         broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE,
                   builder, svc_name.c_str());
         }
@@ -636,7 +636,7 @@ void CNameServer::checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const cha
         addr_list.set_service_name(svc_name);
         addr_list.set_host_name((mHostProxy->hostName()));
         addr_list.set_is_local(true);
-        CFdbSimpleMsgBuilder builder(addr_list);
+        CFdbParcelableBuilder builder(addr_list);
         broadcast(NFdbBase::NTF_MORE_ADDRESS, builder, svc_name);
         LOG_E("CNameServer: Service %s: fail to bind address and retry...\n", svc_name);
     }
@@ -651,7 +651,7 @@ void CNameServer::notifyRemoteNameServerDrop(const char *host_name)
     broadcast_addr_list.set_host_name(host_name);
 
     broadcast_addr_list.set_is_local(false);
-    CFdbSimpleMsgBuilder builder(broadcast_addr_list);
+    CFdbParcelableBuilder builder(broadcast_addr_list);
     broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, builder, svc_name);
 }
 
@@ -670,7 +670,7 @@ void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
     broadcast_addr_list.token_list().clear_tokens(); // never broadcast token to monitors!!!
     broadcast_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     {
-    CFdbSimpleMsgBuilder builder(broadcast_addr_list);
+    CFdbParcelableBuilder builder(broadcast_addr_list);
     broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, builder, svc_name);
     }
 
@@ -681,7 +681,7 @@ void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
     broadcast_addr_list.token_list().clear_tokens(); // never broadcast token to monitors!!!
     broadcast_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
     {
-    CFdbSimpleMsgBuilder builder(broadcast_addr_list);
+    CFdbParcelableBuilder builder(broadcast_addr_list);
     broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, builder, svc_name);
     }
     
@@ -697,7 +697,7 @@ void CNameServer::onUnegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServerName msg_svc_name;
-    CFdbSimpleMsgParser parser(msg_svc_name);
+    CFdbParcelableParser parser(msg_svc_name);
     if (!msg->deserialize(parser))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
@@ -723,7 +723,7 @@ void CNameServer::onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref)
     NFdbBase::FdbMsgServiceTable svc_tbl;
     CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
     populateServerTable(session, svc_tbl, false);
-    CFdbSimpleMsgBuilder builder(svc_tbl);
+    CFdbParcelableBuilder builder(svc_tbl);
     msg->reply(msg_ref, builder);
 }
 
@@ -732,7 +732,7 @@ void CNameServer::onQueryHostReq(CBaseJob::Ptr &msg_ref)
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
-    CFdbSimpleMsgBuilder builder(host_tbl);
+    CFdbParcelableBuilder builder(host_tbl);
     msg->reply(msg_ref, builder);
 }
 
@@ -790,7 +790,7 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
     }
     else
     {
-        CFdbSimpleMsgBuilder builder(addr_list);
+        CFdbParcelableBuilder builder(addr_list);
         msg->broadcast(msg_code, builder, reg_it->first.c_str());
     }
 }
@@ -833,7 +833,7 @@ void CNameServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *
 {
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
-    CFdbSimpleMsgBuilder builder(host_tbl);
+    CFdbParcelableBuilder builder(host_tbl);
     msg->broadcast(sub_item->msg_code(), builder);
 }
 
@@ -841,7 +841,7 @@ void CNameServer::onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *su
 {
     NFdbBase::FdbMsgHostInfo msg_host_info;
     msg_host_info.set_name(mHostProxy->hostName());
-    CFdbSimpleMsgBuilder builder(msg_host_info);
+    CFdbParcelableBuilder builder(msg_host_info);
     msg->broadcast(sub_item->msg_code(), builder);
 }
 
