@@ -9,6 +9,7 @@ set(FDBUS_JAVA_SRC_DIR ${FDBUS_JAVA_SRC_ROOT}/ipc/fdbus)
 
 file(GLOB JNI_JAVA_SRC "${FDBUS_JAVA_SRC_DIR}/*.java")
 set(CMAKE_JAVA_INCLUDE_PATH ${FDBUS_JAVA_SRC_DIR})
+set(CMAKE_JAVA_COMPILE_FLAGS -Xlint:unchecked -Xlint:deprecation)
 
 add_jar(fdbus-jni-jar ${JNI_JAVA_SRC}
         OUTPUT_DIR ${PROJECT_ROOT}/build/install/usr/share/fdbus

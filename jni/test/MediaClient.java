@@ -24,6 +24,11 @@ import ipc.fdbus.Example.MyFdbusMessageEncoder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+/*
+import ipc.fdbus.FdbusSerializer;
+import ipc.fdbus.FdbusDeserializer;
+import ipc.fdbus.FdbusParcelable;
+*/
 
 public class MediaClient 
 {
@@ -166,6 +171,56 @@ public class MediaClient
         clt.client().setListener(clt);
         return clt;
     }
+    
+    /*
+    public static class my_data implements FdbusParcelable
+    {
+        public void serialize(FdbusSerializer serializer)
+        {
+            serializer.inS("my parcelable is called");
+        }
+        public void deserialize(FdbusDeserializer deserializer)
+        {
+            String s = deserializer.outS();
+            System.out.println(s);
+        }
+    }
+    private static void ser_test()
+    {
+        String a = "hello, world";
+        FdbusSerializer s = new FdbusSerializer();
+        String[] i2 = new String[3];
+        i2[0] = "hahahaha";
+        i2[1] = "hehehehe";
+        i2[2] = "huhuhuhu";
+        s.inS(i2);
+        s.in32(12);
+        s.in8(255);
+        s.inS(a);
+        s.in16(34567);
+        s.inS(a);
+        s.in64(1234);
+        my_data[] i1 = new my_data[2];
+        i1[0] = new my_data();
+        i1[1] = new my_data();
+        s.in(i1);
+
+        FdbusDeserializer d = new FdbusDeserializer(s.export());
+        String[] o0 = d.outSA();
+        for (int i = 0; i < o0.length; ++i)
+        {
+            System.out.println(o0[i]);
+        }
+        int o1 = d.out32();
+        int o2 = d.out8();
+        String o3 = d.outS();
+        int o4 = d.out16();
+        String o5 = d.outS();
+        long o6 = d.out64();
+        FdbusParcelable[] o7 = d.outA(my_data.class);
+        System.out.println("output: " + o1 +", " + o2 + ", " + o3 + ", " + o4 + ", " + o5 + ", " + o6);
+    }
+    */
 
     public static void main(String[] args)
     {
