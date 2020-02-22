@@ -19,6 +19,7 @@
 
 #include <list>
 #include <set>
+#include <vector>
 #include "CBaseSysDep.h"
 #include "CBaseEventLoop.h"
 #include "CEventFd.h"
@@ -39,6 +40,8 @@ public:
 protected:
     typedef std::list< CSysFdWatch *> tCFdWatchList;
     typedef std::set<CSysFdWatch *> tWatchTbl;
+    typedef std::vector<CSysFdWatch *> tWatchPollTbl;
+    typedef std::vector<pollfd> tFdPollTbl;
 
     bool watchDestroyed(CSysFdWatch *watch);
     void addWatchToBlacklist(CSysFdWatch *watch);
@@ -49,18 +52,20 @@ protected:
     }
 
     pollfd *mFds;
-    int32_t mFdsSize;
+    tFdPollTbl mPollFds;
     tCFdWatchList mWatchList;
     tCFdWatchList mWatchWorkingList;
-    CSysFdWatch **mWatches;
+    tWatchPollTbl mPollWatches;
     tWatchTbl *mWatchBlackList;
 private:
-    int32_t buildFdArray();
-    void processWatches(int32_t nr_watches);
-    bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);
-
     CNotifyFdWatch *mNotifyWatch;
     CEventFd mEventFd;
+    bool mRebuildPollFd;
+    void buildFdArray();
+    void processWatches();
+    bool registerWatch(CSysFdWatch *watch, bool enable);
+    bool enableWatch(CSysFdWatch *watch, bool enable);
+    bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);
 
     friend CSysFdWatch;
     friend CNotifyFdWatch;

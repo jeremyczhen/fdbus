@@ -38,7 +38,7 @@ CSysFdWatch::~CSysFdWatch()
 
 void CSysFdWatch::enable(bool enb)
 {
-    mEventLoop->addWatchToList(mEventLoop->mWatchWorkingList, this, enb);
+    mEventLoop->enableWatch(this, enb);
     mEnable = enb;
 }
 
@@ -77,25 +77,15 @@ private:
 };
 
 CFdEventLoop::CFdEventLoop()
-    : mFds(0)
-    , mFdsSize(0)
-    , mWatches(0)
-    , mWatchBlackList(0)
+    : mWatchBlackList(0)
     , mNotifyWatch(0)
+    , mRebuildPollFd(false)
 {
 }
 
 CFdEventLoop::~CFdEventLoop()
 {
     uninstallWatches();
-    if (mFds)
-    {
-        free(mFds);
-    }
-    if (mWatches)
-    {
-        free(mWatches);
-    };
     if (mNotifyWatch)
     {
         delete mNotifyWatch;
@@ -120,21 +110,16 @@ void CFdEventLoop::addWatchToBlacklist(CSysFdWatch *watch)
     }
 }
 
-int32_t CFdEventLoop::buildFdArray()
+void CFdEventLoop::buildFdArray()
 {
-    int32_t size = (int32_t)mWatchWorkingList.size();
-    if (!size)
+    if (!mRebuildPollFd)
     {
-        return 0;
+        return;
     }
-    if (size != mFdsSize)
-    {
-        mFds = (pollfd *)realloc(mFds, size * sizeof(pollfd));
-        mWatches = (CSysFdWatch **)realloc(mWatches, size * sizeof(CSysFdWatch *));
-        mFdsSize = size;
-    }
+    mRebuildPollFd = false;
+    mPollFds.clear();
+    mPollWatches.clear();
 
-    int32_t nfd = 0;
     for (tCFdWatchList::iterator wi = mWatchWorkingList.begin(); wi != mWatchWorkingList.end(); ++wi)
     {
         int fd = (*wi)->descriptor();
@@ -143,16 +128,18 @@ int32_t CFdEventLoop::buildFdArray()
             LOG_E("CFdEventLoop: Bad file descriptor: %d!\n", fd);
             continue;
         }
-        mFds[nfd].fd = fd;
-        mFds[nfd].events = (int16_t)(*wi)->flags();
-        mFds[nfd].revents = 0;
-        mWatches[nfd] = *wi;
-        ++nfd;
+
+        pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = (int16_t)(*wi)->flags();
+        pfd.revents = 0;
+        mPollFds.push_back(pfd);
+
+        mPollWatches.push_back(*wi);
     }
-    return nfd;
 }
 
-void CFdEventLoop::processWatches(int32_t nr_watches)
+void CFdEventLoop::processWatches()
 {
     tWatchTbl watch_black_list;
     enableWatchBlackList(&watch_black_list);
@@ -160,14 +147,18 @@ void CFdEventLoop::processWatches(int32_t nr_watches)
      * Since the first fd is for job processing and might delete other watches,
      * handle it at last.
      */
-    for (int32_t j = (nr_watches - 1); j >= 0; --j)
+    tWatchPollTbl::reverse_iterator wit;
+    tFdPollTbl::reverse_iterator fdit;
+    for (wit = mPollWatches.rbegin(), fdit = mPollFds.rbegin();
+           wit != mPollWatches.rend(); ++wit, ++fdit)
     {
-        CSysFdWatch *w = mWatches[j];
+        CSysFdWatch *w = *wit;
         if (watchDestroyed(w))
         {
             continue;
         }
-        int32_t events = w->convertRetEvents(mFds[j].revents);
+        int32_t events = w->convertRetEvents(fdit->revents);
+        fdit->revents = 0;
         if (events & (POLLIN | POLLOUT | POLLERR | POLLHUP))
         {
             bool io_error = false;
@@ -254,8 +245,8 @@ void CFdEventLoop::processWatches(int32_t nr_watches)
 
 void CFdEventLoop::dispatch()
 {
-    int32_t nfd = buildFdArray();
-    if (!nfd)
+    buildFdArray();
+    if (!mPollFds.size())
     {
         LOG_E("CFdEventLoop: no watch fds enabled!\n");
         // avoid exhaustive of CPU power
@@ -264,14 +255,14 @@ void CFdEventLoop::dispatch()
     }
 
     int32_t wait_time = getMostRecentTime();
-    int ret = poll(mFds, nfd, wait_time);
+    int ret = poll(mPollFds.data(), mPollFds.size(), wait_time);
     if (ret == 0) // timeout
     {
         processTimers();
     }
     else if (ret > 0) // watch ready
     {
-        processWatches(nfd);
+        processWatches();
     }
     else
     {
@@ -283,7 +274,7 @@ void CFdEventLoop::dispatch()
 
 void CFdEventLoop::addWatch(CSysFdWatch *watch, bool enb)
 {
-    addWatchToList(mWatchList, watch, true);
+    registerWatch(watch, true);
     watch->eventloop(this);
     watch->enable(enb);
 }
@@ -291,7 +282,7 @@ void CFdEventLoop::addWatch(CSysFdWatch *watch, bool enb)
 void CFdEventLoop::removeWatch(CSysFdWatch *watch)
 {
     addWatchToBlacklist(watch);
-    addWatchToList(mWatchList, watch, false);
+    registerWatch(watch, false);
     watch->enable(false);
     watch->eventloop(0);
 }
@@ -317,6 +308,17 @@ bool CFdEventLoop::addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool
         }
     }
     return did;
+}
+
+bool CFdEventLoop::registerWatch(CSysFdWatch *watch, bool enable)
+{
+    return addWatchToList(mWatchList, watch, enable);
+}
+
+bool CFdEventLoop::enableWatch(CSysFdWatch *watch, bool enable)
+{
+    mRebuildPollFd = true;
+    return addWatchToList(mWatchWorkingList, watch, enable);
 }
 
 void CFdEventLoop::uninstallWatches()
