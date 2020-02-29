@@ -37,186 +37,6 @@ public:
     virtual void deserialize(CFdbSimpleDeserializer &deserializer) = 0;
 };
 
-
-template<typename T>
-class CFdbScalarArray
-{
-public:
-    typedef T tData;
-    typedef std::vector<tData> tPool;
-    
-    CFdbScalarArray()
-    {}
-    CFdbScalarArray(uint32_t size) : mPool(size)
-    {}
-    CFdbScalarArray(const tPool &x) : mPool(x)
-    {}
-
-    uint32_t size() const
-    {
-        return (uint32_t)mPool.size();
-    }
-
-    bool empty() const
-    {
-        return mPool.empty();
-    }
-
-    void clear()
-    {
-        mPool.clear();
-    }
-
-    void resize(uint32_t size)
-    {
-        mPool.resize((uint32_t)size);
-    }
-
-    void Add(tData &element)
-    {
-        mPool.push_back(element);
-    }
-
-    tData *Add()
-    {
-        mPool.resize(mPool.size() + 1);
-        return &(mPool.back());
-    }
-
-    const tPool &pool() const
-    {
-        return mPool;
-    }
-
-    tPool &vpool()
-    {
-        return mPool;
-    }
-    
-private:
-    tPool mPool;
-};
-
-template<>
-class CFdbScalarArray<std::string>
-{
-public:
-    typedef std::string tData;
-    typedef std::vector<tData> tPool;
-    
-    CFdbScalarArray()
-    {}
-    CFdbScalarArray(uint32_t size) : mPool(size)
-    {}
-    CFdbScalarArray(const tPool &x) : mPool(x)
-    {}
-
-    uint32_t size() const
-    {
-        return (uint32_t)mPool.size();
-    }
-
-    bool empty() const
-    {
-        return mPool.empty();
-    }
-
-    void clear()
-    {
-        mPool.clear();
-    }
-
-    void resize(uint32_t size)
-    {
-        mPool.resize((uint32_t)size);
-    }
-
-    void Add(const tData &element)
-    {
-        mPool.push_back(element);
-    }
-
-    tData *Add()
-    {
-        mPool.resize(mPool.size() + 1);
-        return &(mPool.back());
-    }
-
-    void Add(const char *element)
-    {
-        mPool.push_back(element);
-    }
-
-    const tPool &pool() const
-    {
-        return mPool;
-    }
-
-    tPool &vpool()
-    {
-        return mPool;
-    }
-
-private:
-    tPool mPool;
-};
-
-template<typename T>
-class CFdbComplexArray
-{
-public:
-    typedef T tData;
-    typedef std::vector<tData> tPool;
-    
-    CFdbComplexArray()
-    {}
-    CFdbComplexArray(uint32_t size) : mPool(size)
-    {}
-    CFdbComplexArray(const tPool &x) : mPool(x)
-    {}
-
-    uint32_t size() const
-    {
-        return (uint32_t)mPool.size();
-    }
-
-    bool empty() const
-    {
-        return mPool.empty();
-    }
-
-    void clear()
-    {
-        mPool.clear();
-    }
-
-    void resize(uint32_t size)
-    {
-        mPool.resize((uint32_t)size);
-    }
-
-    tData *Add()
-    {
-        mPool.resize(mPool.size() + 1);
-        return &(mPool.back());
-    }
-
-    const tPool &pool() const
-    {
-        return mPool;
-    }
-
-    tPool &vpool()
-    {
-        return mPool;
-    }
-
-    private:
-        tPool mPool;
-};
-
-typedef CFdbComplexArray<IFdbParcelable *> CFdbParcelableArray;
-
 class CFdbSimpleSerializer
 {
 public:
@@ -271,40 +91,6 @@ public:
 
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const std::string& data);
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const char *data);
-
-    template<typename T>
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const CFdbScalarArray<T> &data)
-    {
-        serializer << (fdb_ser_arrlen_t)data.size();
-        for (typename CFdbScalarArray<T>::tPool::const_iterator it = data.pool().begin(); it != data.pool().end(); ++it)
-        {
-            serializer << *it;
-        }
-        return serializer;
-    }
-
-    template<typename T>
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const CFdbComplexArray<T> &data)
-    {
-        serializer << (fdb_ser_arrlen_t)data.size();
-        for (typename CFdbComplexArray<T>::tPool::const_iterator it = data.pool().begin();
-                it != data.pool().end(); ++it)
-        {
-            serializer << (*it);
-        }
-        return serializer;
-    }
-
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const CFdbComplexArray<IFdbParcelable *> &data)
-    {
-        serializer << (fdb_ser_arrlen_t)data.size();
-        for (typename CFdbComplexArray<IFdbParcelable *>::tPool::const_iterator it = data.pool().begin();
-                it != data.pool().end(); ++it)
-        {
-            serializer << (**it);
-        }
-        return serializer;
-    }
 
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable &data);
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable *data);
@@ -390,79 +176,7 @@ public:
         return deserializer;
     }
 
-    template<typename T>
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, CFdbScalarArray<T> &data)
-    {
-        if (deserializer.mError)
-        {
-            return deserializer;
-        }
-        
-        fdb_ser_arrlen_t size = 0;
-        deserializer >> size;
-        data.resize(size);
-        for (fdb_ser_arrlen_t i = 0; i < size; ++i)
-        {
-            if (deserializer.mError)
-            {
-                return deserializer;
-            }
-            T &value = data.vpool()[i];
-            deserializer >> value;
-        }
-        
-        return deserializer;
-    }
-
-    template<typename T>
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, CFdbComplexArray<T> &data)
-    {
-        if (deserializer.mError)
-        {
-            return deserializer;
-        }
-        
-        fdb_ser_arrlen_t size = 0;
-        deserializer >> size;
-        data.resize(size);
-        for (fdb_ser_arrlen_t i = 0; i < size; ++i)
-        {
-            if (deserializer.mError)
-            {
-                return deserializer;
-            }
-            T &value = data.vpool()[i];
-            deserializer >> value;
-        }
-        
-        return deserializer;
-    }
-
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, CFdbComplexArray<IFdbParcelable *> &data)
-    {
-        if (deserializer.mError)
-        {
-            return deserializer;
-        }
-        
-        fdb_ser_arrlen_t size = 0;
-        deserializer >> size;
-        data.resize(size);
-        for (fdb_ser_arrlen_t i = 0; i < size; ++i)
-        {
-            if (deserializer.mError)
-            {
-                return deserializer;
-            }
-            IFdbParcelable *value = data.vpool()[i];
-            deserializer >> value;
-        }
-        
-        return deserializer;
-    }
-
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::string& data);
-    
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable &data);
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, IFdbParcelable *data);
 
@@ -511,6 +225,135 @@ private:
             return;
         }
         retrieveBasicData((uint8_t *)&data, size);
+    }
+};
+
+template<typename T>
+class CFdbRepeatedParcelable : public IFdbParcelable
+{
+public:
+    typedef T tData;
+    typedef std::vector<tData> tPool;
+
+    CFdbRepeatedParcelable()
+    {}
+    CFdbRepeatedParcelable(uint32_t size) : mPool(size)
+    {}
+    CFdbRepeatedParcelable(const tPool &x) : mPool(x)
+    {}
+
+    uint32_t size() const
+    {
+        return (uint32_t)mPool.size();
+    }
+
+    bool empty() const
+    {
+        return mPool.empty();
+    }
+
+    void clear()
+    {
+        mPool.clear();
+    }
+
+    void resize(uint32_t size)
+    {
+        mPool.resize((uint32_t)size);
+    }
+
+    void Add(const tData &element)
+    {
+        mPool.push_back(element);
+    }
+
+    tData *Add()
+    {
+        mPool.resize(mPool.size() + 1);
+        return &(mPool.back());
+    }
+
+    const tPool &pool() const
+    {
+        return mPool;
+    }
+
+    tPool &vpool()
+    {
+        return mPool;
+    }
+    
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << (fdb_ser_arrlen_t)mPool.size();
+        for (typename tPool::const_iterator it = mPool.begin(); it != mPool.end(); ++it)
+        {
+            serializer << *it;
+        }
+    }
+
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        if (deserializer.error())
+        {
+            return;
+        }
+        
+        fdb_ser_arrlen_t size = 0;
+        deserializer >> size;
+        mPool.resize(size);
+        for (fdb_ser_arrlen_t i = 0; i < size; ++i)
+        {
+            if (deserializer.error())
+            {
+                return;
+            }
+            T &value = mPool[i];
+            deserializer >> value;
+        }
+    }
+
+protected:
+    tPool mPool;
+};
+
+template<typename T>
+class CFdbParcelableArray : public CFdbRepeatedParcelable<T>
+{
+public:
+    CFdbParcelableArray()
+    {}
+    CFdbParcelableArray(uint32_t size) : CFdbRepeatedParcelable<T>(size)
+    {}
+    CFdbParcelableArray(const typename CFdbRepeatedParcelable<T>::tPool &x) : CFdbRepeatedParcelable<T>(x)
+    {}
+};
+
+template<>
+class CFdbParcelableArray<std::string> : public CFdbRepeatedParcelable<std::string>
+{
+public:
+    CFdbParcelableArray()
+    {}
+    CFdbParcelableArray(uint32_t size) : CFdbRepeatedParcelable<std::string>(size)
+    {}
+    CFdbParcelableArray(const typename CFdbRepeatedParcelable<std::string>::tPool &x) : CFdbRepeatedParcelable<std::string>(x)
+    {}
+
+    void Add(const std::string &element)
+    {
+        mPool.push_back(element);
+    }
+
+    std::string *Add()
+    {
+        mPool.resize(mPool.size() + 1);
+        return &(mPool.back());
+    }
+
+    void Add(const char *element)
+    {
+        mPool.push_back(element);
     }
 };
 

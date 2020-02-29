@@ -68,8 +68,8 @@ protected:
                 }
                 const char *prev_ip = "";
                 const char *prev_host = "";
-                CFdbComplexArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
-                for (CFdbComplexArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator svc_it = svc_list.vpool().begin();
+                CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
+                for (CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator svc_it = svc_list.vpool().begin();
                         svc_it != svc_list.vpool().end(); ++svc_it)
 
                 {
@@ -87,8 +87,8 @@ protected:
                         prev_host = host_addr.host_name().c_str();
                     }
                     std::cout << "    [" << service_addr.service_name() << "]" << std::endl;
-                    const CFdbScalarArray<std::string> &addr_list = service_addr.address_list();
-                    for (CFdbScalarArray<std::string>::tPool::const_iterator addr_it = addr_list.pool().begin();
+                    const CFdbParcelableArray<std::string> &addr_list = service_addr.address_list();
+                    for (CFdbParcelableArray<std::string>::tPool::const_iterator addr_it = addr_list.pool().begin();
                             addr_it != addr_list.pool().end(); ++addr_it)
 
                     {
@@ -133,8 +133,8 @@ protected:
                     std::cout << "[" << msg_addr_list.service_name()
                               << "]@" << msg_addr_list.host_name() << location
                               << " - Online" << std::endl;
-                    const CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
-                    for (CFdbScalarArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
+                    const CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
+                    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
                             it != addr_list.pool().end(); ++it)
                     {
                         std::cout << "    > " << *it << std::endl;

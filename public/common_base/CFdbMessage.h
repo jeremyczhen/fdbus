@@ -101,7 +101,7 @@ struct CFdbMsgMetadata
     else \
     { \
         _error = 0; \
-        for (CFdbComplexArray<CFdbMsgSubscribeItem>::tPool::const_iterator it = _subscribe_msg.subscribe_tbl().pool().begin(); it != _subscribe_msg.subscribe_tbl().pool().end(); ++it) \
+        for (CFdbParcelableArray<CFdbMsgSubscribeItem>::tPool::const_iterator it = _subscribe_msg.subscribe_tbl().pool().begin(); it != _subscribe_msg.subscribe_tbl().pool().end(); ++it) \
         { \
             _sub_item = &(*it);
 

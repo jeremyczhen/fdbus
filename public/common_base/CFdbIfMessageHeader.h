@@ -331,7 +331,7 @@ public:
     {
         mRawDataClippingSize = size;
     }
-    CFdbScalarArray<std::string> &host_white_list()
+    CFdbParcelableArray<std::string> &host_white_list()
     {
         return mHostWhiteList;
     }
@@ -343,7 +343,7 @@ public:
     {
         mHostWhiteList.Add(name);
     }
-    CFdbScalarArray<std::string> &endpoint_white_list()
+    CFdbParcelableArray<std::string> &endpoint_white_list()
     {
         return mEndpointWhiteList;
     }
@@ -355,7 +355,7 @@ public:
     {
         mEndpointWhiteList.Add(name);
     }
-    CFdbScalarArray<std::string> &busname_white_list()
+    CFdbParcelableArray<std::string> &busname_white_list()
     {
         return mBusnameWhiteList;
     }
@@ -399,9 +399,9 @@ private:
     bool mEnableBroadcast;
     bool mEnableSubscribe;
     int32_t mRawDataClippingSize;
-    CFdbScalarArray<std::string> mHostWhiteList;
-    CFdbScalarArray<std::string> mEndpointWhiteList;
-    CFdbScalarArray<std::string> mBusnameWhiteList;
+    CFdbParcelableArray<std::string> mHostWhiteList;
+    CFdbParcelableArray<std::string> mEndpointWhiteList;
+    CFdbParcelableArray<std::string> mBusnameWhiteList;
 };
 
 class FdbTraceConfig : public IFdbParcelable
@@ -423,7 +423,7 @@ public:
     {
         mLogLevel = level;
     }
-    CFdbScalarArray<std::string> &host_white_list()
+    CFdbParcelableArray<std::string> &host_white_list()
     {
         return mHostWhiteList;
     }
@@ -435,7 +435,7 @@ public:
     {
         mHostWhiteList.Add(name);
     }
-    CFdbScalarArray<std::string> &tag_white_list()
+    CFdbParcelableArray<std::string> &tag_white_list()
     {
         return mTagWhiteList;
     }
@@ -447,7 +447,7 @@ public:
     {
         mTagWhiteList.Add(name);
     }
-    CFdbScalarArray<std::string> &busname_white_list()
+    CFdbParcelableArray<std::string> &busname_white_list()
     {
         return mBusnameWhiteList;
     }
@@ -481,9 +481,9 @@ public:
 private:
     bool mGlobalEnable;
     EFdbLogLevel mLogLevel;
-    CFdbScalarArray<std::string> mHostWhiteList;
-    CFdbScalarArray<std::string> mTagWhiteList;
-    CFdbScalarArray<std::string> mBusnameWhiteList;
+    CFdbParcelableArray<std::string> mHostWhiteList;
+    CFdbParcelableArray<std::string> mTagWhiteList;
+    CFdbParcelableArray<std::string> mBusnameWhiteList;
 };
 
 class FdbAuthentication : public IFdbParcelable

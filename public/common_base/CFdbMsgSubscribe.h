@@ -102,7 +102,7 @@ private:
 class CFdbMsgTable : public IFdbParcelable
 {
 public:
-    CFdbComplexArray<CFdbMsgSubscribeItem> &subscribe_tbl()
+    CFdbParcelableArray<CFdbMsgSubscribeItem> &subscribe_tbl()
     {
         return mSubscribeTbl;
     }
@@ -120,7 +120,7 @@ public:
         deserializer >> mSubscribeTbl;
     }
 private:
-    CFdbComplexArray<CFdbMsgSubscribeItem> mSubscribeTbl;
+    CFdbParcelableArray<CFdbMsgSubscribeItem> mSubscribeTbl;
 };
 
 #endif

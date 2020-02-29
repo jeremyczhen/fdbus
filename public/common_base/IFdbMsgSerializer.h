@@ -38,9 +38,9 @@ public:
     virtual void prepare(uint8_t *buffer, int32_t size)
     {
     }
-    virtual int32_t parse()
+    virtual bool parse()
     {
-        return -1;
+        return true;
     }
     virtual ~IFdbMsgParser()
     {

@@ -327,7 +327,7 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             const char *token = "";
             if (authen.has_token_list() && !authen.token_list().tokens().empty())
             {
-                const CFdbScalarArray<std::string> &tokens = authen.token_list().tokens();
+                const CFdbParcelableArray<std::string> &tokens = authen.token_list().tokens();
                 // only use the first token in case more than 1 tokens are received
                 token = tokens.pool().begin()->c_str();
                 security_level = checkSecurityLevel(token);

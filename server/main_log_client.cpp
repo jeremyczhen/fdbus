@@ -100,7 +100,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
     endstrsplit(filters, num_filters);
 }
 
-static void fdb_populate_white_list_cmd(CFdbScalarArray<std::string> &out_filter
+static void fdb_populate_white_list_cmd(CFdbParcelableArray<std::string> &out_filter
                                       , const std::vector<std::string> &white_list)
 {
     for (std::vector<std::string>::const_iterator it = white_list.begin(); it != white_list.end(); ++it)

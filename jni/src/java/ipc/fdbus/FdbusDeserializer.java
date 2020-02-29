@@ -124,6 +124,18 @@ public class FdbusDeserializer
                (((long)b8 & 0xff) << 56);
     }
 
+    private <T> T createParcelable(Class<T> clz)
+    {
+        T p;
+        try {
+            p = (T)clz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            System.out.println(e);
+            p = null;
+        }
+        return p;
+    }
+
     // -----------------------------------------------------------------
 
     private final byte[] mBuffer;
@@ -145,11 +157,13 @@ public class FdbusDeserializer
         return mBuffer;
     }
 
+    // deserialize one byte from stream
     public int out8()
     {
         return readRaw8();
     }
 
+    // deserialize array of bytes from stream
     public int[] out8A()
     {
         int len = readRawLittleEndian16();
@@ -166,11 +180,13 @@ public class FdbusDeserializer
         return arr;
     }
 
+    // deserialize one word from stream
     public int out16()
     {
         return readRawLittleEndian16();
     }
 
+    // deserialize array of words from stream
     public int[] out16A()
     {
         int len = readRawLittleEndian16();
@@ -187,11 +203,13 @@ public class FdbusDeserializer
         return arr;
     }
 
+    // deserialize one integer from stream
     public int out32()
     {
         return readRawLittleEndian32();
     }
 
+    // deserialize array of integers from stream
     public int[] out32A()
     {
         int len = readRawLittleEndian16();
@@ -208,11 +226,13 @@ public class FdbusDeserializer
         return arr;
     }
 
+    // deserialize one long integer from stream
     public long out64()
     {
         return readRawLittleEndian64();
     }
 
+    // deserialize array of long integers from stream
     public long[] out64A()
     {
         int len = readRawLittleEndian16();
@@ -229,11 +249,36 @@ public class FdbusDeserializer
         return arr;
     }
 
+    // deserialize one boolean from stream
+    public boolean outBool()
+    {
+        return readRaw8() != 0;
+    }
+
+    // deserialize array of booleans from stream
+    public boolean[] outBoolA()
+    {
+        int len = readRawLittleEndian16();
+        boolean[] arr = new boolean[len];
+        for (int i = 0; i < len; ++i)
+        {
+            boolean data = readRaw8() != 0;
+            if (mError)
+            {
+                break;
+            }
+            arr[i] = data;
+        }
+        return arr;
+    }
+
+    // deserialize one string from stream
     public String outS()
     {
         return readString();
     }
 
+    // deserialize array of strings from stream
     public String[] outSA()
     {
         int len = readRawLittleEndian16();
@@ -250,20 +295,14 @@ public class FdbusDeserializer
         return arr;
     }
 
-    private <T> FdbusParcelable createParcelable(Class<T> clz)
+    /*
+     * deserialize one parcelable from stream; 
+     *     T should be subclass of FdbusParcelable;
+     *     type should be subclass_of_FdbusParcelable.class
+     */
+    public <T> FdbusParcelable out(Class<T> type)
     {
-        FdbusParcelable p;
-        try {
-            p = (FdbusParcelable)clz.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            p = null;
-        }
-        return p;
-    }
-
-    public <T> FdbusParcelable out(Class<T> clz)
-    {
-        FdbusParcelable parcelable = createParcelable(clz);
+        FdbusParcelable parcelable = (FdbusParcelable)createParcelable(type);
         if (parcelable != null)
         {
             parcelable.deserialize(this);
@@ -271,28 +310,44 @@ public class FdbusDeserializer
         return parcelable;
     }
 
-    public <T> FdbusParcelable[] outA(Class<T> clz)
+    // get size of parcelable array
+    public int arrayLength()
     {
-        int len = readRawLittleEndian16();
-        FdbusParcelable[] arr = new FdbusParcelable[len];
-        for (int i = 0; i < len; ++i)
+        return readRawLittleEndian16();
+    }
+
+    /*
+     * deserialize one parcelable from stream; 
+     *     T should be subclass of FdbusParcelable;
+     *     type should be subclass_of_FdbusParcelable.class
+     *
+     * example:
+     * class MyMsg implements FdbusParcelable
+     * {
+     * }
+     * public void onInvoke(FdbusMessage msg)
+     * {
+     *     FdbusDeserializer deserializer = new FdbusDeserializer(msg.byteArray());
+     *     MyMsg[] msg_data = deserializer.out(new MyMsg[deserializer.arrayLength()], MyMsg.class);
+     * }
+     */
+    public <T> T[] out(T[] parcelables, Class<T> type)
+    {
+        for (int i = 0; i < parcelables.length; ++i)
         {
-            if (mError)
-            {
-                break;
-            }
-            FdbusParcelable p = createParcelable(clz);
-            if (p == null)
+            T new_obj = createParcelable(type);
+            if (new_obj == null)
             {
                 break;
             }
             else
             {
+                FdbusParcelable p = (FdbusParcelable)new_obj;
                 p.deserialize(this);
-                arr[i] = p;
+                parcelables[i] = new_obj;
             }
         }
-        return arr;
+        return parcelables;
     }
 }
 

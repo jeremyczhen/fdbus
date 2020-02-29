@@ -124,8 +124,8 @@ private:
 
     void printHosts(NFdbBase::FdbMsgHostAddressList &host_list, bool monitor)
     {
-        CFdbComplexArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
-        for (CFdbComplexArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
+        CFdbParcelableArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
+        for (CFdbParcelableArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
                 it != addr_list.vpool().end(); ++it)
         {
             NFdbBase::FdbMsgHostAddress &addr = *it;

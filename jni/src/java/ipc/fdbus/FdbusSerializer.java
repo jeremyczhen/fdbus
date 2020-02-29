@@ -117,6 +117,7 @@ public class FdbusSerializer
         return mBuffer;
     }
 
+    // export serialized stream to buffer
     public byte[] export()
     {
         byte[] b = new byte[mBufferPos];
@@ -124,11 +125,13 @@ public class FdbusSerializer
         return b;
     }
 
+    // serialize one byte into stream
     public void in8(int value)
     {
         writeRaw8(value);
     }
 
+    // serialize array of bytes into stream
     public void in8(int[] value)
     {
         writeRawLittleEndian16(value.length);
@@ -138,11 +141,13 @@ public class FdbusSerializer
         }
     }
 
+    // serialize one word into stream
     public void in16(int value)
     {
         writeRawLittleEndian16(value);
     }
 
+    // serialize array of words into stream
     public void in16(int[] value)
     {
         writeRawLittleEndian16(value.length);
@@ -152,11 +157,13 @@ public class FdbusSerializer
         }
     }
 
+    // serialize one integer into stream
     public void in32(int value)
     {
         writeRawLittleEndian32(value);
     }
 
+    // serialize array of integer into stream
     public void in32(int[] value)
     {
         writeRawLittleEndian16(value.length);
@@ -166,11 +173,13 @@ public class FdbusSerializer
         }
     }
 
+    // serialize one long integer into stream
     public void in64(long value)
     {
         writeRawLittleEndian64(value);
     }
 
+    // serialize array of long integers into stream
     public void in64(long[] value)
     {
         writeRawLittleEndian16(value.length);
@@ -180,11 +189,29 @@ public class FdbusSerializer
         }
     }
 
+    // serialize one boolean into stream
+    public void inBool(boolean value)
+    {
+        writeRaw8(value ? 1 : 0);
+    }
+
+    // serialize array of booleans into stream
+    public void inBool(boolean[] value)
+    {
+        writeRawLittleEndian16(value.length);
+        for (int i = 0; i < value.length; ++i)
+        {
+            writeRaw8(value[i] ? 1 : 0);
+        }
+    }
+
+    // serialize one string into stream
     public void inS(String value)
     {
         writeString(value);    
     }
 
+    // serialize array of strings into stream
     public void inS(String[] value)
     {
         writeRawLittleEndian16(value.length);
@@ -194,11 +221,19 @@ public class FdbusSerializer
         }
     }
 
+    /*
+     * serialize one parcelable into stream
+     * parcelable should be subclass of FdbusParcelable
+     */
     public void in(FdbusParcelable parcelable)
     {
         parcelable.serialize(this);
     }
-    
+
+    /*
+     * serialize array of parcelables into stream
+     * elements in parcelables should be subclass of FdbusParcelable
+     */
     public void in(FdbusParcelable[] parcelables)
     {
         writeRawLittleEndian16(parcelables.length);

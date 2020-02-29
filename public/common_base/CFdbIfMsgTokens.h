@@ -49,7 +49,7 @@ public:
     {
         mTokens.clear();
     }
-    CFdbScalarArray<std::string> &tokens()
+    CFdbParcelableArray<std::string> &tokens()
     {
         return mTokens;
     }
@@ -75,7 +75,7 @@ public:
     }
     
 private:
-    CFdbScalarArray<std::string> mTokens;
+    CFdbParcelableArray<std::string> mTokens;
     FdbCryptoAlgorithm mCryptoAlgorithm;
 };
 }

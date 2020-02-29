@@ -24,11 +24,9 @@ import ipc.fdbus.Example.MyFdbusMessageEncoder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
-/*
-import ipc.fdbus.FdbusSerializer;
+import ipc.fdbus.Example.CPerson;
 import ipc.fdbus.FdbusDeserializer;
 import ipc.fdbus.FdbusParcelable;
-*/
 
 public class MediaClient 
 {
@@ -86,6 +84,27 @@ public class MediaClient
                                            np.toString());
                     } catch (Exception e) {
                         System.out.println(e);
+                    }
+                }
+                break;
+                case NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE:
+                {
+                    FdbusDeserializer deserializer = new FdbusDeserializer(msg.byteArray());
+                    CPerson[] persons = deserializer.out(new CPerson[deserializer.arrayLength()],
+                                                            CPerson.class);
+                    for (int i = 0; i < persons.length; ++i)
+                    {
+                        System.out.println("name: " + persons[i].mName +
+                                           ", age: " + persons[i].mAge +
+                                           ", salary: " + persons[i].mSalary +
+                                           ", address: " + persons[i].mAddress);
+                        CPerson.CCar[] cars = persons[i].mCars;
+                        for (int j = 0; j < cars.length; ++j)
+                        {
+                            System.out.println("brand: " + cars[j].mBrand +
+                                               ", model: " + cars[j].mModel +
+                                               ", price: " + cars[j].mPrice);
+                        }
                     }
                 }
                 break;
@@ -155,6 +174,7 @@ public class MediaClient
                 FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, song_id, 0);
                 handleReplyMsg(msg, true);
             }
+            mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE, null, null, 0);
         }
     }
 
@@ -172,56 +192,6 @@ public class MediaClient
         return clt;
     }
     
-    /*
-    public static class my_data implements FdbusParcelable
-    {
-        public void serialize(FdbusSerializer serializer)
-        {
-            serializer.inS("my parcelable is called");
-        }
-        public void deserialize(FdbusDeserializer deserializer)
-        {
-            String s = deserializer.outS();
-            System.out.println(s);
-        }
-    }
-    private static void ser_test()
-    {
-        String a = "hello, world";
-        FdbusSerializer s = new FdbusSerializer();
-        String[] i2 = new String[3];
-        i2[0] = "hahahaha";
-        i2[1] = "hehehehe";
-        i2[2] = "huhuhuhu";
-        s.inS(i2);
-        s.in32(12);
-        s.in8(255);
-        s.inS(a);
-        s.in16(34567);
-        s.inS(a);
-        s.in64(1234);
-        my_data[] i1 = new my_data[2];
-        i1[0] = new my_data();
-        i1[1] = new my_data();
-        s.in(i1);
-
-        FdbusDeserializer d = new FdbusDeserializer(s.export());
-        String[] o0 = d.outSA();
-        for (int i = 0; i < o0.length; ++i)
-        {
-            System.out.println(o0[i]);
-        }
-        int o1 = d.out32();
-        int o2 = d.out8();
-        String o3 = d.outS();
-        int o4 = d.out16();
-        String o5 = d.outS();
-        long o6 = d.out64();
-        FdbusParcelable[] o7 = d.outA(my_data.class);
-        System.out.println("output: " + o1 +", " + o2 + ", " + o3 + ", " + o4 + ", " + o5 + ", " + o6);
-    }
-    */
-
     public static void main(String[] args)
     {
         Fdbus fdbus = new Fdbus(new MyFdbusMessageEncoder());

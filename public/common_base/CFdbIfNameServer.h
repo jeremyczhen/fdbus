@@ -92,7 +92,7 @@ public:
     {
         mIsLocal = local;
     }
-    CFdbScalarArray<std::string> &address_list()
+    CFdbParcelableArray<std::string> &address_list()
     {
         return mAddressList;
     }
@@ -142,7 +142,7 @@ private:
     std::string mServiceName;
     std::string mHostName;
     bool mIsLocal;
-    CFdbScalarArray<std::string> mAddressList;
+    CFdbParcelableArray<std::string> mAddressList;
     FdbMsgTokens mTokenList;
     uint8_t mOptions;
         static const uint8_t mMaskTokenList = 1 << 0;
@@ -328,7 +328,7 @@ private:
 class FdbMsgHostAddressList : public IFdbParcelable
 {
 public:
-    CFdbComplexArray<FdbMsgHostAddress> &address_list()
+    CFdbParcelableArray<FdbMsgHostAddress> &address_list()
     {
         return mAddressList;
     }
@@ -346,7 +346,7 @@ public:
         deserializer >> mAddressList;
     }
 private:
-    CFdbComplexArray<FdbMsgHostAddress> mAddressList;
+    CFdbParcelableArray<FdbMsgHostAddress> mAddressList;
 };
 
 class FdbMsgServiceInfo : public IFdbParcelable
@@ -379,7 +379,7 @@ private:
 class FdbMsgServiceTable : public IFdbParcelable
 {
 public:
-    CFdbComplexArray<FdbMsgServiceInfo> &service_tbl()
+    CFdbParcelableArray<FdbMsgServiceInfo> &service_tbl()
     {
         return mServiceTbl;
     }
@@ -397,7 +397,7 @@ public:
         deserializer >> mServiceTbl;
     }
 private:
-    CFdbComplexArray<FdbMsgServiceInfo> mServiceTbl;
+    CFdbParcelableArray<FdbMsgServiceInfo> mServiceTbl;
 };
 
 }

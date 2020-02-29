@@ -191,7 +191,7 @@ void CFdbSession::onInput(bool &io_error)
 
     NFdbBase::CFdbMessageHeader head;
     CFdbParcelableParser parser(head);
-    if (parser.parse(head_start, prefix.mHeadLength) < 0)
+    if (!parser.parse(head_start, prefix.mHeadLength))
     {
         LOG_E("CFdbSession: Session %d: Unable to deserialize message head!\n", mSid);
         delete[] whole_buf;

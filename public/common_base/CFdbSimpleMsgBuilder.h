@@ -57,11 +57,11 @@ public:
     CFdbSimpleMsgParser(T message)
         : mMessage(message)
     {}
-    int32_t parse(const uint8_t *buffer, int32_t size)
+    bool parse(const uint8_t *buffer, int32_t size)
     {
         mDeserializer.reset(buffer, size);
         mDeserializer >> mMessage;
-        return mDeserializer.error() ? -1 : mDeserializer.index();
+        return !mDeserializer.error();
     }
     CFdbSimpleDeserializer &deserializer()
     {

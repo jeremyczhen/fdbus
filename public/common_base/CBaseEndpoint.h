@@ -110,7 +110,7 @@ private:
     void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     void callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     CFdbBaseObject *findObject(FdbObjectId_t obj_id, bool server_only);
-    bool importTokens(const CFdbScalarArray<std::string> &in_tokens);
+    bool importTokens(const CFdbParcelableArray<std::string> &in_tokens);
     int32_t checkSecurityLevel(const char *token);
     void updateSecurityLevel();
 

@@ -24,6 +24,8 @@ import ipc.fdbus.Example.MyFdbusMessageEncoder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import ipc.fdbus.Example.CPerson;
+import ipc.fdbus.FdbusSerializer;
 
 public class MediaServer
 {
@@ -77,6 +79,42 @@ public class MediaServer
                     builder.setElapseTime(mElapseTime++);
                     NFdbExample.NowPlayingDetails now_playing = builder.build();
                     msg.reply(now_playing);
+                }
+                break;
+                case NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE:
+                {
+                    CPerson[] persons = new CPerson[2];
+                    persons[0] = new CPerson();
+                    persons[0].mAddress = "Shanghai";
+                    persons[0].mAge = 22;
+                    persons[0].mName = "Zhang San";
+                    persons[0].mCars = new CPerson.CCar[2];
+                    persons[0].mCars[0] = new CPerson.CCar();
+                    persons[0].mCars[0].mBrand = "Hongqi";
+                    persons[0].mCars[0].mModel = "H5";
+                    persons[0].mCars[0].mPrice = 400000;
+                    persons[0].mCars[1] = new CPerson.CCar();
+                    persons[0].mCars[1].mBrand = "ROEWE";
+                    persons[0].mCars[1].mModel = "X5";
+                    persons[0].mCars[1].mPrice = 200000;
+
+                    persons[1] = new CPerson();
+                    persons[1].mAddress = "Guangzhou";
+                    persons[1].mAge = 22;
+                    persons[1].mName = "Li Si";
+                    persons[1].mCars = new CPerson.CCar[2];
+                    persons[1].mCars[0] = new CPerson.CCar();
+                    persons[1].mCars[0].mBrand = "Chuanqi";
+                    persons[1].mCars[0].mModel = "H5";
+                    persons[1].mCars[0].mPrice = 400000;
+                    persons[1].mCars[1] = new CPerson.CCar();
+                    persons[1].mCars[1].mBrand = "Toyota";
+                    persons[1].mCars[1].mModel = "X5";
+                    persons[1].mCars[1].mPrice = 200000;
+
+                    FdbusSerializer serializer = new FdbusSerializer();
+                    serializer.in(persons);
+                    msg.reply(serializer.getBuffer());
                 }
                 break;
                 default:

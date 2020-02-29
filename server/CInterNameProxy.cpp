@@ -255,8 +255,8 @@ void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
             {
                 return;
             }
-            CFdbComplexArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
-            for (CFdbComplexArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator it = svc_list.vpool().begin();
+            CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
+            for (CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator it = svc_list.vpool().begin();
                     it != svc_list.vpool().end(); ++it)
             {
                 replaceSourceUrl(it->service_addr(),

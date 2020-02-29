@@ -532,7 +532,7 @@ void CBaseEndpoint::unregisterSelf()
     }
 }
 
-bool CBaseEndpoint::importTokens(const CFdbScalarArray<std::string> &in_tokens)
+bool CBaseEndpoint::importTokens(const CFdbParcelableArray<std::string> &in_tokens)
 {
     bool need_update = false;
     
@@ -543,7 +543,7 @@ bool CBaseEndpoint::importTokens(const CFdbScalarArray<std::string> &in_tokens)
     else
     {
         CFdbToken::tTokenList::const_iterator it = mTokens.begin();
-        CFdbScalarArray<std::string>::tPool::const_iterator in_it = in_tokens.pool().begin();
+        CFdbParcelableArray<std::string>::tPool::const_iterator in_it = in_tokens.pool().begin();
          for (; in_it != in_tokens.pool().end(); ++in_it, ++it)
         {
             if (it->compare(*in_it))
@@ -557,7 +557,7 @@ bool CBaseEndpoint::importTokens(const CFdbScalarArray<std::string> &in_tokens)
     if (need_update)
     {
         mTokens.clear();
-        for (CFdbScalarArray<std::string>::tPool::const_iterator in_it = in_tokens.pool().begin();
+        for (CFdbParcelableArray<std::string>::tPool::const_iterator in_it = in_tokens.pool().begin();
              in_it != in_tokens.pool().end(); ++in_it)
         {
             mTokens.push_back(*in_it);

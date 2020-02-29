@@ -72,8 +72,8 @@ private:
     std::mutex mTraceLock;
 
     static const int32_t mMaxTraceLogSize = 4096;
-    bool checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl);
-    void populateWhiteList(const CFdbScalarArray<std::string> &in_filter
+    bool checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl);
+    void populateWhiteList(const CFdbParcelableArray<std::string> &in_filter
                          , tFilterTbl &white_list);
 };
 #endif

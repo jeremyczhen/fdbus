@@ -430,8 +430,8 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     std::string hs_ipc_url;
     std::string hs_tcp_url;
     
-    CFdbScalarArray<std::string> &addrs = addr_list.address_list();
-    for (CFdbScalarArray<std::string>::tPool::const_iterator msg_it = addrs.pool().begin();
+    CFdbParcelableArray<std::string> &addrs = addr_list.address_list();
+    for (CFdbParcelableArray<std::string>::tPool::const_iterator msg_it = addrs.pool().begin();
             msg_it != addrs.pool().end(); ++msg_it)
     {
         CFdbAddressDesc *desc = 0;
@@ -1153,8 +1153,8 @@ void CNameServer::populateTokens(const CFdbToken::tTokenList &tokens,
 void CNameServer::dumpTokens(CFdbToken::tTokenList &tokens,
                              NFdbBase::FdbMsgAddressList &list)
 {
-    const CFdbScalarArray<std::string> &t = list.token_list().tokens();
-    for (CFdbScalarArray<std::string>::tPool::const_iterator it = t.pool().begin();
+    const CFdbParcelableArray<std::string> &t = list.token_list().tokens();
+    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = t.pool().begin();
             it != t.pool().end(); ++it)
     {
         tokens.push_back(*it);

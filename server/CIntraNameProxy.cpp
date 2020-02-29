@@ -211,8 +211,8 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 client->local(msg_addr_list.is_local());
 
                 replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
-                const CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
-                for (CFdbScalarArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
+                const CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
+                for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
                         it != addr_list.pool().end(); ++it)
                 {
                     if (!client->doConnect(it->c_str()))
@@ -313,8 +313,8 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
-        const CFdbScalarArray<std::string> &addr_list = msg_addr_list.address_list();
-        for (CFdbScalarArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
+        const CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
+        for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
                 it != addr_list.pool().end(); ++it)
         {
             do

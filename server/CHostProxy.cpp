@@ -188,8 +188,8 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, monitored_service_tbl);
     CFdbParcelableBuilder builder(host_list);
     mNameServer->broadcast(NFdbBase::NTF_HOST_ONLINE_LOCAL, builder);
-    CFdbComplexArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
-    for (CFdbComplexArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
+    CFdbParcelableArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
+    for (CFdbParcelableArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
             it != addr_list.vpool().end(); ++it)
     {
         NFdbBase::FdbMsgHostAddress &addr = *it;
@@ -409,8 +409,8 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
 {
     if (svc_tbl)
     {
-        const CFdbComplexArray<NFdbBase::FdbMsgServiceInfo>::tPool &src_pool = svc_tbl->service_tbl().pool();
-        CFdbComplexArray<NFdbBase::FdbMsgServiceInfo>::tPool &dst_pool = query->mSvcTbl->service_tbl().vpool();
+        const CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool &src_pool = svc_tbl->service_tbl().pool();
+        CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool &dst_pool = query->mSvcTbl->service_tbl().vpool();
         dst_pool.insert(dst_pool.end(), src_pool.begin(), src_pool.end());
         
     }

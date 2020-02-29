@@ -46,10 +46,10 @@ public:
                         int32_t size = 0)
         : mDeserializer(buffer, size)
     {}
-    int32_t parse(const uint8_t *buffer, int32_t size)
+    bool parse(const uint8_t *buffer, int32_t size)
     {
         mDeserializer.reset(buffer, size);
-        return 0;
+        return true;
     }
     CFdbSimpleDeserializer &deserializer()
     {

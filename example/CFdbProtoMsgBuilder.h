@@ -37,7 +37,7 @@ class CFdbProtoMsgParser : public IFdbMsgParser
 {
 public:
     CFdbProtoMsgParser(CFdbProtoMessage &message);
-    int32_t parse(const uint8_t *buffer, int32_t size);
+    bool parse(const uint8_t *buffer, int32_t size);
 
 private:
     CFdbProtoMessage &mMessage;

@@ -80,7 +80,7 @@ CFdbProtoMsgParser::CFdbProtoMsgParser(CFdbProtoMessage &message)
 {
 }
 
-int32_t CFdbProtoMsgParser::parse(const uint8_t *buffer, int32_t size)
+bool CFdbProtoMsgParser::parse(const uint8_t *buffer, int32_t size)
 {
     bool ret;
     try
@@ -100,6 +100,6 @@ int32_t CFdbProtoMsgParser::parse(const uint8_t *buffer, int32_t size)
         FDB_LOG_E("CFdbProtoMsgParser: Unable to deserialize message!\n");
     }
     
-    return ret ? size : -1;
+    return ret;
 }
 

@@ -167,14 +167,6 @@ public class FdbusClient
     }
 
     /*
-     * invoke method call upon connected server asynchronously without a timer
-     */
-    public boolean invokeAsync(int msg_code, Object msg, Object user_data)
-    {
-        return invokeAsync(msg_code, msg, user_data, 0);
-    }
-
-    /*
      * invoke method call upon connected server synchronously
      * @msg_code - message id
      * @msg - message to send (protobuf format by default)
@@ -204,14 +196,6 @@ public class FdbusClient
                                raw_data,
                                log_data,
                                timeout);
-    }
-
-    /*
-     * invoke method call upon connected server synchronously without a timer
-     */
-    public FdbusMessage invokeSync(int msg_code, Object msg)
-    {
-        return invokeSync(msg_code, msg, 0);
     }
 
     /*

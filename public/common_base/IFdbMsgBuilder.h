@@ -41,9 +41,9 @@ public:
 class IFdbMsgParser
 {
 public:
-    virtual int32_t parse(const uint8_t *buffer, int32_t size)
+    virtual bool parse(const uint8_t *buffer, int32_t size)
     {
-        return -1;
+        return true;
     }
     virtual ~IFdbMsgParser()
     {

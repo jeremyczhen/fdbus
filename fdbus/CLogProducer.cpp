@@ -332,7 +332,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     sendLog(NFdbBase::REQ_TRACE_LOG, builder);
 }
 
-bool CLogProducer::checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl)
+bool CLogProducer::checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl)
 {
     if (host_tbl.empty())
     {
@@ -345,7 +345,7 @@ bool CLogProducer::checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl
         return true;
     }
 
-    for (CFdbScalarArray<std::string>::tPool::const_iterator it = host_tbl.pool().begin();
+    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = host_tbl.pool().begin();
             it != host_tbl.pool().end(); ++it)
     {
         if (!it->compare(proxy->hostName()))
@@ -357,11 +357,11 @@ bool CLogProducer::checkHostEnabled(const CFdbScalarArray<std::string> &host_tbl
     return false;
 }
 
-void CLogProducer::populateWhiteList(const CFdbScalarArray<std::string> &in_filter
+void CLogProducer::populateWhiteList(const CFdbParcelableArray<std::string> &in_filter
                                    , tFilterTbl &white_list)
 {
     white_list.clear();
-    for (CFdbScalarArray<std::string>::tPool::const_iterator it = in_filter.pool().begin();
+    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = in_filter.pool().begin();
             it != in_filter.pool().end(); ++it)
     {
         white_list.insert(*it);

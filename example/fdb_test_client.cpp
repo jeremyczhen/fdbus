@@ -18,6 +18,7 @@
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
 #include "CFdbProtoMsgBuilder.h"
+#include "CFdbIfPerson.h"
 
 #define FDB_INVOKE_SYNC 1
 
@@ -149,6 +150,8 @@ public:
          */
         invoke(REQ_METADATA, song_id);
 #endif
+
+        invoke(REQ_RAWDATA);
 
         /*
          * trigger update manually; onBroadcast() will be called followed by
@@ -316,6 +319,26 @@ protected:
                     FDB_LOG_I("onReply(): status is received: msg code: %d, error_code: %d, reason: %s\n",
                           msg->code(), error_code, reason.c_str());
                     return;
+                }
+                
+                CFdbParcelableArray<CPerson> persions;
+                CFdbParcelableParser parser(persions);
+                if (!msg->deserialize(parser))
+                {
+                    FDB_LOG_E("onReply: fail to decode from simple parser!\n");
+                    return;
+                }
+                for (CFdbParcelableArray<CPerson>::tPool::const_iterator pit = persions.pool().begin();
+                        pit != persions.pool().end(); ++pit)
+                {
+                    FDB_LOG_I("name: %s; age: %d; salary: %d; address: %s.\n",
+                                pit->mName.c_str(), pit->mAge, pit->mSalary, pit->mAddress.c_str());
+                    for (CFdbParcelableArray<CCar>::tPool::const_iterator cit = pit->mCars.pool().begin();
+                            cit != pit->mCars.pool().end(); ++cit)
+                    {
+                        FDB_LOG_I("    brand: %s, model: %s, price: %d.\n",
+                                cit->mBrand.c_str(), cit->mModel.c_str(), cit->mPrice);
+                    }
                 }
             }
             break;

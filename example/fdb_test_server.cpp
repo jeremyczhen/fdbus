@@ -18,6 +18,7 @@
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
 #include "CFdbProtoMsgBuilder.h"
+#include "CFdbIfPerson.h"
 
 /* Define message ID; should be the same as server. */
 enum EMessageId
@@ -135,7 +136,46 @@ protected:
                 // const char *buffer = (char *)msg->getPayloadBuffer();
                 int32_t size = msg->getPayloadSize();
                 FDB_LOG_I("Invoke of raw buffer is received: size: %d\n", size);
-                msg->status(msg_ref, NFdbBase::FDB_ST_OK, "REQ_RAWDATA is processed successfully!");
+                //msg->status(msg_ref, NFdbBase::FDB_ST_OK, "REQ_RAWDATA is processed successfully!");
+                CFdbParcelableArray<CPerson> persions;
+                {
+                    CPerson *p = persions.Add();
+                    p->mAddress = "Shanghai";
+                    p->mAge = 22;
+                    p->mName = "Zhang San";
+                    {
+                        CCar *c = p->mCars.Add();
+                        c->mBrand = "Hongqi";
+                        c->mModel = "H5";
+                        c->mPrice = 400000;
+                    }
+                    {
+                        CCar *c = p->mCars.Add();
+                        c->mBrand = "ROEWE";
+                        c->mModel = "X5";
+                        c->mPrice = 200000;
+                    }
+                }
+                {
+                    CPerson *p = persions.Add();
+                    p->mAddress = "Guangzhou";
+                    p->mAge = 22;
+                    p->mName = "Li Si";
+                    {
+                        CCar *c = p->mCars.Add();
+                        c->mBrand = "Chuanqi";
+                        c->mModel = "H5";
+                        c->mPrice = 400000;
+                    }
+                    {
+                        CCar *c = p->mCars.Add();
+                        c->mBrand = "Toyoto";
+                        c->mModel = "X5";
+                        c->mPrice = 200000;
+                    }
+                }
+                CFdbParcelableBuilder builder(persions);
+                msg->reply(msg_ref, builder);
             }
             break;
             default:
