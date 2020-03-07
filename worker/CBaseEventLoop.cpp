@@ -63,8 +63,8 @@ void CSysLoopTimer::enable(bool enb, uint64_t time_start, int32_t init_value)
             LOG_E("CBaseEventLoop: Unable to enable timer since interval is invalid!\n");
             return;
         }
-        CBaseEventLoop::tLoopTimerList::iterator ti;
-        for (ti = mEventLoop->mTimerWorkingList.begin(); ti != mEventLoop->mTimerWorkingList.end(); ++ti)
+        auto ti = mEventLoop->mTimerWorkingList.begin();
+        for (; ti != mEventLoop->mTimerWorkingList.end(); ++ti)
         {
             if ((*ti)->expiration() > mExpiration)
             {
@@ -124,7 +124,7 @@ bool CBaseEventLoop::timerDestroyed(CSysLoopTimer *timer)
 
 void CBaseEventLoop::addTimer(CSysLoopTimer *timer, bool enb)
 {
-    for (tLoopTimerList::iterator ti = mTimerList.begin(); ti != mTimerList.end(); ++ti)
+    for (auto ti = mTimerList.begin(); ti != mTimerList.end(); ++ti)
     {
         if ((*ti) == timer)
         {
@@ -155,7 +155,7 @@ void CBaseEventLoop::addTimerToBlacklist(CSysLoopTimer *timer)
 
 void CBaseEventLoop::uninstallTimers()
 {
-    for (CBaseEventLoop::tLoopTimerList::iterator ti = mTimerList.begin(); ti != mTimerList.end();)
+    for (auto ti = mTimerList.begin(); ti != mTimerList.end();)
     {
         CSysLoopTimer *timer = *ti;
         ++ti;
@@ -166,7 +166,7 @@ void CBaseEventLoop::uninstallTimers()
 int32_t CBaseEventLoop::getMostRecentTime()
 {
     int32_t wait_time = -1; // wait forever
-    tLoopTimerList::iterator ti = mTimerWorkingList.begin();
+    auto ti = mTimerWorkingList.begin();
     if (ti != mTimerWorkingList.end())
     {
         uint64_t now_millis = sysdep_getsystemtime_milli();
@@ -187,7 +187,7 @@ void CBaseEventLoop::processTimers()
 {
     uint64_t now_millis = sysdep_getsystemtime_milli();
     std::vector<CSysLoopTimer *> tos;
-    for (tLoopTimerList::iterator  ti = mTimerWorkingList.begin(); ti != mTimerWorkingList.end(); ++ti)
+    for (auto ti = mTimerWorkingList.begin(); ti != mTimerWorkingList.end(); ++ti)
     {
         if (now_millis >= (*ti)->expiration())
         {
@@ -202,14 +202,12 @@ void CBaseEventLoop::processTimers()
     {
         tTimerTbl timer_black_list;
         enableTimerBlackList(&timer_black_list);
-        for (std::vector<CSysLoopTimer *>::iterator ti = tos.begin();
-                ti != tos.end(); ++ti)
+        for (auto ti = tos.begin(); ti != tos.end(); ++ti)
         {
             (*ti)->enable((*ti)->repeat(), now_millis);
         }
 
-        for (std::vector<CSysLoopTimer *>::iterator ti = tos.begin();
-                ti != tos.end(); ++ti)
+        for (auto ti = tos.begin(); ti != tos.end(); ++ti)
         {
             if (timerDestroyed((*ti)))
             {

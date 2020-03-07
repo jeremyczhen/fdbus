@@ -45,8 +45,8 @@ CHostServer::~CHostServer()
 }
 
 void CHostServer::onSubscribe(CBaseJob::Ptr &msg_ref)
-{
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    {
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
@@ -62,10 +62,10 @@ void CHostServer::onInvoke(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    tHostTbl::iterator it = mHostTbl.find(sid);
+    auto it = mHostTbl.find(sid);
     if (it != mHostTbl.end())
     {
-        CHostInfo &info = it->second;
+        auto &info = it->second;
         LOG_I("CHostServer: host is dropped: name: %s, ip: %s, ns: %s\n", info.mHostName.c_str(),
                                                                           info.mIpAddress.c_str(),
                                                                           info.mNsUrl.c_str());
@@ -80,7 +80,7 @@ void CHostServer::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
     CFdbParcelableParser parser(host_addr);
     if (!msg->deserialize(parser))
@@ -106,7 +106,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
         ns_url = host_addr.ns_url().c_str();
     }
     LOG_I("HostServer: host is registered: name: %s; ip: %s, ns: %s\n.", host_name, ip_addr, ns_url);
-    for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
+    for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         if (it->second.mIpAddress == ip_addr)
         {
@@ -115,7 +115,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
         }
     }
 
-    CHostInfo &info = mHostTbl[msg->session()];
+    auto &info = mHostTbl[msg->session()];
     info.mHostName = host_name;
     info.mIpAddress = ip_addr;
     info.mNsUrl = ns_url;
@@ -136,9 +136,9 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::onHostReady(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
 
-    tHostTbl::iterator it = mHostTbl.find(msg->session());
+    auto it = mHostTbl.find(msg->session());
     if (it != mHostTbl.end())
     {
         CHostInfo &info = it->second;
@@ -168,7 +168,7 @@ void CHostServer::addToken(const CFdbSession *session,
 void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo &info)
 {
     NFdbBase::FdbMsgHostAddressList addr_list;
-    NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
+    auto *addr = addr_list.add_address_list();
     addr->set_host_name(info.mHostName);
     addr->set_ip_address(info.mIpAddress);
     addr->set_ns_url(online ? info.mNsUrl : ""); // ns_url being empty means offline
@@ -177,7 +177,7 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
     {
         tSubscribedSessionSets sessions;
         getSubscribeTable(NFdbBase::NTF_HOST_ONLINE, 0, sessions);
-        for (tSubscribedSessionSets::iterator it = sessions.begin(); it != sessions.end(); ++it)
+        for (auto it = sessions.begin(); it != sessions.end(); ++it)
         {
             CFdbSession *session = *it;
             addToken(session, info, *addr);
@@ -194,7 +194,7 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
 
 void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
     CFdbParcelableParser parser(host_addr);
     if (!msg->deserialize(parser))
@@ -204,7 +204,7 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
     }
     const char *ip_addr = host_addr.ip_address().c_str();
 
-    for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
+    for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         if (it->second.mIpAddress == ip_addr)
         {
@@ -221,14 +221,14 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::onQueryHostReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->status(msg_ref, NFdbBase::FDB_ST_NOT_IMPLEMENTED, "onQueryHostReq() is not implemented!");
 }
 
 void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-    tHostTbl::iterator it = mHostTbl.find(msg->session());
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto it = mHostTbl.find(msg->session());
 
     if (it != mHostTbl.end())
     {
@@ -240,13 +240,13 @@ void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     NFdbBase::FdbMsgHostAddressList addr_list;
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
-    for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
+    auto *session = FDB_CONTEXT->getSession(msg->session());
+    for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
-        CHostInfo &info = it->second;
+        auto &info = it->second;
         if (info.ready)
         {
-            NFdbBase::FdbMsgHostAddress *addr = addr_list.add_address_list();
+            auto *addr = addr_list.add_address_list();
             addr->set_ip_address(info.mIpAddress);
             addr->set_ns_url(info.mNsUrl); // ns_url being empty means offline
             addr->set_host_name(info.mHostName);
@@ -263,10 +263,10 @@ void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *
 
 void CHostServer::broadcastHeartBeat(CMethodLoopTimer<CHostServer> *timer)
 {
-    for (tHostTbl::iterator it = mHostTbl.begin(); it != mHostTbl.end();)
+    for (auto it = mHostTbl.begin(); it != mHostTbl.end();)
     {
-        tHostTbl::iterator the_it = it++;
-        CHostInfo &info = the_it->second;
+        auto the_it = it++;
+        auto &info = the_it->second;
         if (++info.mHbCount >= CNsConfig::getHeartBeatRetryNr())
         {
             // will trigger offline callback which do everything for me.

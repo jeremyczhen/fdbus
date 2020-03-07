@@ -25,12 +25,12 @@
 void CHostSecurityConfig::addPermission(const void *json_handle, CHostSecCfg &cfg,
                                         int32_t level, EFdbusCredType type, std::string &err_msg)
 {
-    const cJSON *item_id = (const cJSON *)json_handle;
+    const auto *item_id = (const cJSON *)json_handle;
     if (cJSON_IsArray(item_id))
     {
         for (int k = 0; k < cJSON_GetArraySize(item_id); ++k)
         {
-            cJSON *id = cJSON_GetArrayItem(item_id, k);
+            auto *id = cJSON_GetArrayItem(item_id, k);
             if (cJSON_IsString(id))
             {
                 if (type == FDB_PERM_CRED_MAC)
@@ -68,19 +68,19 @@ void CHostSecurityConfig::addPermission(const void *json_handle, CHostSecCfg &cf
 
 void CHostSecurityConfig::parseHostSecurityConfig(const char *json_str, std::string &err_msg)
 {
-    cJSON *cfg_root = cJSON_Parse(json_str);
+    auto *cfg_root = cJSON_Parse(json_str);
     if (cfg_root != NULL)
     {
         if (cJSON_IsObject(cfg_root))
         {
-            cJSON *item_host = cJSON_GetObjectItem(cfg_root, "host");
+            auto *item_host = cJSON_GetObjectItem(cfg_root, "host");
             if (item_host != NULL)
             {
                 if (cJSON_IsObject(item_host))
                 {
                     for (int32_t i = 0; i < cJSON_GetArraySize(item_host); ++i)
                     {
-                        cJSON *host = cJSON_GetArrayItem(item_host, i);
+                        auto *host = cJSON_GetArrayItem(item_host, i);
                         if (host)
                         {
                             if (cJSON_IsArray(host))
@@ -88,10 +88,10 @@ void CHostSecurityConfig::parseHostSecurityConfig(const char *json_str, std::str
                                 CPermission &host_perm = mHostSecLevelTbl[host->string];
                                 for (int32_t j = 0; j < cJSON_GetArraySize(host); ++j)
                                 {
-                                    cJSON *sec_level = cJSON_GetArrayItem(host, j);
+                                    auto *sec_level = cJSON_GetArrayItem(host, j);
                                     if (cJSON_IsObject(sec_level))
                                     {
-                                        cJSON *level = cJSON_GetObjectItem(sec_level, "level");
+                                        auto *level = cJSON_GetObjectItem(sec_level, "level");
                                         if (level)
                                         {
                                             if (cJSON_IsNumber(level))
@@ -105,13 +105,13 @@ void CHostSecurityConfig::parseHostSecurityConfig(const char *json_str, std::str
                                                 {
                                                     level_val = CFdbusSecurityConfig::getNrSecurityLevel();
                                                 }
-                                                cJSON *item_mac = cJSON_GetObjectItem(sec_level, "mac");
+                                                auto *item_mac = cJSON_GetObjectItem(sec_level, "mac");
                                                 if (item_mac)
                                                 {
                                                     addPermission(item_mac, host_perm.mMacAddr,
                                                               level_val, FDB_PERM_CRED_MAC, err_msg);
                                                 }
-                                                cJSON *item_ip = cJSON_GetObjectItem(sec_level, "ip");
+                                                auto *item_ip = cJSON_GetObjectItem(sec_level, "ip");
                                                 if (item_ip)
                                                 {
                                                     addPermission(item_ip, host_perm.mIpAddr,
@@ -189,15 +189,15 @@ void CHostSecurityConfig::importSecurity()
 
 int32_t CHostSecurityConfig::getMacSecurityLevel(const char *mac, const CHostSecCfg &sec_cfg)
 {
-    const tCredSecLevelTbl &level_tbl = sec_cfg.mCredSecLevelTbl;
-    tCredSecLevelTbl::const_iterator level_it = level_tbl.find(mac);
+    const auto &level_tbl = sec_cfg.mCredSecLevelTbl;
+    auto level_it = level_tbl.find(mac);
     return level_it == level_tbl.end() ? sec_cfg.mDefaultLevel : level_it->second;
 }
 
 int32_t CHostSecurityConfig::getIpSecurityLevel(const char *ip, const CHostSecCfg &sec_cfg)
 {
-    const tCredSecLevelTbl &level_tbl = sec_cfg.mCredSecLevelTbl;
-    tCredSecLevelTbl::const_iterator level_it = level_tbl.find(ip);
+    const auto &level_tbl = sec_cfg.mCredSecLevelTbl;
+    auto level_it = level_tbl.find(ip);
     return level_it == level_tbl.end() ? sec_cfg.mDefaultLevel : level_it->second;
 }
 
@@ -205,7 +205,7 @@ int32_t CHostSecurityConfig::getSecurityLevel(const char *host_name, const char 
                                                 EFdbusCredType type)
 {
     int32_t security_level = FDB_SECURITY_LEVEL_NONE;
-    tHostSecLevelTbl::const_iterator perm_it = mHostSecLevelTbl.find(host_name);
+    auto perm_it = mHostSecLevelTbl.find(host_name);
     if (perm_it != mHostSecLevelTbl.end())
     {
         if (type == FDB_PERM_CRED_MAC)

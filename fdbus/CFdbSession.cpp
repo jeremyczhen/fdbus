@@ -44,10 +44,10 @@ CFdbSession::~CFdbSession()
     mContainer->owner()->unsubscribeSession(this);
     CFdbContext::getInstance()->unregisterSession(mSid);
 
-    PendingMsgTable_t::EntryContainer_t &sn_generator = mPendingMsgTable.getContainer();
+    auto &sn_generator = mPendingMsgTable.getContainer();
     while (!sn_generator.empty())
     {
-        PendingMsgTable_t::EntryContainer_t::iterator it = sn_generator.begin();
+        auto it = sn_generator.begin();
         terminateMessage(it->second, NFdbBase::FDB_ST_PEER_VANISH,
                          "Message is destroyed due to broken connection.");
         mPendingMsgTable.deleteEntry(it);
@@ -90,7 +90,7 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
     {
         if (msg->isLogEnabled())
         {
-            CLogProducer *logger = CFdbContext::getInstance()->getLogger();
+            auto *logger = CFdbContext::getInstance()->getLogger();
             if (logger)
             {
                 logger->logMessage(msg, mContainer->owner());
@@ -103,7 +103,7 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
 
 bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(ref);
+    auto *msg = castToMessage<CFdbMessage *>(ref);
     if (!msg)
     {
         return false;
@@ -239,7 +239,7 @@ void CFdbSession::onInput(bool &io_error)
 
 void CFdbSession::onError()
 {
-    CBaseEndpoint *endpoint = mContainer->owner();
+    auto *endpoint = mContainer->owner();
     mInternalError = true;
     delete this;
     endpoint->checkAutoRemove();
@@ -247,7 +247,7 @@ void CFdbSession::onError()
 
 void CFdbSession::onHup()
 {
-    CBaseEndpoint *endpoint = mContainer->owner();
+    auto *endpoint = mContainer->owner();
     mInternalError = false;
     delete this;
     endpoint->checkAutoRemove();
@@ -256,8 +256,8 @@ void CFdbSession::onHup()
 void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
                             CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
-    CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
+    auto *msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
     msg->type(FDB_MT_REPLY);
@@ -299,8 +299,8 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
     CBaseJob::Ptr &msg_ref = mPendingMsgTable.retrieveEntry(head.serial_number(), it, found);
     if (found)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        FdbObjectId_t object_id = head.object_id();
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto object_id = head.object_id();
         if (msg->objectId() != object_id)
         {
             LOG_E("CFdbSession: object id of response %d does not match that in request: %d\n",
@@ -311,7 +311,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
             return;
         }
         
-        CFdbBaseObject *object = mContainer->owner()->getObject(msg, false);
+        auto *object = mContainer->owner()->getObject(msg, false);
         if (msg && object)
         {
             msg->update(head, prefix);
@@ -362,8 +362,8 @@ void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
     {
         filter = head.broadcast_filter().c_str();
     }
-    CFdbBroadcastMsg *msg = new CFdbBroadcastMsg(head, prefix, buffer, mSid, filter);
-    CFdbBaseObject *object = mContainer->owner()->getObject(msg, false);
+    auto *msg = new CFdbBroadcastMsg(head, prefix, buffer, mSid, filter);
+    auto *object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
     if (object)
     {
@@ -376,9 +376,9 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
                                  CFdbMessage::CFdbMsgPrefix &prefix,
                                  uint8_t *buffer, bool subscribe)
 {
-    FdbObjectId_t object_id = head.object_id();
-    CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
-    CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
+    auto object_id = head.object_id();
+    auto *msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
     
     int32_t error_code;
@@ -395,7 +395,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
         bool unsubscribe_object = true;
         FDB_BEGIN_FOREACH_SIGNAL_WITH_RETURN(msg, sub_item, ret)
         {
-            FdbMsgCode_t code = sub_item->msg_code();
+            auto code = sub_item->msg_code();
             const char *filter = 0;
             if (sub_item->has_filter())
             {
@@ -476,8 +476,8 @@ void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head,
                            CFdbMessage::CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {
-    CFdbMessage *msg = new CFdbMessage(head, prefix, buffer, mSid);
-    CFdbBaseObject *object = mContainer->owner()->getObject(msg, true);
+    auto *msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto *object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
     if (object)
@@ -499,7 +499,7 @@ const std::string &CFdbSession::getEndpointName() const
 
 void CFdbSession::terminateMessage(CBaseJob::Ptr &job, int32_t status, const char *reason)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(job);
+    auto *msg = castToMessage<CFdbMessage *>(job);
     if (msg)
     {
         msg->setErrorMsg(FDB_MT_UNKNOWN, status, reason);

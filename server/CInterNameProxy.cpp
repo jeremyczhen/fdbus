@@ -133,8 +133,8 @@ void CInterNameProxy::removeServiceMonitorListener(const char *svc_name)
 
 void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-    CNameServer *name_server = mHostProxy->nameServer();
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *name_server = mHostProxy->nameServer();
     switch (msg->code())
     {
         case NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE:
@@ -171,7 +171,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             FdbSessionId_t subscriber = FDB_INVALID_ID;
             if (session)
             {
-                CFdbMessage *out_going_msg = session->peepPendingMessage(msg->sn());
+                auto *out_going_msg = session->peepPendingMessage(msg->sn());
                 if (out_going_msg)
                 {
                     CServiceSubscribeMsg *svc_sub_msg =
@@ -190,7 +190,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 bool broadcast_to_all = true;
                 if (isValidFdbId(subscriber))
                 {
-                    CFdbSession *session = FDB_CONTEXT->getSession(subscriber);
+                    auto *session = FDB_CONTEXT->getSession(subscriber);
                     if (session)
                     {
                         // send token matching security level to the client
@@ -226,7 +226,7 @@ void CInterNameProxy::queryServiceTbl(CQueryServiceMsg *msg)
 
 void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
 {
-    CQueryServiceMsg *msg = castToMessage<CQueryServiceMsg *>(msg_ref);
+    auto *msg = castToMessage<CQueryServiceMsg *>(msg_ref);
     if (!msg)
     {
         LOG_E("CInterNameProxy: reply message cannot be casted to CQueryServiceMsg!\n");
@@ -255,9 +255,8 @@ void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
             {
                 return;
             }
-            CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
-            for (CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator it = svc_list.vpool().begin();
-                    it != svc_list.vpool().end(); ++it)
+            auto &svc_list = svc_tbl.service_tbl();
+            for (auto it = svc_list.vpool().begin(); it != svc_list.vpool().end(); ++it)
             {
                 replaceSourceUrl(it->service_addr(),
                                  FDB_CONTEXT->getSession(msg->session()));
@@ -278,7 +277,7 @@ void CInterNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code
     {
         CFdbMsgSubscribeList subscribe_list;
         addNotifyItem(subscribe_list, code, svc_name);
-        CFdbMessage *msg = new CServiceSubscribeMsg(subscriber);
+        auto *msg = new CServiceSubscribeMsg(subscriber);
         subscribe(subscribe_list, msg);
     }
     else

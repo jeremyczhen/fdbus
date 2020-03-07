@@ -35,7 +35,8 @@ class CClientSocket : public CFdbSessionContainer
 public:
     CClientSocket(CBaseClient *owner
                   , FdbSocketId_t skid
-                  , CClientSocketImp *socket);
+                  , CClientSocketImp *socket
+                  , const char *host_name);
     ~CClientSocket();
     CFdbSession *connect();
     void getSocketInfo(CFdbSocketInfo &info);
@@ -43,15 +44,27 @@ public:
     {
         mSocket = skt;
     }
-    CClientSocketImp *getSocket()
+    CClientSocketImp *getSocket() const
     {
         return mSocket;
     }
+
+    const std::string &connectedHost() const
+    {
+        return mConnectedHost;
+    }
+
+    void connectedHost(const char *host_name)
+    {
+        mConnectedHost = host_name;
+    }
+    
     void disconnect();
 protected:
     void onSessionDeleted(CFdbSession *session);
 private:
     CClientSocketImp *mSocket;
+    std::string mConnectedHost;
 };
 
 class CBaseClient : public CBaseEndpoint
@@ -88,17 +101,11 @@ public:
         return mIsLocal;
     }
 
-    const std::string &getConnectedHost()
-    {
-        return mConnectedHost;
-    }
+    bool hostConnected(const char *host_name);
 
 protected:
-    std::string mConnectedHost;
-    CClientSocket *doConnect(const char *url);
+    CClientSocket *doConnect(const char *url, const char *host_name = 0);
     void doDisconnect(FdbSessionId_t sid = FDB_INVALID_ID);
-    bool requestServiceAddress(const char *server_name);
-    void reconnectToNs(bool connect);
     /*
      * Check whether connection is allowed for the host.
      * Warning!!! It is running in the context of FDB_CONTEXT!!!

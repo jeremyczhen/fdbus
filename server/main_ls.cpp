@@ -41,7 +41,7 @@ public:
 protected:
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg->isStatus())
         {
             if (msg->isError())
@@ -68,13 +68,11 @@ protected:
                 }
                 const char *prev_ip = "";
                 const char *prev_host = "";
-                CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo> &svc_list = svc_tbl.service_tbl();
-                for (CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool::iterator svc_it = svc_list.vpool().begin();
-                        svc_it != svc_list.vpool().end(); ++svc_it)
-
+                auto &svc_list = svc_tbl.service_tbl();
+                for (auto svc_it = svc_list.vpool().begin(); svc_it != svc_list.vpool().end(); ++svc_it)
                 {
-                    NFdbBase::FdbMsgHostAddress &host_addr = svc_it->host_addr();
-                    NFdbBase::FdbMsgAddressList &service_addr = svc_it->service_addr();
+                    auto &host_addr = svc_it->host_addr();
+                    auto &service_addr = svc_it->service_addr();
                     const char *location = service_addr.is_local() ? "(local)" : "(remote)";
 
                     if (host_addr.ip_address().compare(prev_ip) || host_addr.host_name().compare(prev_host))
@@ -87,8 +85,8 @@ protected:
                         prev_host = host_addr.host_name().c_str();
                     }
                     std::cout << "    [" << service_addr.service_name() << "]" << std::endl;
-                    const CFdbParcelableArray<std::string> &addr_list = service_addr.address_list();
-                    for (CFdbParcelableArray<std::string>::tPool::const_iterator addr_it = addr_list.pool().begin();
+                    const auto &addr_list = service_addr.address_list();
+                    for (auto addr_it = addr_list.pool().begin();
                             addr_it != addr_list.pool().end(); ++addr_it)
 
                     {
@@ -108,7 +106,7 @@ protected:
 
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case NFdbBase::NTF_SERVICE_ONLINE_MONITOR:

@@ -101,7 +101,7 @@ int main(int argc, char **argv)
          * create sender timer and attach it with sender worker thread
          * job is sent from sender to receiver
          */
-        CSenderTimer *sender_timer = new CSenderTimer(receiver, 80 + (i << 1), true, !!(i & 1));
+        auto *sender_timer = new CSenderTimer(receiver, 80 + (i << 1), true, !!(i & 1));
         sender_timer->attach(&sender, true);
     }
 
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
      * create sender timer and attach it with receiver worker thread
      * job is sent from receiver to sender 
      */
-    CSenderTimer *sender_timer = new CSenderTimer(sender, 100, false, false);
+    auto *sender_timer = new CSenderTimer(sender, 100, false, false);
     sender_timer->attach(&receiver, true);
     }
 

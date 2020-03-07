@@ -89,7 +89,7 @@ public:
         invoke(ref, builder); /* onInvoke() will be called at server */
 
         /* we return from invoke(); must get reply from server. Check it. */
-        CBaseMessage *msg = castToMessage<CBaseMessage *>(ref);
+        auto *msg = castToMessage<CBaseMessage *>(ref);
         /* print performance statistics */
         CFdbMsgMetadata md;
         msg->metadata(md);
@@ -198,7 +198,7 @@ protected:
     /* called when events broadcasted from server is received */
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        CBaseMessage *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("Broadcast is received: %d; filter: %s\n", msg->code(), msg->getFilter());
 
         switch (msg->code())
@@ -245,7 +245,7 @@ protected:
     /* called when client call asynchronous version of invoke() and reply() is called at server */
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        CBaseMessage *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("response is receieved. sn: %d\n", msg->sn());
         /* print performance statistics */
         CFdbMsgMetadata md;
@@ -328,13 +328,11 @@ protected:
                     FDB_LOG_E("onReply: fail to decode from simple parser!\n");
                     return;
                 }
-                for (CFdbParcelableArray<CPerson>::tPool::const_iterator pit = persions.pool().begin();
-                        pit != persions.pool().end(); ++pit)
+                for (auto pit = persions.pool().begin(); pit != persions.pool().end(); ++pit)
                 {
                     FDB_LOG_I("name: %s; age: %d; salary: %d; address: %s.\n",
                                 pit->mName.c_str(), pit->mAge, pit->mSalary, pit->mAddress.c_str());
-                    for (CFdbParcelableArray<CCar>::tPool::const_iterator cit = pit->mCars.pool().begin();
-                            cit != pit->mCars.pool().end(); ++cit)
+                    for (auto cit = pit->mCars.pool().begin(); cit != pit->mCars.pool().end(); ++cit)
                     {
                         FDB_LOG_I("    brand: %s, model: %s, price: %d.\n",
                                 cit->mBrand.c_str(), cit->mModel.c_str(), cit->mPrice);
@@ -352,7 +350,7 @@ protected:
                         , int32_t error_code
                         , const char *description)
     {
-        CBaseMessage *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
         if (msg->isSubscribe())
         {
             if (msg->isError())
@@ -406,7 +404,7 @@ int main(int argc, char **argv)
         std::string url(FDB_URL_SVC);
         url += server_name;
         server_name += "_client";
-        CMediaClient *client = new CMediaClient(server_name.c_str(), worker_ptr);
+        auto *client = new CMediaClient(server_name.c_str(), worker_ptr);
         
         client->enableReconnect(true);
         client->connect(url.c_str());

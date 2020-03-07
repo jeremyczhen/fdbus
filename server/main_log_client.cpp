@@ -91,7 +91,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
     {
         return;
     }
-    unsigned int num_filters = 0;
+    uint32_t num_filters = 0;
     char **filters = strsplit(filter_str, ",", &num_filters);
     for (uint32_t i = 0; i < num_filters; ++i)
     {
@@ -103,7 +103,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
 static void fdb_populate_white_list_cmd(CFdbParcelableArray<std::string> &out_filter
                                       , const std::vector<std::string> &white_list)
 {
-    for (std::vector<std::string>::const_iterator it = white_list.begin(); it != white_list.end(); ++it)
+    for (auto it = white_list.begin(); it != white_list.end(); ++it)
     {
         std::string *filter = out_filter.Add();
         filter->assign(it->c_str());
@@ -171,7 +171,7 @@ protected:
 
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg->isStatus())
         {
             if (msg->isError())

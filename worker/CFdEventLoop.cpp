@@ -120,7 +120,7 @@ void CFdEventLoop::buildFdArray()
     mPollFds.clear();
     mPollWatches.clear();
 
-    for (tCFdWatchList::iterator wi = mWatchWorkingList.begin(); wi != mWatchWorkingList.end(); ++wi)
+    for (auto wi = mWatchWorkingList.begin(); wi != mWatchWorkingList.end(); ++wi)
     {
         int fd = (*wi)->descriptor();
         if (fd < 0)
@@ -152,7 +152,7 @@ void CFdEventLoop::processWatches()
     for (wit = mPollWatches.rbegin(), fdit = mPollFds.rbegin();
            wit != mPollWatches.rend(); ++wit, ++fdit)
     {
-        CSysFdWatch *w = *wit;
+        auto *w = *wit;
         if (watchDestroyed(w))
         {
             continue;
@@ -290,7 +290,7 @@ void CFdEventLoop::removeWatch(CSysFdWatch *watch)
 bool CFdEventLoop::addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable)
 {
     bool did = false;
-    tCFdWatchList::iterator wi = std::find(wlist.begin(), wlist.end(), watch);
+    auto wi = std::find(wlist.begin(), wlist.end(), watch);
     if (enable)
     {
         if (wi == wlist.end())
@@ -323,7 +323,7 @@ bool CFdEventLoop::enableWatch(CSysFdWatch *watch, bool enable)
 
 void CFdEventLoop::uninstallWatches()
 {
-    for (CFdEventLoop::tCFdWatchList::iterator wi = mWatchList.begin(); wi != mWatchList.end();)
+    for (auto wi = mWatchList.begin(); wi != mWatchList.end();)
     {
     	CSysFdWatch *watch = *wi;
         ++wi;

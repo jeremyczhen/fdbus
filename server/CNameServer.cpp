@@ -66,10 +66,10 @@ CNameServer::~CNameServer()
         delete mHostProxy;
     }
 
-    for (tRegistryTbl::iterator it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
+    for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
     {
-        CSvcRegistryEntry &desc_tbl = it->second;
-        for (tAddressDescTbl::iterator desc_it = desc_tbl.mAddrTbl.begin();
+        auto &desc_tbl = it->second;
+        for (auto desc_it = desc_tbl.mAddrTbl.begin();
                 desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
         {
             delete *desc_it;
@@ -79,7 +79,7 @@ CNameServer::~CNameServer()
 
 void CNameServer::onSubscribe(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
@@ -96,7 +96,7 @@ void CNameServer::onInvoke(CBaseJob::Ptr &msg_ref)
 void CNameServer::populateAddrList(const tAddressDescTbl &addr_tbl,
                                    NFdbBase::FdbMsgAddressList &list, EFdbSocketType type)
 {
-    for (tAddressDescTbl::const_iterator it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
+    for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
     {
         if ((type == FDB_SOCKET_MAX) || (type == (*it)->mAddress.mType))
         {
@@ -127,7 +127,7 @@ void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServ
 {
     if (mRegistryTbl.empty())
     {
-        NFdbBase::FdbMsgServiceInfo *msg_svc_info = svc_tbl.add_service_tbl();
+        auto *msg_svc_info = svc_tbl.add_service_tbl();
         setHostInfo(session, msg_svc_info, 0);
         msg_svc_info->service_addr().set_service_name("");
         msg_svc_info->service_addr().set_host_name("");
@@ -135,9 +135,9 @@ void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServ
     }
     else
     {
-        for (tRegistryTbl::iterator it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
+        for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
         {
-            NFdbBase::FdbMsgServiceInfo *msg_svc_info = svc_tbl.add_service_tbl();
+            auto *msg_svc_info = svc_tbl.add_service_tbl();
             setHostInfo(session, msg_svc_info, it->first.c_str());
             populateAddrList(it->second.mAddrTbl, msg_svc_info->service_addr(), FDB_SOCKET_MAX);
             msg_svc_info->service_addr().set_service_name(it->first);
@@ -152,7 +152,7 @@ void CNameServer::addServiceAddress(const std::string &svc_name,
                                     EFdbSocketType skt_type,
                                     NFdbBase::FdbMsgAddressList *msg_addr_list)
 {
-    CSvcRegistryEntry &addr_tbl = mRegistryTbl[svc_name];
+    auto &addr_tbl = mRegistryTbl[svc_name];
     CFdbToken::allocateToken(addr_tbl.mTokens);
     if (msg_addr_list)
     {
@@ -196,9 +196,9 @@ void CNameServer::addServiceAddress(const std::string &svc_name,
 
 void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServerName svc_name;
-    FdbSessionId_t sid = msg->session();
+    auto sid = msg->session();
     CFdbParcelableParser parser(svc_name);
     if (!msg->deserialize(parser))
     {
@@ -206,7 +206,7 @@ void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
         return;
     }
 
-    tRegistryTbl::iterator it = mRegistryTbl.find(svc_name.name());
+    auto it = mRegistryTbl.find(svc_name.name());
     if (it != mRegistryTbl.end())
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_ALREADY_EXIST);
@@ -242,7 +242,7 @@ void CNameServer::buildSpecificTcpAddress(CFdbSession *session,
      */
     CFdbSessionInfo sinfo;
     session->getSessionInfo(sinfo);
-    CFdbSocketAddr const *session_addr = sinfo.mSocketInfo.mAddress;
+    auto const *session_addr = sinfo.mSocketInfo.mAddress;
     if (session_addr->mType == FDB_SOCKET_IPC)
     {
         /*
@@ -289,7 +289,7 @@ void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
                                          CFdbMessage *msg)
 {
     const char *svc_name = addr_list.service_name().c_str();
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+    auto *session = FDB_CONTEXT->getSession(msg->session());
     if (session)
     {    
         populateTokensRemote(tokens, addr_list, session);
@@ -348,7 +348,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
                                         CFdbMessage *msg)
 {
     const char *svc_name = addr_list.service_name().c_str();
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+    auto *session = FDB_CONTEXT->getSession(msg->session());
     if (session)
     {    
         populateTokensLocal(tokens, addr_list, session);
@@ -376,7 +376,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
     tSubscribedSessionSets sessions;
     const char *svc_name = addr_list.service_name().c_str();
     getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE, svc_name, sessions);
-    for (tSubscribedSessionSets::iterator it = sessions.begin(); it != sessions.end(); ++it)
+    for (auto it = sessions.begin(); it != sessions.end(); ++it)
     {
         CFdbSession *session = *it;
         broadcastSvcAddrLocal(tokens, addr_list, session);
@@ -385,7 +385,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
 
 void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgAddressList addr_list;
     CFdbParcelableParser parser(addr_list);
     if (!msg->deserialize(parser))
@@ -395,7 +395,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     }
     const std::string &svc_name = addr_list.service_name();
 
-    tRegistryTbl::iterator reg_it = mRegistryTbl.find(svc_name);
+    auto reg_it = mRegistryTbl.find(svc_name);
 #if 1
     if (reg_it == mRegistryTbl.end())
     {
@@ -410,7 +410,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     }
 #endif
 
-    CSvcRegistryEntry &addr_tbl = reg_it->second;
+    auto &addr_tbl = reg_it->second;
     addr_tbl.mSid = msg->session();
     tAddressDescTbl new_addr_tbl;
     NFdbBase::FdbMsgAddressList broadcast_ipc_addr_list;
@@ -430,15 +430,14 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     std::string hs_ipc_url;
     std::string hs_tcp_url;
     
-    CFdbParcelableArray<std::string> &addrs = addr_list.address_list();
-    for (CFdbParcelableArray<std::string>::tPool::const_iterator msg_it = addrs.pool().begin();
-            msg_it != addrs.pool().end(); ++msg_it)
+    auto &addrs = addr_list.address_list();
+    for (auto msg_it = addrs.pool().begin(); msg_it != addrs.pool().end(); ++msg_it)
     {
         CFdbAddressDesc *desc = 0;
-        for (tAddressDescTbl::iterator addr_it = addr_tbl.mAddrTbl.begin();
+        for (auto addr_it = addr_tbl.mAddrTbl.begin();
                 addr_it != addr_tbl.mAddrTbl.end(); ++addr_it)
         {
-            CFdbSocketAddr &addr_in_tbl = (*addr_it)->mAddress;
+            auto &addr_in_tbl = (*addr_it)->mAddress;
             if (!msg_it->compare(addr_in_tbl.mUrl))
             {
                 desc = *addr_it;
@@ -559,7 +558,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     {
         /* If ipc is bound or connecting, no longer bind to tcp */
         bool ipc_bound = false;
-        for (tAddressDescTbl::iterator addr_it = addr_tbl.mAddrTbl.begin();
+        for (auto addr_it = addr_tbl.mAddrTbl.begin();
                 addr_it != addr_tbl.mAddrTbl.end(); ++addr_it)
         {
             if (((*addr_it)->mAddress.mType == FDB_SOCKET_IPC) &&
@@ -596,10 +595,10 @@ void CNameServer::checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const cha
 {
     NFdbBase::FdbMsgAddressList addr_list;
     bool failure_found = false;
-    for (tAddressDescTbl::iterator desc_it = desc_tbl.mAddrTbl.begin();
+    for (auto desc_it = desc_tbl.mAddrTbl.begin();
            desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
     {
-        CFdbAddressDesc *desc = *desc_it;
+        auto *desc = *desc_it;
         if (desc->mStatus == CFdbAddressDesc::ADDR_BOUND)
         {
             continue;
@@ -658,7 +657,7 @@ void CNameServer::notifyRemoteNameServerDrop(const char *host_name)
 void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
 {
     const char *svc_name = reg_it->first.c_str();
-    CSvcRegistryEntry &desc_tbl = reg_it->second;
+    auto &desc_tbl = reg_it->second;
 
     LOG_I("CNameServer: Service %s is unregistered.\n", svc_name);
     NFdbBase::FdbMsgAddressList broadcast_addr_list;
@@ -685,7 +684,7 @@ void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
     broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, builder, svc_name);
     }
     
-    for (tAddressDescTbl::iterator desc_it = desc_tbl.mAddrTbl.begin();
+    for (auto desc_it = desc_tbl.mAddrTbl.begin();
             desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
     {
         delete *desc_it;
@@ -695,7 +694,7 @@ void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
 
 void CNameServer::onUnegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServerName msg_svc_name;
     CFdbParcelableParser parser(msg_svc_name);
     if (!msg->deserialize(parser))
@@ -705,7 +704,7 @@ void CNameServer::onUnegisterServiceReq(CBaseJob::Ptr &msg_ref)
     }
 
     const char *svc_name = msg_svc_name.name().c_str();
-    tRegistryTbl::iterator it = mRegistryTbl.find(svc_name);
+    auto it = mRegistryTbl.find(svc_name);
     if (it != mRegistryTbl.end())
     {
         removeService(it);
@@ -719,9 +718,9 @@ void CNameServer::onQueryServiceReq(CBaseJob::Ptr &msg_ref)
 
 void CNameServer::onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServiceTable svc_tbl;
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+    auto *session = FDB_CONTEXT->getSession(msg->session());
     populateServerTable(session, svc_tbl, false);
     CFdbParcelableBuilder builder(svc_tbl);
     msg->reply(msg_ref, builder);
@@ -729,7 +728,7 @@ void CNameServer::onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref)
 
 void CNameServer::onQueryHostReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
     CFdbParcelableBuilder builder(host_tbl);
@@ -756,7 +755,7 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
         skt_type = getSocketType(msg->session());
     }
 
-    CSvcRegistryEntry &addr_tbl = reg_it->second;
+    auto &addr_tbl = reg_it->second;
     populateAddrList(addr_tbl.mAddrTbl, addr_list, skt_type);
     if ((skt_type == FDB_SOCKET_IPC) && addr_list.address_list().empty())
     {   /* for request from local, fallback to TCP connection */
@@ -797,13 +796,13 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
 
 void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
-    FdbMsgCode_t msg_code = sub_item->msg_code();
+    auto msg_code = sub_item->msg_code();
     const char *svc_name = sub_item->has_filter() ? sub_item->filter().c_str() : "";
     bool service_specified = svc_name[0] != '\0';
 
     if (service_specified)
     {
-        tRegistryTbl::iterator it = mRegistryTbl.find(svc_name);
+        auto it = mRegistryTbl.find(svc_name);
         if (it != mRegistryTbl.end())
         {
             broadServiceAddress(it, msg, msg_code);
@@ -811,7 +810,7 @@ void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeIte
     }
     else
     {
-        for (tRegistryTbl::iterator it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
+        for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
         {
             broadServiceAddress(it, msg, msg_code);
         }
@@ -847,13 +846,13 @@ void CNameServer::onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *su
 
 CNameServer::CFdbAddressDesc *CNameServer::findAddress(EFdbSocketType type, const char *url)
 {
-    for (tRegistryTbl::iterator it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
+    for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
     {
-        CSvcRegistryEntry &desc_tbl = it->second;
-        for (tAddressDescTbl::iterator desc_it = desc_tbl.mAddrTbl.begin();
+        auto &desc_tbl = it->second;
+        for (auto desc_it = desc_tbl.mAddrTbl.begin();
                 desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
         {
-            CFdbAddressDesc *addr_desc = *desc_it;
+            auto *addr_desc = *desc_it;
             if ((type == FDB_SOCKET_MAX) || (addr_desc->mAddress.mType == type))
             {
                 if (addr_desc->mAddress.mUrl == url)
@@ -881,7 +880,7 @@ void CNameServer::buildUrl(uint32_t id, std::string &url)
 
 CNameServer::CFdbAddressDesc *CNameServer::createAddrDesc(const char *url)
 {
-    CFdbAddressDesc *desc = new CFdbAddressDesc();
+    auto *desc = new CFdbAddressDesc();
     if (!CBaseSocketFactory::parseUrl(url, desc->mAddress))
     {
         delete desc;
@@ -974,7 +973,8 @@ bool CNameServer::allocateIpcAddress(const std::string &svc_name, std::string &a
     bool is_name_server = svc_name == name();
     if (is_host_server || is_name_server)
     {
-        const char *chr_url = is_host_server ? CNsConfig::getHostServerIpcPath() : CNsConfig::getNameServerIpcPath();
+        const char *chr_url = is_host_server ? CNsConfig::getHostServerIpcPath() :
+                                CNsConfig::getNameServerIpcPath();
         if (!findAddress(FDB_SOCKET_IPC, chr_url))
         {
             addr_url = chr_url;
@@ -1011,7 +1011,7 @@ bool CNameServer::allocateIpcAddress(const std::string &svc_name, std::string &a
 
 EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
 {
-    CFdbSession *session = FDB_CONTEXT->getSession(sid);
+    auto *session = FDB_CONTEXT->getSession(sid);
     if (session)
     {
         CFdbSessionInfo sinfo;
@@ -1026,10 +1026,10 @@ EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
 
 void CNameServer::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    for (tRegistryTbl::iterator it = mRegistryTbl.begin(); it != mRegistryTbl.end();)
+    for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end();)
     {
-        CSvcRegistryEntry &addr_tbl = it->second;
-        tRegistryTbl::iterator cur_it = it;
+        auto &addr_tbl = it->second;
+        auto cur_it = it;
         ++it;
         if (addr_tbl.mSid == sid)
         {
@@ -1041,10 +1041,10 @@ void CNameServer::onOffline(FdbSessionId_t sid, bool is_last)
 bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
 {
     bool success = true;
-    for (tAddressDescTbl::iterator it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
+    for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
     {
         const char *url = (*it)->mAddress.mUrl.c_str();
-        CServerSocket *sk = doBind(url);
+        auto *sk = doBind(url);
         if (sk)
         {
             if ((*it)->mAddress.mType != FDB_SOCKET_IPC)
@@ -1080,7 +1080,7 @@ bool CNameServer::online(const char *hs_url, const char *hs_name, const char *in
 #endif
     const char *ns_name = name().c_str();
     addServiceAddress(ns_name, FDB_INVALID_ID, skt_type, 0);
-    tRegistryTbl::iterator it = mRegistryTbl.find(ns_name);
+    auto it = mRegistryTbl.find(ns_name);
     if (it == mRegistryTbl.end())
     {
         LOG_E("Opps! Something wrong in Name Server!\n");
@@ -1144,7 +1144,7 @@ void CNameServer::populateTokens(const CFdbToken::tTokenList &tokens,
 {
     list.token_list().clear_tokens();
     list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
-    for (CFdbToken::tTokenList::const_iterator it = tokens.begin(); it != tokens.end(); ++it)
+    for (auto it = tokens.begin(); it != tokens.end(); ++it)
     {
         list.token_list().add_tokens(*it);
     }
@@ -1153,9 +1153,8 @@ void CNameServer::populateTokens(const CFdbToken::tTokenList &tokens,
 void CNameServer::dumpTokens(CFdbToken::tTokenList &tokens,
                              NFdbBase::FdbMsgAddressList &list)
 {
-    const CFdbParcelableArray<std::string> &t = list.token_list().tokens();
-    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = t.pool().begin();
-            it != t.pool().end(); ++it)
+    const auto &t = list.token_list().tokens();
+    for (auto it = t.pool().begin(); it != t.pool().end(); ++it)
     {
         tokens.push_back(*it);
     }

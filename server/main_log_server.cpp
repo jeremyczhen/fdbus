@@ -48,7 +48,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
     {
         return;
     }
-    unsigned int num_filters = 0;
+    uint32_t num_filters = 0;
     char **filters = strsplit(filter_str, ",", &num_filters);
     for (uint32_t i = 0; i < num_filters; ++i)
     {
@@ -60,7 +60,7 @@ static void fdb_populate_white_list(const char *filter_str, std::vector<std::str
 static void fdb_populate_white_list_cmd(CFdbParcelableArray<std::string> &out_filter
                                       , const std::vector<std::string> &white_list)
 {
-    for (std::vector<std::string>::const_iterator it = white_list.begin(); it != white_list.end(); ++it)
+    for (auto it = white_list.begin(); it != white_list.end(); ++it)
     {
         std::string *filter = out_filter.Add();
         filter->assign(it->c_str());
@@ -71,8 +71,7 @@ void fdb_dump_white_list_cmd(CFdbParcelableArray<std::string> &in_filter
                            , std::vector<std::string> &white_list)
 {
     white_list.clear();
-    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = in_filter.pool().begin();
-            it != in_filter.pool().end(); ++it)
+    for (auto it = in_filter.pool().begin(); it != in_filter.pool().end(); ++it)
     {
         white_list.push_back(*it);
     }
@@ -88,7 +87,7 @@ public:
 protected:
     void onInvoke(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case NFdbBase::REQ_FDBUS_LOG:
@@ -171,7 +170,7 @@ protected:
     
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         const CFdbMsgSubscribeItem *sub_item;
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
@@ -196,7 +195,7 @@ protected:
                 case NFdbBase::NTF_FDBUS_LOG:
                 {
                     bool is_first = mLoggerClientTbl.empty();
-                    LoggerClientTbl_t::iterator it = mLoggerClientTbl.find(msg->session());
+                    auto it = mLoggerClientTbl.find(msg->session());
                     if (it == mLoggerClientTbl.end())
                     {
                         mLoggerClientTbl[msg->session()] = new CLogClientCfg();
@@ -213,7 +212,7 @@ protected:
                 case NFdbBase::NTF_TRACE_LOG:
                 {
                     bool is_first = mTraceClientTbl.empty();
-                    TraceClientTbl_t::iterator it = mTraceClientTbl.find(msg->session());
+                    auto it = mTraceClientTbl.find(msg->session());
                     if (it == mTraceClientTbl.end())
                     {
                         mTraceClientTbl[msg->session()] = new CTraceClientCfg();
@@ -239,7 +238,7 @@ protected:
     void onOffline(FdbSessionId_t sid, bool is_last)
     {
         {
-        LoggerClientTbl_t::iterator it = mLoggerClientTbl.find(sid);
+        auto it = mLoggerClientTbl.find(sid);
         if (it != mLoggerClientTbl.end())
         {
             delete it->second;
@@ -254,7 +253,7 @@ protected:
         }
         }
         {
-        TraceClientTbl_t::iterator it = mTraceClientTbl.find(sid);
+        auto it = mTraceClientTbl.find(sid);
         if (it != mTraceClientTbl.end())
         {
             delete it->second;

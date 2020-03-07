@@ -74,7 +74,6 @@ public:
     void unbind(FdbSocketId_t skid = FDB_INVALID_ID);
 
 protected:
-    void reconnectToNs(bool connect);
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session);
     bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session);
@@ -85,7 +84,6 @@ private:
 
     void cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     void doUnbind(FdbSocketId_t skid = FDB_INVALID_ID);
-    bool requestServiceAddress(const char *server_name);
     
     friend class CFdbContext;
     friend class CServerSocket;

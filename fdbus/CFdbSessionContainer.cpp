@@ -36,7 +36,7 @@ CFdbSessionContainer::~CFdbSessionContainer()
     }
 
     CFdbSessionContainer *self = 0;
-    CBaseEndpoint::EntryContainer_t::iterator it = mOwner->retrieveEntry(mSkid, self);
+    auto it = mOwner->retrieveEntry(mSkid, self);
     if (self)
     {
         mOwner->deleteEntry(it);
@@ -45,13 +45,13 @@ CFdbSessionContainer::~CFdbSessionContainer()
 
 CFdbSession *CFdbSessionContainer::getDefaultSession()
 {
-    ConnectedSessionTable_t::iterator it = mConnectedSessionTable.begin();
+    auto it = mConnectedSessionTable.begin();
     return (it == mConnectedSessionTable.end()) ? 0 : *it;
 }
 
 void CFdbSessionContainer::addSession(CFdbSession *session)
 {
-    for (ConnectedSessionTable_t::iterator it = mConnectedSessionTable.begin();
+    for (auto it = mConnectedSessionTable.begin();
             it != mConnectedSessionTable.end(); ++it)
     {
         if (*it == session)

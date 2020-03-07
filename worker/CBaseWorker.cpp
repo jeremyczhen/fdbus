@@ -369,7 +369,7 @@ bool CBaseFdWatch::attach(CBaseWorker *worker, bool enb)
         }
         else
         {
-            CFdEventLoop *loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
+            auto *loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
             if (!loop)
             {
                 LOG_E("CBaseWorker: Trying to attach watch but fdloop is not enabled!\n");
@@ -393,7 +393,7 @@ bool CBaseFdWatch::attach(CBaseWorker *worker, bool enb)
     if (worker)
     {
         mWorker = worker;
-        CFdEventLoop *loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
+        auto *loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
         if (!loop)
         {
             LOG_E("CBaseWorker: Trying to attach watch but fdloop is not enabled!\n");
@@ -529,7 +529,7 @@ uint32_t CBaseWorker::CJobQueue::sizeLimit() const
 
 uint32_t CBaseWorker::CJobQueue::size() const
 {
-    return mJobQueue.size();
+    return (uint32_t)mJobQueue.size();
 }
 
 CBaseWorker::CBaseWorker(const char* thread_name, uint32_t normal_queue_size, uint32_t urgent_queue_size)
@@ -666,7 +666,7 @@ bool CBaseWorker::jobQueued() const
 
 void CBaseWorker::processUrgentJobs(tJobContainer &jobs)
 {
-    for (tJobContainer::iterator it = jobs.begin(); it != jobs.end(); ++it)
+    for (auto it = jobs.begin(); it != jobs.end(); ++it)
     {
         (*it)->urgent(true);
         bool run_job = !mUrgentJobQueue.jobDiscarded() || (*it)->forceRun();
@@ -699,7 +699,7 @@ void CBaseWorker::processJobQueue()
     mEventLoop->unlock();
 
     processUrgentJobs(urgent_jobs);
-    for (tJobContainer::iterator it = normal_jobs.begin(); it != normal_jobs.end(); ++it)
+    for (auto it = normal_jobs.begin(); it != normal_jobs.end(); ++it)
     {
         processUrgentJobs();
         (*it)->urgent(false);
@@ -884,7 +884,7 @@ protected:
 
 void CBaseWorker::discardJobs(bool urgent)
 {
-    CBaseJob *job = new CUnlockJobQueueJob();
+    auto *job = new CUnlockJobQueueJob();
     
     updateDiscardStatus(true, urgent);
     if (!sendAsync(job, urgent))

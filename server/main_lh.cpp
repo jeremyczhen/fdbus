@@ -41,7 +41,7 @@ public:
 protected:
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg->isStatus())
         {
             if (msg->isError())
@@ -80,7 +80,7 @@ protected:
     
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case NFdbBase::NTF_HOST_ONLINE_LOCAL:
@@ -124,11 +124,10 @@ private:
 
     void printHosts(NFdbBase::FdbMsgHostAddressList &host_list, bool monitor)
     {
-        CFdbParcelableArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
-        for (CFdbParcelableArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
-                it != addr_list.vpool().end(); ++it)
+        auto &addr_list = host_list.address_list();
+        for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
         {
-            NFdbBase::FdbMsgHostAddress &addr = *it;
+            auto &addr = *it;
             bool is_offline = addr.ns_url().empty();
             if (is_offline)
             {

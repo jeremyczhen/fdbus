@@ -65,19 +65,6 @@ public:
     }
 
 protected:
-    void deleteSocket(FdbSocketId_t skid = FDB_INVALID_ID);
-    void addSocket(CFdbSessionContainer *container);
-    void getDefaultSvcUrl(std::string &url);
-
-    virtual void reconnectToNs(bool connect) {}
-
-    void epid(FdbEndpointId_t epid)
-    {
-        mEpid = epid;
-    }
-
-    std::string mNsName;
-
     enum eConnState
     {
         UNCONNECTED, /* unconnected to NS; listening on NS */
@@ -86,10 +73,22 @@ protected:
         LOST, /* connect lost due to NS shutdown */
         DISCONNECTED /* unconnected to NS; not listening on NS */
     };
-    eConnState mNsConnStatus;
+
+    void deleteSocket(FdbSocketId_t skid = FDB_INVALID_ID);
+    void addSocket(CFdbSessionContainer *container);
+    void getDefaultSvcUrl(std::string &url);
+    void epid(FdbEndpointId_t epid)
+    {
+        mEpid = epid;
+    }
 
     bool replaceUrlIpAddress(std::string &url, CFdbSession *session = 0,
                              std::string *ip_addr = 0, int32_t *port = 0);
+    bool requestServiceAddress(const char *server_name);
+    bool reconnectToNs(bool connect);
+
+    std::string mNsName;
+    eConnState mNsConnStatus;
 
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;

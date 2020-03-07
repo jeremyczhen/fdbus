@@ -53,8 +53,7 @@ bool CFdbProtoMsgBuilder::toString(std::string *msg_txt)
     bool ret = true;
     try
     {
-        const ::google::protobuf::Message &full_msg =
-                    dynamic_cast<const ::google::protobuf::Message &>(mMessage);
+        const auto &full_msg = dynamic_cast<const ::google::protobuf::Message &>(mMessage);
         try
         {
             if (!google::protobuf::TextFormat::PrintToString(full_msg, msg_txt))
@@ -88,7 +87,7 @@ bool CFdbProtoMsgParser::parse(const uint8_t *buffer, int32_t size)
         //Assign ArrayInputStream with enough memory
         google::protobuf::io::ArrayInputStream ais(buffer, size);
         google::protobuf::io::CodedInputStream coded_input(&ais);
-        google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(size);
+        auto msgLimit = coded_input.PushLimit(size);
         // De-Serialize
         ret = mMessage.ParseFromCodedStream(&coded_input);
         //Once the embedded message has been parsed, PopLimit() is called to undo the limit

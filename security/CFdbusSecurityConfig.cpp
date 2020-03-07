@@ -52,12 +52,12 @@ void *CFdbusSecurityConfig::readFile(const char *file_name)
 void CFdbusSecurityConfig::parseSecurityConfig(const char *json_str,
                                                std::string &err_msg)
 {
-    cJSON *cfg_root = cJSON_Parse(json_str);
+    auto *cfg_root = cJSON_Parse(json_str);
     if (cfg_root != NULL)
     {
         if (cJSON_IsObject(cfg_root))
         {
-            cJSON *nr_sec_level = cJSON_GetObjectItem(cfg_root, "number_of_secure_levels");
+            auto *nr_sec_level = cJSON_GetObjectItem(cfg_root, "number_of_secure_levels");
             if (nr_sec_level != NULL)
             {
                 if (cJSON_IsNumber(nr_sec_level))
@@ -75,7 +75,7 @@ void CFdbusSecurityConfig::parseSecurityConfig(const char *json_str,
                 }
             }
 
-            cJSON *token_length = cJSON_GetObjectItem(cfg_root, "token_length");
+            auto *token_length = cJSON_GetObjectItem(cfg_root, "token_length");
             if (token_length != NULL)
             {
                 if (cJSON_IsNumber(token_length))

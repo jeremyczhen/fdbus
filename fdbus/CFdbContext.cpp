@@ -102,7 +102,7 @@ CBaseEndpoint *CFdbContext::getEndpoint(FdbEndpointId_t endpoint_id)
 
 void CFdbContext::registerSession(CFdbSession *session)
 {
-    FdbSessionId_t sid = mSessionContainer.allocateEntityId();
+    auto sid = mSessionContainer.allocateEntityId();
     session->sid(sid);
     mSessionContainer.insertEntry(sid, session);
 }
@@ -117,8 +117,7 @@ CFdbSession *CFdbContext::getSession(FdbSessionId_t session_id)
 void CFdbContext::unregisterSession(FdbSessionId_t session_id)
 {
     CFdbSession *session = 0;
-    tSessionContainer::EntryContainer_t::iterator it =
-        mSessionContainer.retrieveEntry(session_id, session);
+    auto it = mSessionContainer.retrieveEntry(session_id, session);
     if (session)
     {
         mSessionContainer.deleteEntry(it);
@@ -137,9 +136,8 @@ void CFdbContext::deleteSession(FdbSessionId_t session_id)
 
 void CFdbContext::deleteSession(CFdbSessionContainer *container)
 {
-    tSessionContainer::EntryContainer_t &session_tbl = mSessionContainer.getContainer();
-    tSessionContainer::EntryContainer_t::iterator it;
-    for (it = session_tbl.begin(); it != session_tbl.end();)
+    auto &session_tbl = mSessionContainer.getContainer();
+    for (auto it = session_tbl.begin(); it != session_tbl.end();)
     {
         CFdbSession *session = it->second;
         ++it;
@@ -152,7 +150,7 @@ void CFdbContext::deleteSession(CFdbSessionContainer *container)
 
 FdbEndpointId_t CFdbContext::registerEndpoint(CBaseEndpoint *endpoint)
 {
-    FdbEndpointId_t id = endpoint->epid();
+    auto id = endpoint->epid();
     if (!isValidFdbId(id))
     {
         id = mEndpointContainer.allocateEntityId();
@@ -166,8 +164,7 @@ FdbEndpointId_t CFdbContext::registerEndpoint(CBaseEndpoint *endpoint)
 void CFdbContext::unregisterEndpoint(CBaseEndpoint *endpoint)
 {
     CBaseEndpoint *self = 0;
-    tEndpointContainer::EntryContainer_t::iterator it =
-        mEndpointContainer.retrieveEntry(endpoint->epid(), self);
+    auto it = mEndpointContainer.retrieveEntry(endpoint->epid(), self);
     if (self)
     {
         endpoint->enableMigrate(false);
@@ -180,12 +177,11 @@ void CFdbContext::findEndpoint(const char *name
                                , std::vector<CBaseEndpoint *> &ep_tbl
                                , bool is_server)
 {
-    tEndpointContainer::EntryContainer_t &container = mEndpointContainer.getContainer();
-    tEndpointContainer::EntryContainer_t::iterator it;
-    for (it = container.begin(); it != container.end(); ++it)
+    auto &container = mEndpointContainer.getContainer();
+    for (auto it = container.begin(); it != container.end(); ++it)
     {
-        CBaseEndpoint *endpoint = it->second;
-        bool found = false;
+        auto *endpoint = it->second;
+        auto found = false;
 
         if (is_server)
         {
@@ -218,9 +214,8 @@ CIntraNameProxy *CFdbContext::getNameProxy()
 
 void CFdbContext::reconnectOnNsConnected(bool connect)
 {
-    tEndpointContainer::EntryContainer_t &container = mEndpointContainer.getContainer();
-    tEndpointContainer::EntryContainer_t::iterator it;
-    for (it = container.begin(); it != container.end(); ++it)
+    auto &container = mEndpointContainer.getContainer();
+    for (auto it = container.begin(); it != container.end(); ++it)
     {
         CBaseEndpoint *endpoint = it->second;
         endpoint->reconnectToNs(connect);

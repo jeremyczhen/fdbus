@@ -18,7 +18,6 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
-#include <common_base/CIntraNameProxy.h>
 #include <common_base/CFdbIfMessageHeader.h>
 #include <utils/Log.h>
 
@@ -26,9 +25,11 @@
 
 CClientSocket::CClientSocket(CBaseClient *owner
                              , FdbSocketId_t skid
-                             , CClientSocketImp *socket)
+                             , CClientSocketImp *socket
+                             , const char *host_name)
     : CFdbSessionContainer(skid, owner)
     , mSocket(socket)
+    , mConnectedHost(host_name ? host_name : "")
 {
 }
 
@@ -42,7 +43,7 @@ CClientSocket::~CClientSocket()
 CFdbSession *CClientSocket::connect()
 {
     CFdbSession *session = 0;
-    CSocketImp *sock_imp = mSocket->connect();
+    auto *sock_imp = mSocket->connect();
     if (sock_imp)
     {
         session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
@@ -66,38 +67,41 @@ void CClientSocket::getSocketInfo(CFdbSocketInfo &info)
 
 void CClientSocket::onSessionDeleted(CFdbSession *session)
 {
-    CBaseClient *client = dynamic_cast<CBaseClient *>(mOwner);
+    auto *client = dynamic_cast<CBaseClient *>(mOwner);
     
     if (mOwner->isReconnect() && session->internalError() && client)
     {
         session->internalError(false);
-        std::string url = mSocket->getAddress().mUrl;
+        auto url = mSocket->getAddress().mUrl;
 
         CFdbSessionContainer::onSessionDeleted(session);
         delete this;
-        
-        if (FDB_CLIENT_RECONNECT_WAIT_MS)
+
+        client->reconnectToNs(false);
+        if (!client->reconnectToNs(true))
         {
-            sysdep_sleep(FDB_CLIENT_RECONNECT_WAIT_MS);
-        }
-        if (client->doConnect(url.c_str()))
-        {
-            LOG_E("CClientSocket: shutdown due to IO error but reconnected to %s@%s.\n", client->nsName().c_str(), url.c_str());
+            if (FDB_CLIENT_RECONNECT_WAIT_MS)
+            {
+                sysdep_sleep(FDB_CLIENT_RECONNECT_WAIT_MS);
+            }
+            if (client->doConnect(url.c_str()))
+            {
+                LOG_E("CClientSocket: shutdown due to IO error but reconnected to %s@%s.\n", client->nsName().c_str(), url.c_str());
+            }
+            else
+            {
+                LOG_E("CClientSocket: shutdown due to IO error and fail to reconnect to %s@%s.\n", client->nsName().c_str(), url.c_str());
+            }
         }
         else
         {
-            LOG_E("CClientSocket: shutdown due to IO error and fail to reconnect to %s@%s.\n", client->nsName().c_str(), url.c_str());
-            client->mConnectedHost.clear();
+            LOG_E("CClientSocket: %s shutdown due to IO error but try to connect to name server.\n", client->nsName().c_str());
         }
     }
     else
     {
         CFdbSessionContainer::onSessionDeleted(session);
         delete this;
-        if (client)
-        {
-            client->mConnectedHost.clear();
-        }
     }
 }
 
@@ -137,7 +141,7 @@ FdbSessionId_t CBaseClient::connect(const char *url)
 
 void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref)
 {
-    CConnectClientJob *the_job = dynamic_cast<CConnectClientJob *>(job);
+    auto *the_job = dynamic_cast<CConnectClientJob *>(job);
     if (!the_job)
     {
         return;
@@ -155,7 +159,7 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
         url = the_job->mUrl.c_str();
     }
 
-    CClientSocket *sk = doConnect(url);
+    auto *sk = doConnect(url);
     if (sk)
     {
         CFdbSession *session = sk->getDefaultSession();
@@ -172,35 +176,7 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
     }
 }
 
-bool CBaseClient::requestServiceAddress(const char *server_name)
-{
-    if (mNsConnStatus == CONNECTED)
-    {
-        return true;
-    }
-
-    if (mNsName.empty() && !server_name)
-    {
-        LOG_E("CBaseClient: Service name is not given!\n");
-        return false;
-    }
-    if (server_name)
-    {
-        mNsName = server_name;
-    }
-
-    mNsConnStatus = CONNECTING;
-    CIntraNameProxy *name_proxy = FDB_CONTEXT->getNameProxy();
-    if (!name_proxy)
-    {
-        return false;
-    }
-
-    name_proxy->addServiceListener(mNsName.c_str(), FDB_INVALID_ID);
-    return true;
-}
-
-CClientSocket *CBaseClient::doConnect(const char *url)
+CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
 {
     CFdbSocketAddr addr;
     EFdbSocketType skt_type;
@@ -228,20 +204,20 @@ CClientSocket *CBaseClient::doConnect(const char *url)
         return 0;
     }
 
-    CFdbSessionContainer *session_container = getSocketByUrl(url);
+    auto *session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already connected, do nothing */
     {
         return dynamic_cast<CClientSocket *>(session_container);
     }
 
-    CClientSocketImp *client_imp = CBaseSocketFactory::createClientSocket(addr);
+    auto *client_imp = CBaseSocketFactory::createClientSocket(addr);
     if (client_imp)
     {
         FdbSocketId_t skid = allocateEntityId();
-        CClientSocket *sk = new CClientSocket(this, skid, client_imp);
+        auto *sk = new CClientSocket(this, skid, client_imp, host_name);
         addSocket(sk);
 
-        CFdbSession *session = sk->connect();
+        auto *session = sk->connect();
         if (session)
         {
             CFdbContext::getInstance()->registerSession(session);
@@ -278,7 +254,7 @@ public:
 
 void CBaseClient::cbDisconnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref)
 {
-    CDisconnectClientJob *the_job = dynamic_cast<CDisconnectClientJob *>(job);
+    auto *the_job = dynamic_cast<CDisconnectClientJob *>(job);
     if (!the_job)
     {
         return;
@@ -299,7 +275,7 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
     
     if (isValidFdbId(sid))
     {
-        CFdbSession *session = CFdbContext::getInstance()->getSession(sid);
+        auto *session = CFdbContext::getInstance()->getSession(sid);
         if (session)
         {
             skid = session->container()->skid();
@@ -319,29 +295,13 @@ void CBaseClient::disconnect(FdbSessionId_t sid)
                 new CDisconnectClientJob(this, &CBaseClient::cbDisconnect, sid), 0, true);
 }
 
-void CBaseClient::reconnectToNs(bool connect)
-{
-    if (mNsConnStatus == DISCONNECTED)
-    {
-        return;
-    }
-    if (connect)
-    {
-        requestServiceAddress(0);
-    }
-    else
-    {
-        mNsConnStatus = LOST;
-    }
-}
-
 void CBaseClient::updateSecurityLevel()
 {
     if (!mTokens.empty())
     {
         NFdbBase::FdbAuthentication authen;
         authen.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE); 
-        for (CFdbToken::tTokenList::const_iterator it = mTokens.begin(); it != mTokens.end(); ++it)
+        for (auto it = mTokens.begin(); it != mTokens.end(); ++it)
         {
             authen.token_list().add_tokens(*it);
         }
@@ -349,4 +309,28 @@ void CBaseClient::updateSecurityLevel()
         sendSideband(FDB_SIDEBAND_AUTH, builder);
     }
 }
+
+bool CBaseClient::hostConnected(const char *host_name)
+{
+    if (!host_name)
+    {
+        return false;
+    }
+    auto &containers = getContainer();
+    for (auto it = containers.begin(); it != containers.end(); ++it)
+    {
+        auto *sessions = it->second;
+        auto *client_socket = dynamic_cast<CClientSocket *>(sessions);
+        if (client_socket)
+        {
+            if (!client_socket->connectedHost().compare(host_name))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 

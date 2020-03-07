@@ -43,9 +43,9 @@ CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
 
 void CHostProxy::isolate()
 {
-    for (tNameProxyTbl::iterator it = mNameProxyTbl.begin(); it != mNameProxyTbl.end();)
+    for (auto it = mNameProxyTbl.begin(); it != mNameProxyTbl.end();)
     {
-        CInterNameProxy *ns_proxy = it->second;
+        auto *ns_proxy = it->second;
         ns_proxy->doDisconnect();
         ++it;
         LOG_E("CHostProxy: Disconnected to NS of host %s.\n", ns_proxy->getHostIp().c_str());
@@ -124,7 +124,7 @@ void CHostProxy::subscribeListener(NFdbBase::FdbHsMsgCode code, bool sub)
 
 void CHostProxy::onReply(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg->isStatus())
     {
         if (msg->isError())
@@ -166,9 +166,9 @@ void CHostProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 
 void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList host_list;
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+    auto *session = FDB_CONTEXT->getSession(msg->session());
     if (!session)
     {
         return; //never happen!!!
@@ -188,11 +188,10 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     mNameServer->getSubscribeTable(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, monitored_service_tbl);
     CFdbParcelableBuilder builder(host_list);
     mNameServer->broadcast(NFdbBase::NTF_HOST_ONLINE_LOCAL, builder);
-    CFdbParcelableArray<NFdbBase::FdbMsgHostAddress> &addr_list = host_list.address_list();
-    for (CFdbParcelableArray<NFdbBase::FdbMsgHostAddress>::tPool::iterator it = addr_list.vpool().begin();
-            it != addr_list.vpool().end(); ++it)
+    auto &addr_list = host_list.address_list();
+    for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
     {
-        NFdbBase::FdbMsgHostAddress &addr = *it;
+        auto &addr = *it;
         std::string ns_url(addr.ns_url());
         std::string ip_address(addr.ip_address());
         if (addr.ip_address() == FDB_IP_ALL_INTERFACE)
@@ -221,7 +220,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
             continue;
         }
 
-        tNameProxyTbl::iterator np_it = mNameProxyTbl.find(ip_address);
+        auto np_it = mNameProxyTbl.find(ip_address);
         bool is_offline = ns_url.empty();
         if (is_offline)
         {
@@ -233,7 +232,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
         }
         else if (np_it == mNameProxyTbl.end())
         {
-            CInterNameProxy *proxy = new CInterNameProxy(this, ip_address, ns_url, addr.host_name());
+            auto *proxy = new CInterNameProxy(this, ip_address, ns_url, addr.host_name());
             proxy->enableReconnect(true);
             proxy->autoRemove(true);
             if (proxy->connectToNameServer())
@@ -245,14 +244,14 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
                     LOG_I("CHostProxy: tokens of %s is updated.\n", proxy->name().c_str());
                 }
 
-                for (tFdbFilterSets::iterator filter_it = registered_service_tbl.begin();
+                for (auto filter_it = registered_service_tbl.begin();
                             filter_it != registered_service_tbl.end(); ++filter_it)
                 {
                     proxy->addServiceListener(filter_it->c_str(), FDB_INVALID_ID);
                     LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
                           filter_it->c_str(), ip_address.c_str());
                 }
-                for (tFdbFilterSets::iterator filter_it = monitored_service_tbl.begin();
+                for (auto filter_it = monitored_service_tbl.begin();
                             filter_it != monitored_service_tbl.end(); ++filter_it)
                 {
                     proxy->addServiceMonitorListener(filter_it->c_str(), FDB_INVALID_ID);
@@ -309,13 +308,13 @@ void CHostProxy::forwardServiceListener(FdbMsgCode_t msg_code
                                       , FdbSessionId_t subscriber)
 {
     std::string host_ip(FDB_IP_ALL_INTERFACE);
-    for (tNameProxyTbl::iterator it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
+    for (auto it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
     {
         if (host_ip == it->first)
         {
             continue;
         }
-        CInterNameProxy *ns_proxy = it->second;
+        auto *ns_proxy = it->second;
         if (msg_code == NFdbBase::NTF_SERVICE_ONLINE_MONITOR)
         {
             ns_proxy->addServiceMonitorListener(service_name, subscriber);
@@ -330,13 +329,13 @@ void CHostProxy::forwardServiceListener(FdbMsgCode_t msg_code
 void CHostProxy::recallServiceListener(FdbMsgCode_t msg_code, const char *service_name)
 {
     std::string host_ip(FDB_IP_ALL_INTERFACE);
-    for (tNameProxyTbl::iterator it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
+    for (auto it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
     {
         if (host_ip == it->first)
         {
             continue;
         }
-        CInterNameProxy *ns_proxy = it->second;
+        auto *ns_proxy = it->second;
         if (msg_code == NFdbBase::NTF_SERVICE_ONLINE_MONITOR)
         {
             ns_proxy->removeServiceMonitorListener(service_name);
@@ -350,7 +349,7 @@ void CHostProxy::recallServiceListener(FdbMsgCode_t msg_code, const char *servic
 
 void CHostProxy::deleteNameProxy(CInterNameProxy *proxy)
 {
-    tNameProxyTbl::iterator it = mNameProxyTbl.find(proxy->getHostIp());
+    auto it = mNameProxyTbl.find(proxy->getHostIp());
     if (it != mNameProxyTbl.end())
     {
         mNameServer->notifyRemoteNameServerDrop(it->second->getHostName().c_str());
@@ -380,8 +379,8 @@ void CHostProxy::onConnectTimer(CMethodLoopTimer<CHostProxy> *timer)
 
 void CHostProxy::queryServiceReq(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-    CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *session = FDB_CONTEXT->getSession(msg->session());
     if (mNameProxyTbl.empty())
     {
         NFdbBase::FdbMsgServiceTable svc_tbl;
@@ -391,16 +390,16 @@ void CHostProxy::queryServiceReq(CBaseJob::Ptr &msg_ref)
         return;
     }
     
-    CQueryServiceMsg::tPendingReqTbl *pending_tbl = new CQueryServiceMsg::tPendingReqTbl;
-    NFdbBase::FdbMsgServiceTable *svc_tbl = new NFdbBase::FdbMsgServiceTable;
+    auto *pending_tbl = new CQueryServiceMsg::tPendingReqTbl;
+    auto *svc_tbl = new NFdbBase::FdbMsgServiceTable;
     mNameServer->populateServerTable(session, *svc_tbl, true);
-    for (tNameProxyTbl::iterator np_it = mNameProxyTbl.begin(); np_it != mNameProxyTbl.end(); ++np_it)
+    for (auto np_it = mNameProxyTbl.begin(); np_it != mNameProxyTbl.end(); ++np_it)
     {
         pending_tbl->push_back(np_it->first);
     }
-    for (tNameProxyTbl::iterator np_it = mNameProxyTbl.begin(); np_it != mNameProxyTbl.end(); ++np_it)
+    for (auto np_it = mNameProxyTbl.begin(); np_it != mNameProxyTbl.end(); ++np_it)
     {
-        CQueryServiceMsg *req = new CQueryServiceMsg(pending_tbl, svc_tbl, msg_ref, np_it->first, this);
+        auto *req = new CQueryServiceMsg(pending_tbl, svc_tbl, msg_ref, np_it->first, this);
         np_it->second->queryServiceTbl(req);
     }
 }
@@ -409,17 +408,16 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
 {
     if (svc_tbl)
     {
-        const CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool &src_pool = svc_tbl->service_tbl().pool();
-        CFdbParcelableArray<NFdbBase::FdbMsgServiceInfo>::tPool &dst_pool = query->mSvcTbl->service_tbl().vpool();
+        const auto &src_pool = svc_tbl->service_tbl().pool();
+        auto &dst_pool = query->mSvcTbl->service_tbl().vpool();
         dst_pool.insert(dst_pool.end(), src_pool.begin(), src_pool.end());
         
     }
     query->mPendingReqTbl->remove(query->mHostIp);
     
-    for (CQueryServiceMsg::tPendingReqTbl::iterator it = query->mPendingReqTbl->begin();
-            it != query->mPendingReqTbl->end();)
+    for (auto it = query->mPendingReqTbl->begin(); it != query->mPendingReqTbl->end();)
     {
-        CQueryServiceMsg::tPendingReqTbl::iterator the_it = it;
+        auto the_it = it;
         ++it;
         if (mNameProxyTbl.find(*the_it) == mNameProxyTbl.end())
         {
@@ -429,7 +427,7 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
 
     if (query->mPendingReqTbl->empty())
     {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(query->mReq);
+        auto *msg = castToMessage<CFdbMessage *>(query->mReq);
         CFdbParcelableBuilder builder(*query->mSvcTbl);
         msg->reply(query->mReq, builder);
         delete query->mPendingReqTbl;
@@ -439,15 +437,15 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
 
 void CHostProxy::getHostTbl(NFdbBase::FdbMsgHostAddressList &host_tbl)
 {
-    for (tNameProxyTbl::iterator it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
+    for (auto it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
     {
-        NFdbBase::FdbMsgHostAddress *addr = host_tbl.add_address_list();
+        auto *addr = host_tbl.add_address_list();
         addr->set_ip_address(it->second->getHostIp());
         addr->set_host_name(it->second->getHostName());
         addr->set_ns_url(it->second->getNsUrl());
     }
 
-    NFdbBase::FdbMsgHostAddress *addr = host_tbl.add_address_list();
+    auto *addr = host_tbl.add_address_list();
     std::string host_ip;
     if (!hostIp(host_ip))
     {

@@ -59,7 +59,7 @@ void CLogProducer::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     switch (msg->code())
     {
         case NFdbBase::NTF_LOGGER_CONFIG:
@@ -248,7 +248,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
     const char *sender = endpoint->name().c_str();
     const char *receiver = getReceiverName(msg->type(), msg->senderName().c_str(), endpoint);
     const char *busname = endpoint->nsName().c_str();
-    CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
+    auto *proxy = FDB_CONTEXT->getNameProxy();
 
     CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
@@ -312,7 +312,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
         tag = "None";
     }
 
-    CIntraNameProxy *proxy = FDB_CONTEXT->getNameProxy();
+    auto *proxy = FDB_CONTEXT->getNameProxy();
     CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
                          << tag
@@ -345,8 +345,7 @@ bool CLogProducer::checkHostEnabled(const CFdbParcelableArray<std::string> &host
         return true;
     }
 
-    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = host_tbl.pool().begin();
-            it != host_tbl.pool().end(); ++it)
+    for (auto it = host_tbl.pool().begin(); it != host_tbl.pool().end(); ++it)
     {
         if (!it->compare(proxy->hostName()))
         {
@@ -361,8 +360,7 @@ void CLogProducer::populateWhiteList(const CFdbParcelableArray<std::string> &in_
                                    , tFilterTbl &white_list)
 {
     white_list.clear();
-    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = in_filter.pool().begin();
-            it != in_filter.pool().end(); ++it)
+    for (auto it = in_filter.pool().begin(); it != in_filter.pool().end(); ++it)
     {
         white_list.insert(*it);
     }

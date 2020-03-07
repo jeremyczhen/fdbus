@@ -45,7 +45,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                           , IFdbMsgBuilder &data
                           , int32_t timeout)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
+    auto *msg = new CBaseMessage(code, this, receiver);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -87,7 +87,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                             , IFdbMsgBuilder &data
                             , int32_t timeout)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, receiver);
     if (!msg->serialize(data, this))
     {
@@ -107,7 +107,7 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                           , FdbMsgCode_t code
                           , IFdbMsgBuilder &data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
+    auto *msg = new CBaseMessage(code, this, receiver);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -127,7 +127,7 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , int32_t size
                          , const char *log_data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
+    auto *msg = new CBaseMessage(code, this, receiver);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -147,7 +147,7 @@ bool CFdbBaseObject::send(FdbMsgCode_t code
 
 bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this);
+    auto *msg = new CBaseMessage(code, this);
     if (!msg->serialize(data))
     {
         delete msg;
@@ -170,7 +170,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , IFdbMsgBuilder &data
                                , const char *filter)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter);
+    auto *msg = new CFdbBroadcastMsg(code, this, filter);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -185,7 +185,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , int32_t size
                               , const char *log_data)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
+    auto *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -207,7 +207,7 @@ bool CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_d
 
 bool CFdbBaseObject::unsubscribe(CFdbMsgSubscribeList &msg_list)
 {
-    CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    auto *msg = new CBaseMessage(FDB_INVALID_ID, this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -236,7 +236,7 @@ public:
 
 void CFdbBaseObject::callOnSubscribe(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnSubscribeJob *the_job = dynamic_cast<COnSubscribeJob *>(job);
+    auto *the_job = dynamic_cast<COnSubscribeJob *>(job);
     if (the_job)
     {
         onSubscribe(the_job->mMsgRef);
@@ -279,7 +279,7 @@ public:
 
 void CFdbBaseObject::callOnBroadcast(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnBroadcastJob *the_job = dynamic_cast<COnBroadcastJob *>(job);
+    auto *the_job = dynamic_cast<COnBroadcastJob *>(job);
     if (the_job)
     {
         onBroadcast(the_job->mMsgRef);
@@ -321,7 +321,7 @@ public:
 
 void CFdbBaseObject::callOnInvoke(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnInvokeJob *the_job = dynamic_cast<COnInvokeJob *>(job);
+    auto *the_job = dynamic_cast<COnInvokeJob *>(job);
     if (the_job)
     {
         onInvoke(the_job->mMsgRef);
@@ -422,7 +422,7 @@ public:
 
 void CFdbBaseObject::callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnOnlineJob *the_job = dynamic_cast<COnOnlineJob *>(job);
+    auto *the_job = dynamic_cast<COnOnlineJob *>(job);
     if (the_job)
     {
         if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !isValidFdbId(mSid))
@@ -478,7 +478,7 @@ public:
 
 void CFdbBaseObject::callOnReply(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnReplyJob *the_job = dynamic_cast<COnReplyJob *>(job);
+    auto *the_job = dynamic_cast<COnReplyJob *>(job);
     if (the_job)
     {
         onReply(the_job->mMsgRef);
@@ -525,7 +525,7 @@ public:
 
 void CFdbBaseObject::callOnStatus(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnStatusJob *the_job = dynamic_cast<COnStatusJob *>(job);
+    auto *the_job = dynamic_cast<COnStatusJob *>(job);
     if (the_job)
     {
         onStatus(the_job->mMsgRef
@@ -593,7 +593,7 @@ void CFdbBaseObject::doReply(CBaseJob::Ptr &msg_ref)
 
 void CFdbBaseObject::doStatus(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
 
     int32_t error_code;
     std::string description;
@@ -615,7 +615,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , int32_t timeout
                            , const char *log_data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, receiver);
+    auto *msg = new CBaseMessage(code, this, receiver);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -664,7 +664,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , int32_t size
                            , int32_t timeout)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, receiver);
     if (!msg->serialize(buffer, size, this))
     {
@@ -684,7 +684,7 @@ bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
 bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
                            , int32_t timeout)
 {
-    CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    auto *msg = new CBaseMessage(FDB_INVALID_ID, this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -712,7 +712,7 @@ bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
                               , CFdbMsgSubscribeList &msg_list
                               , int32_t timeout)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg)
     {
         msg->setDestination(this);
@@ -743,7 +743,7 @@ bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
 bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
                             , int32_t timeout)
 {
-    CBaseMessage *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    auto *msg = new CBaseMessage(FDB_INVALID_ID, this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -771,7 +771,7 @@ bool CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
                             , CFdbMsgTriggerList &msg_list
                             , int32_t timeout)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg)
     {
         msg->setDestination(this);
@@ -803,7 +803,7 @@ void CFdbBaseObject::addNotifyItem(CFdbMsgSubscribeList &msg_list
                                   , FdbMsgCode_t msg_code
                                   , const char *filter)
 {
-    CFdbMsgSubscribeItem *item = msg_list.add_subscribe_tbl();
+    auto *item = msg_list.add_subscribe_tbl();
     item->set_msg_code(msg_code);
     if (filter)
     {
@@ -815,7 +815,7 @@ void CFdbBaseObject::addUpdateItem(CFdbMsgSubscribeList &msg_list
                                   , FdbMsgCode_t msg_code
                                   , const char *filter)
 {
-    CFdbMsgSubscribeItem *item = msg_list.add_subscribe_tbl();
+    auto *item = msg_list.add_subscribe_tbl();
     item->set_msg_code(msg_code);
     if (filter)
     {
@@ -849,21 +849,21 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session,
                                  FdbObjectId_t obj_id,
                                  const char *filter)
 {
-    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg);
+    auto it_sessions = mSessionSubscribeTable.find(msg);
     if (it_sessions != mSessionSubscribeTable.end())
     {
-        SessionTable_t &sessions = it_sessions->second;
-        SessionTable_t::iterator it_objects = sessions.find(session);
+        auto &sessions = it_sessions->second;
+        auto it_objects = sessions.find(session);
         if (it_objects != sessions.end())
         {
-            ObjectTable_t &objects = it_objects->second;
-            ObjectTable_t::iterator it_filters = objects.find(obj_id);
+            auto &objects = it_objects->second;
+            auto it_filters = objects.find(obj_id);
             if (it_filters != objects.end())
             {
                 if (filter)
                 {
-                    FilterTable_t &filters = it_filters->second;
-                    FilterTable_t::iterator it_type = filters.find(filter);
+                    auto &filters = it_filters->second;
+                    auto it_type = filters.find(filter);
                     if (it_type != filters.end())
                     {
                         filters.erase(it_type);
@@ -892,14 +892,14 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session,
 
 void CFdbBaseObject::unsubscribe(CFdbSession *session)
 {
-    for (SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.begin();
+    for (auto it_sessions = mSessionSubscribeTable.begin();
             it_sessions != mSessionSubscribeTable.end();)
     {
-        SubscribeTable_t::iterator the_it_sessions = it_sessions;
+        auto the_it_sessions = it_sessions;
         ++it_sessions;
 
-        SessionTable_t &sessions = the_it_sessions->second;
-        SessionTable_t::iterator it_objects = sessions.find(session);
+        auto &sessions = the_it_sessions->second;
+        auto it_objects = sessions.find(session);
         if (it_objects != sessions.end())
         {
             sessions.erase(it_objects);
@@ -913,21 +913,21 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session)
 
 void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
 {
-    for (SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.begin();
+    for (auto it_sessions = mSessionSubscribeTable.begin();
             it_sessions != mSessionSubscribeTable.end();)
     {
-        SubscribeTable_t::iterator the_it_sessions = it_sessions;
+        auto the_it_sessions = it_sessions;
         ++it_sessions;
 
-        SessionTable_t &sessions = the_it_sessions->second;
-        for (SessionTable_t::iterator it_objects = sessions.begin();
+        auto &sessions = the_it_sessions->second;
+        for (auto it_objects = sessions.begin();
                 it_objects != sessions.end();)
         {
-            SessionTable_t::iterator the_it_objects = it_objects;
+            auto the_it_objects = it_objects;
             ++it_objects;
 
-            ObjectTable_t &objects = the_it_objects->second;
-            ObjectTable_t::iterator it_filters = objects.find(obj_id);
+            auto &objects = the_it_objects->second;
+            auto it_filters = objects.find(obj_id);
             if (it_filters != objects.end())
             {
                 objects.erase(it_filters);
@@ -956,7 +956,7 @@ void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
 
 void CFdbBaseObject::broadcast(CFdbMessage *msg)
 {
-    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg->code());
+    auto it_sessions = mSessionSubscribeTable.find(msg->code());
     if (it_sessions != mSessionSubscribeTable.end())
     {
         const char *filter = msg->getFilter();
@@ -964,19 +964,19 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
         {
             filter = "";
         }
-        SessionTable_t &sessions = it_sessions->second;
-        for (SessionTable_t::iterator it_objects = sessions.begin();
+        auto &sessions = it_sessions->second;
+        for (auto it_objects = sessions.begin();
                 it_objects != sessions.end(); ++it_objects)
         {
-            CFdbSession *session = it_objects->first;
-            ObjectTable_t &objects = it_objects->second;
-            for (ObjectTable_t::iterator it_filters = objects.begin();
+            auto *session = it_objects->first;
+            auto &objects = it_objects->second;
+            for (auto it_filters = objects.begin();
                     it_filters != objects.end(); ++it_filters)
             {
-                FdbObjectId_t object_id = it_filters->first;
+                auto object_id = it_filters->first;
                 msg->updateObjectId(object_id); // send to the specific object.
-                FilterTable_t &filters = it_filters->second;
-                FilterTable_t::iterator it_type = filters.find(filter);
+                auto &filters = it_filters->second;
+                auto it_type = filters.find(filter);
                 if (it_type == filters.end())
                 {
                     /*
@@ -985,7 +985,7 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
                      */
                     if (filter[0] != '\0')
                     {
-                        FilterTable_t::iterator it_type = filters.find("");
+                        auto it_type = filters.find("");
                         if (it_type != filters.end())
                         {
                             broadcastOneMsg(session, msg, it_type->second);
@@ -1004,15 +1004,15 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
 bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
 {
     bool sent = false;
-    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(msg->code());
+    auto it_sessions = mSessionSubscribeTable.find(msg->code());
     if (it_sessions != mSessionSubscribeTable.end())
     {
-        SessionTable_t &sessions = it_sessions->second;
-        SessionTable_t::iterator it_objects = sessions.find(session);
+        auto &sessions = it_sessions->second;
+        auto it_objects = sessions.find(session);
         if (it_objects != sessions.end())
         {
-            ObjectTable_t &objects = it_objects->second;
-            ObjectTable_t::iterator it_filters = objects.find(msg->objectId());
+            auto &objects = it_objects->second;
+            auto it_filters = objects.find(msg->objectId());
             if (it_filters != objects.end())
             {
                 const char *filter = msg->getFilter();
@@ -1020,8 +1020,8 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
                 {
                     filter = "";
                 }
-                FilterTable_t &filters = it_filters->second;
-                FilterTable_t::iterator it_type = filters.find(filter);
+                auto &filters = it_filters->second;
+                auto it_type = filters.find(filter);
                 if (it_type == filters.end())
                 {
                     /*
@@ -1030,7 +1030,7 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
                      */
                     if (filter[0] != '\0')
                     {
-                        FilterTable_t::iterator it_type = filters.find("");
+                        auto it_type = filters.find("");
                         if (it_type != filters.end())
                         {
                             broadcastOneMsg(session, msg, it_type->second);
@@ -1049,16 +1049,13 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
 
 void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filter_tbl)
 {
-    for (SessionTable_t::iterator it_objects = sessions.begin();
-            it_objects != sessions.end(); ++it_objects)
+    for (auto it_objects = sessions.begin(); it_objects != sessions.end(); ++it_objects)
     {
-        ObjectTable_t &objects = it_objects->second;
-        for (ObjectTable_t::iterator it_filters = objects.begin();
-                it_filters != objects.end(); ++it_filters)
+        auto &objects = it_objects->second;
+        for (auto it_filters = objects.begin(); it_filters != objects.end(); ++it_filters)
         {
-            FilterTable_t &filters = it_filters->second;
-            for (FilterTable_t::iterator it_type = filters.begin();
-                    it_type != filters.end(); ++it_type)
+            auto &filters = it_filters->second;
+            for (auto it_type = filters.begin(); it_type != filters.end(); ++it_type)
             {
                 if (it_type->second == FDB_SUB_TYPE_NORMAL)
                 {
@@ -1071,21 +1068,21 @@ void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets 
 
 void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
 {
-    for (SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.begin();
+    for (auto it_sessions = mSessionSubscribeTable.begin();
             it_sessions != mSessionSubscribeTable.end(); ++it_sessions)
     {
-        tFdbFilterSets &filter_table = table[it_sessions->first];
-        SessionTable_t &sessions = it_sessions->second;
+        auto &filter_table = table[it_sessions->first];
+        auto &sessions = it_sessions->second;
         getSubscribeTable(sessions, filter_table);
     }
 }
 
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filters)
 {
-    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(code);
+    auto it_sessions = mSessionSubscribeTable.find(code);
     if (it_sessions != mSessionSubscribeTable.end())
     {
-        SessionTable_t &sessions = it_sessions->second;
+        auto &sessions = it_sessions->second;
         getSubscribeTable(sessions, filters);
     }
 }
@@ -1093,20 +1090,19 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filter
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
                                         tFdbFilterSets &filter_tbl)
 {
-    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(code);
+    auto it_sessions = mSessionSubscribeTable.find(code);
     if (it_sessions != mSessionSubscribeTable.end())
     {
-        SessionTable_t &sessions = it_sessions->second;
-        SessionTable_t::iterator it_objects = sessions.find(session);
+        auto &sessions = it_sessions->second;
+        auto it_objects = sessions.find(session);
         if (it_objects != sessions.end())
         {
-            ObjectTable_t &objects = it_objects->second;
-            for (ObjectTable_t::iterator it_filters = objects.begin();
+            auto &objects = it_objects->second;
+            for (auto it_filters = objects.begin();
                     it_filters != objects.end(); ++it_filters)
             {
-                FilterTable_t &filters = it_filters->second;
-                for (FilterTable_t::iterator it_type = filters.begin();
-                        it_type != filters.end(); ++it_type)
+                auto &filters = it_filters->second;
+                for (auto it_type = filters.begin(); it_type != filters.end(); ++it_type)
                 {
                     if (it_type->second == FDB_SUB_TYPE_NORMAL)
                     {
@@ -1121,24 +1117,24 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                                        tSubscribedSessionSets &session_tbl)
 {
-    SubscribeTable_t::iterator it_sessions = mSessionSubscribeTable.find(code);
+    auto it_sessions = mSessionSubscribeTable.find(code);
     if (it_sessions != mSessionSubscribeTable.end())
     {
         if (!filter)
         {
             filter = "";
         }
-        SessionTable_t &sessions = it_sessions->second;
-        for (SessionTable_t::iterator it_objects = sessions.begin();
+        auto &sessions = it_sessions->second;
+        for (auto it_objects = sessions.begin();
                 it_objects != sessions.end(); ++it_objects)
         {
-            CFdbSession *session = it_objects->first;
-            ObjectTable_t &objects = it_objects->second;
-            for (ObjectTable_t::iterator it_filters = objects.begin();
+            auto *session = it_objects->first;
+            auto &objects = it_objects->second;
+            for (auto it_filters = objects.begin();
                     it_filters != objects.end(); ++it_filters)
             {
-                FilterTable_t &filters = it_filters->second;
-                FilterTable_t::iterator it_type = filters.find(filter);
+                auto &filters = it_filters->second;
+                auto it_type = filters.find(filter);
                 if (it_type == filters.end())
                 {
                     /*
@@ -1147,7 +1143,7 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                      */
                     if (filter[0] != '\0')
                     {
-                        FilterTable_t::iterator it_type = filters.find("");
+                        auto it_type = filters.find("");
                         if (it_type != filters.end() &&
                             (it_type->second == FDB_SUB_TYPE_NORMAL))
                         {
@@ -1234,7 +1230,7 @@ public:
 
 void CFdbBaseObject::callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    CBindObjectJob *the_job = dynamic_cast<CBindObjectJob *>(job);
+    auto *the_job = dynamic_cast<CBindObjectJob *>(job);
     if (the_job)
     {
         the_job->mOid = doBind(the_job->mEndpoint, the_job->mOid);
@@ -1271,7 +1267,7 @@ public:
 
 void CFdbBaseObject::callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    CConnectObjectJob *the_job = dynamic_cast<CConnectObjectJob *>(job);
+    auto *the_job = dynamic_cast<CConnectObjectJob *>(job);
     if (the_job)
     {
         the_job->mOid = doConnect(the_job->mEndpoint, the_job->mOid);
@@ -1348,7 +1344,7 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                               , IFdbMsgBuilder &data
                               , const char *filter)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
+    auto *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -1365,7 +1361,7 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                       , int32_t size
                       , const char *log_data)
 {
-    CBaseMessage *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
+    auto *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -1379,7 +1375,7 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
                                   , IFdbMsgBuilder &data
                                   , int32_t timeout)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    auto *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -1389,7 +1385,7 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
 }
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    CBaseMessage *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    auto *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
     if (!msg->serialize(data, this))
     {
         delete msg;

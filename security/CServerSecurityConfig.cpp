@@ -78,12 +78,12 @@ int32_t getgrouplist(const char *user, gid_t group,
 void CServerSecurityConfig::addPermission(const void *json_handle, CServerSecCfg &cfg,
                               int32_t level, EFdbusCredType type, std::string &err_msg)
 {
-    const cJSON *item_cred = (const cJSON *)json_handle;
+    const auto *item_cred = (const cJSON *)json_handle;
     if (cJSON_IsArray(item_cred))
     {
         for (int j = 0; j < cJSON_GetArraySize(item_cred); ++j)
         {
-            cJSON *item_id = cJSON_GetArrayItem(item_cred, j);
+            auto *item_id = cJSON_GetArrayItem(item_cred, j);
             if (item_id)
             {
                 uint32_t id;
@@ -169,12 +169,12 @@ void CServerSecurityConfig::addPermission(const void *json_handle, CServerSecCfg
 void CServerSecurityConfig::parseServerSecurityConfig(const char *svc_name,
                                 const char *json_str, std::string &err_msg)
 {
-    cJSON *cfg_root = cJSON_Parse(json_str);
+    auto *cfg_root = cJSON_Parse(json_str);
     if (cfg_root != NULL)
     {
         if (cJSON_IsObject(cfg_root))
         {
-            cJSON *item_perm = cJSON_GetObjectItem(cfg_root, "permission");
+            auto *item_perm = cJSON_GetObjectItem(cfg_root, "permission");
             if (item_perm != NULL)
             {
                 if (cJSON_IsArray(item_perm))
@@ -182,12 +182,12 @@ void CServerSecurityConfig::parseServerSecurityConfig(const char *svc_name,
                     CPermissions &perm = mServerSecLevelTbl[svc_name];
                     for (int i = 0; i < cJSON_GetArraySize(item_perm); ++i)
                     {
-                        cJSON *sec_level = cJSON_GetArrayItem(item_perm, i);
+                        auto *sec_level = cJSON_GetArrayItem(item_perm, i);
                         if (sec_level)
                         {
                             if (cJSON_IsObject(sec_level))
                             {
-                                cJSON *item_level = cJSON_GetObjectItem(sec_level, "level");
+                                auto *item_level = cJSON_GetObjectItem(sec_level, "level");
                                 if (item_level)
                                 {
                                     if (cJSON_IsNumber(item_level))
@@ -201,13 +201,13 @@ void CServerSecurityConfig::parseServerSecurityConfig(const char *svc_name,
                                         {
                                             level = CFdbusSecurityConfig::getNrSecurityLevel();
                                         }
-                                        cJSON *item_gid = cJSON_GetObjectItem(sec_level, "gid");
+                                        auto *item_gid = cJSON_GetObjectItem(sec_level, "gid");
                                         if (item_gid)
                                         {
                                             addPermission(item_gid, perm.mGid, level, 
                                                             FDB_PERM_CRED_GID, err_msg);
                                         }
-                                        cJSON *item_uid = cJSON_GetObjectItem(sec_level, "uid");
+                                        auto *item_uid = cJSON_GetObjectItem(sec_level, "uid");
                                         if (item_uid)
                                         {
                                             addPermission(item_uid, perm.mUid, level,

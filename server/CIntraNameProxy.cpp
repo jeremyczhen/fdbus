@@ -118,7 +118,7 @@ void CIntraNameProxy::registerService(const char *svc_name, std::vector<std::str
     addr_list.set_service_name(svc_name);
     addr_list.set_host_name("");
     addr_list.set_is_local(true);
-    for (std::vector<std::string>::iterator it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
+    for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
     {
         addr_list.add_address_list(*it);
     }
@@ -147,10 +147,9 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
     bool is_offline = msg_addr_list.address_list().empty();
     
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, false);
-    for (std::vector<CBaseEndpoint *>::iterator ep_it = endpoints.begin();
-            ep_it != endpoints.end(); ++ep_it)
+    for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
-        CBaseClient *client = dynamic_cast<CBaseClient *>(*ep_it);
+        auto *client = dynamic_cast<CBaseClient *>(*ep_it);
         if (!client)
         {
             LOG_E("CIntraNameProxy: Session %d: Fail to convert to CBaseEndpoint!\n", msg->session());
@@ -161,35 +160,20 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
         {
             continue;
         }
-        std::string &connected_host = client->mConnectedHost;
 
         if (is_offline)
         {
-            if (host_name == connected_host)
+            if (client->hostConnected(host_name.c_str()))
             {
                 // only disconnect the connected server (host name should match)
                 client->doDisconnect();
                 LOG_E("CIntraNameProxy: Session %d: Client %s is disconnected by %s!\n",
                         msg->session(), svc_name, host_name.c_str());
-                connected_host.clear();
             }
-            else
+            else if (client->connected())
             {
-                if (connected_host.empty())
-                {
-                    if (client->connected())
-                    {
-                        // This should never happen!!!
-                        client->doDisconnect();
-                        LOG_E("CIntraNameProxy: Session %d: Client %s: host name is cleared but still connected!",
-                               msg->session(), svc_name);
-                    }
-                }
-                else
-                {
-                    LOG_I("CIntraNameProxy: Session %d: Client %s ignore disconnect from %s.\n",
-                            msg->session(), svc_name, host_name.c_str());
-                }
+                LOG_I("CIntraNameProxy: Session %d: Client %s ignore disconnect from %s.\n",
+                        msg->session(), svc_name, host_name.c_str());
             }
         }
         else
@@ -199,7 +183,6 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 if (force_reconnect)
                 {
                     client->doDisconnect();
-                    connected_host.clear();
                 }
 
                 if (msg_addr_list.has_token_list() && client->importTokens(msg_addr_list.token_list().tokens()))
@@ -215,7 +198,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
                         it != addr_list.pool().end(); ++it)
                 {
-                    if (!client->doConnect(it->c_str()))
+                    if (!client->doConnect(it->c_str(), host_name.c_str()))
                     {
                         LOG_E("CIntraNameProxy: Session %d: Fail to connect to %s!\n", msg->session(), it->c_str());
                         //TODO: do something for me!
@@ -229,10 +212,6 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                         break;
                     }
                 }
-                if (client->connected())
-                {
-                    connected_host = host_name;
-                }
             }
         }
     }
@@ -240,7 +219,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
 
 void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     switch (msg->code())
     {
         case NFdbBase::NTF_SERVICE_ONLINE:
@@ -293,10 +272,9 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
     bound_list.set_host_name(msg_addr_list.host_name());
     bound_list.set_is_local(msg_addr_list.is_local());
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, true);
-    for (std::vector<CBaseEndpoint *>::iterator ep_it = endpoints.begin();
-            ep_it != endpoints.end(); ++ep_it)
+    for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
-        CBaseServer *server = dynamic_cast<CBaseServer *>(*ep_it);
+        auto *server = dynamic_cast<CBaseServer *>(*ep_it);
         if (!server)
         {
             LOG_E("CIntraNameProxy: session %d: Fail to convert to CIntraNameProxy!\n", msg->session());
@@ -313,9 +291,8 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
-        const CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
-        for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
-                it != addr_list.pool().end(); ++it)
+        const auto &addr_list = msg_addr_list.address_list();
+        for (auto it = addr_list.pool().begin(); it != addr_list.pool().end(); ++it)
         {
             do
             {
@@ -374,7 +351,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 
 void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
 {
-    CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg->isStatus())
     {
         if (msg->isError())

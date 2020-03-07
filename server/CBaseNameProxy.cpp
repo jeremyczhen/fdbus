@@ -39,9 +39,8 @@ void CBaseNameProxy::unsubscribeListener(NFdbBase::FdbNsMsgCode code, const char
 
 void CBaseNameProxy::replaceSourceUrl(NFdbBase::FdbMsgAddressList &msg_addr_list, CFdbSession *session)
 {
-    CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
-    for (CFdbParcelableArray<std::string>::tPool::iterator it = addr_list.vpool().begin();
-            it != addr_list.vpool().end(); ++it)
+    auto &addr_list = msg_addr_list.address_list();
+    for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
     {
         replaceUrlIpAddress(*it, session);
     }
