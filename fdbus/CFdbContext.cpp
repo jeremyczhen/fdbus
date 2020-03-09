@@ -65,6 +65,7 @@ bool CFdbContext::destroy()
 {
     if (mNameProxy)
     {
+        mNameProxy->enableNsMonitor(false);
         mNameProxy->disconnect();
         delete mNameProxy;
         mNameProxy = 0;
@@ -212,13 +213,13 @@ CIntraNameProxy *CFdbContext::getNameProxy()
     return (mNameProxy && mNameProxy->connected()) ? mNameProxy : 0;
 }
 
-void CFdbContext::reconnectOnNsConnected(bool connect)
+void CFdbContext::reconnectOnNsConnected()
 {
     auto &container = mEndpointContainer.getContainer();
     for (auto it = container.begin(); it != container.end(); ++it)
     {
-        CBaseEndpoint *endpoint = it->second;
-        endpoint->reconnectToNs(connect);
+        auto *endpoint = it->second;
+        endpoint->requestServiceAddress();
     }
 }
 

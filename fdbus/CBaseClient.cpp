@@ -77,8 +77,7 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
         CFdbSessionContainer::onSessionDeleted(session);
         delete this;
 
-        client->reconnectToNs(false);
-        if (!client->reconnectToNs(true))
+        if (!client->requestServiceAddress())
         {
             if (FDB_CLIENT_RECONNECT_WAIT_MS)
             {
@@ -283,10 +282,6 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
     }
 
     deleteSocket(skid);
-    if (!isValidFdbId(sid))
-    {
-        mNsConnStatus = UNCONNECTED;
-    }
 }
 
 void CBaseClient::disconnect(FdbSessionId_t sid)

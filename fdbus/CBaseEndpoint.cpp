@@ -24,7 +24,6 @@
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
     : CFdbBaseObject(name, worker, role)
-    , mNsConnStatus(DISCONNECTED)
     , mSessionCnt(0)
     , mSnAllocator(1)
     , mEpid(FDB_INVALID_ID)
@@ -478,7 +477,6 @@ void CBaseEndpoint::callRegisterEndpoint(CBaseWorker *worker,
     if (the_job)
     {
         the_job->mEpid = CFdbContext::getInstance()->registerEndpoint(this);
-        mNsConnStatus = DISCONNECTED;
         registered(true);
     }
 }
@@ -511,7 +509,6 @@ void CBaseEndpoint::callUnregisterEndpoint(CBaseWorker *worker,
             CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
     CFdbContext::getInstance()->unregisterEndpoint(this);
-    mNsConnStatus = DISCONNECTED;
 }
 
 void CBaseEndpoint::unregisterSelf()
@@ -579,33 +576,21 @@ void CBaseEndpoint::updateSecurityLevel()
 
 bool CBaseEndpoint::requestServiceAddress(const char *server_name)
 {
-    if (mNsConnStatus == CONNECTED)
+    if (role() == FDB_OBJECT_ROLE_NS_SERVER)
     {
-        return true;
-    }
-
-    if (mNsName.empty() && !server_name)
-    {
-        LOG_E("CBaseServer: Service name is not given!\n");
         return false;
     }
     if (server_name)
     {
         mNsName = server_name;
     }
-
-    if (role() == FDB_OBJECT_ROLE_NS_SERVER)
+    if (mNsName.empty())
     {
-        LOG_E("CBaseServer: name server cannot bind to svc://service_name!\n");
+        // server name is not ready: this might happen when name server
+        // is connected but bind() or connect() is not called.
         return false;
     }
 
-    if ((role() == FDB_OBJECT_ROLE_SERVER) && mNsConnStatus == LOST)
-    {
-        doUnbind();
-    }
-    
-    mNsConnStatus = CONNECTING;
     auto *name_proxy = FDB_CONTEXT->getNameProxy();
     if (!name_proxy)
     {
@@ -614,43 +599,13 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
 
     if (role() == FDB_OBJECT_ROLE_SERVER)
     {
-#if 0
-            if (mNsConnStatus == LOST)
-            {
-                std::vector<std::string> url_list;
-                getUrlList(url_list);
-                name_proxy->registerService(mNsName.c_str(), url_list);
-            }
-            else
-            {
-                name_proxy->registerService(mNsName.c_str());
-            }
-#else
-            name_proxy->registerService(mNsName.c_str());
-#endif
-            name_proxy->addAddressListener(mNsName.c_str());
+        name_proxy->registerService(mNsName.c_str());
+        name_proxy->addAddressListener(mNsName.c_str());
     }
     else
     {
         name_proxy->addServiceListener(mNsName.c_str(), FDB_INVALID_ID);
     }
     return true;
-}
-
-bool CBaseEndpoint::reconnectToNs(bool connect)
-{
-    if (mNsConnStatus == DISCONNECTED)
-    {
-        return false;
-    }
-    if (connect)
-    {
-        return requestServiceAddress(0);
-    }
-    else
-    {
-        mNsConnStatus = LOST;
-        return false;
-    }
 }
 

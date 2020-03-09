@@ -61,7 +61,7 @@ public:
     FdbEndpointId_t registerEndpoint(CBaseEndpoint *endpoint);
     void unregisterEndpoint(CBaseEndpoint *endpoint);
     CIntraNameProxy *getNameProxy();
-    void reconnectOnNsConnected(bool connect);
+    void reconnectOnNsConnected();
     void enableNameProxy(bool enable);
     void enableLogger(bool enable);
     CLogProducer *getLogger();

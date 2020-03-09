@@ -156,11 +156,6 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
             continue;
         }
 
-        if (client->mNsConnStatus == DISCONNECTED)
-        {
-            continue;
-        }
-
         if (is_offline)
         {
             if (client->hostConnected(host_name.c_str()))
@@ -194,9 +189,8 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 client->local(msg_addr_list.is_local());
 
                 replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
-                const CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
-                for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
-                        it != addr_list.pool().end(); ++it)
+                const auto &addr_list = msg_addr_list.address_list();
+                for (auto it = addr_list.pool().begin(); it != addr_list.pool().end(); ++it)
                 {
                     if (!client->doConnect(it->c_str(), host_name.c_str()))
                     {
@@ -207,7 +201,6 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                     {
                         LOG_E("CIntraNameProxy: Session %d, Server: %s, address %s is connected.\n",
                                 msg->session(), svc_name, it->c_str());
-                        client->mNsConnStatus = CONNECTED;
                         // only connect to the first url of the same server.
                         break;
                     }
@@ -230,7 +223,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             {
                 return;
             }
-            processClientOnline(msg, msg_addr_list, !msg->isInitialResponse());
+            processClientOnline(msg, msg_addr_list, true);
         }
         break;
         case NFdbBase::NTF_MORE_ADDRESS:
@@ -241,7 +234,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             {
                 return;
             }
-            processServiceOnline(msg, msg_addr_list);
+            processServiceOnline(msg, msg_addr_list, false);
         }
         break;
         case NFdbBase::NTF_HOST_INFO:
@@ -262,7 +255,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
     }
 }
 
-void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list)
+void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect)
 {
     const char *svc_name = msg_addr_list.service_name().c_str();
     std::vector<CBaseEndpoint *> endpoints;
@@ -280,10 +273,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
             LOG_E("CIntraNameProxy: session %d: Fail to convert to CIntraNameProxy!\n", msg->session());
             continue;
         }
-        if (server->mNsConnStatus == DISCONNECTED)
-        {
-            continue;
-        }
+
         if (msg_addr_list.has_token_list() && server->importTokens(msg_addr_list.token_list().tokens()))
         {
             server->updateSecurityLevel();
@@ -292,6 +282,10 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
         const auto &addr_list = msg_addr_list.address_list();
+        if (force_reconnect)
+        {
+            server->doUnbind();
+        }
         for (auto it = addr_list.pool().begin(); it != addr_list.pool().end(); ++it)
         {
             do
@@ -331,7 +325,6 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 
                     LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
                             msg->session(), svc_name, char_url);
-                    server->mNsConnStatus = CONNECTED;
                     break;
                 }
                 else
@@ -377,7 +370,7 @@ void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
                 LOG_E("CIntraNameProxy: unable to decode message for REQ_ALLOC_SERVICE_ADDRESS!\n");
                 return;
             }
-            processServiceOnline(msg, msg_addr_list);
+            processServiceOnline(msg, msg_addr_list, true);
         }
         break;
         default:
@@ -404,7 +397,7 @@ void CIntraNameProxy::onOnline(FdbSessionId_t sid, bool is_first)
     addNotifyItem(subscribe_list, NFdbBase::NTF_HOST_INFO);
     subscribe(subscribe_list);
     
-    FDB_CONTEXT->reconnectOnNsConnected(true);
+    FDB_CONTEXT->reconnectOnNsConnected();
 }
 
 void CIntraNameProxy::onOffline(FdbSessionId_t sid, bool is_last)
@@ -412,7 +405,6 @@ void CIntraNameProxy::onOffline(FdbSessionId_t sid, bool is_last)
     if (mEnableReconnectToNS)
     {
         mConnectTimer.fire();
-        FDB_CONTEXT->reconnectOnNsConnected(false);
     }
 }
 
@@ -420,11 +412,5 @@ void CIntraNameProxy::registerHostNameReadyNotify(CBaseNotification<CHostNameRea
 {
     CBaseNotification<CHostNameReady>::Ptr ntf(notification);
     mNotificationCenter.subscribe(ntf);
-}
-
-void CIntraNameProxy::disconnect()
-{
-    mEnableReconnectToNS = false;
-    CBaseClient::disconnect();
 }
 

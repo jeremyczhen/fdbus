@@ -65,15 +65,6 @@ public:
     }
 
 protected:
-    enum eConnState
-    {
-        UNCONNECTED, /* unconnected to NS; listening on NS */
-        CONNECTING, /* request is sent to NS but not reply */
-        CONNECTED, /* connected to NS and obtained URL from NS */
-        LOST, /* connect lost due to NS shutdown */
-        DISCONNECTED /* unconnected to NS; not listening on NS */
-    };
-
     void deleteSocket(FdbSocketId_t skid = FDB_INVALID_ID);
     void addSocket(CFdbSessionContainer *container);
     void getDefaultSvcUrl(std::string &url);
@@ -84,11 +75,9 @@ protected:
 
     bool replaceUrlIpAddress(std::string &url, CFdbSession *session = 0,
                              std::string *ip_addr = 0, int32_t *port = 0);
-    bool requestServiceAddress(const char *server_name);
-    bool reconnectToNs(bool connect);
+    bool requestServiceAddress(const char *server_name = 0);
 
     std::string mNsName;
-    eConnState mNsConnStatus;
 
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;

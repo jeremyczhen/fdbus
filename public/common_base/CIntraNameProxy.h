@@ -47,7 +47,10 @@ public:
         return mHostName;
     }
     void registerHostNameReadyNotify(CBaseNotification<CHostNameReady> *notification);
-    void disconnect();
+    void enableNsMonitor(bool enb)
+    {
+        mEnableReconnectToNS = enb;
+    }
     
 protected:
     void onReply(CBaseJob::Ptr &msg_ref);
@@ -91,7 +94,7 @@ private:
     void onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer);
     
     void processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
-    void processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list);
+    void processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
 };
 
 #endif

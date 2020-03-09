@@ -221,10 +221,6 @@ void CBaseServer::cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CB
 void CBaseServer::doUnbind(FdbSocketId_t skid)
 {
     deleteSocket(skid);
-    if (!isValidFdbId(skid))
-    {
-        mNsConnStatus = UNCONNECTED;
-    }
 }
 
 void CBaseServer::unbind(FdbSocketId_t skid)
