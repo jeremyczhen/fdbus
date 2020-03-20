@@ -29,7 +29,7 @@ public:
     virtual void toBuffer(uint8_t *buffer, int32_t size)
     {
     }
-    virtual bool toString(std::string *msg_txt)
+    virtual bool toString(std::string *msg_txt) const
     {
         return false;
     }

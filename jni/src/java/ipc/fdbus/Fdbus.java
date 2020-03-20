@@ -20,7 +20,7 @@ import ipc.fdbus.FdbusServer;
 import ipc.fdbus.FdbusClient;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.FdbusMessage;
-import ipc.fdbus.FdbusMessageEncoder;
+import ipc.fdbus.FdbusMsgBuilder;
 
 public class Fdbus
 {
@@ -75,28 +75,10 @@ public class Fdbus
     private native void fdb_init(Class server, Class client, Class sub_item, Class msg);
     private static native void fdb_log_trace(String tag, int level, String data);
     
-    private static FdbusMessageEncoder mMessageEncoder;
-
-    private void initialize(FdbusMessageEncoder msg_parser)
+    public Fdbus()
     {
         System.loadLibrary("fdbus-jni");
         fdb_init(FdbusServer.class, FdbusClient.class, SubscribeItem.class, FdbusMessage.class);
-        mMessageEncoder = msg_parser;
-    }
-
-    public Fdbus(FdbusMessageEncoder msg_parser)
-    {
-        initialize(msg_parser);
-    }
-
-    public Fdbus()
-    {
-        initialize(null);
-    }
-
-    public static FdbusMessageEncoder messageEncoder()
-    {
-        return mMessageEncoder;
     }
 
     public static void LOG_D(String tag, String data)
@@ -124,26 +106,26 @@ public class Fdbus
         fdb_log_trace(tag, FDB_LL_FATAL, data);
     }
 
-    public static byte[] encodeMessage(Object msg)
+    public static FdbusMsgBuilder encodeMessage(Object msg, boolean enable_log)
     {
-        if (msg instanceof byte[])
+        if ((msg == null) || (msg instanceof byte[])) 
         {
-            return (byte[]) msg;
+            return new FdbusMsgBuilder((byte[])msg, null);
         }
         
-        byte[] raw_data = null;
-        if (mMessageEncoder == null)
+        if (msg instanceof FdbusMsgBuilder)
         {
-            LOG_E("fdbus-jni", "Fail to serialization: encoder is not installed\n");
-        }
-        else
-        {
-            raw_data = mMessageEncoder.serialize(msg);
-            if (raw_data == null)
+            FdbusMsgBuilder builder = (FdbusMsgBuilder)msg;
+            if (!builder.build(enable_log))
             {
-                LOG_E("fdbus-jni", "Fail to serialization: message type is not supported\n");
+                LOG_E("fdbus-jni", "Fail to build message!\n");
+                return null;
             }
+            return builder;
         }
-        return raw_data;
+        
+        LOG_E("fdbus-jni", "Unsupported message type!\n");
+        return null;
     }
 }
+

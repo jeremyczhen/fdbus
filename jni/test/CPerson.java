@@ -19,9 +19,9 @@ import ipc.fdbus.FdbusParcelable;
 import ipc.fdbus.FdbusSerializer;
 import ipc.fdbus.FdbusDeserializer;
 
-public class CPerson implements FdbusParcelable
+public class CPerson extends FdbusParcelable
 {
-    public static class CCar implements FdbusParcelable
+    public static class CCar extends FdbusParcelable
     {
         public void serialize(FdbusSerializer serializer)
         {
@@ -34,6 +34,12 @@ public class CPerson implements FdbusParcelable
             mBrand = deserializer.outS();
             mModel = deserializer.outS();
             mPrice = deserializer.out32();
+        }
+        public void toString(TextFormatter fmter)
+        {
+            fmter.format("mBrand",      mBrand);
+            fmter.format("mModel",      mModel);
+            fmter.format("mPrice",      mPrice);
         }
         
         public String mBrand;
@@ -56,6 +62,15 @@ public class CPerson implements FdbusParcelable
         mCars = deserializer.out(new CCar[deserializer.arrayLength()], CCar.class);
         mAddress = deserializer.outS();
         mSalary = deserializer.out32();
+    }
+
+    public void toString(TextFormatter fmter)
+    {
+        fmter.format("mName",       mName);
+        fmter.format("mAge",        mAge);
+        fmter.format("mSalary",     mSalary);
+        fmter.format("mCars",       mCars);
+        fmter.format("mAddress",    mAddress);
     }
     
     public String mName;

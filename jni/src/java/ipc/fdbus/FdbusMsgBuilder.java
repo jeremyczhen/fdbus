@@ -16,14 +16,34 @@
 
 package ipc.fdbus;
 
-public class FdbusMessageEncoder
+public class FdbusMsgBuilder
 {
-    public byte[] serialize(Object msg)
+    public FdbusMsgBuilder(Object msg)
     {
-        return null;
+        mStream = null;
+        mText = null;
+        mMsg = msg;
     }
-    public String toString(Object msg)
+    public FdbusMsgBuilder(byte[] stream, String text)
     {
-        return null;
+        mStream = stream;
+        mText = text;
+        mMsg = null;
     }
+    public boolean build(boolean to_text)
+    {
+        return true;
+    }
+    public byte[] toBuffer()
+    {
+        return mStream;
+    }
+    public String toString()
+    {
+        return mText;
+    }
+    
+    protected byte[] mStream;
+    protected String mText;
+    protected Object mMsg;
 }

@@ -20,12 +20,12 @@ import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
 import ipc.fdbus.FdbusMessage;
 import ipc.fdbus.NFdbExample;
-import ipc.fdbus.Example.MyFdbusMessageEncoder;
+import ipc.fdbus.FdbusSimpleBuilder;
+import ipc.fdbus.Example.FdbusProtoBuilder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import ipc.fdbus.Example.CPerson;
-import ipc.fdbus.FdbusSerializer;
 
 public class MediaServer
 {
@@ -70,15 +70,17 @@ public class MediaServer
                         System.out.println(e);
                     }
                     
-                    NFdbExample.NowPlayingDetails.Builder builder = NFdbExample.NowPlayingDetails.newBuilder();
-                    builder.setArtist("Artist from Java");
-                    builder.setAlbum("Album from Java");
-                    builder.setGenre("Genre from Java");
-                    builder.setTitle("Title from Java");
-                    builder.setFileName("Filename from Java");
-                    builder.setElapseTime(mElapseTime++);
-                    NFdbExample.NowPlayingDetails now_playing = builder.build();
-                    msg.reply(now_playing);
+                    NFdbExample.NowPlayingDetails.Builder proto_builder =
+                                                NFdbExample.NowPlayingDetails.newBuilder();
+                    proto_builder.setArtist("Artist from Java");
+                    proto_builder.setAlbum("Album from Java");
+                    proto_builder.setGenre("Genre from Java");
+                    proto_builder.setTitle("Title from Java");
+                    proto_builder.setFileName("Filename from Java");
+                    proto_builder.setElapseTime(mElapseTime++);
+                    NFdbExample.NowPlayingDetails now_playing = proto_builder.build();
+                    FdbusProtoBuilder builder = new FdbusProtoBuilder(now_playing);
+                    msg.reply(builder);
                 }
                 break;
                 case NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE:
@@ -112,9 +114,8 @@ public class MediaServer
                     persons[1].mCars[1].mModel = "X5";
                     persons[1].mCars[1].mPrice = 200000;
 
-                    FdbusSerializer serializer = new FdbusSerializer();
-                    serializer.in(persons);
-                    msg.reply(serializer.getBuffer());
+                    FdbusSimpleBuilder builder = new FdbusSimpleBuilder(persons);
+                    msg.reply(builder);
                 }
                 break;
                 default:
@@ -136,12 +137,14 @@ public class MediaServer
                     {
                         if (item.topic().equals("my_filter"))
                         {
-                            NFdbExample.ElapseTime.Builder builder = NFdbExample.ElapseTime.newBuilder();
-                            builder.setHour(0);
-                            builder.setMinute(0);
-                            builder.setSecond(0);
-                            NFdbExample.ElapseTime et = builder.build();
-                            msg.broadcast(item.code(), item.topic(), et);
+                            NFdbExample.ElapseTime.Builder proto_builder =
+                                                    NFdbExample.ElapseTime.newBuilder();
+                            proto_builder.setHour(0);
+                            proto_builder.setMinute(0);
+                            proto_builder.setSecond(0);
+                            NFdbExample.ElapseTime et = proto_builder.build();
+                            FdbusProtoBuilder builder = new FdbusProtoBuilder(et);
+                            msg.broadcast(item.code(), item.topic(), builder);
                         }
                         else if (item.topic().equals("raw_buffer"))
                         {
@@ -159,12 +162,13 @@ public class MediaServer
 
         public void run()
         {
-            NFdbExample.ElapseTime.Builder builder = NFdbExample.ElapseTime.newBuilder();
-            builder.setHour(0);
-            builder.setMinute(0);
-            builder.setSecond(mElapseTime++);
-            NFdbExample.ElapseTime et = builder.build();
-            mServer.broadcast(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter", et);
+            NFdbExample.ElapseTime.Builder proto_builder = NFdbExample.ElapseTime.newBuilder();
+            proto_builder.setHour(0);
+            proto_builder.setMinute(0);
+            proto_builder.setSecond(mElapseTime++);
+            NFdbExample.ElapseTime et = proto_builder.build();
+            FdbusProtoBuilder builder = new FdbusProtoBuilder(et);
+            mServer.broadcast(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter", builder);
         }
     }
 
@@ -184,7 +188,7 @@ public class MediaServer
 
     public static void main(String[] args)
     {
-        Fdbus fdbus = new Fdbus(new MyFdbusMessageEncoder());
+        Fdbus fdbus = new Fdbus();
         MediaServer svr = new MediaServer();
 
         ArrayList<FdbusMediaServer> servers = new ArrayList<FdbusMediaServer>();

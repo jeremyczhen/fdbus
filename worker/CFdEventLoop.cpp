@@ -255,7 +255,7 @@ void CFdEventLoop::dispatch()
     }
 
     int32_t wait_time = getMostRecentTime();
-    int ret = poll(mPollFds.data(), mPollFds.size(), wait_time);
+    int ret = poll(mPollFds.data(), (int32_t)mPollFds.size(), wait_time);
     if (ret == 0) // timeout
     {
         processTimers();

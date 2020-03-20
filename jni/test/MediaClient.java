@@ -20,13 +20,14 @@ import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
 import ipc.fdbus.FdbusMessage;
 import ipc.fdbus.NFdbExample;
-import ipc.fdbus.Example.MyFdbusMessageEncoder;
+import ipc.fdbus.Example.FdbusProtoBuilder;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import ipc.fdbus.Example.CPerson;
 import ipc.fdbus.FdbusDeserializer;
 import ipc.fdbus.FdbusParcelable;
+import ipc.fdbus.FdbusParcelable.TextFormatter;
 
 public class MediaClient 
 {
@@ -92,20 +93,9 @@ public class MediaClient
                     FdbusDeserializer deserializer = new FdbusDeserializer(msg.byteArray());
                     CPerson[] persons = deserializer.out(new CPerson[deserializer.arrayLength()],
                                                             CPerson.class);
-                    for (int i = 0; i < persons.length; ++i)
-                    {
-                        System.out.println("name: " + persons[i].mName +
-                                           ", age: " + persons[i].mAge +
-                                           ", salary: " + persons[i].mSalary +
-                                           ", address: " + persons[i].mAddress);
-                        CPerson.CCar[] cars = persons[i].mCars;
-                        for (int j = 0; j < cars.length; ++j)
-                        {
-                            System.out.println("brand: " + cars[j].mBrand +
-                                               ", model: " + cars[j].mModel +
-                                               ", price: " + cars[j].mPrice);
-                        }
-                    }
+                    TextFormatter fmter = new TextFormatter();
+                    fmter.format(persons);
+                    System.out.println(fmter.stream());
                 }
                 break;
                 default:
@@ -156,9 +146,10 @@ public class MediaClient
 
         public void run()
         {
-            NFdbExample.SongId.Builder builder = NFdbExample.SongId.newBuilder();
-            builder.setId(mSongId);
-            NFdbExample.SongId song_id = builder.build();
+            NFdbExample.SongId.Builder proto_builder = NFdbExample.SongId.newBuilder();
+            proto_builder.setId(mSongId);
+            NFdbExample.SongId song_id = proto_builder.build();
+            FdbusProtoBuilder builder = new FdbusProtoBuilder(song_id);
 
             ArrayList<String> usr_data = new ArrayList<String>();
             if (CONFIG_SYNC_INVOKE == 0)
@@ -167,11 +158,12 @@ public class MediaClient
                 {
                     usr_data.add(new String("a quick fox dump over brown dog " + i));
                 }
-                mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, song_id, usr_data, 0);
+                mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder, usr_data, 0);
             }
             else
             {
-                FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, song_id, 0);
+                
+                FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder, 0);
                 handleReplyMsg(msg, true);
             }
             mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE, null, null, 0);
@@ -194,7 +186,7 @@ public class MediaClient
     
     public static void main(String[] args)
     {
-        Fdbus fdbus = new Fdbus(new MyFdbusMessageEncoder());
+        Fdbus fdbus = new Fdbus();
         MediaClient clt = new MediaClient();
 
         ArrayList<FdbusMediaClient> clients = new ArrayList<FdbusMediaClient>();

@@ -328,6 +328,10 @@ protected:
                     FDB_LOG_E("onReply: fail to decode from simple parser!\n");
                     return;
                 }
+                std::ostringstream stream;
+                (void)persions.format(stream);
+                FDB_LOG_I("onReply: %s\n", stream.str().c_str());
+#if 0
                 for (auto pit = persions.pool().begin(); pit != persions.pool().end(); ++pit)
                 {
                     FDB_LOG_I("name: %s; age: %d; salary: %d; address: %s.\n",
@@ -338,6 +342,7 @@ protected:
                                 cit->mBrand.c_str(), cit->mModel.c_str(), cit->mPrice);
                     }
                 }
+#endif
             }
             break;
             default:

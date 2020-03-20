@@ -79,7 +79,7 @@ LOCAL_PROTOC_OPTIMIZE_TYPE := lite
 LOCAL_PROTOC_FLAGS := -Iidl
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_SRC_FILES := jni/test/MediaClient.java \
-            jni/test/MyFdbusMessageEncoder.java \
+            jni/test/FdbusProtoBuilder.java \
             jni/test/CPerson.java \
             idl/common.base.Example.proto
 LOCAL_JAVA_LIBRARIES := fdbus-jni \
@@ -96,7 +96,7 @@ LOCAL_PROTOC_OPTIMIZE_TYPE := lite
 LOCAL_PROTOC_FLAGS := -Iidl
 LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_SRC_FILES := jni/test/MediaServer.java \
-            jni/test/MyFdbusMessageEncoder.java \
+            jni/test/FdbusProtoBuilder.java \
             jni/test/CPerson.java \
             idl/common.base.Example.proto
 LOCAL_JAVA_LIBRARIES := fdbus-jni \

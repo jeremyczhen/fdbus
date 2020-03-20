@@ -16,9 +16,92 @@
 
 package ipc.fdbus;
 
-public interface FdbusParcelable
+public class FdbusParcelable
 {
-    public void serialize(FdbusSerializer serializer);
-    public void deserialize(FdbusDeserializer deserializer);
+    public static class TextFormatter
+    {
+        public TextFormatter()
+        {
+            mStream = new String();
+        }
+        public TextFormatter(String stream)
+        {
+            mStream = stream;
+        }
+        public void append(String data)
+        {
+            mStream += data;
+        }
+        public String stream()
+        {
+            return mStream;
+        }
+        private void formatOne(Object value)
+        {
+            if (value instanceof FdbusParcelable)
+            {
+                FdbusParcelable op = (FdbusParcelable)value;
+                mStream += "{";
+                op.toString(this);
+                mStream += "}";
+            }
+            else if (value instanceof String)
+            {
+                String os = (String)value;
+                mStream += os;
+            }
+            else if (value instanceof Integer)
+            {
+                Integer oi = (Integer)value;
+                mStream += oi.toString();
+            }
+            else
+            {
+                mStream += "error!";
+            }
+        }
+        
+        public void format(Object value)
+        {
+            if (value instanceof Object[])
+            {
+                mStream += "[";
+                Object[] oa = (Object[])value;
+                for (int i = 0; i < oa.length; ++i)
+                {
+                    formatOne(oa[i]);
+                    mStream += ",";
+                }
+                mStream += "]";
+            }
+            else
+            {
+                formatOne(value);
+            }
+        }
+        
+        public void format(String key, Object value)
+        {
+            mStream += key + ":";
+            format(value);
+            mStream += ",";
+        }
+        private String mStream;
+    }
+    
+    public void serialize(FdbusSerializer serializer)
+    {}
+    public void deserialize(FdbusDeserializer deserializer)
+    {}
+    public void toString(TextFormatter fmter)
+    {
+        fmter.format("null");
+    }
+    public String toString()
+    {
+        TextFormatter fmter = new TextFormatter();
+        fmter.format(this);
+        return fmter.stream();
+    }
 }
 

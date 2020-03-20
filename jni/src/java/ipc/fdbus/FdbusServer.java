@@ -19,6 +19,7 @@ package ipc.fdbus;
 import ipc.fdbus.FdbusServerListener;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
+import ipc.fdbus.FdbusMsgBuilder;
 import java.util.ArrayList;
 
 public class FdbusServer
@@ -127,27 +128,17 @@ public class FdbusServer
      */
     public boolean broadcast(int msg_code, String topic, Object msg)
     {
-        String log_data = null;
-        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_BROADCAST))
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled(Fdbus.FDB_MT_BROADCAST));
+        if (builder == null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg);
-        }
-
-        byte[] raw_data = null;
-        if (msg != null)
-        {
-            raw_data = Fdbus.encodeMessage(msg);
-            if (raw_data == null)
-            {
-                return false;
-            }
+            return false;
         }
 
         return fdb_broadcast(mNativeHandle,
                             msg_code,
                             topic,
-                            raw_data,
-                            log_data);
+                            builder.toBuffer(),
+                            builder.toString());
     }
 
     /*

@@ -33,6 +33,14 @@ public:
     std::string mBrand;
     std::string mModel;
     int32_t mPrice;
+
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        stream << "mBrand:" << mBrand
+               << ", mModel:" << mModel
+               << ", mPrice:" << mPrice;
+    }
 };
 
 class CPerson : public IFdbParcelable
@@ -46,12 +54,21 @@ public:
     {
         deserializer >> mName >> mAge >> mCars >> mAddress >> mSalary;
     }
-
     std::string mName;
     uint8_t mAge;
     int32_t mSalary;
     std::string mAddress;
     CFdbParcelableArray<CCar> mCars;
+
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        stream << "mName:" << mName
+               << ", mAge:" << (unsigned)mAge
+               << ", mSalary:" << mSalary
+               << ", mCars:"; mCars.format(stream)
+               << ", mAddress:" << mAddress;
+    }
 };
 
 #endif

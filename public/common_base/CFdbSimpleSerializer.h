@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <string>
+#include <sstream>
 
 #define FDB_SCRATCH_CACHE_SIZE 2048 
 typedef uint16_t fdb_ser_strlen_t;
@@ -35,6 +36,18 @@ public:
     
     virtual void serialize(CFdbSimpleSerializer &serializer) const = 0;
     virtual void deserialize(CFdbSimpleDeserializer &deserializer) = 0;
+    virtual std::ostringstream &format(std::ostringstream &stream) const
+    {
+        stream << "{";
+        toString(stream);
+        stream << "}";
+        return stream;
+    }
+protected:
+    virtual void toString(std::ostringstream &stream) const
+    {
+        stream << "null";
+    }
 };
 
 class CFdbSimpleSerializer
@@ -42,49 +55,24 @@ class CFdbSimpleSerializer
 public:
     CFdbSimpleSerializer();
     ~CFdbSimpleSerializer();
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, int8_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
+#define FDB_OPERATOR_IN(_T) \
+    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, _T data) \
+    { \
+        serializer.serializeScalar((const uint8_t *)&data, data); \
+        return serializer; \
     }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, uint8_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, int16_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, uint16_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, int32_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, uint32_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, int64_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
-    friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, uint64_t data)
-    {
-        serializer.serializeScalar((const uint8_t *)&data, data);
-        return serializer;
-    }
+    FDB_OPERATOR_IN(int8_t)
+    FDB_OPERATOR_IN(uint8_t)
+    FDB_OPERATOR_IN(int16_t)
+    FDB_OPERATOR_IN(uint16_t)
+    FDB_OPERATOR_IN(int32_t)
+    FDB_OPERATOR_IN(uint32_t)
+    FDB_OPERATOR_IN(int64_t)
+    FDB_OPERATOR_IN(uint64_t)
+
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, bool data)
     {
-        uint8_t value = data;
+        uint8_t value = data ? 1 : 0;
         serializer.serializeScalar((const uint8_t *)&value, value);
         return serializer;
     }
@@ -128,46 +116,21 @@ public:
     CFdbSimpleDeserializer(const uint8_t *buffer = 0, int32_t size = 0);
     void reset(const uint8_t *buffer, int32_t size = 0);
 
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, int8_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
+#define FDB_OPERATOR_OUT(_T) \
+    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, _T &data) \
+    { \
+        deserializer.deserializeScalar(data); \
+        return deserializer; \
     }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, uint8_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, int16_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, uint16_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, int32_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, uint32_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, int64_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
-    friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, uint64_t &data)
-    {
-        deserializer.deserializeScalar(data);
-        return deserializer;
-    }
+    FDB_OPERATOR_OUT(int8_t)
+    FDB_OPERATOR_OUT(uint8_t)
+    FDB_OPERATOR_OUT(int16_t)
+    FDB_OPERATOR_OUT(uint16_t)
+    FDB_OPERATOR_OUT(int32_t)
+    FDB_OPERATOR_OUT(uint32_t)
+    FDB_OPERATOR_OUT(int64_t)
+    FDB_OPERATOR_OUT(uint64_t)
+
     friend CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer& deserializer, bool &data)
     {
         uint8_t value = 0;
@@ -226,6 +189,43 @@ private:
         }
         retrieveBasicData((uint8_t *)&data, size);
     }
+};
+
+// for array of bool
+class abool : public IFdbParcelable
+{
+public:
+    abool &operator=(bool value)
+    {
+        mValue = value;
+        return *this;
+    }
+    bool operator()() const
+    {
+        return mValue;
+    }
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << (uint8_t)(mValue ? 1 : 0);
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        uint8_t value = 0;
+        deserializer >> value;
+        mValue = value;
+    }
+    std::ostringstream &format(std::ostringstream &stream) const
+    {
+        toString(stream);
+        return stream;
+    }
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        stream << (mValue ? "true" : "false");
+    }
+private:
+    bool mValue;
 };
 
 template<typename T>
@@ -313,6 +313,14 @@ public:
         }
     }
 
+    std::ostringstream &format(std::ostringstream &stream) const
+    {
+        stream << "[";
+        toString(stream);
+        stream << "]";
+        return stream;
+    }
+
 protected:
     tPool mPool;
 };
@@ -320,26 +328,71 @@ protected:
 template<typename T>
 class CFdbParcelableArray : public CFdbRepeatedParcelable<T>
 {
-public:
-    CFdbParcelableArray()
-    {}
-    CFdbParcelableArray(uint32_t size) : CFdbRepeatedParcelable<T>(size)
-    {}
-    CFdbParcelableArray(const typename CFdbRepeatedParcelable<T>::tPool &x) : CFdbRepeatedParcelable<T>(x)
-    {}
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        for (typename CFdbRepeatedParcelable<T>::tPool::const_iterator it = CFdbRepeatedParcelable<T>::mPool.begin();
+                  it != CFdbRepeatedParcelable<T>::mPool.end(); ++it)
+        {
+            it->format(stream) << ",";
+        }
+    }
 };
+
+template<>
+class CFdbParcelableArray<int8_t> : public CFdbRepeatedParcelable<int8_t>
+{
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        for (typename CFdbRepeatedParcelable<int8_t>::tPool::const_iterator it = CFdbRepeatedParcelable<int8_t>::mPool.begin();
+                  it != CFdbRepeatedParcelable<int8_t>::mPool.end(); ++it)
+        {
+            stream << (signed)*it << ",";
+        }
+    }
+};
+
+template<>
+class CFdbParcelableArray<uint8_t> : public CFdbRepeatedParcelable<uint8_t>
+{
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        for (typename CFdbRepeatedParcelable<uint8_t>::tPool::const_iterator it = CFdbRepeatedParcelable<uint8_t>::mPool.begin();
+                  it != CFdbRepeatedParcelable<uint8_t>::mPool.end(); ++it)
+        {
+            stream << (unsigned)*it << ",";
+        }
+    }
+};
+
+#define CFDBPARCELABLEARRAY(_T) \
+template<> \
+class CFdbParcelableArray<_T> : public CFdbRepeatedParcelable<_T> \
+{ \
+protected: \
+    void toString(std::ostringstream &stream) const \
+    { \
+        for (typename CFdbRepeatedParcelable<_T>::tPool::const_iterator it = CFdbRepeatedParcelable<_T>::mPool.begin(); \
+                  it != CFdbRepeatedParcelable<_T>::mPool.end(); ++it) \
+        { \
+            stream << *it << ","; \
+        } \
+    } \
+};
+
+CFDBPARCELABLEARRAY(int16_t)
+CFDBPARCELABLEARRAY(uint16_t)
+CFDBPARCELABLEARRAY(int32_t)
+CFDBPARCELABLEARRAY(uint32_t)
+CFDBPARCELABLEARRAY(int64_t)
+CFDBPARCELABLEARRAY(uint64_t)
 
 template<>
 class CFdbParcelableArray<std::string> : public CFdbRepeatedParcelable<std::string>
 {
 public:
-    CFdbParcelableArray()
-    {}
-    CFdbParcelableArray(uint32_t size) : CFdbRepeatedParcelable<std::string>(size)
-    {}
-    CFdbParcelableArray(const typename CFdbRepeatedParcelable<std::string>::tPool &x) : CFdbRepeatedParcelable<std::string>(x)
-    {}
-
     void Add(const std::string &element)
     {
         mPool.push_back(element);
@@ -354,6 +407,16 @@ public:
     void Add(const char *element)
     {
         mPool.push_back(element);
+    }
+
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        for (typename CFdbRepeatedParcelable<std::string>::tPool::const_iterator it = CFdbRepeatedParcelable<std::string>::mPool.begin();
+                  it != CFdbRepeatedParcelable<std::string>::mPool.end(); ++it)
+        {
+            stream << *it << ",";
+        }
     }
 };
 

@@ -16,6 +16,7 @@
 
 package ipc.fdbus;
 import ipc.fdbus.Fdbus;
+import ipc.fdbus.FdbusMsgBuilder;
 
 public class FdbusMessage
 {
@@ -127,26 +128,15 @@ public class FdbusMessage
      */
     public boolean reply(Object msg)
     {
-        String log_data = null;
-        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled())
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled());
+        if (builder == null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg);
-        }
-
-        byte[] raw_data = null;
-        if (msg != null)
-        {
-            raw_data = Fdbus.encodeMessage(msg);
-            if (raw_data == null)
-            {
-                destroy();
-                return false;
-            }
+            return false;
         }
 
         boolean ret = fdb_reply(mNativeHandle,
-                                raw_data,
-                                log_data);
+                                builder.toBuffer(),
+                                builder.toString());
         destroy();
         return ret;
     }
@@ -163,28 +153,17 @@ public class FdbusMessage
      */
     public boolean broadcast(int msg_code, String topic, Object msg)
     {
-        String log_data = null;
-        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled())
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled());
+        if (builder == null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg);
-        }
-
-        byte[] raw_data = null;
-        if (msg != null)
-        {
-            raw_data = Fdbus.encodeMessage(msg);
-            if (raw_data == null)
-            {
-                destroy();
-                return false;
-            }
+            return false;
         }
 
         boolean ret = fdb_broadcast(mNativeHandle,
                                     msg_code,
                                     topic,
-                                    raw_data,
-                                    log_data);
+                                    builder.toBuffer(),
+                                    builder.toString());
         destroy();
         return ret;
     }

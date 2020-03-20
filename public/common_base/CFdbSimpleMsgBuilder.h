@@ -17,14 +17,15 @@
 #ifndef __IFDBSIMPLEMSGBUILDER_H__ 
 #define __IFDBSIMPLEMSGBUILDER_H__
 
+#include <string>
 #include "IFdbMsgBuilder.h"
 #include "CFdbSimpleSerializer.h"
 
 template <typename T>
-class CFdbSimpleMsgBuilder : public IFdbMsgBuilder
+class CFdbBaseSimpleMsgBuilder : public IFdbMsgBuilder
 {
 public:
-    CFdbSimpleMsgBuilder(T message)
+    CFdbBaseSimpleMsgBuilder(T message)
         : mMessage(message)
     {}
     int32_t build()
@@ -43,12 +44,53 @@ public:
     
 protected:
     CFdbSimpleSerializer mSerializer;
- 
-private:
     T mMessage;
 };
 
+template <typename T>
+class CFdbSimpleMsgBuilder : public CFdbBaseSimpleMsgBuilder<T> 
+{
+public:
+    CFdbSimpleMsgBuilder(T message)
+        : CFdbBaseSimpleMsgBuilder<T>(message)
+    {}
+    bool toString(std::string *msg_txt) const
+    {
+        std::ostringstream stream;
+        (void)CFdbBaseSimpleMsgBuilder<T>::mMessage.format(stream);
+        msg_txt->assign(stream.str());
+        return true;
+    }
+};
+
 typedef CFdbSimpleMsgBuilder<const IFdbParcelable &> CFdbParcelableBuilder;
+
+#define CFDBSIMPLEMSGBUILDER(_T) \
+template <> \
+class CFdbSimpleMsgBuilder<_T> : public CFdbBaseSimpleMsgBuilder<_T> \
+{ \
+public: \
+    CFdbSimpleMsgBuilder(_T message) \
+        : CFdbBaseSimpleMsgBuilder<_T>(message) \
+    {} \
+    bool toString(std::string *msg_txt) const \
+    { \
+        std::ostringstream stream; \
+        stream << CFdbBaseSimpleMsgBuilder<_T>::mMessage; \
+        msg_txt->assign(stream.str()); \
+        return true; \
+    } \
+};
+
+CFDBSIMPLEMSGBUILDER(int8_t)
+CFDBSIMPLEMSGBUILDER(uint8_t)
+CFDBSIMPLEMSGBUILDER(int16_t)
+CFDBSIMPLEMSGBUILDER(uint16_t)
+CFDBSIMPLEMSGBUILDER(int32_t)
+CFDBSIMPLEMSGBUILDER(uint32_t)
+CFDBSIMPLEMSGBUILDER(int64_t);
+CFDBSIMPLEMSGBUILDER(uint64_t);
+CFDBSIMPLEMSGBUILDER(std::string);
 
 template <typename T>
 class CFdbSimpleMsgParser : public IFdbMsgParser
@@ -70,8 +112,6 @@ public:
 
 protected:
     CFdbSimpleDeserializer mDeserializer;
- 
-private:
     T mMessage;
 };
 

@@ -18,6 +18,7 @@ package ipc.fdbus;
 import ipc.fdbus.FdbusClientListener;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.Fdbus;
+import ipc.fdbus.FdbusMsgBuilder;
 
 import java.util.ArrayList;
 
@@ -142,26 +143,16 @@ public class FdbusClient
      */
     public boolean invokeAsync(int msg_code, Object msg, Object user_data, int timeout)
     {
-        String log_data = null;
-        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_REQUEST))
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled(Fdbus.FDB_MT_REQUEST));
+        if (builder == null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg);
-        }
-
-        byte[] raw_data = null;
-        if (msg != null)
-        {
-            raw_data = Fdbus.encodeMessage(msg);
-            if (raw_data == null)
-            {
-                return false;
-            }
+            return false;
         }
 
         return fdb_invoke_async(mNativeHandle,
                                 msg_code,
-                                raw_data,
-                                log_data,
+                                builder.toBuffer(),
+                                builder.toString(),
                                 user_data,
                                 timeout);
     }
@@ -175,26 +166,16 @@ public class FdbusClient
      */
     public FdbusMessage invokeSync(int msg_code, Object msg, int timeout)
     {
-        String log_data = null;
-        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_REQUEST))
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled(Fdbus.FDB_MT_REQUEST));
+        if (builder == null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg);
-        }
-
-        byte[] raw_data = null;
-        if (msg != null)
-        {
-            raw_data = Fdbus.encodeMessage(msg);
-            if (raw_data == null)
-            {
-                return null;
-            }
+            return null;
         }
         
         return fdb_invoke_sync(mNativeHandle,
                                msg_code,
-                               raw_data,
-                               log_data,
+                               builder.toBuffer(),
+                               builder.toString(),
                                timeout);
     }
 
@@ -207,26 +188,16 @@ public class FdbusClient
      */
     public boolean send(int msg_code, Object msg)
     {
-        String log_data = null;
-        if ((msg != null) && (Fdbus.messageEncoder() != null) && logEnabled(Fdbus.FDB_MT_REQUEST))
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled(Fdbus.FDB_MT_REQUEST));
+        if (builder == null)
         {
-            log_data = Fdbus.messageEncoder().toString(msg);
-        }
-        
-        byte[] raw_data = null;
-        if (msg != null)
-        {
-            raw_data = Fdbus.encodeMessage(msg);
-            if (raw_data == null)
-            {
-                return false;
-            }
+            return false;
         }
         
         return fdb_send(mNativeHandle,
                         msg_code,
-                        raw_data,
-                        log_data);
+                        builder.toBuffer(),
+                        builder.toString());
     }
 
     /*
