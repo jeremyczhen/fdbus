@@ -64,6 +64,7 @@ public:
     void populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local);
 
     void notifyRemoteNameServerDrop(const char *host_name);
+    void onHostOnline(bool online);
 protected:
     void onSubscribe(CBaseJob::Ptr &msg_ref);
     void onInvoke(CBaseJob::Ptr &msg_ref);
@@ -107,7 +108,12 @@ private:
     void removeService(tRegistryTbl::iterator &it);
     CFdbAddressDesc *createAddrDesc(const char *url);
     void connectToHostServer(const char *hs_url, bool is_local);
-    void addServiceAddress(const std::string &svc_name,
+    bool addressTypeRegistered(const tAddressDescTbl &addr_list, EFdbSocketType skt_type);
+    bool addServiceAddress(const std::string &svc_name,
+                            CSvcRegistryEntry &addr_tbl,
+                            EFdbSocketType skt_type,
+                            NFdbBase::FdbMsgAddressList *msg_addr_list);
+    bool addServiceAddress(const std::string &svc_name,
                             FdbSessionId_t sid,
                             EFdbSocketType skt_type,
                             NFdbBase::FdbMsgAddressList *msg_addr_list);

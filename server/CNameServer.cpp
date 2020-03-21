@@ -147,19 +147,26 @@ void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServ
     }
 }
 
-void CNameServer::addServiceAddress(const std::string &svc_name,
-                                    FdbSessionId_t sid,
+bool CNameServer::addressTypeRegistered(const tAddressDescTbl &addr_list,
+                                        EFdbSocketType skt_type)
+{
+    for (auto it = addr_list.begin(); it != addr_list.end(); ++it)
+    {
+        const CFdbAddressDesc *addr_desc = *it;
+        if (addr_desc->mAddress.mType == skt_type)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CNameServer::addServiceAddress(const std::string &svc_name,
+                                    CSvcRegistryEntry &addr_tbl,
                                     EFdbSocketType skt_type,
                                     NFdbBase::FdbMsgAddressList *msg_addr_list)
 {
-    auto &addr_tbl = mRegistryTbl[svc_name];
-    CFdbToken::allocateToken(addr_tbl.mTokens);
-    if (msg_addr_list)
-    {
-        populateTokens(addr_tbl.mTokens, *msg_addr_list);
-    }
-
-    addr_tbl.mSid = sid;
+    bool address_created = false;
     if (msg_addr_list)
     {
         msg_addr_list->set_service_name(svc_name);
@@ -169,7 +176,8 @@ void CNameServer::addServiceAddress(const std::string &svc_name,
     
     CFdbAddressDesc *desc;
     std::string url;
-    if (skt_type == FDB_SOCKET_IPC)
+    if ((skt_type == FDB_SOCKET_IPC) &&
+            !addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_IPC))
     {
         if (allocateIpcAddress(svc_name, url))
         {
@@ -180,18 +188,45 @@ void CNameServer::addServiceAddress(const std::string &svc_name,
             {
                 msg_addr_list->add_address_list(desc->mAddress.mUrl);
             }
+            address_created = true;
         }
     }
-    if (allocateTcpAddress(svc_name, url))
+#ifdef __WIN32__
+    bool hs_connected = true;
+#else
+    bool hs_connected = mHostProxy->connected();
+#endif
+    if (hs_connected && !addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_TCP))
     {
-        desc = createAddrDesc(url.c_str());
-        desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-        addr_tbl.mAddrTbl.push_back(desc);
-        if (msg_addr_list)
+        if (allocateTcpAddress(svc_name, url))
         {
-            msg_addr_list->add_address_list(desc->mAddress.mUrl);
+            desc = createAddrDesc(url.c_str());
+            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
+            addr_tbl.mAddrTbl.push_back(desc);
+            if (msg_addr_list)
+            {
+                msg_addr_list->add_address_list(desc->mAddress.mUrl);
+            }
+            address_created = true;
         }
     }
+    return address_created;
+}
+
+bool CNameServer::addServiceAddress(const std::string &svc_name,
+                                    FdbSessionId_t sid,
+                                    EFdbSocketType skt_type,
+                                    NFdbBase::FdbMsgAddressList *msg_addr_list)
+{
+    auto &addr_tbl = mRegistryTbl[svc_name];
+    CFdbToken::allocateToken(addr_tbl.mTokens);
+    if (msg_addr_list)
+    {
+        populateTokens(addr_tbl.mTokens, *msg_addr_list);
+    }
+    addr_tbl.mSid = sid;
+
+    return addServiceAddress(svc_name, addr_tbl, skt_type, msg_addr_list);
 }
 
 void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
@@ -214,8 +249,7 @@ void CNameServer::onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref)
     }
 
     NFdbBase::FdbMsgAddressList reply_addr_list;
-    addServiceAddress(svc_name.name(), sid, getSocketType(sid), &reply_addr_list);
-    if (reply_addr_list.address_list().empty())
+    if (!addServiceAddress(svc_name.name(), sid, getSocketType(sid), &reply_addr_list))
     {
         msg->status(msg_ref, NFdbBase::FDB_ST_NOT_AVAILABLE);
         return;
@@ -654,6 +688,30 @@ void CNameServer::notifyRemoteNameServerDrop(const char *host_name)
     broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR, builder, svc_name);
 }
 
+void CNameServer::onHostOnline(bool online)
+{
+    if (!online)
+    {
+        return;
+    }
+    for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
+    {
+        NFdbBase::FdbMsgAddressList net_addr_list;
+        if (addServiceAddress(it->first, it->second, FDB_SOCKET_TCP, &net_addr_list))
+        {
+            if (it->first.compare(name()))
+            {
+                CFdbParcelableBuilder builder(net_addr_list);
+                broadcast(NFdbBase::NTF_MORE_ADDRESS, builder, it->first.c_str());
+            }
+            else
+            {
+                bindNsAddress(it->second.mAddrTbl);
+            }
+        }
+    }
+}
+
 void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
 {
     const char *svc_name = reg_it->first.c_str();
@@ -899,7 +957,17 @@ bool CNameServer::allocateTcpAddress(const std::string &svc_name, std::string &a
     bool alloc_port_by_system = false;
 #endif
     
-    if (!mInterface.empty())
+    if (mInterface.empty())
+    {
+        if (mHostProxy->hostIp(host_ip))
+        {
+            if (host_ip.compare(FDB_LOCAL_HOST))
+            {
+                str_host_ip = host_ip.c_str();
+            }
+        }
+    }
+    else
     {
         CBaseSocketFactory::getIpAddress(host_ip, mInterface.c_str());
         str_host_ip = host_ip.c_str();
@@ -1043,6 +1111,10 @@ bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
     bool success = true;
     for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
     {
+        if ((*it)->mStatus == CFdbAddressDesc::ADDR_BOUND)
+        {
+            continue;
+        }
         const char *url = (*it)->mAddress.mUrl.c_str();
         auto *sk = doBind(url);
         if (sk)

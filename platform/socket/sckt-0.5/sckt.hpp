@@ -273,7 +273,6 @@ protected:
     
     Socket& operator=(const Socket& s);
     void setNonBlock();
-    bool waitConnect(int timeout_ms);
     
 public:
     virtual ~Socket(){

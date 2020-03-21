@@ -218,27 +218,6 @@ void Socket::setNonBlock()
 #endif
 }
 
-bool Socket::waitConnect(int timeout_ms)
-{
-    fd_set fdset;
-    FD_ZERO(&fdset);
-    FD_SET(CastToSocket(this->socket), &fdset);
-    struct timeval tv;
-    int rv;
-    
-    tv.tv_sec = timeout_ms / 1000;
-    tv.tv_usec = (timeout_ms % 1000) * 1000;
-    if ((rv = select(CastToSocket(this->socket) + 1, NULL, &fdset, NULL, &tv)) == -1) {
-        // printf("error occurred on select function.");
-        return false;
-    }
-    else if (rv == 0) {
-        // printf("time out occurred.");
-        return false;
-    }
-    return true;
-}
-
 int Socket::getNativeSocket()const{
     return (int)CastToSocket(this->socket);
 }
@@ -425,11 +404,6 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
     if (ip.ipc_path.empty())
     {
 #endif
-        if (CONFIG_SOCKET_CONNECT_TIMEOUT)
-        {
-            setNonBlock();
-        } 
-
         sockaddr_in sockAddr;
         memset(&sockAddr, 0, sizeof(sockAddr));
         sockAddr.sin_family = AF_INET;
@@ -439,21 +413,20 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
         // Connect to the remote host
         if (CONFIG_SOCKET_CONNECT_TIMEOUT)
         {
-            if (connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)))
+            struct timeval tv;
+            
+            tv.tv_sec = CONFIG_SOCKET_CONNECT_TIMEOUT / 1000;
+            tv.tv_usec = (CONFIG_SOCKET_CONNECT_TIMEOUT % 1000) * 1000;
+            if (setsockopt (CastToSocket(this->socket), SOL_SOCKET, SO_SNDTIMEO, (char *)&tv,
+                    sizeof(tv)) < 0)
+            
             {
-                if (!waitConnect(CONFIG_SOCKET_CONNECT_TIMEOUT))
-                {
-                    this->Close();
-                    throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
-                }
+                throw sckt::Exc("TCPServerSocket::Open(): unable to set connect timeout");
             }
         }
-        else
-        {
-            if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
-                this->Close();
-                throw sckt::Exc("TCPSocket::Open(): Couldn't connect to remote host");
-            }
+        if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr *>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
+            this->Close();
+            throw sckt::Exc("TCPSocket::Open(): Couldn't connect to remote host");
         }
 #ifndef __WIN32__
     }

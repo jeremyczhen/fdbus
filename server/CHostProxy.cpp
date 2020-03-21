@@ -86,12 +86,14 @@ void CHostProxy::onOnline(FdbSessionId_t sid, bool is_first)
     subscribeListener(NFdbBase::NTF_HEART_BEAT, true);
 
     hostOnline();
+    mNameServer->onHostOnline(true);
 
     LOG_I("CHostProxy: connected to host server: %s\n.", mHostUrl.c_str());
 }
 
 void CHostProxy::onOffline(FdbSessionId_t sid, bool is_last)
 {
+    mNameServer->onHostOnline(false);
     mConnectTimer.startReconnectMode();
     
     NFdbBase::FdbMsgHostAddressList host_list;
