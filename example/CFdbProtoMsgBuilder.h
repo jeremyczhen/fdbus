@@ -27,7 +27,7 @@ public:
     CFdbProtoMsgBuilder(const CFdbProtoMessage &message);
     int32_t build();
     void toBuffer(uint8_t *buffer, int32_t size);
-    bool toString(std::string *msg_txt);
+    bool toString(std::string *msg_txt) const;
     
 private:
     const CFdbProtoMessage &mMessage;

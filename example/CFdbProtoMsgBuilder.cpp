@@ -48,7 +48,7 @@ void CFdbProtoMsgBuilder::toBuffer(uint8_t *buffer, int32_t size)
     }
 }
 
-bool CFdbProtoMsgBuilder::toString(std::string *msg_txt)
+bool CFdbProtoMsgBuilder::toString(std::string *msg_txt) const
 {
     bool ret = true;
     try
