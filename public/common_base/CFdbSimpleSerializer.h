@@ -23,8 +23,10 @@
 #include <sstream>
 
 #define FDB_SCRATCH_CACHE_SIZE 2048 
-typedef uint16_t fdb_ser_strlen_t;
-typedef uint16_t fdb_ser_arrlen_t;
+#define FDB_BYTEARRAY_PRINT_SIZE 16
+typedef uint16_t fdb_string_len_t;
+typedef uint16_t fdb_struct_arr_len_t;
+typedef int32_t fdb_byte_arr_len_t;
 
 class CFdbSimpleSerializer;
 class CFdbSimpleDeserializer;
@@ -94,7 +96,7 @@ public:
     }
     void reset();
     void addRawData(const uint8_t *p_data, int32_t size);
-    void addString(const char *string, fdb_ser_strlen_t str_len);
+    void addString(const char *string, fdb_string_len_t str_len);
 
 private:
     uint8_t *mBuffer;
@@ -285,7 +287,7 @@ public:
     
     void serialize(CFdbSimpleSerializer &serializer) const
     {
-        serializer << (fdb_ser_arrlen_t)mPool.size();
+        serializer << (fdb_struct_arr_len_t)mPool.size();
         for (typename tPool::const_iterator it = mPool.begin(); it != mPool.end(); ++it)
         {
             serializer << *it;
@@ -299,10 +301,10 @@ public:
             return;
         }
         
-        fdb_ser_arrlen_t size = 0;
+        fdb_struct_arr_len_t size = 0;
         deserializer >> size;
         mPool.resize(size);
-        for (fdb_ser_arrlen_t i = 0; i < size; ++i)
+        for (fdb_struct_arr_len_t i = 0; i < size; ++i)
         {
             if (deserializer.error())
             {
@@ -418,6 +420,199 @@ protected:
             stream << *it << ",";
         }
     }
+};
+
+template <int32_t SIZE>
+class CFdbByteArray : public IFdbParcelable
+{
+public:
+    CFdbByteArray(int32_t size = SIZE)
+        : mSize((size < SIZE) ? size : SIZE)
+    {
+    }
+
+    int32_t size() const
+    {
+        return (int32_t)sizeof(mBuffer);
+    }
+
+    void size(int32_t size)
+    {
+        mSize = size;
+    }
+
+    const uint8_t *buffer() const
+    {
+        return mBuffer;
+    }
+
+    uint8_t *vbuffer()
+    {
+        return mBuffer;
+    }
+
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << (fdb_byte_arr_len_t)mSize;
+        serializer.addRawData(mBuffer, mSize);
+    }
+
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        if (deserializer.error())
+        {
+            return;
+        }
+        fdb_byte_arr_len_t size = 0;
+        deserializer >> size;
+        if (size <= SIZE)
+        {
+            mSize = size;
+            deserializer.retrieveRawData(mBuffer, size);
+        }
+        else
+        {
+            deserializer.error(true);
+        }
+    }
+
+    std::ostringstream &format(std::ostringstream &stream) const
+    {
+        int32_t psize = mSize;
+        if (psize > FDB_BYTEARRAY_PRINT_SIZE)
+        {
+            stream << mSize << "[";
+            psize = FDB_BYTEARRAY_PRINT_SIZE;
+        }
+        else
+        {
+            stream << "[";
+        }
+        for (int32_t i = 0; i < psize; ++i)
+        {
+            stream << (unsigned)mBuffer[i] << ",";
+        }
+        stream << "]";
+        return stream;
+    }
+
+private:
+    int32_t mSize;
+    uint8_t mBuffer[SIZE];
+};
+    
+class CFdbByteArrayExt : public IFdbParcelable
+{
+public:
+    CFdbByteArrayExt()
+        : mSize(0)
+        , mBuffer(0)
+        , mVBuffer(0)
+    {}
+
+    CFdbByteArrayExt(int32_t size, const uint8_t *buffer)
+        : mSize(size)
+        , mBuffer(buffer)
+        , mVBuffer(0)
+    {}
+
+    ~CFdbByteArrayExt()
+    {
+        if (mVBuffer)
+        {
+            delete mVBuffer;
+        }
+    }
+
+    int32_t size() const
+    {
+        return mSize;
+    }
+
+    uint8_t *vbuffer(bool remove = false)
+    {
+        uint8_t *buffer = mVBuffer;
+        if (remove)
+        {
+            mVBuffer = 0;
+        }
+        return buffer;
+    }
+
+    const uint8_t *buffer() const
+    {
+        return mBuffer;
+    }
+    
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        if (!mSize || mBuffer)
+        {
+            serializer << (fdb_byte_arr_len_t)mSize;
+            if (mBuffer)
+            {
+                serializer.addRawData(mBuffer, mSize);
+            }
+        }
+    }
+
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        if (deserializer.error())
+        {
+            return;
+        }
+        fdb_byte_arr_len_t size = 0;
+        deserializer >> size;
+        if (!size)
+        {
+            return;
+        }
+
+        if (!mVBuffer)
+        {
+            try
+            {
+                mVBuffer = new uint8_t[size];
+                mSize = size;
+            }
+            catch (...)
+            {
+                deserializer.error(true);
+                return;
+            }
+        }
+        deserializer.retrieveRawData(mVBuffer, size);
+    }
+
+    std::ostringstream &format(std::ostringstream &stream) const
+    {
+        int32_t psize = mSize;
+        if (psize > FDB_BYTEARRAY_PRINT_SIZE)
+        {
+            stream << mSize << "[";
+            psize = FDB_BYTEARRAY_PRINT_SIZE;
+        }
+        else
+        {
+            stream << "[";
+        }
+        const uint8_t *buffer = mBuffer ? mBuffer : mVBuffer;
+        if (buffer)
+        {
+            for (int32_t i = 0; i < psize; ++i)
+            {
+                stream << (unsigned)buffer[i] << ",";
+            }
+        }
+        stream << "]";
+        return stream;
+    }
+
+private:
+    int32_t mSize;
+    const uint8_t *mBuffer;
+    uint8_t *mVBuffer;
 };
 
 #endif

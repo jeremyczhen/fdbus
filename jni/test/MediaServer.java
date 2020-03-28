@@ -99,6 +99,10 @@ public class MediaServer
                     persons[0].mCars[1].mBrand = "ROEWE";
                     persons[0].mCars[1].mModel = "X5";
                     persons[0].mCars[1].mPrice = 200000;
+                    persons[0].mPrivateInfo = new byte[][]{
+                                                    {12, 23, 34, 45, 56, 67, 78, 89, 90},
+                                                    {9, 98, 87, 76, 65, 54, 43, 32, 21}
+                                                };
 
                     persons[1] = new CPerson();
                     persons[1].mAddress = "Guangzhou";
@@ -113,6 +117,12 @@ public class MediaServer
                     persons[1].mCars[1].mBrand = "Toyota";
                     persons[1].mCars[1].mModel = "X5";
                     persons[1].mCars[1].mPrice = 200000;
+                    persons[1].mPrivateInfo = new byte[][]{
+                                                    {12, 23, 34, 45, 56, 67, 78, 89, 90},
+                                                    {9, 98, 87, 76, 65, 54, 43, 32, 21},
+                                                    {12, 23, 34, 45, 56, 67, 78, 89, 90},
+                                                    {9, 98, 87, 76, 65, 54, 43, 32, 21}
+                                                };
 
                     FdbusSimpleBuilder builder = new FdbusSimpleBuilder(persons);
                     msg.reply(builder);

@@ -44,11 +44,17 @@ public class FdbusSerializer
     }
 
     /** Write an array of bytes. */
+    private void writeRawBytes(final byte[] value, int length)
+    {
+        expandBuffer(length);
+        System.arraycopy(value, 0, mBuffer, mBufferPos, length);
+        mBufferPos += length;
+    }
+
+    /** Write an array of bytes. */
     private void writeRawBytes(final byte[] value)
     {
-        expandBuffer(value.length);
-        System.arraycopy(value, 0, mBuffer, mBufferPos, value.length);
-        mBufferPos += value.length;
+        writeRawBytes(value, value.length);
     }
 
     private void writeRaw8(final int value)
@@ -218,6 +224,29 @@ public class FdbusSerializer
         for (int i = 0; i < value.length; ++i)
         {
             writeString(value[i]);
+        }
+    }
+
+    // serialize byte array (raw data)
+    public void in(byte[] value, int length)
+    {
+        writeRawLittleEndian32(length);
+        writeRawBytes(value, length);
+    }
+
+    // serialize byte array (raw data)
+    public void in(byte[] value)
+    {
+        in(value, value.length);
+    }
+
+    // serialize array of byte array (raw data)
+    public void in(byte[][] value)
+    {
+        writeRawLittleEndian16(value.length);
+        for (int i = 0; i < value.length; ++i)
+        {
+            in(value[i]);
         }
     }
 

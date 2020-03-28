@@ -35,13 +35,13 @@ CFdbSimpleSerializer::~CFdbSimpleSerializer()
 
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const std::string& data)
 {
-    serializer.addString(data.c_str(), (fdb_ser_strlen_t)data.size());
+    serializer.addString(data.c_str(), (fdb_string_len_t)data.size());
     return serializer;
 }
 
 CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const char *data)
 {
-    serializer.addString(data, (fdb_ser_strlen_t)strlen(data));
+    serializer.addString(data, (fdb_string_len_t)strlen(data));
     return serializer;
 }
 
@@ -79,9 +79,9 @@ void CFdbSimpleSerializer::reset()
     }
 }
 
-void CFdbSimpleSerializer::addString(const char *string, fdb_ser_strlen_t str_len)
+void CFdbSimpleSerializer::addString(const char *string, fdb_string_len_t str_len)
 {
-    fdb_ser_strlen_t l = str_len + 1;
+    fdb_string_len_t l = str_len + 1;
     *this << l;
     addRawData((const uint8_t *)string, l);
 }
@@ -166,7 +166,7 @@ void CFdbSimpleDeserializer::reset(const uint8_t *buffer, int32_t size)
 
 CFdbSimpleDeserializer& operator>>(CFdbSimpleDeserializer &deserializer, std::string& data)
 {
-    fdb_ser_strlen_t len = 0;
+    fdb_string_len_t len = 0;
     deserializer >> len;
     if (deserializer.mError || !len)
     {

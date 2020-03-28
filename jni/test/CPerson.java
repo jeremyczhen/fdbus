@@ -53,24 +53,26 @@ public class CPerson extends FdbusParcelable
         serializer.in(mCars);
         serializer.inS(mAddress);
         serializer.in32(mSalary);
+        serializer.in(mPrivateInfo);
     }
     public void deserialize(FdbusDeserializer deserializer)
     {
         mName = deserializer.outS();
         mAge = deserializer.out8();
-
         mCars = deserializer.out(new CCar[deserializer.arrayLength()], CCar.class);
         mAddress = deserializer.outS();
         mSalary = deserializer.out32();
+        mPrivateInfo = deserializer.outBAA();
     }
 
     public void toString(TextFormatter fmter)
     {
-        fmter.format("mName",       mName);
-        fmter.format("mAge",        mAge);
-        fmter.format("mSalary",     mSalary);
-        fmter.format("mCars",       mCars);
-        fmter.format("mAddress",    mAddress);
+        fmter.format("mName",           mName);
+        fmter.format("mAge",            mAge);
+        fmter.format("mSalary",         mSalary);
+        fmter.format("mCars",           mCars);
+        fmter.format("mAddress",        mAddress);
+        fmter.format("mPrivateInfo",    mPrivateInfo);
     }
     
     public String mName;
@@ -78,5 +80,6 @@ public class CPerson extends FdbusParcelable
     public int mSalary;
     public String mAddress;
     public CCar[] mCars;
+    public byte[][] mPrivateInfo;
 }
 

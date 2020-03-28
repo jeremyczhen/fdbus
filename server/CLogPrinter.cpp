@@ -71,7 +71,7 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
     }
     if (is_string)
     {
-        fdb_ser_strlen_t str_len = 0;
+        fdb_string_len_t str_len = 0;
         deserializer >> str_len;
         if (str_len)
         {
@@ -112,7 +112,7 @@ void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessa
         return;
     }
 
-    fdb_ser_strlen_t str_len = 0;
+    fdb_string_len_t str_len = 0;
     deserializer >> str_len;
     const char *trace_log = str_len ? (const char *)deserializer.pos() : "\n";
 

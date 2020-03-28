@@ -48,17 +48,18 @@ class CPerson : public IFdbParcelable
 public:
     void serialize(CFdbSimpleSerializer &serializer) const
     {
-        serializer << mName << mAge << mCars << mAddress << mSalary;
+        serializer << mName << mAge << mCars << mAddress << mSalary << mPrivateInfo;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
-        deserializer >> mName >> mAge >> mCars >> mAddress >> mSalary;
+        deserializer >> mName >> mAge >> mCars >> mAddress >> mSalary >> mPrivateInfo;
     }
     std::string mName;
     uint8_t mAge;
     int32_t mSalary;
     std::string mAddress;
     CFdbParcelableArray<CCar> mCars;
+    CFdbParcelableArray<CFdbByteArray<20>> mPrivateInfo;
 
 protected:
     void toString(std::ostringstream &stream) const
@@ -67,7 +68,8 @@ protected:
                << ", mAge:" << (unsigned)mAge
                << ", mSalary:" << mSalary
                << ", mCars:"; mCars.format(stream)
-               << ", mAddress:" << mAddress;
+               << ", mAddress:" << mAddress
+               << ", mPrivateInfo: "; mPrivateInfo.format(stream);
     }
 };
 

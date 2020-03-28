@@ -20,6 +20,8 @@ public class FdbusParcelable
 {
     public static class TextFormatter
     {
+        private final static int FDB_BYTEARRAY_PRINT_SIZE = 16;
+
         public TextFormatter()
         {
             mStream = new String();
@@ -54,6 +56,39 @@ public class FdbusParcelable
             {
                 Integer oi = (Integer)value;
                 mStream += oi.toString();
+            }
+            else if (value instanceof byte[])
+            {
+                byte[] ob = (byte[])value;
+
+                int len = ob.length;
+                if (len > FDB_BYTEARRAY_PRINT_SIZE)
+                {
+                    Integer l = (Integer)len;
+                    mStream += l.toString() + "[";
+                    len = FDB_BYTEARRAY_PRINT_SIZE;
+                }
+                else
+                {
+                    mStream += "[";
+                }
+                for (int i = 0; i < len; ++i)
+                {
+                    Byte data = (Byte)ob[i];
+                    mStream += data.toString() + ",";
+                }
+                mStream += "]";
+            }
+            else if (value instanceof byte[][])
+            {
+                byte[][] ob = (byte[][])value;
+                mStream += "[";
+                for (int i = 0; i < ob.length; ++i)
+                {
+                    formatOne(ob[i]);
+                    mStream += ",";
+                }
+                mStream += "]";
             }
             else
             {

@@ -53,10 +53,22 @@ public class FdbusDeserializer
                 return result;
             }
         }
-        
+
         final String result = new String();
         mError = true;
         return result;
+    }
+
+    private void readRawBytes(byte[] value)
+    {
+        if ((mBufferPos + value.length) > mBuffer.length)
+        {
+            mError = true;
+            return;
+        }
+
+        System.arraycopy(mBuffer, mBufferPos, value, 0, value.length);
+        mBufferPos += value.length;
     }
 
     private int readRaw8()
@@ -293,6 +305,58 @@ public class FdbusDeserializer
             arr[i] = data;
         }
         return arr;
+    }
+
+    // deserialize byte array (raw data) from stream
+    public byte[] outBA()
+    {
+        if (mError)
+        {
+            return new byte[0];
+        }
+        int len = readRawLittleEndian32();
+        byte[] value = null;
+        try {
+            value = new byte[len];
+        } catch (Exception e) {
+        }
+        if (value == null)
+        {
+            value = new byte[0];
+        }
+        else
+        {
+            readRawBytes(value);
+        }
+        return value;
+    }
+
+    // deserialize array of byte array (raw data) from stream
+    public byte[][] outBAA()
+    {
+        if (mError)
+        {
+            return new byte[0][];
+        }
+        int len = readRawLittleEndian16();
+        byte[][] value = null;
+        try {
+            value = new byte[len][];
+        } catch (Exception e) {
+        }
+        if (value == null)
+        {
+            value = new byte[0][];
+        }
+        else
+        {
+            for (int i = 0; i < len; ++i)
+            {
+                value[i] = outBA();
+            }
+        }
+
+        return value;
     }
 
     /*

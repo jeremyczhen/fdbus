@@ -155,6 +155,14 @@ protected:
                         c->mModel = "X5";
                         c->mPrice = 200000;
                     }
+                    for (int32_t i = 0; i < 5; ++i)
+                    {
+                        CFdbByteArray<20> *arr = p->mPrivateInfo.Add();
+                        for (int32_t j = 0; j < arr->size(); ++j)
+                        {
+                            arr->vbuffer()[j] = j;
+                        }
+                    }
                 }
                 {
                     CPerson *p = persions.Add();
@@ -172,6 +180,14 @@ protected:
                         c->mBrand = "Toyoto";
                         c->mModel = "X5";
                         c->mPrice = 200000;
+                    }
+                    for (int32_t i = 0; i < 8; ++i)
+                    {
+                        CFdbByteArray<20> *arr = p->mPrivateInfo.Add();
+                        for (int32_t j = 0; j < arr->size(); ++j)
+                        {
+                            arr->vbuffer()[j] = j + 10;
+                        }
                     }
                 }
                 CFdbParcelableBuilder builder(persions);
