@@ -190,13 +190,18 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
             }
             address_created = true;
         }
+
+        // host server is forced to bind to tcp address
+        if (svc_name != CNsConfig::getHostServerName())
+        {
+            if (!mHostProxy->connected())
+            {
+                return address_created;
+            }
+        }
     }
-#ifdef __WIN32__
-    bool hs_connected = true;
-#else
-    bool hs_connected = mHostProxy->connected();
-#endif
-    if (hs_connected && !addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_TCP))
+
+    if (!addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_TCP))
     {
         if (allocateTcpAddress(svc_name, url))
         {
@@ -696,6 +701,10 @@ void CNameServer::onHostOnline(bool online)
     }
     for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
     {
+        if (!it->first.compare(CNsConfig::getHostServerName()))
+        {
+            continue;
+        }
         NFdbBase::FdbMsgAddressList net_addr_list;
         if (addServiceAddress(it->first, it->second, FDB_SOCKET_TCP, &net_addr_list))
         {
@@ -956,10 +965,13 @@ bool CNameServer::allocateTcpAddress(const std::string &svc_name, std::string &a
 #else
     bool alloc_port_by_system = false;
 #endif
+    bool is_host_server = svc_name == CNsConfig::getHostServerName();
+    bool is_name_server = svc_name == name();
     
     if (mInterface.empty())
     {
-        if (mHostProxy->hostIp(host_ip))
+        // host server binds to all interfaces
+        if (!is_host_server && mHostProxy->hostIp(host_ip))
         {
             if (host_ip.compare(FDB_LOCAL_HOST))
             {
@@ -977,8 +989,6 @@ bool CNameServer::allocateTcpAddress(const std::string &svc_name, std::string &a
         str_host_ip = FDB_IP_ALL_INTERFACE;
     }
 
-    bool is_host_server = svc_name == CNsConfig::getHostServerName();
-    bool is_name_server = svc_name == name();
     if (is_host_server || is_name_server || alloc_port_by_system)
     {
         int32_t port;

@@ -19,6 +19,7 @@
 #include <common_base/CIntraNameProxy.h>
 #include <common_base/CLogProducer.h>
 #include <utils/Log.h>
+#include <iostream>
 
 // template<> FdbSessionId_t CFdbContext::tSessionContainer::mUniqueEntryAllocator = 0;
 
@@ -48,15 +49,17 @@ bool CFdbContext::asyncReady()
 {
     if (mEnableNameProxy)
     {
-        mNameProxy = new CIntraNameProxy();
-        mNameProxy->connectToNameServer();
+        auto name_proxy = new CIntraNameProxy();
+        name_proxy->connectToNameServer();
+        mNameProxy = name_proxy;
     }
     if (mEnableLogger)
     {
-        mLogger = new CLogProducer();
+        auto logger = new CLogProducer();
         std::string svc_url;
-        mLogger->getDefaultSvcUrl(svc_url);
-        mLogger->doConnect(svc_url.c_str());
+        logger->getDefaultSvcUrl(svc_url);
+        logger->doConnect(svc_url.c_str());
+        mLogger = logger;
     }
     return true;
 }
@@ -65,26 +68,28 @@ bool CFdbContext::destroy()
 {
     if (mNameProxy)
     {
-        mNameProxy->enableNsMonitor(false);
-        mNameProxy->disconnect();
-        delete mNameProxy;
+        auto name_proxy = mNameProxy;
         mNameProxy = 0;
+        name_proxy->enableNsMonitor(false);
+        name_proxy->disconnect();
+        delete name_proxy;
     }
     if (mLogger)
     {
-        mLogger->disconnect();
-        delete mLogger;
+        auto logger = mLogger;
         mLogger = 0;
+        logger->disconnect();
+        delete logger;
     }
 
     if (!mEndpointContainer.getContainer().empty())
     {
-        LOG_E("CFdbContext: Unable to destroy context since there are active endpoint!\n");
+        std::cout << "CFdbContext: Unable to destroy context since there are active endpoint!" << std::endl;
         return false;
     }
     if (!mSessionContainer.getContainer().empty())
     {
-        LOG_E("CFdbContext: Unable to destroy context since there are active sessions!\n");
+        std::cout << "CFdbContext: Unable to destroy context since there are active sessions!\n" << std::endl;
         return false;
     }
     exit();
