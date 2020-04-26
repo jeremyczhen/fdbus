@@ -195,9 +195,9 @@ fdb_bool_t fdb_server_broadcast(fdb_server_t *handle,
     auto fdb_server = (CCServer *)handle->native_handle;
 
     return fdb_server->broadcast(msg_code,
-                                 topic,
                                  msg_data,
                                  data_size,
+                                 topic,
                                  log_data);
 }
 
@@ -236,7 +236,7 @@ fdb_bool_t fdb_message_broadcast(void *reply_handle,
     auto msg = castToMessage<CFdbMessage *>(*msg_ref);
     if (msg)
     {
-        return msg->broadcast(msg_code, topic, msg_data, data_size, log_data);
+        return msg->broadcast(msg_code, msg_data, data_size, topic, log_data);
     }
     return fdb_false;
 }

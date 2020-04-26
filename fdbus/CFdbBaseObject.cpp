@@ -180,9 +180,9 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
 }
 
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
-                              , const char *filter
                               , const void *buffer
                               , int32_t size
+                              , const char *filter
                               , const char *log_data)
 {
     auto msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
@@ -1356,9 +1356,9 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
 bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                       , FdbObjectId_t obj_id
                       , FdbMsgCode_t code
-                      , const char *filter
                       , const void *buffer
                       , int32_t size
+                      , const char *filter
                       , const char *log_data)
 {
     auto msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);

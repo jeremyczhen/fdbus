@@ -108,7 +108,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
         c_filter = env->GetStringUTFChars(filter, 0);
     }
     
-    bool ret = msg->broadcast(msg_code, c_filter, (const void *)c_array, len_arr, c_log_data);
+    bool ret = msg->broadcast(msg_code, (const void *)c_array, len_arr, c_filter, c_log_data);
     if (c_log_data)
     {
         env->ReleaseStringUTFChars(log_data, c_log_data);

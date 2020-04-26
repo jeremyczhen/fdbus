@@ -241,9 +241,9 @@ public:
                    , const char *filter = 0);
                    
     bool broadcast(FdbMsgCode_t code
-                   , const char *filter = 0
                    , const void *buffer = 0
                    , int32_t size = 0
+                   , const char *filter = 0
                    , const char *log_data = 0);
     /*
      * Deserialize received buffer into protocol buffer of particular type.

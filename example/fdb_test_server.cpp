@@ -73,7 +73,7 @@ public:
         char raw_data[256];
         memset(raw_data, '=', sizeof(raw_data));
         raw_data[255] = '\0';
-        broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data, 256);
+        broadcast(NTF_ELAPSE_TIME, raw_data, 256, "raw_buffer");
     }
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first)
@@ -235,7 +235,7 @@ protected:
                     else if (!str_filter.compare("raw_buffer"))
                     {
                         std::string raw_data = "raw buffer test for broadcast.";
-                        msg->broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data.c_str(), raw_data.length() + 1);
+                        msg->broadcast(NTF_ELAPSE_TIME, raw_data.c_str(), raw_data.length() + 1, "raw_buffer");
                     }
                 }
                 case NTF_MANUAL_UPDATE:

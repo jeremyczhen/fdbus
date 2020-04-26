@@ -248,9 +248,9 @@ public:
      * @iparam size: size of buffer
      */
     bool broadcast(FdbMsgCode_t code
-                   , const char *filter = 0
                    , const void *buffer = 0
                    , int32_t size = 0
+                   , const char *filter = 0
                    , const char *log_data = 0);
     /*
      * Build subscribe list before calling subscribe().
@@ -567,9 +567,9 @@ public:
     bool broadcast(FdbSessionId_t sid
                   , FdbObjectId_t obj_id
                   , FdbMsgCode_t code
-                  , const char *filter = 0
                   , const void *buffer = 0
                   , int32_t size = 0
+                  , const char *filter = 0
                   , const char *log_data = 0);
 
     // Internal use only!!!

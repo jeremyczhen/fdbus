@@ -373,9 +373,9 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
 }
 
 bool CFdbMessage::broadcast(FdbMsgCode_t code
-                           , const char *filter
                            , const void *buffer
                            , int32_t size
+                           , const char *filter
                            , const char *log_data)
 {
     auto msg = new CFdbBroadcastMsg(code, this, filter);

@@ -112,7 +112,7 @@ public:
         char raw_data[1920];
         memset(raw_data, '=', sizeof(raw_data));
         raw_data[1919] = '\0';
-        this->broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data, 1920);
+        this->broadcast(NTF_ELAPSE_TIME, raw_data, 1920, "raw_buffer");
         this->broadcast(NTF_ELAPSE_TIME);
     }
     
@@ -236,7 +236,7 @@ protected:
                     else if (!str_filter.compare("raw_buffer"))
                     {
                         std::string raw_data = "raw buffer test for broadcast.";
-                        msg->broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data.c_str(), (int32_t)raw_data.length() + 1);
+                        msg->broadcast(NTF_ELAPSE_TIME, raw_data.c_str(), (int32_t)raw_data.length() + 1, "raw_buffer");
                     }
                 }
                 break;
