@@ -26,13 +26,13 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1reply
                             jbyteArray pb_data,
                             jstring log_data)
 {
-    auto *msg_ref = (CBaseJob::Ptr *)handle;
+    auto msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
         return false;
     }
     
-    auto *msg = castToMessage<CFdbMessage *>(*msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(*msg_ref);
     if (!msg)
     {
         FDB_LOG_E("Java_FdbusMessage_fdb_1reply: msg pointer is corrupted!\n");
@@ -75,13 +75,13 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
                              jbyteArray pb_data,
                              jstring log_data)
 {
-    auto *msg_ref = (CBaseJob::Ptr *)handle;
+    auto msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
         return false;
     }
     
-    auto *msg = castToMessage<CFdbMessage *>(*msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(*msg_ref);
     if (!msg)
     {
         FDB_LOG_E("Java_FdbusMessage_fdb_1broadcast: msg pointer is corrupted!\n");
@@ -129,25 +129,25 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1broadcast
 JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1destroy
   (JNIEnv *env, jobject, jlong handle)
 {
-    auto *msg_ref = (CBaseJob::Ptr *)handle;
+    auto msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
         return;
     }
-    (*msg_ref).reset();
+    msg_ref->reset();
     delete msg_ref;
 }
   
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled
   (JNIEnv *env, jobject, jlong handle)
 {
-    auto *msg_ref = (CBaseJob::Ptr *)handle;
+    auto msg_ref = (CBaseJob::Ptr *)handle;
     if (!msg_ref)
     {
         return false;
     }
     
-    auto *msg = castToMessage<CFdbMessage *>(*msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(*msg_ref);
     if (!msg)
     {
         FDB_LOG_E("Java_ipc_fdbus_FdbusMessage_fdb_1log_1enabled: msg pointer is corrupted!\n");

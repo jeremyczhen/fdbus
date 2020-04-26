@@ -21,6 +21,7 @@
 #include <utils/Log.h>
 #include <stdlib.h>
 #include <vector>
+#include <iostream>
 #include "CLogPrinter.h"
 #include <common_base/CFdbIfMessageHeader.h>
 
@@ -171,7 +172,7 @@ protected:
 
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg->isStatus())
         {
             if (msg->isError())
@@ -233,11 +234,6 @@ private:
     bool mLoggerCfgReplied;
     bool mTraceCfgReplied;
 };
-
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
-#endif
 
 int main(int argc, char **argv)
 {

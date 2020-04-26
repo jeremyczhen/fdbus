@@ -111,7 +111,7 @@ CFdbSession *CBaseEndpoint::preferredPeer()
     }
     else
     {
-        auto *sessions = it->second;
+        auto sessions = it->second;
         session = sessions->getDefaultSession();
     }
 
@@ -131,7 +131,7 @@ CFdbSessionContainer *CBaseEndpoint::getSocketByUrl(const char *url)
     auto &containers = getContainer();
     for (auto it = containers.begin(); it != containers.end(); ++it)
     {
-        auto *container = it->second;
+        auto container = it->second;
         CFdbSocketInfo info;
         container->getSocketInfo(info);
         if (!info.mAddress->mUrl.compare(url))
@@ -148,7 +148,7 @@ void CBaseEndpoint::getUrlList(std::vector<std::string> &url_list)
     auto &containers = getContainer();
     for (auto it = containers.begin(); it != containers.end(); ++it)
     {
-        auto *container = it->second;
+        auto container = it->second;
         CFdbSocketInfo info;
         container->getSocketInfo(info);
         url_list.push_back(info.mAddress->mUrl);
@@ -173,7 +173,7 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
 
     if (obj->role() == FDB_OBJECT_ROLE_SERVER)
     {
-        auto *o = findObject(obj_id, true);
+        auto o = findObject(obj_id, true);
         if (o)
         {
             if (o == obj)
@@ -200,14 +200,14 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
     auto &containers = getContainer();
     for (auto socket_it = containers.begin(); socket_it != containers.end(); ++socket_it)
     {
-        auto *container = socket_it->second;
+        auto container = socket_it->second;
         if (!container->mConnectedSessionTable.empty())
         {
             // get a snapshot of the table to avoid modification of the table in callback
             auto tbl = container->mConnectedSessionTable;
             for (auto session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
             {
-                auto *session = *session_it;
+                auto session = *session_it;
                 CFdbSessionInfo info;
                 session->getSessionInfo(info);
 
@@ -232,7 +232,7 @@ void CBaseEndpoint::removeObject(CFdbBaseObject *obj)
     auto &containers = getContainer();
     for (auto socket_it = containers.begin(); socket_it != containers.end(); ++socket_it)
     {
-        auto *container = socket_it->second;
+        auto container = socket_it->second;
         if (!container->mConnectedSessionTable.empty())
         {
             // get a snapshot of the table to avoid modification of the table in callback
@@ -259,7 +259,7 @@ void CBaseEndpoint::unsubscribeSession(CFdbSession *session)
     auto &object_tbl = mObjectContainer.getContainer();
     for (auto it = object_tbl.begin(); it != object_tbl.end(); ++it)
     {
-        auto *object = it->second;
+        auto object = it->second;
         object->unsubscribe(session);
     }
     
@@ -335,7 +335,7 @@ bool CBaseEndpoint::addConnectedSession(CFdbSessionContainer *socket, CFdbSessio
         auto object_tbl = mObjectContainer.getContainer();
         for (auto it = object_tbl.begin(); it != object_tbl.end(); ++it)
         {
-            auto *object = it->second;
+            auto object = it->second;
             if (!object->authentication(info))
             {
                 continue;
@@ -439,7 +439,7 @@ CFdbBaseObject *CBaseEndpoint::findObject(FdbObjectId_t obj_id, bool server_only
     auto &object_tbl = mObjectContainer.getContainer();
     for (auto it = object_tbl.begin(); it != object_tbl.end(); ++it)
     {
-        auto *object = it->second;
+        auto object = it->second;
         if (server_only)
         {
             if ((object->role() == FDB_OBJECT_ROLE_SERVER) &&
@@ -473,7 +473,7 @@ public:
 void CBaseEndpoint::callRegisterEndpoint(CBaseWorker *worker,
                 CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CRegisterJob *>(job);
+    auto the_job = dynamic_cast<CRegisterJob *>(job);
     if (the_job)
     {
         the_job->mEpid = CFdbContext::getInstance()->registerEndpoint(this);
@@ -564,11 +564,11 @@ void CBaseEndpoint::updateSecurityLevel()
     auto &containers = getContainer();
     for (auto socket_it = containers.begin(); socket_it != containers.end(); ++socket_it)
     {
-        auto *container = socket_it->second;
+        auto container = socket_it->second;
         auto &tbl = container->mConnectedSessionTable;
         for (auto session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
         {
-            auto *session = *session_it;
+            auto session = *session_it;
             session->securityLevel(checkSecurityLevel(session->token().c_str()));
         }
     }
@@ -591,7 +591,7 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
         return false;
     }
 
-    auto *name_proxy = FDB_CONTEXT->getNameProxy();
+    auto name_proxy = FDB_CONTEXT->getNameProxy();
     if (!name_proxy)
     {
         return false;

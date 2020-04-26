@@ -23,6 +23,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <iostream>
 #include "CLogPrinter.h"
 #include <common_base/CFdbIfMessageHeader.h>
 
@@ -87,7 +88,7 @@ public:
 protected:
     void onInvoke(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case NFdbBase::REQ_FDBUS_LOG:
@@ -170,7 +171,7 @@ protected:
     
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         const CFdbMsgSubscribeItem *sub_item;
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
@@ -334,11 +335,6 @@ private:
         fdb_populate_white_list_cmd(config.tag_white_list(), fdb_trace_tag_white_list);
     }
 };
-
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
-#endif
 
 int main(int argc, char **argv)
 {

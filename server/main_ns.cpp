@@ -19,11 +19,6 @@
 #include "CNameServer.h"
 #include <iostream>
 
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
-#endif
-
 int main(int argc, char **argv)
 {
 #ifdef __WIN32__

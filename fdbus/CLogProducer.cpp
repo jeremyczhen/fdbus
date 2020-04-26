@@ -22,12 +22,11 @@
 #include <common_base/CIntraNameProxy.h>
 #include <common_base/CFdbRawMsgBuilder.h>
 #include <common_base/CFdbIfMessageHeader.h>
+#include <common_base/fdb_log_trace.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <inttypes.h>
 #include <utils/Log.h>
-
-std::string CLogProducer::mTagName = "Unknown";
 
 CLogProducer::CLogProducer()
     : CBaseClient(FDB_LOG_SERVER_NAME)
@@ -59,7 +58,7 @@ void CLogProducer::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     switch (msg->code())
     {
         case NFdbBase::NTF_LOGGER_CONFIG:
@@ -218,9 +217,9 @@ bool CLogProducer::checkLogEnabled(EFdbMessageType type,
         return true;
     }
 
-    const char *sender = endpoint->name().c_str();
-    const char *receiver = getReceiverName(type, sender_name, endpoint);
-    const char *busname = endpoint->nsName().c_str();
+    auto sender = endpoint->name().c_str();
+    auto receiver = getReceiverName(type, sender_name, endpoint);
+    auto busname = endpoint->nsName().c_str();
     
     if (lock)
     {
@@ -245,10 +244,10 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
         return;
     }
     
-    const char *sender = endpoint->name().c_str();
-    const char *receiver = getReceiverName(msg->type(), msg->senderName().c_str(), endpoint);
-    const char *busname = endpoint->nsName().c_str();
-    auto *proxy = FDB_CONTEXT->getNameProxy();
+    auto sender = endpoint->name().c_str();
+    auto receiver = getReceiverName(msg->type(), msg->senderName().c_str(), endpoint);
+    auto busname = endpoint->nsName().c_str();
+    auto proxy = FDB_CONTEXT->getNameProxy();
 
     CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
@@ -285,7 +284,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
     }
 }
 
-void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char *format, ...)
+void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, ...)
 {
     if (!getSessionCount()
         || mTraceDisableGlobal
@@ -312,7 +311,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
         tag = "None";
     }
 
-    auto *proxy = FDB_CONTEXT->getNameProxy();
+    auto proxy = FDB_CONTEXT->getNameProxy();
     CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
                          << tag
@@ -324,7 +323,8 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     char buffer[mMaxTraceLogSize];
     buffer[0] = '\0';
     va_list args;
-    va_start(args, format);
+    va_start(args, tag);
+    const char *format = va_arg(args, const char *);
     vsnprintf(buffer, mMaxTraceLogSize, format, args);
     va_end(args);
     builder.serializer() << buffer;
@@ -364,5 +364,44 @@ void CLogProducer::populateWhiteList(const CFdbParcelableArray<std::string> &in_
     {
         white_list.insert(*it);
     }
+}
+
+#define FDB_LOG_START() \
+    CLogProducer *logger = FDB_CONTEXT->getLogger(); \
+    if (!logger) \
+    { \
+        return; \
+    } \
+    va_list args; \
+    va_start(args, tag)
+
+void fdb_log_debug(const char *tag, ...)
+{
+    FDB_LOG_START();
+    logger->logTrace(FDB_LL_DEBUG, tag, args);
+}
+
+void fdb_log_info(const char *tag, ...)
+{
+    FDB_LOG_START();
+    logger->logTrace(FDB_LL_INFO, tag, args);
+}
+
+void fdb_log_warning(const char *tag, ...)
+{
+    FDB_LOG_START();
+    logger->logTrace(FDB_LL_WARNING, tag, args);
+}
+
+void fdb_log_error(const char *tag, ...)
+{
+    FDB_LOG_START();
+    logger->logTrace(FDB_LL_ERROR, tag, args);
+}
+
+void fdb_log_fatal(const char *tag, ...)
+{
+    FDB_LOG_START();
+    logger->logTrace(FDB_LL_FATAL, tag, args);
 }
 

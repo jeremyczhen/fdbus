@@ -47,7 +47,8 @@ namespace NFdbBase
         FDB_ST_NOT_IMPLEMENTED = -28,
 
         FDB_ST_OBJECT_NOT_FOUND= -29,
-        FDB_ST_AUTHENTICATION_FAIL = -30
+        FDB_ST_AUTHENTICATION_FAIL = -30,
+        FDB_ST_UNKNOWN = -128
     };
 }
 

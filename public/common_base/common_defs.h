@@ -17,7 +17,6 @@
 #ifndef _COMMON_DEFS_H_
 #define _COMMON_DEFS_H_
 
-#include <iostream>
 #include <stdint.h>
 
 #define FDB_VERSION_MAJOR 3
@@ -61,18 +60,13 @@ typedef uint32_t FdbObjectId_t;
 
 #define FDB_SECURITY_LEVEL_NONE -1
 
+#ifdef __cplusplus
 template <typename T>
 bool isValidFdbId(T id)
 {
     return id != (T)FDB_INVALID_ID;
 }
-
-#define assert_true(cond) \
-    if (!(cond)) \
-    { \
-        std::cout << "Die at line " << __LINE__ << " of file " << __FILE__ << std::endl; \
-        *((char *)0) = 0; \
-    }
+#endif
 
 #ifndef Num_Elems
 #define Num_Elems(_arr_) ((int32_t) (sizeof(_arr_) / sizeof((_arr_)[0])))

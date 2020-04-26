@@ -17,8 +17,6 @@
 #ifndef _CBASESYSDEP_HPP_
 #define _CBASESYSDEP_HPP_
 
-#include <string>
-
 #ifdef __WIN32__
 #pragma warning(disable:4250)
 #define WIN32_LEAN_AND_MEAN
@@ -29,47 +27,18 @@
 #include <io.h>
 #include <time.h>
 
-#if 0
-// Basic integer types
-typedef unsigned char      uint8_t;
-typedef short              int16_t;
-typedef unsigned short     uint16_t;
-typedef unsigned long      uint32_t;
-typedef long               int32_t;
-typedef __int64            int64_t;
-typedef unsigned __int64   uint64_t;
-#endif
+#define	LIB_EXPORT __declspec(dllexport)
 
-#if 0
-/** There is data to read */
-#define POLLIN 0x0001
-/** There is urgent data to read */
-#define POLLPRI 0x0002
-/** Writing now will not block */
-#define POLLOUT 0x0004
-/** Error condition */
-#define POLLERR 0x0008
-/** Hung up */
-#define POLLHUP 0x0010
-/** Invalid request: fd not open */
-#define POLLNVAL 0x0020
-#endif
-
-#if 0
-/**
- * A portable struct pollfd wrapper.
- */
-typedef struct
+#ifdef __cplusplus
+extern "C"
 {
-    int fd; /**< File descriptor */
-    short events; /**< Events to poll for */
-    short revents; /**< Events that occurred */
-} CBasePollFd, pollfd;
 #endif
 
-extern "C" int poll(pollfd *fds,
-                    int n_fds,
-                    int timeout_milliseconds);
+int poll(struct pollfd *fds, int n_fds, int timeout_milliseconds);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define strerror_r(_e, _b, _s) strncpy(_b, strerror(_e), _s)
 
@@ -77,10 +46,6 @@ typedef HANDLE CBASE_tMutexHnd;
 typedef HANDLE CBASE_tSemHnd;
 typedef HANDLE CBASE_tThreadHnd;
 typedef DWORD CBASE_tProcId;
-
-#ifndef PRIu64
-#define PRIu64 "I64u"
-#endif
 
 #define closePollFd(_fd)   do {  \
     shutdown(_fd, SD_BOTH);  \
@@ -98,6 +63,8 @@ typedef DWORD CBASE_tProcId;
 #include <time.h>
 #include <pthread.h>
 #include <semaphore.h>
+
+#define LIB_EXPORT
 
 typedef pthread_mutex_t CBASE_tMutexHnd;
 typedef sem_t CBASE_tSemHnd;
@@ -124,14 +91,20 @@ struct timezone
 #define ARRAY_LENGTH(_a) (int32_t)((sizeof (_a) / sizeof (_a)[0]))
 #endif
 
-bool sysdep_startup();
-bool sysdep_shutdown();
-void sysdep_sleep(uint32_t msecTimeout);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
+void sysdep_sleep(uint32_t msecTimeout);
 // Returns time in msec since system started.
 uint64_t sysdep_getsystemtime_milli();
 uint64_t sysdep_getsystemtime_nano();
 int32_t sysdep_gettimeofday(struct timeval *tv);
-void sysdep_gethostname(std::string &name);
+void sysdep_gethostname(char *name, int32_t size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

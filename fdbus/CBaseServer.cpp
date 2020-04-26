@@ -37,10 +37,10 @@ CServerSocket::~CServerSocket()
 
 void CServerSocket::onInput(bool &io_error)
 {
-    auto *sock_imp = mSocket->accept();
+    auto sock_imp = mSocket->accept();
     if (sock_imp)
     {
-        auto *session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
+        auto session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
         CFdbContext::getInstance()->registerSession(session);
         session->attach(worker());
         if (!mOwner->addConnectedSession(this, session))
@@ -109,7 +109,7 @@ FdbSocketId_t CBaseServer::bind(const char *url)
 
 void CBaseServer::cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CBindServerJob *>(job);
+    auto the_job = dynamic_cast<CBindServerJob *>(job);
     if (!the_job)
     {
         return;
@@ -126,7 +126,7 @@ void CBaseServer::cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBas
     {
         url = the_job->mUrl.c_str();
     }
-    auto *sk = doBind(url);
+    auto sk = doBind(url);
     if (sk)
     {
         the_job->mSkId = sk->skid();
@@ -167,17 +167,17 @@ CServerSocket *CBaseServer::doBind(const char *url)
         return 0;
     }
 
-    auto *session_container = getSocketByUrl(url);
+    auto session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already bound, do nothing */
     {
         return dynamic_cast<CServerSocket *>(session_container);
     }
 
-    auto *server_imp = CBaseSocketFactory::createServerSocket(addr);
+    auto server_imp = CBaseSocketFactory::createServerSocket(addr);
     if (server_imp)
     {
         FdbSocketId_t skid = allocateEntityId();
-        auto *sk = new CServerSocket(this, skid, server_imp);
+        auto sk = new CServerSocket(this, skid, server_imp);
         addSocket(sk);
         if (sk->bind(CFdbContext::getInstance()))
         {
@@ -203,7 +203,7 @@ public:
 
 void CBaseServer::cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CUnbindServerJob *>(job);
+    auto the_job = dynamic_cast<CUnbindServerJob *>(job);
     if (!the_job)
     {
         return;
@@ -231,7 +231,7 @@ void CBaseServer::unbind(FdbSocketId_t skid)
 
 void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     switch (msg->code())
     {
         case FDB_SIDEBAND_AUTH:
@@ -244,13 +244,13 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                 return;
             }
             
-            auto *session = FDB_CONTEXT->getSession(msg->session());
+            auto session = FDB_CONTEXT->getSession(msg->session());
             if (!session)
             {
                 return;
             }
             int32_t security_level = FDB_SECURITY_LEVEL_NONE;
-            const char *token = "";
+            auto token = "";
             if (authen.has_token_list() && !authen.token_list().tokens().empty())
             {
                 const auto &tokens = authen.token_list().tokens();

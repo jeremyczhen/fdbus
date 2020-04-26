@@ -186,7 +186,7 @@ void CFdbContext::findEndpoint(const char *name
     auto &container = mEndpointContainer.getContainer();
     for (auto it = container.begin(); it != container.end(); ++it)
     {
-        auto *endpoint = it->second;
+        auto endpoint = it->second;
         auto found = false;
 
         if (is_server)
@@ -223,7 +223,7 @@ void CFdbContext::reconnectOnNsConnected()
     auto &container = mEndpointContainer.getContainer();
     for (auto it = container.begin(); it != container.end(); ++it)
     {
-        auto *endpoint = it->second;
+        auto endpoint = it->second;
         endpoint->requestServiceAddress();
     }
 }

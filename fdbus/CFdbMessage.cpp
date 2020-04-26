@@ -218,7 +218,7 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
 
 bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref, IFdbMsgBuilder &data)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
     {
         return false;
@@ -235,7 +235,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
                       , int32_t size
                       , const char *log_data)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
     {
         return false;
@@ -259,7 +259,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
 
 bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
     {
         return false;
@@ -334,7 +334,7 @@ bool CFdbMessage::invoke(int32_t timeout)
 bool CFdbMessage::invoke(CBaseJob::Ptr &msg_ref
                          , int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     return msg ? msg->invoke(msg_ref, FDB_MSG_TX_SYNC, timeout) : false;
 }
 
@@ -350,7 +350,7 @@ bool CFdbMessage::sendLogNoQueue()
     mFlag &= ~MSG_FLAG_ENABLE_LOG;
     mType = FDB_MT_REQUEST;
 
-    auto *session = getSession();
+    auto session = getSession();
     if (session)
     {
         return session->sendMessage(this);
@@ -362,7 +362,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , IFdbMsgBuilder &data
                            , const char *filter)
 {
-    auto *msg = new CFdbBroadcastMsg(code, this, filter);
+    auto msg = new CFdbBroadcastMsg(code, this, filter);
     msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
     if (!msg->serialize(data))
     {
@@ -378,7 +378,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , int32_t size
                            , const char *log_data)
 {
-    auto *msg = new CFdbBroadcastMsg(code, this, filter);
+    auto msg = new CFdbBroadcastMsg(code, this, filter);
     msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
     if (!msg->serialize(buffer, size))
     {
@@ -394,11 +394,11 @@ bool CFdbMessage::broadcastLogNoQueue()
     mType = FDB_MT_BROADCAST;
     mFlag &= ~MSG_FLAG_ENABLE_LOG;
 
-    auto *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
+    auto endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
     if (endpoint)
     {
         // Broadcast per object!!!
-        auto *object = endpoint->getObject(this, true);
+        auto object = endpoint->getObject(this, true);
         if (object)
         {
             object->broadcast(this);
@@ -440,7 +440,7 @@ bool CFdbMessage::subscribe(int32_t timeout)
 
 bool CFdbMessage::subscribe(CBaseJob::Ptr &msg_ref, int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     return msg ? msg->subscribe(msg_ref, FDB_MSG_TX_SYNC, FDB_CODE_SUBSCRIBE, timeout) : false;
 }
 
@@ -460,7 +460,7 @@ bool CFdbMessage::update(int32_t timeout)
 bool CFdbMessage::update(CBaseJob::Ptr &msg_ref
                             , int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     // actually subscribe nothing but just trigger a broadcast() from onBroadcast()
     return msg ? msg->subscribe(msg_ref, FDB_MSG_TX_SYNC, FDB_CODE_UPDATE, timeout) : false;
 }
@@ -491,7 +491,7 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
 
     if (mType == FDB_MT_BROADCAST)
     {
-        const char *filter = getFilter();
+        auto filter = getFilter();
         if (filter && (filter[0] != '\0'))
         {
             msg_hdr.set_broadcast_filter(filter);
@@ -570,7 +570,7 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
 
     if (mFlag & MSG_FLAG_ENABLE_LOG)
     {
-        auto *logger = CFdbContext::getInstance()->getLogger();
+        auto logger = CFdbContext::getInstance()->getLogger();
         if (logger)
         {
             std::string *log_data = new std::string();
@@ -630,7 +630,7 @@ void CFdbMessage::doRequest(Ptr &ref)
 {
     bool success = true;
     const char *reason;
-    auto *session = getSession();
+    auto session = getSession();
     if (session)
     {
         if (mFlag & MSG_FLAG_NOREPLY_EXPECTED)
@@ -673,7 +673,7 @@ void CFdbMessage::doReply(Ptr &ref)
 {
     if (!(mFlag & MSG_FLAG_NOREPLY_EXPECTED))
     {
-        auto *session = getSession();
+        auto session = getSession();
         if (session)
         {
             session->sendMessage(this);
@@ -687,10 +687,10 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     const char *reason = "";
     if (mFlag & MSG_FLAG_ENDPOINT)
     {
-        auto *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
+        auto endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
         if (endpoint)
         {
-            auto *object = endpoint->getObject(this, true);
+            auto object = endpoint->getObject(this, true);
             if (object)
             {
                 // broadcast to all sessions of the object
@@ -711,10 +711,10 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     else
     {
         mFlag |= MSG_FLAG_INITIAL_RESPONSE; // mark as initial response
-        auto *session = CFdbContext::getInstance()->getSession(mSid);
+        auto session = CFdbContext::getInstance()->getSession(mSid);
         if (session)
         {
-            auto *object =
+            auto object =
                     session->container()->owner()->getObject(this, true);
             if (object)
             {
@@ -804,7 +804,7 @@ void CFdbMessage::autoReply(CFdbSession *session
                             , int32_t error_code
                             , const char *description)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (((fdb_msg->mFlag & (MSG_FLAG_AUTO_REPLY | MSG_FLAG_REPLIED)) == MSG_FLAG_AUTO_REPLY)
             && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED) && msg_ref.unique())
     {
@@ -814,11 +814,11 @@ void CFdbMessage::autoReply(CFdbSession *session
 
 void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (((fdb_msg->mFlag & (MSG_FLAG_AUTO_REPLY | MSG_FLAG_REPLIED)) == MSG_FLAG_AUTO_REPLY)
             && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED) && msg_ref.unique())
     {
-        auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
         fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
         CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref);
     }
@@ -903,7 +903,7 @@ CFdbSession *CFdbMessage::getSession()
     CFdbSession *session;
     if (mFlag & MSG_FLAG_ENDPOINT)
     {
-        auto *endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
+        auto endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
         session = endpoint ? endpoint->preferredPeer() : 0;
         if (session)
         {
@@ -1117,7 +1117,7 @@ bool CFdbMessage::sendSideband()
 
 bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref, IFdbMsgBuilder &data)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
     {
         return false;

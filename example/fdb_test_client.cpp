@@ -54,8 +54,8 @@ void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
     uint64_t time_r2c;
     uint64_t time_total;
     CFdbMessage::parseTimestamp(metadata, time_c2s, time_s2r, time_r2c, time_total);
-    FDB_LOG_I("OBJ %d , client->server: %" PRIu64 ", arrive->reply: %" PRIu64 ", reply->receive: %" PRIu64 ", total: %" PRIu64 "\n",
-                obj_id, (long long unsigned int)time_c2s, (long long unsigned int)time_s2r, (long long unsigned int)time_r2c, (long long unsigned int)time_total);
+    FDB_LOG_I("OBJ %d , client->server: %lu, arrive->reply: %lu, reply->receive: %lu, total: %lu\n",
+                obj_id, time_c2s, time_s2r, time_r2c, time_total);
 }
 
 /* a timer sending request to server periodically */
@@ -89,7 +89,7 @@ public:
         invoke(ref, builder); /* onInvoke() will be called at server */
 
         /* we return from invoke(); must get reply from server. Check it. */
-        auto *msg = castToMessage<CBaseMessage *>(ref);
+        auto msg = castToMessage<CBaseMessage *>(ref);
         /* print performance statistics */
         CFdbMsgMetadata md;
         msg->metadata(md);
@@ -121,16 +121,16 @@ public:
         CFdbProtoMsgParser parser(now_playing);
         if (msg->deserialize(parser))
         {
-            const char *artist = now_playing.artist().c_str();
-            const char *album = now_playing.album().c_str();
-            const char *genre = now_playing.genre().c_str();
-            const char *title = now_playing.title().c_str();
-            const char *file_name = "";
+            auto artist = now_playing.artist().c_str();
+            auto album = now_playing.album().c_str();
+            auto genre = now_playing.genre().c_str();
+            auto title = now_playing.title().c_str();
+            auto file_name = "";
             if (now_playing.has_file_name())
             {
                 file_name = now_playing.file_name().c_str();
             }
-            const char *folder_name = "";
+            auto folder_name = "";
             if (now_playing.has_folder_name())
             {
                 folder_name = now_playing.folder_name().c_str();
@@ -198,7 +198,7 @@ protected:
     /* called when events broadcasted from server is received */
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("Broadcast is received: %d; filter: %s\n", msg->code(), msg->getFilter());
 
         switch (msg->code())
@@ -245,7 +245,7 @@ protected:
     /* called when client call asynchronous version of invoke() and reply() is called at server */
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("response is receieved. sn: %d\n", msg->sn());
         /* print performance statistics */
         CFdbMsgMetadata md;
@@ -281,16 +281,16 @@ protected:
                 CFdbProtoMsgParser parser(now_playing);
                 if (msg->deserialize(parser))
                 {
-                    const char *artist = now_playing.artist().c_str();
-                    const char *album = now_playing.album().c_str();
-                    const char *genre = now_playing.genre().c_str();
-                    const char *title = now_playing.title().c_str();
-                    const char *file_name = "";
+                    auto artist = now_playing.artist().c_str();
+                    auto album = now_playing.album().c_str();
+                    auto genre = now_playing.genre().c_str();
+                    auto title = now_playing.title().c_str();
+                    auto file_name = "";
                     if (now_playing.has_file_name())
                     {
                         file_name = now_playing.file_name().c_str();
                     }
-                    const char *folder_name = "";
+                    auto folder_name = "";
                     if (now_playing.has_folder_name())
                     {
                         folder_name = now_playing.folder_name().c_str();
@@ -355,7 +355,7 @@ protected:
                         , int32_t error_code
                         , const char *description)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         if (msg->isSubscribe())
         {
             if (msg->isError())
@@ -409,7 +409,7 @@ int main(int argc, char **argv)
         std::string url(FDB_URL_SVC);
         url += server_name;
         server_name += "_client";
-        auto *client = new CMediaClient(server_name.c_str(), worker_ptr);
+        auto client = new CMediaClient(server_name.c_str(), worker_ptr);
         
         client->enableReconnect(true);
         client->connect(url.c_str());

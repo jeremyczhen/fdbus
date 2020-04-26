@@ -46,7 +46,7 @@ CHostServer::~CHostServer()
 
 void CHostServer::onSubscribe(CBaseJob::Ptr &msg_ref)
     {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
@@ -80,7 +80,7 @@ void CHostServer::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
     CFdbParcelableParser parser(host_addr);
     if (!msg->deserialize(parser))
@@ -88,8 +88,8 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
     }
-    const char *ip_addr = host_addr.ip_address().c_str();
-    const char *host_name = ip_addr;
+    auto ip_addr = host_addr.ip_address().c_str();
+    auto host_name = ip_addr;
     if (!host_addr.host_name().empty())
     {
         host_name = host_addr.host_name().c_str();
@@ -136,7 +136,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::onHostReady(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
 
     auto it = mHostTbl.find(msg->session());
     if (it != mHostTbl.end())
@@ -168,7 +168,7 @@ void CHostServer::addToken(const CFdbSession *session,
 void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo &info)
 {
     NFdbBase::FdbMsgHostAddressList addr_list;
-    auto *addr = addr_list.add_address_list();
+    auto addr = addr_list.add_address_list();
     addr->set_host_name(info.mHostName);
     addr->set_ip_address(info.mIpAddress);
     addr->set_ns_url(online ? info.mNsUrl : ""); // ns_url being empty means offline
@@ -194,7 +194,7 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
 
 void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddress host_addr;
     CFdbParcelableParser parser(host_addr);
     if (!msg->deserialize(parser))
@@ -202,7 +202,7 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
     }
-    const char *ip_addr = host_addr.ip_address().c_str();
+    auto ip_addr = host_addr.ip_address().c_str();
 
     for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
@@ -221,13 +221,13 @@ void CHostServer::onUnregisterHostReq(CBaseJob::Ptr &msg_ref)
 
 void CHostServer::onQueryHostReq(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->status(msg_ref, NFdbBase::FDB_ST_NOT_IMPLEMENTED, "onQueryHostReq() is not implemented!");
 }
 
 void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     auto it = mHostTbl.find(msg->session());
 
     if (it != mHostTbl.end())
@@ -240,13 +240,13 @@ void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
 void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
 {
     NFdbBase::FdbMsgHostAddressList addr_list;
-    auto *session = FDB_CONTEXT->getSession(msg->session());
+    auto session = FDB_CONTEXT->getSession(msg->session());
     for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         auto &info = it->second;
         if (info.ready)
         {
-            auto *addr = addr_list.add_address_list();
+            auto addr = addr_list.add_address_list();
             addr->set_ip_address(info.mIpAddress);
             addr->set_ns_url(info.mNsUrl); // ns_url being empty means offline
             addr->set_host_name(info.mHostName);

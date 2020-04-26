@@ -141,7 +141,7 @@ void CIntraNameProxy::unregisterService(const char *svc_name)
 
 void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect)
 {
-    const char *svc_name = msg_addr_list.service_name().c_str();
+    auto svc_name = msg_addr_list.service_name().c_str();
     const std::string &host_name = msg_addr_list.host_name();
     std::vector<CBaseEndpoint *> endpoints;
     bool is_offline = msg_addr_list.address_list().empty();
@@ -149,7 +149,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, false);
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
-        auto *client = dynamic_cast<CBaseClient *>(*ep_it);
+        auto client = dynamic_cast<CBaseClient *>(*ep_it);
         if (!client)
         {
             LOG_E("CIntraNameProxy: Session %d: Fail to convert to CBaseEndpoint!\n", msg->session());
@@ -212,7 +212,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
 
 void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     switch (msg->code())
     {
         case NFdbBase::NTF_SERVICE_ONLINE:
@@ -257,7 +257,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 
 void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect)
 {
-    const char *svc_name = msg_addr_list.service_name().c_str();
+    auto svc_name = msg_addr_list.service_name().c_str();
     std::vector<CBaseEndpoint *> endpoints;
     NFdbBase::FdbMsgAddressList bound_list;
 
@@ -267,7 +267,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, true);
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
-        auto *server = dynamic_cast<CBaseServer *>(*ep_it);
+        auto server = dynamic_cast<CBaseServer *>(*ep_it);
         if (!server)
         {
             LOG_E("CIntraNameProxy: session %d: Fail to convert to CIntraNameProxy!\n", msg->session());
@@ -296,7 +296,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                     CFdbSocketInfo info;
                     CFdbSocketAddr addr;
                     std::string url;
-                    const char *char_url = it->c_str();
+                    auto char_url = it->c_str();
                     sk->getSocketInfo(info);
                     CBaseSocketFactory::parseUrl(it->c_str(), addr);
                     if (info.mAddress->mType == FDB_SOCKET_TCP)
@@ -344,7 +344,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 
 void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg->isStatus())
     {
         if (msg->isError())

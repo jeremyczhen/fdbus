@@ -3,6 +3,8 @@ project(fdbus-example C CXX)
 
 option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
 option(fdbus_ENABLE_LOG "Enable log" ON)
+option(fdbus_NORMAL_TEST "build test for normal lib test" ON)
+option(fdbus_CLIB_TEST "build test for clib" ON)
 
 if (fdbus_LOG_TO_STDOUT)
     add_definitions("-DCONFIG_LOG_TO_STDOUT")
@@ -17,7 +19,7 @@ elseif(fdbus_ANDROID)
     add_definitions("-D__LINUX__")
 else()
     add_compile_options(-std=gnu++11 -Wall -g -O0)
-    #add_compile_options(-g -O0)
+    add_compile_options(-g -O0)
     add_definitions("-D__LINUX__")
 endif()
 
@@ -27,8 +29,6 @@ get_filename_component(PROJECT_ROOT ${PROJECT_ROOT} PATH)
 include(rule_base.cmake)
 
 set(IDL_GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR})
-
-include(idl-gen.cmake)
 
 include_directories(
     ${PROJECT_ROOT}/public
@@ -56,7 +56,14 @@ if (fdbus_LINK_SOCKET_LIB)
     link_libraries(socket)
 endif()
 
-include(example.cmake)
+if (fdbus_NORMAL_TEST)
+    include(example.cmake)
+    include(idl-gen.cmake)
+endif()
+
+if (fdbus_CLIB_TEST)
+    include(clib-test.cmake)
+endif()
 
 #set( CMAKE_VERBOSE_MAKEFILE on )
 

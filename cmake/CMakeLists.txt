@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.1.3)
 project(fdbus C CXX)
 
-option(fdbus_BUILD_TESTS "Build tests" OFF)
 option(fdbus_ENABLE_LOG "Enable log" ON)
 option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
 option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" OFF)
@@ -13,6 +12,7 @@ option(fdbus_PIPE_AS_EVENTFD "Do not use event FD" OFF)
 option(fdbus_BUILD_JNI "Build jni" OFF)
 option(fdbus_LINK_SOCKET_LIB "specify -lsocket to link" OFF)
 option(fdbus_LINK_PTHREAD_LIB "specify -lsocket to link" ON)
+option(fdbus_BUILD_CLIB "build library for C" ON)
 
 if (MSVC)
     add_definitions("-D__WIN32__")
@@ -130,17 +130,17 @@ install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
 
 include(service.cmake)
-if (fdbus_BUILD_TESTS)
-    include(example.cmake)
-endif()
 
 if (fdbus_BUILD_JNI)
     include(jni.cmake)
 endif()
 
+if (fdbus_BUILD_CLIB)
+    include(clib.cmake)
+endif()
+
 #set( CMAKE_VERBOSE_MAKEFILE on )
 
-print_variable(fdbus_BUILD_TESTS)
 print_variable(fdbus_ENABLE_LOG)
 print_variable(fdbus_LOG_TO_STDOUT)
 print_variable(fdbus_ENABLE_MESSAGE_METADATA)

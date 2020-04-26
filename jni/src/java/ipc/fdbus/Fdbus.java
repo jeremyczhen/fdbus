@@ -61,6 +61,7 @@ public class Fdbus
     public final static int FDB_ST_NOT_IMPLEMENTED  = -28;
     public final static int FDB_ST_OBJECT_NOT_FOUND = -29;
     public final static int FDB_ST_AUTHENTICATION_FAIL = -30;
+    public final static int FDB_ST_UNKNOWN = -128;
 
     // Fdbus log level
     public final static int FDB_LL_VERBOSE          = 0;

@@ -41,7 +41,7 @@ public:
 protected:
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg->isStatus())
         {
             if (msg->isError())
@@ -85,7 +85,7 @@ protected:
                         prev_host = host_addr.host_name().c_str();
                     }
                     std::cout << "    [" << service_addr.service_name() << "]" << std::endl;
-                    const auto &addr_list = service_addr.address_list();
+                    auto &addr_list = service_addr.address_list();
                     for (auto addr_it = addr_list.pool().begin();
                             addr_it != addr_list.pool().end(); ++addr_it)
 
@@ -106,7 +106,7 @@ protected:
 
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case NFdbBase::NTF_SERVICE_ONLINE_MONITOR:
@@ -170,11 +170,6 @@ private:
         exit(0);
     }
 };
-
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
-#endif
 
 int main(int argc, char **argv)
 {

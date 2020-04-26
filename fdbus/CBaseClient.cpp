@@ -43,7 +43,7 @@ CClientSocket::~CClientSocket()
 CFdbSession *CClientSocket::connect()
 {
     CFdbSession *session = 0;
-    auto *sock_imp = mSocket->connect();
+    auto sock_imp = mSocket->connect();
     if (sock_imp)
     {
         session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
@@ -67,7 +67,7 @@ void CClientSocket::getSocketInfo(CFdbSocketInfo &info)
 
 void CClientSocket::onSessionDeleted(CFdbSession *session)
 {
-    auto *client = dynamic_cast<CBaseClient *>(mOwner);
+    auto client = dynamic_cast<CBaseClient *>(mOwner);
     
     if (mOwner->isReconnect() && session->internalError() && client)
     {
@@ -140,7 +140,7 @@ FdbSessionId_t CBaseClient::connect(const char *url)
 
 void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CConnectClientJob *>(job);
+    auto the_job = dynamic_cast<CConnectClientJob *>(job);
     if (!the_job)
     {
         return;
@@ -158,7 +158,7 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
         url = the_job->mUrl.c_str();
     }
 
-    auto *sk = doConnect(url);
+    auto sk = doConnect(url);
     if (sk)
     {
         CFdbSession *session = sk->getDefaultSession();
@@ -203,20 +203,20 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
         return 0;
     }
 
-    auto *session_container = getSocketByUrl(url);
+    auto session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already connected, do nothing */
     {
         return dynamic_cast<CClientSocket *>(session_container);
     }
 
-    auto *client_imp = CBaseSocketFactory::createClientSocket(addr);
+    auto client_imp = CBaseSocketFactory::createClientSocket(addr);
     if (client_imp)
     {
         FdbSocketId_t skid = allocateEntityId();
-        auto *sk = new CClientSocket(this, skid, client_imp, host_name);
+        auto sk = new CClientSocket(this, skid, client_imp, host_name);
         addSocket(sk);
 
-        auto *session = sk->connect();
+        auto session = sk->connect();
         if (session)
         {
             CFdbContext::getInstance()->registerSession(session);
@@ -253,7 +253,7 @@ public:
 
 void CBaseClient::cbDisconnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CDisconnectClientJob *>(job);
+    auto the_job = dynamic_cast<CDisconnectClientJob *>(job);
     if (!the_job)
     {
         return;
@@ -274,7 +274,7 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
     
     if (isValidFdbId(sid))
     {
-        auto *session = CFdbContext::getInstance()->getSession(sid);
+        auto session = CFdbContext::getInstance()->getSession(sid);
         if (session)
         {
             skid = session->container()->skid();
@@ -314,8 +314,8 @@ bool CBaseClient::hostConnected(const char *host_name)
     auto &containers = getContainer();
     for (auto it = containers.begin(); it != containers.end(); ++it)
     {
-        auto *sessions = it->second;
-        auto *client_socket = dynamic_cast<CClientSocket *>(sessions);
+        auto sessions = it->second;
+        auto client_socket = dynamic_cast<CClientSocket *>(sessions);
         if (client_socket)
         {
             if (!client_socket->connectedHost().compare(host_name))

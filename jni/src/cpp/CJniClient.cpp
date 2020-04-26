@@ -104,7 +104,7 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
-        auto *msg = castToMessage<CJniInvokeMsg *>(msg_ref);
+        auto msg = castToMessage<CJniInvokeMsg *>(msg_ref);
         if (msg)
         {
             int32_t error_code = NFdbBase::FDB_ST_OK;
@@ -144,10 +144,10 @@ void CJniClient::onBroadcast(CBaseJob::Ptr &msg_ref)
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         if (msg)
         {
-            const char *c_filter = msg->getFilter();
+            auto c_filter = msg->getFilter();
             jstring filter = c_filter ? env->NewStringUTF(c_filter) : 0;
             env->CallVoidMethod(mJavaClient,
                                 CFdbusClientParam::mOnBroadcast,
@@ -170,7 +170,7 @@ JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusClient_fdb_1create
         c_name = env->GetStringUTFChars(name, 0);
     }
     
-    const char *endpoint_name = c_name;
+    auto endpoint_name = c_name;
     if (!endpoint_name)
     {
         endpoint_name = "default client";
@@ -187,9 +187,10 @@ JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusClient_fdb_1create
 JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusClient_fdb_1destroy
   (JNIEnv *, jobject, jlong handle)
 {
-    CJniClient *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (client)
     {
+        client->disconnect();
         delete client;
     }
 }
@@ -215,7 +216,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1connect
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1disconnect
   (JNIEnv *env, jobject, jlong handle)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (client)
     {
         client->disconnect();
@@ -234,7 +235,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
                               jobject user_data,
                               jint timeout)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (!client)
     {
         return false;
@@ -248,7 +249,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
         len_arr = env->GetArrayLength(pb_data);
     }
     
-    auto *msg = new CJniInvokeMsg(code, user_data ? env->NewGlobalRef(user_data) : 0);
+    auto msg = new CJniInvokeMsg(code, user_data ? env->NewGlobalRef(user_data) : 0);
 
     const char* c_log_data = 0;
     if (log_data)
@@ -281,7 +282,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
                                jint timeout)
 {
     
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (!client)
     {
         return 0;
@@ -301,7 +302,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
         c_log_data = env->GetStringUTFChars(log_data, 0);
     }
 
-    auto *invoke_msg = new CBaseMessage(code);
+    auto invoke_msg = new CBaseMessage(code);
     CBaseJob::Ptr ref(invoke_msg);
 
     if (c_log_data)
@@ -357,7 +358,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
                                jbyteArray pb_data,
                                jstring log_data)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (!client)
     {
         return false;
@@ -441,7 +442,7 @@ static jint getSubscriptionList(JNIEnv *env,
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1subscribe
   (JNIEnv *env, jobject, jlong handle, jobject sub_items)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (!client)
     {
         return false;
@@ -455,7 +456,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1subscribe
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1unsubscribe
   (JNIEnv *env, jobject, jlong handle, jobject sub_items)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (!client)
     {
         return false;
@@ -469,7 +470,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1unsubscribe
 JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusClient_fdb_1endpoint_1name
   (JNIEnv *env, jobject, jlong handle)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     const char *name = "";
     
     if (client)
@@ -483,7 +484,7 @@ JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusClient_fdb_1endpoint_1name
 JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusClient_fdb_1bus_1name
   (JNIEnv *env, jobject, jlong handle)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     const char *name = "";
       
     if (client)
@@ -497,7 +498,7 @@ JNIEXPORT jstring JNICALL Java_ipc_fdbus_FdbusClient_fdb_1bus_1name
 JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1log_1enabled
   (JNIEnv *env, jobject, jlong handle, jint msg_type)
 {
-    auto *client = (CJniClient *)handle;
+    auto client = (CJniClient *)handle;
     if (client)
     {
         CLogProducer *logger = CFdbContext::getInstance()->getLogger();

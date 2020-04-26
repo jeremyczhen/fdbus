@@ -152,7 +152,7 @@ void CFdEventLoop::processWatches()
     for (wit = mPollWatches.rbegin(), fdit = mPollFds.rbegin();
            wit != mPollWatches.rend(); ++wit, ++fdit)
     {
-        auto *w = *wit;
+        auto w = *wit;
         if (watchDestroyed(w))
         {
             continue;

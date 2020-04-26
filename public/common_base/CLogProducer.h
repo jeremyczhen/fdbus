@@ -29,15 +29,13 @@ class CLogProducer : public CBaseClient
 public:
     CLogProducer();
     void logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint);
-    void logTrace(EFdbLogLevel log_level, const char *tag, const char *format, ...);
+    void logTrace(EFdbLogLevel log_level, const char *tag, ...);
 
     bool checkLogEnabled(EFdbMessageType type,
                          const char *sender_name,
                          const CBaseEndpoint *endpoint,
                          bool lock = true);
     bool checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock = true);
-    
-    static std::string mTagName;
 protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref);
     void onOnline(FdbSessionId_t sid, bool is_first);

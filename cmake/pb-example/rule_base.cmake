@@ -22,6 +22,7 @@ if (DEFINED MACRO_DEF)
 endif()
 
 if (DEFINED SYSTEM_ROOT)
+    #foreach (root ${SYSTEM_ROOT})
     foreach (root ${SYSTEM_ROOT})
         file(TO_CMAKE_PATH ${root} root)
         # where is the target environment 

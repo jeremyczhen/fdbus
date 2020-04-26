@@ -98,7 +98,7 @@ protected:
     /* called when client calls invoke() */
     void onInvoke(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
 
         static int32_t elapse_time = 0;
         switch (msg->code())
@@ -202,7 +202,7 @@ protected:
     /* called when client call subscribe() to register message */
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         const CFdbMsgSubscribeItem *sub_item;
         /* iterate all message id subscribed */
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
@@ -290,7 +290,7 @@ int main(int argc, char **argv)
         std::string url(FDB_URL_SVC);
         url += server_name;
         server_name += "_server";
-        auto *server = new CMediaServer(server_name.c_str(), worker_ptr);
+        auto server = new CMediaServer(server_name.c_str(), worker_ptr);
         server->bind(url.c_str());
     }
 

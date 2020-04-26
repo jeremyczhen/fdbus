@@ -41,7 +41,7 @@ public:
 protected:
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg->isStatus())
         {
             if (msg->isError())
@@ -80,7 +80,7 @@ protected:
     
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case NFdbBase::NTF_HOST_ONLINE_LOCAL:
@@ -156,11 +156,6 @@ private:
         }
     }
 };
-
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
-#endif
 
 int main(int argc, char **argv)
 {

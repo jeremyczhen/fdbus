@@ -133,8 +133,8 @@ void CInterNameProxy::removeServiceMonitorListener(const char *svc_name)
 
 void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
-    auto *name_server = mHostProxy->nameServer();
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto name_server = mHostProxy->nameServer();
     switch (msg->code())
     {
         case NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE:
@@ -151,7 +151,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                                 NFdbBase::NTF_SERVICE_ONLINE :
                                 NFdbBase::NTF_SERVICE_ONLINE_MONITOR;
             tSubscribedSessionSets sessions;
-            const char *svc_name = msg_addr_list.service_name().c_str();
+            auto svc_name = msg_addr_list.service_name().c_str();
             name_server->getSubscribeTable(code, svc_name, sessions);
             if (sessions.empty())
             {
@@ -171,7 +171,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             FdbSessionId_t subscriber = FDB_INVALID_ID;
             if (session)
             {
-                auto *out_going_msg = session->peepPendingMessage(msg->sn());
+                auto out_going_msg = session->peepPendingMessage(msg->sn());
                 if (out_going_msg)
                 {
                     CServiceSubscribeMsg *svc_sub_msg =
@@ -190,7 +190,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 bool broadcast_to_all = true;
                 if (isValidFdbId(subscriber))
                 {
-                    auto *session = FDB_CONTEXT->getSession(subscriber);
+                    auto session = FDB_CONTEXT->getSession(subscriber);
                     if (session)
                     {
                         // send token matching security level to the client
@@ -226,7 +226,7 @@ void CInterNameProxy::queryServiceTbl(CQueryServiceMsg *msg)
 
 void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
 {
-    auto *msg = castToMessage<CQueryServiceMsg *>(msg_ref);
+    auto msg = castToMessage<CQueryServiceMsg *>(msg_ref);
     if (!msg)
     {
         LOG_E("CInterNameProxy: reply message cannot be casted to CQueryServiceMsg!\n");
@@ -277,7 +277,7 @@ void CInterNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code
     {
         CFdbMsgSubscribeList subscribe_list;
         addNotifyItem(subscribe_list, code, svc_name);
-        auto *msg = new CServiceSubscribeMsg(subscriber);
+        auto msg = new CServiceSubscribeMsg(subscriber);
         subscribe(subscribe_list, msg);
     }
     else

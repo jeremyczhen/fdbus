@@ -25,11 +25,6 @@
 
 #define OBJ_FROM_SERVER_TO_CLIENT 1
 
-/*
- * 该文件由描述文件workspace/pb_idl/common.base.Example.proto自动生成。
- * 项目所有的接口描述文件都统一放在该目录下，在使用时包含进来。
- */
-
 #if 1
 CBaseNotificationCenter<void *> nc;
 CBaseNotification<void *> nf;
@@ -45,11 +40,6 @@ public:
 ntf_test aaa;
 CMethodNotification<void *, ntf_test> m_ntf(&aaa, &ntf_test::process);
 CGenericMethodNotification<ntf_test> m_ntf1(&aaa, &ntf_test::process);
-#endif
-
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
 #endif
 
 static CBaseWorker main_worker;
@@ -84,7 +74,7 @@ void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
     uint64_t time_r2c;
     uint64_t time_total;
     CFdbMessage::parseTimestamp(metadata, time_c2s, time_s2r, time_r2c, time_total);
-    FDB_LOG_I("OBJ %d, client->server: %" PRIu64 ", arrive->reply: %" PRIu64 ", reply->receive: %" PRIu64 ", total: %" PRIu64 "\n",
+    FDB_LOG_I("OBJ %d, client->server: %lu, arrive->reply: %lu, reply->receive: %lu, total: %lu\n",
                 obj_id, time_c2s, time_s2r, time_r2c, time_total);
 }
 
@@ -151,7 +141,7 @@ protected:
 
     void onInvoke(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         static int32_t elapse_time = 0;
         switch (msg->code())
         {
@@ -214,7 +204,7 @@ protected:
 
     void onSubscribe(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         const CFdbMsgSubscribeItem *sub_item;
         FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
         {
@@ -246,7 +236,7 @@ protected:
                     else if (!str_filter.compare("raw_buffer"))
                     {
                         std::string raw_data = "raw buffer test for broadcast.";
-                        msg->broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data.c_str(), raw_data.length() + 1);
+                        msg->broadcast(NTF_ELAPSE_TIME, "raw_buffer", raw_data.c_str(), (int32_t)raw_data.length() + 1);
                     }
                 }
                 break;
@@ -265,7 +255,7 @@ protected:
     void onCreateObject(CBaseEndpoint *endpoint, CFdbMessage *msg)
     {
         FDB_LOG_I("Create object %d because message %d is received.\n", msg->objectId(), msg->code());
-        auto *obj = new CMyServer<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
+        auto obj = new CMyServer<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
         obj->bind(dynamic_cast<CBaseEndpoint *>(this), msg->objectId());
     }
 private:
@@ -302,23 +292,13 @@ public:
         CBaseJob::Ptr ref(new CMyMessage(REQ_METADATA));
         CFdbProtoMsgBuilder builder(song_id);
         this->invoke(ref, builder);
-        auto *msg = castToMessage<CMyMessage *>(ref);
+        auto msg = castToMessage<CMyMessage *>(ref);
         CFdbMsgMetadata md;
         msg->metadata(md);
         printMetadata(this->objId(), md);
-        /*
-         * 由于是同步调用，msg->invoke()会一直阻塞直到server调用reply()。
-         * 接下来就可以处理server reply回来的数据了。
-         *
-         * 首先要看一下是正常的数据返回还是由于异常或其它原因造成的状态
-         * 返回。server可能通过reply()返回正常数据，还可以通过status()返回
-         * 失败。如果不是正常数据返回，需要在此处理。
-         */
+
         if (msg->isStatus())
         {
-            /*
-             * 状态返回统一的格式：错误码+原因。这和linux命令返回是一致的
-             */
             int32_t id;
             std::string reason;
             if (!msg->decodeStatus(id, reason))
@@ -332,27 +312,21 @@ public:
             }
             return;
         }
-        /*
-         * OK，现在可以处理调用的返回值了。首先你是知道返回的数据类型是
-         * NFdbExample::NowPlayingDetails。这是个protocol buffer格式。
-         * msg->deserialize()将收到的串行数据解析成protocol buffer结构，
-         * 然后就可以一个一个域处理了。
-         * 如果格式不匹配会返回false，就要检查一下是什么原因了。
-         */
+
         NFdbExample::NowPlayingDetails now_playing;
         CFdbProtoMsgParser parser(now_playing);
         if (msg->deserialize(parser))
         {
-            const char *artist = now_playing.artist().c_str();
-            const char *album = now_playing.album().c_str();
-            const char *genre = now_playing.genre().c_str();
-            const char *title = now_playing.title().c_str();
-            const char *file_name = "";
+            auto artist = now_playing.artist().c_str();
+            auto album = now_playing.album().c_str();
+            auto genre = now_playing.genre().c_str();
+            auto title = now_playing.title().c_str();
+            auto file_name = "";
             if (now_playing.has_file_name())
             {
                 file_name = now_playing.file_name().c_str();
             }
-            const char *folder_name = "";
+            auto folder_name = "";
             if (now_playing.has_folder_name())
             {
                 folder_name = now_playing.folder_name().c_str();
@@ -367,7 +341,7 @@ public:
         }
 
         std::string raw_buffer("raw buffer test for invoke()!");
-        this->invoke(REQ_RAWDATA, raw_buffer.c_str(), raw_buffer.length() + 1);
+        this->invoke(REQ_RAWDATA, raw_buffer.c_str(), (int32_t)raw_buffer.length() + 1);
 
         /*
          * trigger update manually; onBroadcast() will be called followed by
@@ -429,24 +403,16 @@ protected:
 
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("OBJ %d Broadcast is received: %d; filter: %s\n", this->objId(), msg->code(), msg->getFilter());
         //CFdbMsgMetadata md;
         //msg->metadata(md);
         //printMetadata(md);
-        /*
-         * 接下来就要case by case地处理收到的消息广播。msg->code()表示消息对应的码。
-         *
-         * 为了让代码结构更加美观及高效，可以使用类CFdbMessageHandle
-         * (在CBaseEndpoint.h)中。具体实现可以参考name_server/CNameServer.cpp。
-         */
+
         switch (msg->code())
         {
             case NTF_ELAPSE_TIME:
             {
-                /*
-                 * 双方约定NTF_ELAPSE_TIME对应的类型是protocol buffer结构NFdbExample::ElapseTime
-                 */
                 std::string filter(msg->getFilter());
                 if (!filter.compare("my_filter"))
                 {
@@ -476,7 +442,7 @@ protected:
                 NFdbExample::FdbMsgObjectInfo obj_info;
                 CFdbProtoMsgParser parser(obj_info);
                 msg->deserialize(parser);
-                auto *obj = new CMyClient<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
+                auto obj = new CMyClient<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
                 obj->connect(dynamic_cast<CBaseEndpoint *>(this), obj_info.obj_id());
                 my_client_objects.push_back(obj);
             }
@@ -496,7 +462,7 @@ protected:
 
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("OBJ %d response is receieved. sn: %d\n", this->objId(), msg->sn());
         CFdbMsgMetadata md;
         msg->metadata(md);
@@ -526,16 +492,16 @@ protected:
                 CFdbProtoMsgParser parser(now_playing);
                 if (msg->deserialize(parser))
                 {
-                    const char *artist = now_playing.artist().c_str();
-                    const char *album = now_playing.album().c_str();
-                    const char *genre = now_playing.genre().c_str();
-                    const char *title = now_playing.title().c_str();
-                    const char *file_name = "";
+                    auto artist = now_playing.artist().c_str();
+                    auto album = now_playing.album().c_str();
+                    auto genre = now_playing.genre().c_str();
+                    auto title = now_playing.title().c_str();
+                    auto file_name = "";
                     if (now_playing.has_file_name())
                     {
                         file_name = now_playing.file_name().c_str();
                     }
-                    const char *folder_name = "";
+                    auto folder_name = "";
                     if (now_playing.has_folder_name())
                     {
                         folder_name = now_playing.folder_name().c_str();
@@ -669,7 +635,7 @@ int main(int argc, char **argv)
      main_worker.start();
     mediaplayer_worker.start();
 
-     auto *worker_ptr = &main_worker;
+     auto worker_ptr = &main_worker;
     //CBaseWorker *worker_ptr = 0;
 
     /*
@@ -695,14 +661,13 @@ int main(int argc, char **argv)
 
     if (is_server)
     {
-        // 创建并注册server
         for (int i = 2; i < argc; ++i)
         {
             std::string server_name = argv[i];
             std::string url(FDB_URL_SVC);
             url += server_name;
             server_name += "_server";
-            auto *server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr);
+            auto server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr);
 
 #ifdef OBJ_FROM_SERVER_TO_CLIENT
             for (int j = 0; j < 5; ++j)
@@ -710,7 +675,7 @@ int main(int argc, char **argv)
                 char obj_id[64];
                 sprintf(obj_id, "obj%u", j);
                 std::string obj_name = server_name + obj_id;
-                auto *obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
                 obj->connect(server, 1000);
             }
 #endif
@@ -738,7 +703,7 @@ int main(int argc, char **argv)
                 char obj_id[64];
                 sprintf(obj_id, "obj%u", j);
                 std::string obj_name = server_name + obj_id;
-                auto *obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
                 obj->connect(client, 1000);
             }
 #endif

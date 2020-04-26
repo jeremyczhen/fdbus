@@ -15,19 +15,10 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <sys/time.h>
 #include <common_base/CBaseSysDep.h>
 #include <sys/utsname.h>
-
-bool sysdep_startup()
-{
-    return true;
-}
-
-bool sysdep_shutdown()
-{
-    return true;
-}
 
 uint64_t sysdep_getsystemtime_milli()
 {
@@ -69,12 +60,12 @@ void sysdep_sleep
     return;
 }
 
-void sysdep_gethostname(std::string &name)
+void sysdep_gethostname(char *name, int32_t size)
 {
     struct utsname sysinfo;
     if( uname(&sysinfo) >= 0)
     {
-        name = sysinfo.nodename;
+        strncpy(name, sysinfo.nodename, size);
     }
 }
 

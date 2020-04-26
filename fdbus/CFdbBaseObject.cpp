@@ -45,7 +45,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                           , IFdbMsgBuilder &data
                           , int32_t timeout)
 {
-    auto *msg = new CBaseMessage(code, this, receiver);
+    auto msg = new CBaseMessage(code, this, receiver);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -87,7 +87,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                             , IFdbMsgBuilder &data
                             , int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, receiver);
     if (!msg->serialize(data, this))
     {
@@ -107,7 +107,7 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                           , FdbMsgCode_t code
                           , IFdbMsgBuilder &data)
 {
-    auto *msg = new CBaseMessage(code, this, receiver);
+    auto msg = new CBaseMessage(code, this, receiver);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -127,7 +127,7 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , int32_t size
                          , const char *log_data)
 {
-    auto *msg = new CBaseMessage(code, this, receiver);
+    auto msg = new CBaseMessage(code, this, receiver);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -147,7 +147,7 @@ bool CFdbBaseObject::send(FdbMsgCode_t code
 
 bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    auto *msg = new CBaseMessage(code, this);
+    auto msg = new CBaseMessage(code, this);
     if (!msg->serialize(data))
     {
         delete msg;
@@ -170,7 +170,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , IFdbMsgBuilder &data
                                , const char *filter)
 {
-    auto *msg = new CFdbBroadcastMsg(code, this, filter);
+    auto msg = new CFdbBroadcastMsg(code, this, filter);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -185,7 +185,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , int32_t size
                               , const char *log_data)
 {
-    auto *msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
+    auto msg = new CFdbBroadcastMsg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -207,7 +207,7 @@ bool CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_d
 
 bool CFdbBaseObject::unsubscribe(CFdbMsgSubscribeList &msg_list)
 {
-    auto *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    auto msg = new CBaseMessage(FDB_INVALID_ID, this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -236,7 +236,7 @@ public:
 
 void CFdbBaseObject::callOnSubscribe(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<COnSubscribeJob *>(job);
+    auto the_job = dynamic_cast<COnSubscribeJob *>(job);
     if (the_job)
     {
         onSubscribe(the_job->mMsgRef);
@@ -279,7 +279,7 @@ public:
 
 void CFdbBaseObject::callOnBroadcast(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<COnBroadcastJob *>(job);
+    auto the_job = dynamic_cast<COnBroadcastJob *>(job);
     if (the_job)
     {
         onBroadcast(the_job->mMsgRef);
@@ -321,7 +321,7 @@ public:
 
 void CFdbBaseObject::callOnInvoke(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<COnInvokeJob *>(job);
+    auto the_job = dynamic_cast<COnInvokeJob *>(job);
     if (the_job)
     {
         onInvoke(the_job->mMsgRef);
@@ -422,7 +422,7 @@ public:
 
 void CFdbBaseObject::callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<COnOnlineJob *>(job);
+    auto the_job = dynamic_cast<COnOnlineJob *>(job);
     if (the_job)
     {
         if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !isValidFdbId(mSid))
@@ -478,7 +478,7 @@ public:
 
 void CFdbBaseObject::callOnReply(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<COnReplyJob *>(job);
+    auto the_job = dynamic_cast<COnReplyJob *>(job);
     if (the_job)
     {
         onReply(the_job->mMsgRef);
@@ -525,7 +525,7 @@ public:
 
 void CFdbBaseObject::callOnStatus(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<COnStatusJob *>(job);
+    auto the_job = dynamic_cast<COnStatusJob *>(job);
     if (the_job)
     {
         onStatus(the_job->mMsgRef
@@ -593,7 +593,7 @@ void CFdbBaseObject::doReply(CBaseJob::Ptr &msg_ref)
 
 void CFdbBaseObject::doStatus(CBaseJob::Ptr &msg_ref)
 {
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
 
     int32_t error_code;
     std::string description;
@@ -615,7 +615,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , int32_t timeout
                            , const char *log_data)
 {
-    auto *msg = new CBaseMessage(code, this, receiver);
+    auto msg = new CBaseMessage(code, this, receiver);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -664,7 +664,7 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
                            , int32_t size
                            , int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, receiver);
     if (!msg->serialize(buffer, size, this))
     {
@@ -684,7 +684,7 @@ bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
 bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
                            , int32_t timeout)
 {
-    auto *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    auto msg = new CBaseMessage(FDB_INVALID_ID, this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -712,7 +712,7 @@ bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
                               , CFdbMsgSubscribeList &msg_list
                               , int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg)
     {
         msg->setDestination(this);
@@ -743,7 +743,7 @@ bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
 bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
                             , int32_t timeout)
 {
-    auto *msg = new CBaseMessage(FDB_INVALID_ID, this);
+    auto msg = new CBaseMessage(FDB_INVALID_ID, this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -771,7 +771,7 @@ bool CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
                             , CFdbMsgTriggerList &msg_list
                             , int32_t timeout)
 {
-    auto *msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     if (msg)
     {
         msg->setDestination(this);
@@ -803,7 +803,7 @@ void CFdbBaseObject::addNotifyItem(CFdbMsgSubscribeList &msg_list
                                   , FdbMsgCode_t msg_code
                                   , const char *filter)
 {
-    auto *item = msg_list.add_subscribe_tbl();
+    auto item = msg_list.add_subscribe_tbl();
     item->set_msg_code(msg_code);
     if (filter)
     {
@@ -815,7 +815,7 @@ void CFdbBaseObject::addUpdateItem(CFdbMsgSubscribeList &msg_list
                                   , FdbMsgCode_t msg_code
                                   , const char *filter)
 {
-    auto *item = msg_list.add_subscribe_tbl();
+    auto item = msg_list.add_subscribe_tbl();
     item->set_msg_code(msg_code);
     if (filter)
     {
@@ -959,7 +959,7 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
     auto it_sessions = mSessionSubscribeTable.find(msg->code());
     if (it_sessions != mSessionSubscribeTable.end())
     {
-        const char *filter = msg->getFilter();
+        auto filter = msg->getFilter();
         if (!filter)
         {
             filter = "";
@@ -968,7 +968,7 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
         for (auto it_objects = sessions.begin();
                 it_objects != sessions.end(); ++it_objects)
         {
-            auto *session = it_objects->first;
+            auto session = it_objects->first;
             auto &objects = it_objects->second;
             for (auto it_filters = objects.begin();
                     it_filters != objects.end(); ++it_filters)
@@ -1015,7 +1015,7 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
             auto it_filters = objects.find(msg->objectId());
             if (it_filters != objects.end())
             {
-                const char *filter = msg->getFilter();
+                auto filter = msg->getFilter();
                 if (!filter)
                 {
                     filter = "";
@@ -1128,7 +1128,7 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
         for (auto it_objects = sessions.begin();
                 it_objects != sessions.end(); ++it_objects)
         {
-            auto *session = it_objects->first;
+            auto session = it_objects->first;
             auto &objects = it_objects->second;
             for (auto it_filters = objects.begin();
                     it_filters != objects.end(); ++it_filters)
@@ -1230,7 +1230,7 @@ public:
 
 void CFdbBaseObject::callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CBindObjectJob *>(job);
+    auto the_job = dynamic_cast<CBindObjectJob *>(job);
     if (the_job)
     {
         the_job->mOid = doBind(the_job->mEndpoint, the_job->mOid);
@@ -1267,7 +1267,7 @@ public:
 
 void CFdbBaseObject::callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto *the_job = dynamic_cast<CConnectObjectJob *>(job);
+    auto the_job = dynamic_cast<CConnectObjectJob *>(job);
     if (the_job)
     {
         the_job->mOid = doConnect(the_job->mEndpoint, the_job->mOid);
@@ -1344,7 +1344,7 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                               , IFdbMsgBuilder &data
                               , const char *filter)
 {
-    auto *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
+    auto msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -1361,7 +1361,7 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
                       , int32_t size
                       , const char *log_data)
 {
-    auto *msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
+    auto msg = new CFdbBroadcastMsg(code, this, filter, sid, obj_id);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -1375,7 +1375,7 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
                                   , IFdbMsgBuilder &data
                                   , int32_t timeout)
 {
-    auto *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -1385,7 +1385,7 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
 }
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    auto *msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
     if (!msg->serialize(data, this))
     {
         delete msg;

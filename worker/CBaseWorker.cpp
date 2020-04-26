@@ -369,7 +369,7 @@ bool CBaseFdWatch::attach(CBaseWorker *worker, bool enb)
         }
         else
         {
-            auto *loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
+            auto loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
             if (!loop)
             {
                 LOG_E("CBaseWorker: Trying to attach watch but fdloop is not enabled!\n");
@@ -393,7 +393,7 @@ bool CBaseFdWatch::attach(CBaseWorker *worker, bool enb)
     if (worker)
     {
         mWorker = worker;
-        auto *loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
+        auto loop = dynamic_cast<CFdEventLoop *>(mWorker->getLoop());
         if (!loop)
         {
             LOG_E("CBaseWorker: Trying to attach watch but fdloop is not enabled!\n");
@@ -884,7 +884,7 @@ protected:
 
 void CBaseWorker::discardJobs(bool urgent)
 {
-    auto *job = new CUnlockJobQueueJob();
+    auto job = new CUnlockJobQueueJob();
     
     updateDiscardStatus(true, urgent);
     if (!sendAsync(job, urgent))

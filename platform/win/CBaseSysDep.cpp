@@ -26,38 +26,6 @@
 #define DELTA_EPOCH_IN_MICROSECS  11644473600000000ULL
 #endif
 
-bool sysdep_startup()
-{
-    WORD wVersionRequested;
-    WSADATA wsaData;
-    int err;
-
-    wVersionRequested = MAKEWORD (2, 2);
-
-    err = WSAStartup (wVersionRequested, &wsaData);
-    if ( 0 == err )
-    {
-        /* Confirm that the WinSock DLL supports 2.0.  Note that if the DLL
-        * supports versions greater than 2.0 in addition to 2.0, it will
-        * still return 2.0 in wVersion since that is the version we
-        * requested.
-        */
-        if ( (LOBYTE(wsaData.wVersion) == 2) &&
-                (HIBYTE(wsaData.wVersion) == 0) )
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-bool sysdep_shutdown()
-{
-    return (0 == WSACleanup());
-}
-
 uint64_t sysdep_getsystemtime_milli()
 {
     __timeb64 tm;
@@ -176,10 +144,8 @@ int poll(pollfd *fds, int n_fds, int timeout_milliseconds)
     return ready;
 }
 
-void sysdep_gethostname(std::string &name)
+void sysdep_gethostname(char *name, int32_t size)
 {
-    char n[1024];
-    gethostname(n, 1024);
-    name = n;
+    gethostname(name, size);
 }
 

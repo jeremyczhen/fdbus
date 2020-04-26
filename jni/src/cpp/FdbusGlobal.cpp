@@ -21,11 +21,6 @@
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
 
-#if __WIN32__
-// Need to link with Ws2_32.lib
-#pragma comment(lib, "ws2_32.lib")
-#endif
-
 #define FDB_JNI_VERSION            JNI_VERSION_1_4
 
 JavaVM* CGlobalParam::mJvm = 0;
