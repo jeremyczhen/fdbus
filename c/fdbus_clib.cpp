@@ -46,3 +46,27 @@ fdb_bool_t fdb_start()
     return FDB_CONTEXT->start();
 }
 
+/* for python only; for c, please refer to fdb_log_trace.h */
+void fdb_log_trace(EFdbLogLevel level, const char *tag, const char *log_data)
+{
+    switch (level)
+    {
+        case FDB_LL_DEBUG:
+            FDB_TLOG_D(tag, "%s\n", log_data);
+        break;
+        case FDB_LL_INFO:
+            FDB_TLOG_I(tag, "%s\n", log_data);
+        break;
+        case FDB_LL_WARNING:
+            FDB_TLOG_W(tag, "%s\n", log_data);
+        break;
+        case FDB_LL_ERROR:
+            FDB_TLOG_E(tag, "%s\n", log_data);
+        break;
+        case FDB_LL_FATAL:
+            FDB_TLOG_F(tag, "%s\n", log_data);
+        break;
+        default:
+        break;
+    }
+}

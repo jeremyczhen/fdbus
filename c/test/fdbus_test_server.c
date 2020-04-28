@@ -66,9 +66,9 @@ static void on_subscribe(struct fdb_server_tag *self,
         FDB_LOG_D("on subscribe: broadcast event %d with topic %s\n", sub_items[i].event_code, sub_items[i].topic);
         fdb_message_broadcast(reply_handle,
                               sub_items[i].event_code,
+                              sub_items[i].topic,
                               buffer,
                               Num_Elems(buffer),
-                              sub_items[i].topic,
                               0);
     }
 }

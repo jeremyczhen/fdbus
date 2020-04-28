@@ -66,7 +66,7 @@ bool CFdbProtoMsgBuilder::toString(std::string *msg_txt) const
             ret = false;
         }
     }
-    catch (std::bad_cast exp)
+    catch (...)
     {
         msg_txt->assign("Lite version does not support logging. You can remove \"option optimize_for = LITE_RUNTIME;\" from .proto file.\n");
     }

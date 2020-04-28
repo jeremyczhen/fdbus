@@ -19,6 +19,17 @@
 import fdbus
 import sys
 import time
+import Example_pb2 as ex
+
+el_time = 0
+def get_elapse_time():
+    global el_time
+    et = ex.ElapseTime()
+    et.hour = 13
+    et.minute = 59
+    et.second = el_time
+    el_time += 1
+    return et.SerializeToString()
 
 class MyTestServer(fdbus.FdbusServer):
     def __init__(self, name):
@@ -33,15 +44,26 @@ class MyTestServer(fdbus.FdbusServer):
         super(MyTestServer, self).onOffline(sid, is_last)
 
     def onInvoke(self, sid, msg_code, msg_data, reply_handle):
-        print('MyTestServer - onInvoke: code: ', msg_code, ', data: ', msg_data)
-        reply_handle.reply('a brown fox jump over sleepy dog')
-        reply_handle.destroy()
+        if msg_code == ex.REQ_METADATA:
+            song_id = ex.SongId()
+            song_id.ParseFromString(msg_data)
+            print('onInvoke: song id is: ', song_id.id)
+            now_playing = ex.NowPlayingDetails()
+            now_playing.artist = 'The Weeknd'
+            now_playing.album = 'Blinding Lights - Single'
+            now_playing.genre = 'Alternative R&B'
+            now_playing.title = 'Blinding Lights'
+            now_playing.file_name = 'file-1'
+            now_playing.folder_name = 'folder-1'
+            now_playing.elapse_time = 100
+            reply_handle.reply(now_playing.SerializeToString())
+            reply_handle.destroy()
 
     def onSubscribe(self, subscribe_items, reply_handle):
         super(MyTestServer, self).onSubscribe(subscribe_items, reply_handle)
         for i in range(len(subscribe_items)):
             reply_handle.broadcast(subscribe_items[i]['event_code'],
-                                   '\x33\x34\x35\x36\x37\x38\x39\x40',
+                                   get_elapse_time(),
                                    subscribe_items[i]['topic'])
         reply_handle.destroy()
 
@@ -57,5 +79,8 @@ for i in range(nr_servers):
     
 while True:
     for i in range(nr_servers):
-        server_list[i].broadcast(101, 'hello, world', 'topic-2')
+        server_list[i].broadcast(ex.NTF_ELAPSE_TIME, get_elapse_time())
+        server_list[i].broadcast(ex.NTF_MEDIAPLAYER_CREATED, 'hello, world!', 'topic-1')
+        server_list[i].broadcast(ex.NTF_MEDIAPLAYER_CREATED, 'good morning!', 'topic-2')
+        fdbus.FDB_LOG_E('fdb_py_svc', 'name: ', 'John', 'weigth', 120, 'pound')
         time.sleep(1)

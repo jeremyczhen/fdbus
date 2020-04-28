@@ -20,6 +20,33 @@ import sys
 import ctypes
 fdb_clib = None
 
+def fdbLogTrace(level, tag, *argv):
+    global fdb_clib
+    fdb_clib.fdb_log_trace.argtypes = [ctypes.c_int,        #log_level
+                                       ctypes.c_char_p,     #tag
+                                       ctypes.c_char_p      #data
+                                      ]
+    log_data = ''
+    for i in argv:
+        log_data += str(i)
+    
+    fdb_clib.fdb_log_trace(level, tag, log_data)
+
+def FDB_LOG_D(tag, *argv):
+    fdbLogTrace(1, tag, argv)
+
+def FDB_LOG_I(tag, *argv):
+    fdbLogTrace(2, tag, argv)
+
+def FDB_LOG_W(tag, *argv):
+    fdbLogTrace(3, tag, argv)
+
+def FDB_LOG_E(tag, *argv):
+    fdbLogTrace(4, tag, *argv)
+
+def FDB_LOG_F(tag, *argv):
+    fdbLogTrace(5, tag, argv)
+
 # private function
 def fdbusCtypes2buffer(cptr, length):
     """Convert ctypes pointer to buffer type.

@@ -29,6 +29,9 @@ extern "C"
 LIB_EXPORT
 fdb_bool_t fdb_start();
 
+LIB_EXPORT
+void fdb_log_trace(enum EFdbLogLevel level, const char *tag, const char *log_data);
+
 #ifdef __cplusplus
 }
 #endif
