@@ -47,11 +47,6 @@ if (DEFINED LIB_PATH)
     endforeach()
 endif()
 
-if(NOT DEFINED PROJECT_ROOT)
-    message(FATAL_ERROR "Project Root is not defined. Please set environment variable PROOT.")
-endif()
-file(TO_CMAKE_PATH ${PROJECT_ROOT} PROJECT_ROOT)
-
 file(TO_CMAKE_PATH ${RULE_DIR} RULE_DIR)
 # uninstall target
 configure_file(

@@ -18,20 +18,30 @@ if (MSVC)
 elseif(fdbus_ANDROID)
     add_definitions("-D__LINUX__")
 else()
-    add_compile_options(-std=gnu++11 -Wall -g -O0)
-    add_compile_options(-g -O0)
+    if(CMAKE_COMPILER_IS_GNUCXX)
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall ${CMAKE_CXX_FLAGS}")
+    endif()
+    #add_compile_options(-g -O0)
     add_definitions("-D__LINUX__")
 endif()
 
-set(RULE_DIR ${CMAKE_SOURCE_DIR})
-get_filename_component(PROJECT_ROOT ${RULE_DIR} PATH)
-get_filename_component(PROJECT_ROOT ${PROJECT_ROOT} PATH)
-include(rule_base.cmake)
+if(DEFINED RULE_DIR)
+    include(${RULE_DIR}/rule_base.cmake)
+else()
+    set(RULE_DIR ${CMAKE_SOURCE_DIR})
+    include(rule_base.cmake)
+endif()
+
+if(DEFINED WORKSPACE_ROOT)
+    set(PACKAGE_SOURCE_ROOT ${WORKSPACE_ROOT}/fdbus)
+else()
+    get_filename_component(PACKAGE_SOURCE_ROOT ${CMAKE_SOURCE_DIR} PATH)
+endif()
 
 set(IDL_GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 
 include_directories(
-    ${PROJECT_ROOT}/public
+    ${PACKAGE_SOURCE_ROOT}/public
     ${IDL_GEN_ROOT}
     )
 

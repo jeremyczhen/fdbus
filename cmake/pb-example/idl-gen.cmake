@@ -1,5 +1,5 @@
 
-FILE(GLOB_RECURSE PROTO_SOURCES "${PROJECT_ROOT}/example/idl/*.proto")
+FILE(GLOB_RECURSE PROTO_SOURCES "${PACKAGE_SOURCE_ROOT}/example/idl/*.proto")
 
 set(gen_tool "protoc")
 set(GEN_DIR ${IDL_GEN_ROOT}/idl-gen)
@@ -16,9 +16,9 @@ foreach(idl ${PROTO_SOURCES})
     set(gen_header ${GEN_DIR}/${base_name_we}.pb.h)
     set(gen_source ${GEN_DIR}/${base_name_we}.pb.cc)
     add_custom_command(OUTPUT ${gen_source} ${gen_header}
-        COMMAND ${gen_tool} -I${PROJECT_ROOT}/example/idl --cpp_out=${GEN_DIR} --python_out=${GEN_DIR} --java_out=${GEN_DIR} ${idl}
+        COMMAND ${gen_tool} -I${PACKAGE_SOURCE_ROOT}/example/idl --cpp_out=${GEN_DIR} --python_out=${GEN_DIR} --java_out=${GEN_DIR} ${idl}
         DEPENDS ${idl}
-        WORKING_DIRECTORY ${PROJECT_ROOT}/example/idl
+        WORKING_DIRECTORY ${PACKAGE_SOURCE_ROOT}/example/idl
     )
     add_custom_target(${base_name_we} ALL DEPENDS ${gen_source} ${gen_header})
     add_dependencies(${PROTO_TARGET} ${base_name_we})

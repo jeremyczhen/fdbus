@@ -19,7 +19,9 @@ if (MSVC)
 elseif(fdbus_ANDROID)
     add_definitions("-D__LINUX__")
 else()
-    add_compile_options(-std=gnu++11 -Wall)
+    if(CMAKE_COMPILER_IS_GNUCXX)
+	set(CMAKE_CXX_FLAGS "-std=c++11 -Wall ${CMAKE_CXX_FLAGS}")
+    endif()
     #add_compile_options(-g -O0)
     add_definitions("-D__LINUX__")
 endif()
@@ -51,47 +53,58 @@ if (fdbus_PIPE_AS_EVENTFD)
     add_definitions("-DCFG_PIPE_AS_EVENTFD")
 endif()
 
-set(RULE_DIR ${CMAKE_SOURCE_DIR})
-get_filename_component(PROJECT_ROOT ${RULE_DIR} PATH)
-include(rule_base.cmake)
+if(DEFINED RULE_DIR)
+    include(${RULE_DIR}/rule_base.cmake)
+else()
+    set(RULE_DIR ${CMAKE_SOURCE_DIR})
+    include(rule_base.cmake)
+endif()
+
+if(DEFINED WORKSPACE_ROOT)
+    set(PACKAGE_SOURCE_ROOT ${WORKSPACE_ROOT}/fdbus)
+else()
+    get_filename_component(PACKAGE_SOURCE_ROOT ${CMAKE_SOURCE_DIR} PATH)
+endif()
+
+print_variable(PACKAGE_SOURCE_ROOT)
 
 set(IDL_GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 
-file(GLOB FDBUS_SOURCES "${PROJECT_ROOT}/fdbus/*.cpp")
+file(GLOB FDBUS_SOURCES "${PACKAGE_SOURCE_ROOT}/fdbus/*.cpp")
 if (MSVC)
-    file(GLOB PLATFORM_SOURCES "${PROJECT_ROOT}/platform/win/*.cpp")
+    file(GLOB PLATFORM_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/win/*.cpp")
 else()
-    file(GLOB PLATFORM_SOURCES "${PROJECT_ROOT}/platform/linux/*.cpp")
+    file(GLOB PLATFORM_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/linux/*.cpp")
 endif()
 if (MSVC)
-    set(EVENTFD_SOURCES "${PROJECT_ROOT}/platform/CEventFd_pipe.cpp")
+    set(EVENTFD_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/CEventFd_pipe.cpp")
 else()
     if (fdbus_PIPE_AS_EVENTFD)
-        set(EVENTFD_SOURCES "${PROJECT_ROOT}/platform/CEventFd_pipe.cpp")
+        set(EVENTFD_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/CEventFd_pipe.cpp")
     else()
-        set(EVENTFD_SOURCES "${PROJECT_ROOT}/platform/CEventFd_eventfd.cpp")
+        set(EVENTFD_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/CEventFd_eventfd.cpp")
     endif()
 endif()
-file(GLOB_RECURSE SOCKET_SOURCES "${PROJECT_ROOT}/platform/socket/*.cpp")
-file(GLOB UTILS_SOURCES "${PROJECT_ROOT}/utils/*.cpp")
-file(GLOB WORKER_SOURCES "${PROJECT_ROOT}/worker/*.cpp")
-file(GLOB PUBLIC_HEADERS "${PROJECT_ROOT}/common_base/*.h")
+file(GLOB_RECURSE SOCKET_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/socket/*.cpp")
+file(GLOB UTILS_SOURCES "${PACKAGE_SOURCE_ROOT}/utils/*.cpp")
+file(GLOB WORKER_SOURCES "${PACKAGE_SOURCE_ROOT}/worker/*.cpp")
+file(GLOB PUBLIC_HEADERS "${PACKAGE_SOURCE_ROOT}/common_base/*.h")
 
 set(SECURITY_SOURCES
-	${PROJECT_ROOT}/security/cJSON/cJSON.c
-	${PROJECT_ROOT}/security/CApiSecurityConfig.cpp
-	${PROJECT_ROOT}/security/CFdbToken.cpp
-	${PROJECT_ROOT}/security/CFdbusSecurityConfig.cpp
+	${PACKAGE_SOURCE_ROOT}/security/cJSON/cJSON.c
+	${PACKAGE_SOURCE_ROOT}/security/CApiSecurityConfig.cpp
+	${PACKAGE_SOURCE_ROOT}/security/CFdbToken.cpp
+	${PACKAGE_SOURCE_ROOT}/security/CFdbusSecurityConfig.cpp
 )
 
 set(OTHER_SOURCES
-    ${PROJECT_ROOT}/server/CBaseNameProxy.cpp
-    ${PROJECT_ROOT}/server/CIntraNameProxy.cpp
+    ${PACKAGE_SOURCE_ROOT}/server/CBaseNameProxy.cpp
+    ${PACKAGE_SOURCE_ROOT}/server/CIntraNameProxy.cpp
 )
 
 include_directories(
-    ${PROJECT_ROOT}
-    ${PROJECT_ROOT}/public
+    ${PACKAGE_SOURCE_ROOT}
+    ${PACKAGE_SOURCE_ROOT}/public
     )
 
 if (MSVC)
@@ -127,7 +140,7 @@ add_library(common_base ${LIB_BUILD_TYPE}
                           ${SECURITY_SOURCES}
 )
 install(TARGETS common_base DESTINATION usr/lib)
-install(DIRECTORY ${PROJECT_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
+install(DIRECTORY ${PACKAGE_SOURCE_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
 
 include(service.cmake)
 
