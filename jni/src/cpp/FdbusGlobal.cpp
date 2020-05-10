@@ -272,7 +272,7 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
     CLogProducer *logger = FDB_CONTEXT->getLogger();
     if (logger)
     {
-        logger->logTrace((EFdbLogLevel)level, c_tag, "%s", c_data);
+        logger->logTrace((EFdbLogLevel)level, c_tag, c_data);
     }
 }
 
