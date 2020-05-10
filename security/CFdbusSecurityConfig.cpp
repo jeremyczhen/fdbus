@@ -18,7 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
-#include <security/cJSON/cJSON.h>
+#include <common_base/cJSON/cJSON.h>
 #include <utils/Log.h>
 #include "CFdbusSecurityConfig.h"
 

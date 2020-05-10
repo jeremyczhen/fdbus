@@ -48,7 +48,7 @@ void CFdbProtoMsgBuilder::toBuffer(uint8_t *buffer, int32_t size)
     }
 }
 
-bool CFdbProtoMsgBuilder::toString(std::string *msg_txt) const
+bool CFdbProtoMsgBuilder::toString(std::string &msg_txt) const
 {
     bool ret = true;
     try
@@ -56,7 +56,7 @@ bool CFdbProtoMsgBuilder::toString(std::string *msg_txt) const
         const auto &full_msg = dynamic_cast<const ::google::protobuf::Message &>(mMessage);
         try
         {
-            if (!google::protobuf::TextFormat::PrintToString(full_msg, msg_txt))
+            if (!google::protobuf::TextFormat::PrintToString(full_msg, &msg_txt))
             {
                 ret = false;
             }
@@ -68,7 +68,7 @@ bool CFdbProtoMsgBuilder::toString(std::string *msg_txt) const
     }
     catch (...)
     {
-        msg_txt->assign("Lite version does not support logging. You can remove \"option optimize_for = LITE_RUNTIME;\" from .proto file.\n");
+        msg_txt.assign("Lite version does not support logging. You can remove \"option optimize_for = LITE_RUNTIME;\" from .proto file.\n");
     }
 
     return ret;

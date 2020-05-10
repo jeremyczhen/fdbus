@@ -263,11 +263,9 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
                          << msg->objectId()
                          ;
 
-    if (msg->mStringData)
+    if (!msg->mStringData.empty())
     {
-        builder.serializer() << true << *(msg->mStringData);
-        delete msg->mStringData;
-        msg->mStringData = 0;
+        builder.serializer() << true << msg->mStringData;
         sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
     }
     else
@@ -284,7 +282,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
     }
 }
 
-void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, ...)
+bool CLogProducer::checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag)
 {
     if (!getSessionCount()
         || mTraceDisableGlobal
@@ -292,25 +290,23 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, ...)
         || (log_level >= FDB_LL_SILENT)
         || !mTraceHostEnabled)
     {
-        return;
+        return false;
     }
 
-    if (tag)
+    if (!mTraceTagWhiteList.empty())
     {
-        if (!mTraceTagWhiteList.empty())
+        std::lock_guard<std::mutex> _l(mTraceLock);
+        if (!mTraceTagWhiteList.empty() && (mTraceTagWhiteList.find(tag) == mTraceTagWhiteList.end()))
         {
-            std::lock_guard<std::mutex> _l(mTraceLock);
-            if (!mTraceTagWhiteList.empty() && (mTraceTagWhiteList.find(tag) == mTraceTagWhiteList.end()))
-            {
-                return;
-            }
+            return false;
         }
     }
-    else
-    {
-        tag = "None";
-    }
 
+    return true;
+}
+
+void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char *info)
+{
     auto proxy = FDB_CONTEXT->getNameProxy();
     CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
@@ -318,16 +314,7 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, ...)
                          << (proxy ? proxy->hostName().c_str() : "Unknown")
                          << sysdep_getsystemtime_milli()
                          << (uint8_t)log_level
-                         ;
-
-    char buffer[mMaxTraceLogSize];
-    buffer[0] = '\0';
-    va_list args;
-    va_start(args, tag);
-    const char *format = va_arg(args, const char *);
-    vsnprintf(buffer, mMaxTraceLogSize, format, args);
-    va_end(args);
-    builder.serializer() << buffer;
+                         << info;
 
     sendLog(NFdbBase::REQ_TRACE_LOG, builder);
 }
@@ -366,42 +353,48 @@ void CLogProducer::populateWhiteList(const CFdbParcelableArray<std::string> &in_
     }
 }
 
-#define FDB_LOG_START() \
+#define FDB_DO_LOG(_level_, _tag_) do{ \
     CLogProducer *logger = FDB_CONTEXT->getLogger(); \
     if (!logger) \
     { \
         return; \
     } \
+    if (!logger->checkLogTraceEnabled(_level_, _tag_))\
+    {\
+        return;\
+    }\
+    char info[logger->mMaxTraceLogSize];\
+    info[0] = '\0'; \
     va_list args; \
-    va_start(args, tag)
+    va_start(args, tag); \
+    const char *format = va_arg(args, const char *); \
+    vsnprintf(info, logger->mMaxTraceLogSize, format, args);\
+    va_end(args);\
+    logger->logTrace(_level_, tag, info);\
+}while(0)
+
 
 void fdb_log_debug(const char *tag, ...)
 {
-    FDB_LOG_START();
-    logger->logTrace(FDB_LL_DEBUG, tag, args);
+    FDB_DO_LOG(FDB_LL_DEBUG, tag);
 }
 
 void fdb_log_info(const char *tag, ...)
 {
-    FDB_LOG_START();
-    logger->logTrace(FDB_LL_INFO, tag, args);
+    FDB_DO_LOG(FDB_LL_INFO, tag);
 }
 
 void fdb_log_warning(const char *tag, ...)
 {
-    FDB_LOG_START();
-    logger->logTrace(FDB_LL_WARNING, tag, args);
+    FDB_DO_LOG(FDB_LL_WARNING, tag);
 }
 
 void fdb_log_error(const char *tag, ...)
 {
-    FDB_LOG_START();
-    logger->logTrace(FDB_LL_ERROR, tag, args);
+    FDB_DO_LOG(FDB_LL_ERROR, tag);
 }
 
 void fdb_log_fatal(const char *tag, ...)
 {
-    FDB_LOG_START();
-    logger->logTrace(FDB_LL_FATAL, tag, args);
+    FDB_DO_LOG(FDB_LL_FATAL, tag);
 }
-

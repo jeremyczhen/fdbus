@@ -26,7 +26,7 @@
 #include <pwd.h>
 #endif
 #include <string.h>
-#include <security/cJSON/cJSON.h>
+#include <common_base/cJSON/cJSON.h>
 #include <utils/Log.h>
 #include <common_base/CFdbToken.h>
 #include <security/CFdbusSecurityConfig.h>

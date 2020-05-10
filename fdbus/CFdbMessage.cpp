@@ -25,7 +25,6 @@
 #include <utils/Log.h>
 #include <common_base/CFdbIfMessageHeader.h>
 
-
 #define FDB_MSG_TX_SYNC         (1 << 0)
 #define FDB_MSG_TX_NO_REPLY     (1 << 1)
 
@@ -61,7 +60,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mStringData(0)
 {
 }
 
@@ -76,7 +74,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mStringData(0)
 {
     setDestination(obj, alt_receiver);
 }
@@ -95,7 +92,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg)
     , mFlag(0)
     , mTimer(0)
     , mSenderName(msg->mSenderName)
-    , mStringData(0)
 {
 }
 
@@ -116,7 +112,6 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
-    , mStringData(0)
 {
     if (mExtraSize < 0)
     {
@@ -138,11 +133,6 @@ CFdbMessage::~CFdbMessage()
         mTimer = 0;
     }
     releaseBuffer();
-    if (mStringData)
-    {
-        delete mStringData;
-        mStringData = 0;
-    }
     //LOG_I("Message %d is destroyed!\n", (int32_t)mSn);
 }
 
@@ -573,15 +563,7 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
         auto logger = CFdbContext::getInstance()->getLogger();
         if (logger)
         {
-            std::string *log_data = new std::string();
-            if (data.toString(log_data))
-            {
-                setLogData(log_data);
-            }
-            else
-            {
-                delete log_data;
-            }
+            data.toString(mStringData);
         }
     }
     return true;
@@ -946,30 +928,12 @@ const char *CFdbMessage::getMsgTypeName(EFdbMessageType type)
 
 void CFdbMessage::setLogData(const char *log_data)
 {
-    if (mStringData)
-    {
-        delete mStringData;
-        mStringData = 0;
-    }
-
     if (log_data)
     {
-        mStringData = new std::string(log_data);
+        mStringData = log_data;
         mFlag |= MSG_FLAG_ENABLE_LOG;
     }
 }
-
-void CFdbMessage::setLogData(std::string *log_data)
-{
-    if (mStringData)
-    {
-        delete mStringData;
-        mStringData = 0;
-    }
-
-    mStringData = log_data;
-}
-
 
 bool CFdbMessage::isSubscribe()
 {

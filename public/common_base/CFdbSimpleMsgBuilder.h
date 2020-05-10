@@ -54,11 +54,11 @@ public:
     CFdbSimpleMsgBuilder(T message)
         : CFdbBaseSimpleMsgBuilder<T>(message)
     {}
-    bool toString(std::string *msg_txt) const
+    bool toString(std::string &msg_txt) const
     {
         std::ostringstream stream;
         (void)CFdbBaseSimpleMsgBuilder<T>::mMessage.format(stream);
-        msg_txt->assign(stream.str());
+        msg_txt.assign(stream.str());
         return true;
     }
 };
@@ -73,11 +73,11 @@ public: \
     CFdbSimpleMsgBuilder(_T message) \
         : CFdbBaseSimpleMsgBuilder<_T>(message) \
     {} \
-    bool toString(std::string *msg_txt) const \
+    bool toString(std::string &msg_txt) const \
     { \
         std::ostringstream stream; \
         stream << CFdbBaseSimpleMsgBuilder<_T>::mMessage; \
-        msg_txt->assign(stream.str()); \
+        msg_txt.assign(stream.str()); \
         return true; \
     } \
 };

@@ -29,13 +29,15 @@ class CLogProducer : public CBaseClient
 public:
     CLogProducer();
     void logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint);
-    void logTrace(EFdbLogLevel log_level, const char *tag, ...);
+    bool checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag);
+    void logTrace(EFdbLogLevel log_level, const char *tag, const char *info);
 
     bool checkLogEnabled(EFdbMessageType type,
                          const char *sender_name,
                          const CBaseEndpoint *endpoint,
                          bool lock = true);
     bool checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock = true);
+    static const int32_t mMaxTraceLogSize = 4096;
 protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref);
     void onOnline(FdbSessionId_t sid, bool is_first);
@@ -69,7 +71,6 @@ private:
     bool mTraceHostEnabled;
     std::mutex mTraceLock;
 
-    static const int32_t mMaxTraceLogSize = 4096;
     bool checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl);
     void populateWhiteList(const CFdbParcelableArray<std::string> &in_filter
                          , tFilterTbl &white_list);

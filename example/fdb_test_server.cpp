@@ -19,6 +19,8 @@
 #include FDB_IDL_EXAMPLE_H
 #include "CFdbProtoMsgBuilder.h"
 #include "CFdbIfPerson.h"
+#include <common_base/cJSON/cJSON.h>
+#include <common_base/CFdbCJsonMsgBuilder.h>
 
 /* Define message ID; should be the same as server. */
 enum EMessageId
@@ -28,7 +30,9 @@ enum EMessageId
     REQ_CREATE_MEDIAPLAYER,
     NTF_ELAPSE_TIME,
     NTF_MEDIAPLAYER_CREATED,
-    NTF_MANUAL_UPDATE
+    NTF_MANUAL_UPDATE,
+
+    NTF_CJSON_TEST = 128
 };
 
 class CMediaServer;
@@ -60,6 +64,7 @@ public:
     /* callback called by the timer to broad elapse time.*/
     void broadcastElapseTime(CMethodLoopTimer<CMediaServer> *timer)
     {
+        {
         /* fill up protocol buffer */
         NFdbExample::ElapseTime et;
         et.set_hour(1);
@@ -68,12 +73,23 @@ public:
         /* broadcast elapse time; "my_filter" have no mean but test */
         CFdbProtoMsgBuilder builder(et);
         broadcast(NTF_ELAPSE_TIME, builder, "my_filter");
+        }
 
         /* another test: broadcast raw data */
         char raw_data[256];
         memset(raw_data, '=', sizeof(raw_data));
         raw_data[255] = '\0';
         broadcast(NTF_ELAPSE_TIME, raw_data, 256, "raw_buffer");
+
+        {
+        cJSON *f = cJSON_CreateObject();
+        cJSON_AddNumberToObject(f, "birthday", 19900101);
+        cJSON_AddNumberToObject(f, "id", 1);
+        cJSON_AddStringToObject(f, "name", "Sofia");
+        CFdbCJsonMsgBuilder builder(f);
+        broadcast(NTF_CJSON_TEST, builder);
+        cJSON_Delete(f);
+        }
     }
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first)

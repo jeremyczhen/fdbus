@@ -17,7 +17,7 @@
 #ifdef CFG_FDBUS_SECURITY
 #include <string.h>
 #include <common_base/CFdbToken.h>
-#include <security/cJSON/cJSON.h>
+#include <common_base/cJSON/cJSON.h>
 #include <utils/Log.h>
 #include <security/CFdbusSecurityConfig.h>
 #include "CHostSecurityConfig.h"

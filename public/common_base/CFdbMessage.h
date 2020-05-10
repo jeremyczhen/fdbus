@@ -459,7 +459,6 @@ public:
     static const char *getMsgTypeName(EFdbMessageType type);
 
     void setLogData(const char *log_data);
-    void setLogData(std::string *log_data);
 
     void checkLogEnabled(const CFdbBaseObject *object, bool lock = true);
 
@@ -618,7 +617,7 @@ private:
     uint32_t mFlag;
     CMessageTimer *mTimer;
     std::string mSenderName;
-    std::string *mStringData;
+    std::string mStringData;
 
 #if defined(CONFIG_FDB_MESSAGE_METADATA)
     uint64_t mSendTime;     // the time when message is sent from client

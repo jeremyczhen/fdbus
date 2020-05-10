@@ -14,33 +14,38 @@
  * limitations under the License.
  */
 
-#ifndef __IFDBPROTOMSGBUILDER_H__ 
-#define __IFDBPROTOMSGBUILDER_H__
+#ifndef __CFDBCJSONBUILDER_H__
+#define __CFDBCJSONBUILDER_H__ 
 
 #include <common_base/IFdbMsgBuilder.h>
-namespace google{namespace protobuf {class MessageLite;}}
-typedef ::google::protobuf::MessageLite CFdbProtoMessage;
+struct cJSON;
 
-class CFdbProtoMsgBuilder : public IFdbMsgBuilder
+class CFdbCJsonMsgBuilder : public IFdbMsgBuilder
 {
 public:
-    CFdbProtoMsgBuilder(const CFdbProtoMessage &message);
+    CFdbCJsonMsgBuilder(const cJSON *message);
+    ~CFdbCJsonMsgBuilder();
     int32_t build();
     void toBuffer(uint8_t *buffer, int32_t size);
     bool toString(std::string &msg_txt) const;
     
 private:
-    const CFdbProtoMessage &mMessage;
+    const cJSON *mMessage;
+    const char *mJson;
+    int32_t mSize;
 };
 
-class CFdbProtoMsgParser : public IFdbMsgParser
+class CFdbCJsonMsgParser : public IFdbMsgParser
 {
 public:
-    CFdbProtoMsgParser(CFdbProtoMessage &message);
+    CFdbCJsonMsgParser();
+    ~CFdbCJsonMsgParser();
     bool parse(const uint8_t *buffer, int32_t size);
+    cJSON *retrieve();
+    cJSON *detach();
 
 private:
-    CFdbProtoMessage &mMessage;
+    cJSON *mMessage;
 };
 
 #endif

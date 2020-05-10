@@ -19,6 +19,8 @@
 #include FDB_IDL_EXAMPLE_H
 #include "CFdbProtoMsgBuilder.h"
 #include "CFdbIfPerson.h"
+#include <common_base/cJSON/cJSON.h>
+#include <common_base/CFdbCJsonMsgBuilder.h>
 
 #define FDB_INVOKE_SYNC 1
 
@@ -32,7 +34,9 @@ enum EMessageId
     REQ_CREATE_MEDIAPLAYER,
     NTF_ELAPSE_TIME,
     NTF_MEDIAPLAYER_CREATED,
-    NTF_MANUAL_UPDATE
+    NTF_MANUAL_UPDATE,
+
+    NTF_CJSON_TEST = 128
 };
 
 class CMediaClient;
@@ -175,6 +179,7 @@ protected:
             CFdbMsgSubscribeList subscribe_list;
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
+            addNotifyItem(subscribe_list, NTF_CJSON_TEST);
             /*
              * register NTF_MANUAL_UPDATE for manual update: it will not
              * update unless update() is called
@@ -235,6 +240,45 @@ protected:
             case NTF_MANUAL_UPDATE:
             {
                 FDB_LOG_I("Manual update is received!\n");
+            }
+            break;
+            case NTF_CJSON_TEST:
+            {
+                CFdbCJsonMsgParser parser;
+                if (msg->deserialize(parser))
+                {
+                    cJSON *f = parser.retrieve();
+                    int birthday = 0;
+                    int id = 0;
+                    const char *name = 0;
+                    if (cJSON_IsObject(f))
+                    {
+                        {
+                        cJSON *item = cJSON_GetObjectItem(f, "birthday");
+                        if (item and cJSON_IsNumber(item))
+                        {
+                            birthday = item->valueint;
+                        }
+                        }{
+                        cJSON *item = cJSON_GetObjectItem(f, "id");
+                        if (item and cJSON_IsNumber(item))
+                        {
+                            id = item->valueint;
+                        }
+                        }{
+                        cJSON *item = cJSON_GetObjectItem(f, "name");
+                        if (item and cJSON_IsString(item))
+                        {
+                            name = item->valuestring;
+                        }
+                        }
+                        FDB_LOG_I("Broadcast of JSON is received: birthday: %d, id: %d, name: %s\n", birthday, id, name);
+                    }
+                }
+                else
+                {
+                    FDB_LOG_E("Broadcast of JSON is received: with error!\n");
+                }
             }
             break;
             default:
