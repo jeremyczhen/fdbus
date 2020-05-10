@@ -52,7 +52,7 @@ class MyTestClient(fdbus.FdbusClient):
     def onBroadcast(self, sid, event_code, event_data, topic):
         if event_code == ex.NTF_ELAPSE_TIME:
             et = ex.ElapseTime()
-            et.ParseFromString(msg_data)
+            et.ParseFromString(event_data)
             print('onBroadcast: \n', et)
         elif event_code == ex.NTF_MEDIAPLAYER_CREATED:
             print('onBroadcast: event: ', event_code, ', topic: ', topic)
