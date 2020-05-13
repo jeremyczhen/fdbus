@@ -19,6 +19,7 @@
 import fdbus
 import sys
 import time
+import os
 import Example_pb2 as ex
 
 el_time = 0
@@ -67,7 +68,7 @@ class MyTestServer(fdbus.FdbusServer):
                                    subscribe_items[i]['topic'])
         reply_handle.destroy()
 
-fdbus.fdbusStart()
+fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 server_list = []
 nr_servers = len(sys.argv) - 1
 for i in range(nr_servers):
@@ -80,7 +81,11 @@ for i in range(nr_servers):
 while True:
     for i in range(nr_servers):
         server_list[i].broadcast(ex.NTF_ELAPSE_TIME, get_elapse_time())
-        server_list[i].broadcast(ex.NTF_MEDIAPLAYER_CREATED, 'hello, world!', 'topic-1')
-        server_list[i].broadcast(ex.NTF_MEDIAPLAYER_CREATED, 'good morning!', 'topic-2')
+        server_list[i].broadcast(ex.NTF_MEDIAPLAYER_CREATED,
+                                 fdbus.castToChar('hello, world!'),
+                                 'topic-1')
+        server_list[i].broadcast(ex.NTF_MEDIAPLAYER_CREATED,
+                                 fdbus.castToChar('good morning!'),
+                                 'topic-2')
         fdbus.FDB_LOG_E('fdb_py_svc', 'name: ', 'John', 'weigth', 120, 'pound')
         time.sleep(1)

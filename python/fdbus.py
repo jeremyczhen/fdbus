@@ -18,7 +18,15 @@
 
 import sys
 import ctypes
+import os
+
 fdb_clib = None
+
+def castToChar(wchar):
+    if wchar:
+        return wchar.encode('utf-8')
+    else:
+        return wchar
 
 def fdbLogTrace(level, tag, *argv):
     global fdb_clib
@@ -30,7 +38,7 @@ def fdbLogTrace(level, tag, *argv):
     for i in argv:
         log_data += str(i)
     
-    fdb_clib.fdb_log_trace(level, tag, log_data)
+    fdb_clib.fdb_log_trace(level, castToChar(tag), castToChar(log_data))
 
 def FDB_LOG_D(tag, *argv):
     fdbLogTrace(1, tag, argv)
@@ -72,7 +80,7 @@ def fdbusCtypes2buffer(cptr, length):
     rptr = (ctypes.c_byte * length).from_buffer(res)
     if not ctypes.memmove(rptr, cptr, length):
         return None
-    return str(res)
+    return res
 
 class SubscribeItem(ctypes.Structure):
             _fields_ = [('event_code', ctypes.c_int), ('topic', ctypes.c_char_p)]
@@ -113,13 +121,17 @@ fdb_client_broadcast_fn_t = ctypes.CFUNCTYPE(None,                              
 
 # public function
 # initialize FDBus; should be called before any call to FDBus
-def fdbusStart():
+def fdbusStart(clib_path = None):
     global fdb_clib
     os_is = sys.platform.startswith
     if os_is("win32"):
-        fdb_clib = ctypes.CDLL("fdbus-clib.dll")
+        dll = "fdbus-clib.dll"
     else:
-        fdb_clib = ctypes.CDLL("libfdbus-clib.so")
+        dll = "libfdbus-clib.so"
+
+    if clib_path:
+        dll = os.path.join(clib_path, dll)
+    fdb_clib = ctypes.CDLL(dll)
     fdb_clib.fdb_start()
 
 # base class of FDBus client
@@ -198,7 +210,7 @@ class FdbusClient(object):
     def connect(self, url):
         global fdb_clib
         fdb_clib.fdb_client_connect.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        fdb_clib.fdb_client_connect(self.native, url)
+        fdb_clib.fdb_client_connect(self.native, castToChar(url))
         
     # public method
     # disconnect with server
@@ -243,7 +255,7 @@ class FdbusClient(object):
                                          data_size,
                                          timeout,
                                          user_data,
-                                         log_data)
+                                         castToChar(log_data))
 
     """
     public method
@@ -278,7 +290,7 @@ class FdbusClient(object):
                                         msg_data,
                                         data_size,
                                         timeout,
-                                        log_data,
+                                        castToChar(log_data),
                                         ctypes.byref(ret))
         return {'sid' : ret.sid,
                 'msg_code' : ret.msg_code,
@@ -308,7 +320,7 @@ class FdbusClient(object):
                                  msg_code,
                                  msg_data,
                                  data_size,
-                                 log_data)
+                                 castToChar(log_data))
 
     """
     public method
@@ -325,7 +337,7 @@ class FdbusClient(object):
         subscribe_items = (SubscribeItem * len(event_list))()
         for i in range(len(event_list)):
             subscribe_items[i].event_code = ctypes.c_int(event_list[i]['event_code'])
-            subscribe_items[i].topic = ctypes.c_char_p(event_list[i]['topic'])
+            subscribe_items[i].topic = ctypes.c_char_p(castToChar(event_list[i]['topic']))
 
         # what if topic is None?
         fdb_clib.fdb_client_subscribe.argtypes = [ctypes.c_void_p,
@@ -343,7 +355,7 @@ class FdbusClient(object):
         subscribe_items = (SubscribeItem * len(event_list))()
         for i in range(len(event_list)):
             subscribe_items[i].event_code = ctypes.c_int(event_list[i]['event_code'])
-            subscribe_items[i].topic = ctypes.c_char_p(event_list[i]['topic'])
+            subscribe_items[i].topic = ctypes.c_char_p(castToChar(event_list[i]['topic']))
 
         fdb_clib.fdb_client_unsubscribe.argtypes = [ctypes.c_void_p,
                                                     ctypes.POINTER(SubscribeItem),
@@ -435,7 +447,7 @@ class FdbusReplyHandle():
         fdb_clib.fdb_message_reply(self.reply_handle,
                                    msg_data,
                                    data_size,
-                                   log_data)
+                                   castToChar(log_data))
     
     """
     public method
@@ -459,7 +471,7 @@ class FdbusReplyHandle():
                                                    ctypes.c_void_p]
         fdb_clib.fdb_message_broadcast(self.reply_handle,
                                        event_code,
-                                       topic,
+                                       castToChar(topic),
                                        event_data,
                                        data_size,
                                        log_data)
@@ -558,7 +570,7 @@ class FdbusServer(object):
             items = []
             for i in range(nr_items):
                 items.append({'event_code': c_items[i].event_code,
-                              'topic' : c_items[i].topic})
+                              'topic' : str(c_items[i].topic)})
 
             self.onSubscribe(items,
                              FdbusReplyHandle(reply_handle))
@@ -570,7 +582,7 @@ class FdbusServer(object):
     def bind(self, url):
         global fdb_clib
         fdb_clib.fdb_server_bind.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        fdb_clib.fdb_server_bind(self.native, url)
+        fdb_clib.fdb_server_bind(self.native, castToChar(url))
         
     # public method
     # unbind server with a address
@@ -601,7 +613,7 @@ class FdbusServer(object):
                                                    ctypes.c_void_p]
         fdb_clib.fdb_server_broadcast(self.native,
                                        event_code,
-                                       topic,
+                                       castToChar(topic),
                                        event_data,
                                        data_size,
                                        log_data)

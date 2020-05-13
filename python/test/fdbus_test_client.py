@@ -19,6 +19,7 @@
 import fdbus
 import sys
 import time
+import os
 import Example_pb2 as ex
 
 def process_response(code, resp_data, tag):
@@ -59,7 +60,7 @@ class MyTestClient(fdbus.FdbusClient):
         else:
             print('onBroadcast - unknown event: ', event_code)
         
-fdbus.fdbusStart()
+fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 client_list = []
 nr_clients = len(sys.argv) - 1
 for i in range(nr_clients):
