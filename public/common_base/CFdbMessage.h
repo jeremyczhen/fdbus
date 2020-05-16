@@ -17,6 +17,7 @@
 #ifndef _CFDBMESSAGE_H_
 #define _CFDBMESSAGE_H_
 
+#include <string>
 #include "common_defs.h"
 #include "CBaseJob.h"
 #include "CBaseLoopTimer.h"

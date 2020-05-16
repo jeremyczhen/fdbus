@@ -148,14 +148,14 @@ Dependence:
  a) cd c:\\workspace
  b) suppose source code of protocol buffer is already downloaded and placed at c:\\workspace\\protobuf
  c) create directory c:\\workspace\\protobuf\\cbuild\\install and enter c:\\protobuf\\fdbus\\cbuild
- d) cmake -DCMAKE_INSTALL_PREFIX=install -Dprotobuf_WITH_ZLIB=OFF ..\cmake
+ d) cmake -DCMAKE_INSTALL_PREFIX=install -Dprotobuf_WITH_ZLIB=OFF ..\\cmake
  e) open protobuf.sln in c:\workspace\protobuf\cbuild and build project INSTALL
 
 2. Build fdbus [2]_
 3. Supposing it is available at c:\\workspace\\fdbus, build example for fdbus
 
  a) create directory c:\\workspace\\fdbus\\build-example\\install and enter c:\\workspace\\fdbus\\build-example
- b) cmake -DSYSTEM_ROOT=c:\\workspace\\protobuf\\build\\install;c:\\workspace\\fdbus\\build\\install -DCMAKE_INSTALL_PREFIX=install ../cmake/pb-example
+ b) cmake -DSYSTEM_ROOT=c:\\workspace\\protobuf\\build\\install;c:\\workspace\\fdbus\\build\\install -DCMAKE_INSTALL_PREFIX=install ..\\cmake\\pb-example
  c) copy c:\\workspace\\protobuf\\cbuild\\install\\bin\\protoc.exe to the directory in PATH environment variable
  d) open fdbus.sln in c:\\workspace\\fdbus\\build-example and build project INSTALL
 

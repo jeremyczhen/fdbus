@@ -27,7 +27,8 @@ LOCAL_SRC_FILES += server/CBaseNameProxy.cpp \
                    server/CIntraNameProxy.cpp \
                    security/cJSON/cJSON.c
 
-FDB_IDL_DIR := $(LOCAL_PATH)/idl
+FDB_IDL_GEN_DIR := $(LOCAL_PATH)/idl
+FDB_PROTO_DIR := example/idl
 
 LOCAL_SRC_FILES += platform/CEventFd_eventfd.cpp
 
@@ -81,7 +82,7 @@ LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_SRC_FILES := jni/test/MediaClient.java \
             jni/test/FdbusProtoBuilder.java \
             jni/test/CPerson.java \
-            idl/common.base.Example.proto
+            $(FDB_PROTO_DIR)/common.base.Example.proto
 LOCAL_JAVA_LIBRARIES := fdbus-jni \
             libprotobuf-java-lite
 include $(BUILD_JAVA_LIBRARY)
@@ -98,7 +99,7 @@ LOCAL_SOURCE_FILES_ALL_GENERATED := true
 LOCAL_SRC_FILES := jni/test/MediaServer.java \
             jni/test/FdbusProtoBuilder.java \
             jni/test/CPerson.java \
-            idl/common.base.Example.proto
+            $(FDB_PROTO_DIR)/common.base.Example.proto
 LOCAL_JAVA_LIBRARIES := fdbus-jni \
             libprotobuf-java-lite
 include $(BUILD_JAVA_LIBRARY)
@@ -210,13 +211,13 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= fdbtest 
-FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_DIR)/common.base.Example.pb.h\>
+FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_GEN_DIR)/common.base.Example.pb.h\>
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 example/client_server_object.cpp \
                 example/CFdbProtoMsgBuilder.cpp \
-                idl/common.base.Example.proto
+                $(FDB_PROTO_DIR)/common.base.Example.proto
 
 LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full-rtti \

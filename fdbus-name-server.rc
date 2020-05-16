@@ -1,0 +1,5 @@
+service fdbus-name-server /system/bin/name-server -u tcp://172.16.5.10:60000
+    class core
+    user root
+    group root
+    writepid /dev/cpuset/system-background/tasks
