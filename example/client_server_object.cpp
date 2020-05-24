@@ -75,8 +75,13 @@ void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
     uint64_t time_r2c;
     uint64_t time_total;
     CFdbMessage::parseTimestamp(metadata, time_c2s, time_s2r, time_r2c, time_total);
+#ifdef __WIN32__
     FDB_LOG_I("OBJ %d, client->server: %llu, arrive->reply: %llu, reply->receive: %llu, total: %llu\n",
                 obj_id, time_c2s, time_s2r, time_r2c, time_total);
+#else
+    FDB_LOG_I("OBJ %d, client->server: %lu, arrive->reply: %lu, reply->receive: %lu, total: %lu\n",
+                obj_id, time_c2s, time_s2r, time_r2c, time_total);
+#endif
 }
 
 template <typename T>
@@ -349,7 +354,7 @@ public:
          * onStatus().
          */
         CFdbMsgTriggerList update_list;
-        this->addManualTrigger(update_list, NTF_MANUAL_UPDATE);
+        this->addTriggerItem(update_list, NTF_MANUAL_UPDATE);
         this->update(update_list);
     }
 

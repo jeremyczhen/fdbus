@@ -147,21 +147,13 @@ void CServerSecurityConfig::addPermission(const void *json_handle, CServerSecCfg
             }
         }
     }
-    else if (cJSON_IsString(item_cred))
+    else if (cJSON_IsNull(item_cred))
     {
-        if (!strcmp(item_cred->valuestring, "default"))
-        {
-            cfg.mDefaultLevel = level;
-        }
-        else
-        {
-            err_msg = "if id is string, should be 'default'.";
-            return;
-        }
+        cfg.mDefaultLevel = level;
     }
     else
     {
-        err_msg = "'id' should be array or string.";
+        err_msg = "'gid' or 'uid' should be array or null.";
         return;
     }
 }

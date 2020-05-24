@@ -425,7 +425,7 @@ void CFdbBaseObject::callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject
     auto the_job = dynamic_cast<COnOnlineJob *>(job);
     if (the_job)
     {
-        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !isValidFdbId(mSid))
+        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
         {
             mSid = the_job->mSid;
         }
@@ -457,7 +457,7 @@ void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
 {
     if (!migrateOnOnlineToWorker(session->sid(), is_first))
     {
-        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !isValidFdbId(mSid))
+        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
         {
             mSid = session->sid();
         }
@@ -811,6 +811,13 @@ void CFdbBaseObject::addNotifyItem(CFdbMsgSubscribeList &msg_list
     }
 }
 
+void CFdbBaseObject::addNotifyGroup(CFdbMsgSubscribeList &msg_list
+                                    , FdbEventGroup_t event_group
+                                    , const char *filter)
+{
+    addNotifyItem(msg_list, fdbmakeEventGroup(event_group), filter);
+}
+
 void CFdbBaseObject::addUpdateItem(CFdbMsgSubscribeList &msg_list
                                   , FdbMsgCode_t msg_code
                                   , const char *filter)
@@ -824,11 +831,25 @@ void CFdbBaseObject::addUpdateItem(CFdbMsgSubscribeList &msg_list
     item->set_type(FDB_SUB_TYPE_ON_REQUEST);
 }
 
-void CFdbBaseObject::addManualTrigger(CFdbMsgTriggerList &msg_list
+void CFdbBaseObject::addUpdateGroup(CFdbMsgSubscribeList &msg_list
+                                    , FdbEventGroup_t event_group
+                                    , const char *filter)
+{
+    addUpdateItem(msg_list, fdbmakeEventGroup(event_group), filter);
+}
+
+void CFdbBaseObject::addTriggerItem(CFdbMsgTriggerList &msg_list
                                      , FdbMsgCode_t msg_code
                                      , const char *filter)
 {
     addNotifyItem(msg_list, msg_code, filter);
+}
+
+ void CFdbBaseObject::addTriggerGroup(CFdbMsgTriggerList &msg_list
+                                      , FdbEventGroup_t event_group
+                                      , const char *filter)
+{
+    addNotifyGroup(msg_list, event_group, filter);
 }
 
 void CFdbBaseObject::subscribe(CFdbSession *session,
@@ -956,7 +977,14 @@ void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
 
 void CFdbBaseObject::broadcast(CFdbMessage *msg)
 {
-    auto it_sessions = mSessionSubscribeTable.find(msg->code());
+    broadcast(msg, false);
+    broadcast(msg, true);
+}
+
+void CFdbBaseObject::broadcast(CFdbMessage *msg, bool group)
+{
+    auto code = msg->code();
+    auto it_sessions = mSessionSubscribeTable.find(group ? fdbMakeGroup(code) : code);
     if (it_sessions != mSessionSubscribeTable.end())
     {
         auto filter = msg->getFilter();
@@ -1005,6 +1033,10 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
 {
     bool sent = false;
     auto it_sessions = mSessionSubscribeTable.find(msg->code());
+    if (it_sessions == mSessionSubscribeTable.end())
+    {
+        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(msg->code()));
+    }
     if (it_sessions != mSessionSubscribeTable.end())
     {
         auto &sessions = it_sessions->second;
@@ -1167,7 +1199,7 @@ FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId
     mEndpoint = endpoint;
     mObjId = obj_id;
     obj_id = endpoint->addObject(this);
-    if (isValidFdbId(obj_id))
+    if (fdbValidFdbId(obj_id))
     {
         LOG_I("CFdbBaseObject: Object %d is created.\n", obj_id);
         registered(true);

@@ -277,11 +277,11 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
 }
 
 static const JNINativeMethod gFdbusGlobalMethods[] = {
-    {"fdb_init",
-             "(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
+    {(char *)"fdb_init",
+             (char *)"(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
              (void*) Java_ipc_fdbus_Fdbus_fdb_1init},
-    {"fdb_log_trace",
-             "(Ljava/lang/String;ILjava/lang/String;)V",
+    {(char *)"fdb_log_trace",
+             (char *)"(Ljava/lang/String;ILjava/lang/String;)V",
              (void*) Java_ipc_fdbus_Fdbus_fdb_1log_1trace},
 };
   
@@ -290,7 +290,7 @@ int register_fdbus_global(JNIEnv *env)
     return CGlobalParam::jniRegisterNativeMethods(env,
                          "ipc/fdbus/Fdbus",
                          gFdbusGlobalMethods,
-                         Num_Elems(gFdbusGlobalMethods));
+                         Fdb_Num_Elems(gFdbusGlobalMethods));
 }
 extern int register_fdbus_client(JNIEnv *env);
 extern int register_fdbus_server(JNIEnv *env);

@@ -43,22 +43,31 @@ void CApiSecurityConfig::parseApiConfig(const void *json_handle, CApiSecLevelTbl
                             {
                                 level = FDB_SECURITY_LEVEL_NONE;
                             }
+                            cJSON *item_default = cJSON_GetObjectItem(sec_level, "default");
+                            if (item_default)
+                            {
+                                if (cJSON_IsTrue(item_default))
+                                {
+                                    cfg.mDefaultLevel = level;
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                err_msg = "default should be true or false.";
+                                return;
+                            }
+                            cJSON *item_group = cJSON_GetObjectItem(sec_level, "group");
+                            if (cJSON_IsNumber(item_group))
+                            {
+                                auto group = fdbmakeEventGroup(item_group->valueint);
+                                cfg.mApiSecRangeTbl.push_back({group, group, level});
+                                continue;
+                            }
                             cJSON *item_from = cJSON_GetObjectItem(sec_level, "from");
                             if (item_from)
                             {
-                                if (cJSON_IsString(item_from))
-                                {
-                                    if (!strcmp(item_from->valuestring, "default"))
-                                    {
-                                        cfg.mDefaultLevel = level;
-                                    }
-                                    else
-                                    {
-                                        err_msg = "only 'default' is allowed if 'from' is string.";
-                                        return;
-                                    }
-                                }
-                                else if (cJSON_IsNumber(item_from))
+                                if (cJSON_IsNumber(item_from))
                                 {
                                     cJSON *item_to = cJSON_GetObjectItem(sec_level, "to");
                                     if (item_to)

@@ -260,7 +260,7 @@ void CBaseClient::cbDisconnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job
     }
     
     doDisconnect(the_job->mSid);
-    if (!isValidFdbId(the_job->mSid))
+    if (!fdbValidFdbId(the_job->mSid))
     {
         unregisterSelf();
         // From now on, there will be no jobs migrated to worker thread. Applying a
@@ -272,7 +272,7 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
 {
     FdbSocketId_t skid = FDB_INVALID_ID;
     
-    if (isValidFdbId(sid))
+    if (fdbValidFdbId(sid))
     {
         auto session = CFdbContext::getInstance()->getSession(sid);
         if (session)

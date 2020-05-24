@@ -334,29 +334,29 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
 }
 
 static const JNINativeMethod gFdbusServerMethods[] = {
-    {"fdb_create",
-             "(Ljava/lang/String;)J",
+    {(char *)"fdb_create",
+             (char *)"(Ljava/lang/String;)J",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1create},
-    {"fdb_destroy",
-             "(J)V",
+    {(char *)"fdb_destroy",
+             (char *)"(J)V",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1destroy},
-    {"fdb_bind",
-             "(JLjava/lang/String;)Z",
+    {(char *)"fdb_bind",
+             (char *)"(JLjava/lang/String;)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1bind},
-    {"fdb_unbind",
-             "(J)Z",
+    {(char *)"fdb_unbind",
+             (char *)"(J)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1unbind},
-    {"fdb_broadcast",
-             "(JILjava/lang/String;[BLjava/lang/String;)Z",
+    {(char *)"fdb_broadcast",
+             (char *)"(JILjava/lang/String;[BLjava/lang/String;)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1broadcast},
-    {"fdb_endpoint_name",
-             "(J)Ljava/lang/String;",
+    {(char *)"fdb_endpoint_name",
+             (char *)"(J)Ljava/lang/String;",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1endpoint_1name},
-    {"fdb_bus_name",
-             "(J)Ljava/lang/String;",
+    {(char *)"fdb_bus_name",
+             (char *)"(J)Ljava/lang/String;",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1bus_1name},
-    {"fdb_log_enabled",
-             "(JI)Z",
+    {(char *)"fdb_log_enabled",
+             (char *)"(JI)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled},
 };
   
@@ -365,6 +365,6 @@ int register_fdbus_server(JNIEnv *env)
     return CGlobalParam::jniRegisterNativeMethods(env,
                          "ipc/fdbus/FdbusServer",
                          gFdbusServerMethods,
-                         Num_Elems(gFdbusServerMethods));
+                         Fdb_Num_Elems(gFdbusServerMethods));
 }
   

@@ -59,7 +59,7 @@ void CBaseEndpoint::addSocket(CFdbSessionContainer *container)
 
 void CBaseEndpoint::deleteSocket(FdbSocketId_t skid)
 {
-    if (isValidFdbId(skid))
+    if (fdbValidFdbId(skid))
     {
         CFdbSessionContainer *container = 0;
         (void)retrieveEntry(skid, container);
@@ -95,7 +95,7 @@ void CBaseEndpoint::getDefaultSvcUrl(std::string &svc_url)
 CFdbSession *CBaseEndpoint::preferredPeer()
 {
     CFdbSession *session = 0;
-    if (isValidFdbId(mSid))
+    if (fdbValidFdbId(mSid))
     {
         session = CFdbContext::getInstance()->getSession(mSid);
     }
@@ -163,7 +163,7 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
         return FDB_INVALID_ID;
     }
 
-    if (!isValidFdbId(obj_id))
+    if (!fdbValidFdbId(obj_id))
     {
         do
         {
@@ -487,7 +487,7 @@ FdbEndpointId_t CBaseEndpoint::registerSelf()
     if (!registered())
     {
         CFdbContext::getInstance()->sendSyncEndeavor(new CRegisterJob(this, epid));
-        if (isValidFdbId(epid))
+        if (fdbValidFdbId(epid))
         {
             registered(true);
         }

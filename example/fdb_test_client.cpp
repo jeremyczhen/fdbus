@@ -27,6 +27,12 @@
 static CBaseWorker main_worker;
 
 /* Define message ID; should be the same as server. */
+enum EGroupId
+{
+    MEDIA_GROUP_MASTER,
+    MEDIA_GROUP_1
+};
+
 enum EMessageId
 {
     REQ_METADATA,
@@ -36,7 +42,10 @@ enum EMessageId
     NTF_MEDIAPLAYER_CREATED,
     NTF_MANUAL_UPDATE,
 
-    NTF_CJSON_TEST = 128
+    NTF_CJSON_TEST = 128,
+    NTF_GROUP_TEST1 = fdbMakeEventCode(MEDIA_GROUP_1, 0),
+    NTF_GROUP_TEST2 = fdbMakeEventCode(MEDIA_GROUP_1, 1),
+    NTF_GROUP_TEST3 = fdbMakeEventCode(MEDIA_GROUP_1, 2)
 };
 
 class CMediaClient;
@@ -58,8 +67,13 @@ void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
     uint64_t time_r2c;
     uint64_t time_total;
     CFdbMessage::parseTimestamp(metadata, time_c2s, time_s2r, time_r2c, time_total);
+#ifdef __WIN32__
     FDB_LOG_I("OBJ %d , client->server: %llu, arrive->reply: %llu, reply->receive: %llu, total: %llu\n",
                 obj_id, time_c2s, time_s2r, time_r2c, time_total);
+#else
+    FDB_LOG_I("OBJ %d , client->server: %lu, arrive->reply: %lu, reply->receive: %lu, total: %lu\n",
+                obj_id, time_c2s, time_s2r, time_r2c, time_total);
+#endif
 }
 
 /* a timer sending request to server periodically */
@@ -162,7 +176,7 @@ public:
          * onStatus().
          */
         CFdbMsgTriggerList update_list;
-        addManualTrigger(update_list, NTF_MANUAL_UPDATE);
+        addTriggerItem(update_list, NTF_MANUAL_UPDATE);
         update(update_list);
     }
 
@@ -180,6 +194,7 @@ protected:
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
             addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
             addNotifyItem(subscribe_list, NTF_CJSON_TEST);
+            addNotifyGroup(subscribe_list, MEDIA_GROUP_1);
             /*
              * register NTF_MANUAL_UPDATE for manual update: it will not
              * update unless update() is called
@@ -280,6 +295,11 @@ protected:
                     FDB_LOG_E("Broadcast of JSON is received: with error!\n");
                 }
             }
+            break;
+            case NTF_GROUP_TEST1:
+            case NTF_GROUP_TEST2:
+            case NTF_GROUP_TEST3:
+                FDB_LOG_I("Broadcast of group message is received: %d\n", fdbEventCode(msg->code()));
             break;
             default:
             break;

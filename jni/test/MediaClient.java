@@ -54,8 +54,8 @@ public class MediaClient
         {
             System.out.println(mClient.endpointName() + ": onOnline is received.");
             ArrayList<SubscribeItem> subscribe_items = new ArrayList<SubscribeItem>();
-            subscribe_items.add(new SubscribeItem(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter"));
-            subscribe_items.add(new SubscribeItem(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "raw_buffer"));
+            subscribe_items.add(SubscribeItem.newEvent(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter"));
+            subscribe_items.add(SubscribeItem.newEvent(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "raw_buffer"));
             mClient.subscribe(subscribe_items);
         }
         public void onOffline(int sid)

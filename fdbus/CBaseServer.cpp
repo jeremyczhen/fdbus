@@ -210,7 +210,7 @@ void CBaseServer::cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CB
     }
 
     doUnbind(the_job->mSkId);
-    if (!isValidFdbId(the_job->mSkId))
+    if (!fdbValidFdbId(the_job->mSkId))
     {
         unregisterSelf();
         // From now on, there will be no jobs migrated to worker thread. Applying a

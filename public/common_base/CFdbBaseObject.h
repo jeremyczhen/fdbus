@@ -267,6 +267,22 @@ public:
                               , const char *filter = 0);
 
     /*
+     * Build subscribe list before calling subscribe().
+     * Instead of specific event, the whole event group is subscribed.
+     * When broadcast() at server is called to broadcast an event, the
+     * the clients subscribed the event group that the event belongs
+     * to is notified (onBroadcast() is called).
+     *
+     * @oparam msg_list: the protobuf holding message sending subscribe
+     *      request to server
+     * @iparam event_group: The event group to subscribe
+     * @iparam filter: the filter associated with the message.
+     */
+    static void addNotifyGroup(CFdbMsgSubscribeList &msg_list
+                              , FdbEventGroup_t event_group = FDB_DEFAULT_GROUP
+                              , const char *filter = 0);
+
+    /*
      * Build subscribe list for update on request before calling subscribe().
      * Unlike addNotifyItem(), the event added can only be updated by update()
      * from client.
@@ -281,6 +297,20 @@ public:
                               , const char *filter = 0);
 
     /*
+     * Build subscribe list for update on request before calling subscribe().
+     * Unlike addNotifyGroup(), the event group added can only be updated by
+     * update() from client.
+     *
+     * @oparam msg_list: the protobuf holding message sending subscribe
+     *      request to server
+     * @iparam event_group: The event group to subscribe
+     * @iparam filter: the filter associated with the message.
+     */
+    static void addUpdateGroup(CFdbMsgSubscribeList &msg_list
+                              , FdbEventGroup_t event_group = FDB_DEFAULT_GROUP
+                              , const char *filter = 0);
+
+    /*
      * Build update list to trigger update manually.
      *
      * @oparam msg_list: the protobuf holding message sending update
@@ -288,8 +318,21 @@ public:
      * @iparam msg_code: The message code to trigger
      * @iparam filter: the filter associated with the message.
      */
-    static void addManualTrigger(CFdbMsgTriggerList &msg_list
+    static void addTriggerItem(CFdbMsgTriggerList &msg_list
                                 , FdbMsgCode_t msg_code
+                                , const char *filter = 0);
+
+    /*
+     * Build update list to trigger update manually.
+     * All events in the group will be updated.
+     *
+     * @oparam msg_list: the protobuf holding message sending update
+     *      trigger to server
+     * @iparam event_group: The event group to trigger
+     * @iparam filter: the filter associated with the message.
+     */
+    static void addTriggerGroup(CFdbMsgTriggerList &msg_list
+                                , FdbEventGroup_t event_group = FDB_DEFAULT_GROUP
                                 , const char *filter = 0);
     /*
      * subscribe[1]
@@ -318,6 +361,12 @@ public:
      *     |                    /-------------------|
      *     |     onStatus()[isSubscribe()==true]    |
      *     |                    \------------------>|
+     *     |                                        |
+     *     |---CBaseServer::broadcast(event1)------>|
+     *     |                            /-----------|
+     *     |                       onBroadcast()    |
+     *     |                            \---------->|
+     *     |                                        |
      *
      * @iparam msg_list: list of messages to be subscribed
      * @iparam timeout: optional timeout
@@ -374,14 +423,14 @@ public:
      *     |   The same sequence as subscribe()[1]  |
      *     |                                        |
      *     |                            /-----------|
-     *     |             addManualTrigger(list,...) |
+     *     |             addTriggerItem(list,...)   |
      *     |                            \---------->|
      *     |<------------update(list,...)-----------|
-     *     |---------broadcast(event1)------------->|
+     *     |----CBaseMessage::broadcast(event1)---->|
      *     |                            /-----------|
      *     |                       onBroadcast()    |
      *     |                            \---------->|
-     *     |---------broadcast(event2)------------->|
+     *     |----CBaseMessage::broadcast(event2)---->|
      *     |                            /-----------|
      *     |                       onBroadcast()    |
      *     |                            \---------->|
@@ -735,6 +784,7 @@ private:
     void unsubscribe(CFdbSession *session);
     void unsubscribe(FdbObjectId_t obj_id);
     void broadcast(CFdbMessage *msg);
+    void broadcast(CFdbMessage *msg, bool group);
 
     bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);

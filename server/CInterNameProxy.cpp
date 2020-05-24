@@ -188,7 +188,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 CFdbToken::tTokenList tokens;
                 name_server->dumpTokens(tokens, msg_addr_list);
                 bool broadcast_to_all = true;
-                if (isValidFdbId(subscriber))
+                if (fdbValidFdbId(subscriber))
                 {
                     auto session = FDB_CONTEXT->getSession(subscriber);
                     if (session)
@@ -273,7 +273,7 @@ void CInterNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code
                                       , const char *svc_name
                                       , FdbSessionId_t subscriber)
 {
-    if (isValidFdbId(subscriber))
+    if (fdbValidFdbId(subscriber))
     {
         CFdbMsgSubscribeList subscribe_list;
         addNotifyItem(subscribe_list, code, svc_name);

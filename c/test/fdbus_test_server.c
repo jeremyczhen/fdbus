@@ -44,11 +44,11 @@ static void on_invoke(struct fdb_server_tag *self,
     }
 
     uint8_t buffer[7];
-    for (int32_t i = 0; i < Num_Elems(buffer); ++i)
+    for (int32_t i = 0; i < Fdb_Num_Elems(buffer); ++i)
     {
         buffer[i] = i;
     }
-    fdb_message_reply(reply_handle, buffer, Num_Elems(buffer), 0);
+    fdb_message_reply(reply_handle, buffer, Fdb_Num_Elems(buffer), 0);
 }
 
 static void on_subscribe(struct fdb_server_tag *self,
@@ -57,7 +57,7 @@ static void on_subscribe(struct fdb_server_tag *self,
 {
     FDB_LOG_D("on subscribe: nr_items: %d\n", nr_items);
     uint8_t buffer[18];
-    for (int32_t i = 0; i < Num_Elems(buffer); ++i)
+    for (int32_t i = 0; i < Fdb_Num_Elems(buffer); ++i)
     {
         buffer[i] = i + 100;
     }
@@ -68,7 +68,7 @@ static void on_subscribe(struct fdb_server_tag *self,
                               sub_items[i].event_code,
                               sub_items[i].topic,
                               buffer,
-                              Num_Elems(buffer),
+                              Fdb_Num_Elems(buffer),
                               0);
     }
 }
@@ -90,15 +90,15 @@ int main(int argc, char **argv)
     uint8_t count = 0;
     while (1)
     {
-        for (int32_t i = 0; i < Num_Elems(buffer); ++i)
+        for (int32_t i = 0; i < Fdb_Num_Elems(buffer); ++i)
         {
             buffer[i] = count++;
         }
         for (int32_t i = 0; i < (argc - 1); ++i)
         {
-            fdb_server_broadcast(server_array[i], FDB_TEST_EVENT_ID_1, "topic1", buffer, Num_Elems(buffer), 0);
-            fdb_server_broadcast(server_array[i], FDB_TEST_EVENT_ID_2, "topic2", buffer, Num_Elems(buffer), 0);
-            fdb_server_broadcast(server_array[i], FDB_TEST_EVENT_ID_3, "topic3", buffer, Num_Elems(buffer), 0);
+            fdb_server_broadcast(server_array[i], FDB_TEST_EVENT_ID_1, "topic1", buffer, Fdb_Num_Elems(buffer), 0);
+            fdb_server_broadcast(server_array[i], FDB_TEST_EVENT_ID_2, "topic2", buffer, Fdb_Num_Elems(buffer), 0);
+            fdb_server_broadcast(server_array[i], FDB_TEST_EVENT_ID_3, "topic3", buffer, Fdb_Num_Elems(buffer), 0);
         }
         sysdep_sleep(123);
     }

@@ -326,7 +326,8 @@ class FdbusClient(object):
     public method
     subscribe list of events upon the server
     event_list(array of dict): list of events to subscribe.
-        event_list[n]['event_code'](int) - event code
+        event_list[n]['event_code'](int) - event code or
+        event_list[n]['group'](int) - event group
         event_list[n]['topic'](str) - topic
     """
     def subscribe(self, event_list):
@@ -336,8 +337,14 @@ class FdbusClient(object):
 
         subscribe_items = (SubscribeItem * len(event_list))()
         for i in range(len(event_list)):
-            subscribe_items[i].event_code = ctypes.c_int(event_list[i]['event_code'])
-            subscribe_items[i].topic = ctypes.c_char_p(castToChar(event_list[i]['topic']))
+            code = event_list[i].get('event_code', None)
+            if not code:
+                code = event_list[i].get('group', None)
+                if code:
+                    code = ((code & 0xff) << 24) | 0xffffff
+            if code:
+                subscribe_items[i].event_code = ctypes.c_int(code)
+                subscribe_items[i].topic = ctypes.c_char_p(castToChar(event_list[i]['topic']))
 
         # what if topic is None?
         fdb_clib.fdb_client_subscribe.argtypes = [ctypes.c_void_p,

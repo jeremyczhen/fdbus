@@ -23,6 +23,12 @@
 #include <common_base/CFdbCJsonMsgBuilder.h>
 
 /* Define message ID; should be the same as server. */
+enum EGroupId
+{
+    MEDIA_GROUP_MASTER,
+    MEDIA_GROUP_1
+};
+
 enum EMessageId
 {
     REQ_METADATA,
@@ -32,7 +38,11 @@ enum EMessageId
     NTF_MEDIAPLAYER_CREATED,
     NTF_MANUAL_UPDATE,
 
-    NTF_CJSON_TEST = 128
+    NTF_CJSON_TEST = 128,
+
+    NTF_GROUP_TEST1 = fdbMakeEventCode(MEDIA_GROUP_1, 0),
+    NTF_GROUP_TEST2 = fdbMakeEventCode(MEDIA_GROUP_1, 1),
+    NTF_GROUP_TEST3 = fdbMakeEventCode(MEDIA_GROUP_1, 2)
 };
 
 class CMediaServer;
@@ -231,7 +241,15 @@ protected:
             }
             FdbSessionId_t sid = msg->session();
 
-            FDB_LOG_I("message %d, filter %s of session %d is registered!\n", msg_code, filter, sid);
+            if (fdbIsGroup(msg_code))
+            {
+                FDB_LOG_I("group message %d, filter %s of session %d is registered!\n", msg_code, filter, sid);
+                msg->broadcast(NTF_GROUP_TEST1);
+                msg->broadcast(NTF_GROUP_TEST2);
+                msg->broadcast(NTF_GROUP_TEST3);
+                return;
+            }
+            FDB_LOG_I("single message %d, filter %s of session %d is registered!\n", msg_code, filter, sid);
 
             /* reply initial value to the client subscribing the message id */
             switch (msg_code)

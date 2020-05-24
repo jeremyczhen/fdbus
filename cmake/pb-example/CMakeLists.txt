@@ -78,3 +78,7 @@ endif()
 
 #set( CMAKE_VERBOSE_MAKEFILE on )
 
+print_variable(fdbus_ENABLE_LOG)
+print_variable(fdbus_LOG_TO_STDOUT)
+print_variable(fdbus_ANDROID)
+print_variable(fdbus_CLIB_TEST)

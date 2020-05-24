@@ -2,7 +2,7 @@
     "message": [
         {
             "level": -1,
-            "from": "default"
+            "default": true
         },
         {
             "level": 0,
@@ -28,7 +28,11 @@
     "event": [
         {
             "level": -1,
-            "from": "default"
+            "default": true
+        },
+        {
+            "level": 2,
+            "group": 3
         },
         {
             "level": 0,
@@ -54,7 +58,7 @@
     "permission": [
         {
             "level": -1,
-            "gid": "default"
+            "gid": null
         },
         {
             "level": 0,
@@ -64,7 +68,7 @@
         {
             "level": 1,
             "gid": ["plugdev"],
-            "uid": "default"
+            "uid": null
         },
         {
             "level": 2,

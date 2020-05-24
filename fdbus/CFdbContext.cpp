@@ -157,7 +157,7 @@ void CFdbContext::deleteSession(CFdbSessionContainer *container)
 FdbEndpointId_t CFdbContext::registerEndpoint(CBaseEndpoint *endpoint)
 {
     auto id = endpoint->epid();
-    if (!isValidFdbId(id))
+    if (!fdbValidFdbId(id))
     {
         id = mEndpointContainer.allocateEntityId();
         endpoint->epid(id);

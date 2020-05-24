@@ -18,15 +18,30 @@ package ipc.fdbus;
 
 public class SubscribeItem
 {
-    public SubscribeItem(int code, String filter)
+    public SubscribeItem(int code, String topic)
     {
         mCode = code;
-        mTopic = filter;
+        mTopic = topic;
     }
-    public SubscribeItem(int code)
+
+    public static SubscribeItem newEvent(int code, String topic)
     {
-        mCode = code;
-        mTopic = null;
+        return new SubscribeItem(code, topic);
+    }
+
+    public static SubscribeItem newEvent(int code)
+    {
+        return new SubscribeItem(code, null);
+    }
+
+    public static SubscribeItem newGroup(int group, String topic)
+    {
+        return new SubscribeItem(((group & 0xff) << 24) | 0xffffff, topic);
+    }
+
+    public static SubscribeItem newGroup(int group)
+    {
+        return new SubscribeItem(((group & 0xff) << 24) | 0xffffff, null);
     }
 
     public int code()
@@ -42,4 +57,3 @@ public class SubscribeItem
     private int mCode;
     private String mTopic;
 }
-

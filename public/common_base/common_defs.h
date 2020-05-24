@@ -31,6 +31,7 @@ typedef int32_t FdbMsgCode_t;
 typedef uint32_t FdbMsgSn_t;
 typedef FdbMsgCode_t FdbEventCode_t;
 typedef uint32_t FdbObjectId_t;
+typedef uint8_t FdbEventGroup_t;
 
 #define FDB_NAME_SERVER_NAME "__NameServer__"
 #define FDB_HOST_SERVER_NAME "__HostServer__"
@@ -62,14 +63,14 @@ typedef uint32_t FdbObjectId_t;
 
 #ifdef __cplusplus
 template <typename T>
-bool isValidFdbId(T id)
+bool fdbValidFdbId(T id)
 {
     return id != (T)FDB_INVALID_ID;
 }
 #endif
 
-#ifndef Num_Elems
-#define Num_Elems(_arr_) ((int32_t) (sizeof(_arr_) / sizeof((_arr_)[0])))
+#ifndef Fdb_Num_Elems
+#define Fdb_Num_Elems(_arr_) ((int32_t) (sizeof(_arr_) / sizeof((_arr_)[0])))
 #endif
 
 #if !defined(FDB_CFG_CONFIG_PATH)
@@ -106,5 +107,20 @@ enum EFdbusCredType
     FDB_PERM_CRED_MAC,
     FDB_PERM_CRED_IP
 };
+
+#define FDB_EVENT_GROUP_SHIFT 24
+#define FDB_EVENT_GROUP_BITS 0xFF
+#define FDB_DEFAULT_GROUP 0
+#define FDB_EVENT_GROUP_MASK (FDB_EVENT_GROUP_BITS << FDB_EVENT_GROUP_SHIFT)
+#define FDB_EVENT_ID_MASK (~FDB_EVENT_GROUP_MASK)
+#define fdbMakeGroup(_event) ((FdbMsgCode_t)((_event) | FDB_EVENT_ID_MASK))
+
+#define fdbMakeEventCode(_group, _event) ((FdbMsgCode_t)(((((_group) & FDB_EVENT_GROUP_BITS) << FDB_EVENT_GROUP_SHIFT) | \
+                                         ((_event) & FDB_EVENT_ID_MASK))))
+#define fdbmakeEventGroup(_group) fdbMakeEventCode(_group, FDB_EVENT_ID_MASK)
+
+#define fdbIsGroup(_event) (((_event) & FDB_EVENT_ID_MASK) == FDB_EVENT_ID_MASK)
+#define fdbEventGroup(_event) ((FdbEventGroup_t)((((uint32_t)(_event)) >> FDB_EVENT_GROUP_SHIFT) & FDB_EVENT_GROUP_BITS))
+#define fdbEventCode(_event) ((FdbMsgCode_t)((_event) & FDB_EVENT_ID_MASK))
 
 #endif

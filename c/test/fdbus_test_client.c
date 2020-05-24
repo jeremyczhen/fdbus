@@ -25,7 +25,7 @@ static void on_online(fdb_client_t *self, FdbSessionId_t sid)
     fdb_subscribe_item_t items[] = {{FDB_TEST_EVENT_ID_1, "topic1"},
                                     {FDB_TEST_EVENT_ID_2, "topic2"},
                                     {FDB_TEST_EVENT_ID_3, "topic3"}};
-    fdb_client_subscribe(self, items, Num_Elems(items));
+    fdb_client_subscribe(self, items, Fdb_Num_Elems(items));
     FDB_LOG_D("on online: %d\n", sid);
 }
 
@@ -83,13 +83,13 @@ int main(int argc, char **argv)
     uint32_t msg_code = 0;
     while (1)
     {
-        for (int32_t i = 0; i < Num_Elems(buffer); ++i)
+        for (int32_t i = 0; i < Fdb_Num_Elems(buffer); ++i)
         {
             buffer[i] = count++;
         }
         for (int32_t i = 0; i < (argc - 1); ++i)
         {
-            fdb_client_invoke_async(client_array[i], msg_code++, buffer, Num_Elems(buffer), 0, 0, 0);
+            fdb_client_invoke_async(client_array[i], msg_code++, buffer, Fdb_Num_Elems(buffer), 0, 0, 0);
         }
         sysdep_sleep(111);
     }

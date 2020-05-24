@@ -139,12 +139,12 @@ CFdbMessage::~CFdbMessage()
 void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid)
 {
     auto sid = obj->getDefaultSession();
-    if (isValidFdbId(alt_sid))
+    if (fdbValidFdbId(alt_sid))
     {
         mSid = alt_sid;
         mFlag &= ~MSG_FLAG_ENDPOINT;
     }
-    else if (isValidFdbId(sid))
+    else if (fdbValidFdbId(sid))
     {
         mSid = sid;
         mFlag &= ~MSG_FLAG_ENDPOINT;
@@ -1033,7 +1033,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
         mFilter = filter;
     }
 
-    if (isValidFdbId(alt_sid))
+    if (fdbValidFdbId(alt_sid))
     {
         mSid = alt_sid;
         mFlag &= ~MSG_FLAG_ENDPOINT;
@@ -1044,7 +1044,7 @@ CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
         mEpid = obj->epid();
         mFlag |= MSG_FLAG_ENDPOINT;
     }
-    if (isValidFdbId(alt_oid))
+    if (fdbValidFdbId(alt_oid))
     {
         mOid = alt_oid;
     }
