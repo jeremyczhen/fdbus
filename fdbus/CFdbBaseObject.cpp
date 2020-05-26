@@ -1112,6 +1112,10 @@ void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filters)
 {
     auto it_sessions = mSessionSubscribeTable.find(code);
+    if (it_sessions == mSessionSubscribeTable.end())
+    {
+        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(code));
+    }
     if (it_sessions != mSessionSubscribeTable.end())
     {
         auto &sessions = it_sessions->second;
@@ -1123,6 +1127,10 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
                                         tFdbFilterSets &filter_tbl)
 {
     auto it_sessions = mSessionSubscribeTable.find(code);
+    if (it_sessions == mSessionSubscribeTable.end())
+    {
+        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(code));
+    }
     if (it_sessions != mSessionSubscribeTable.end())
     {
         auto &sessions = it_sessions->second;
@@ -1150,6 +1158,10 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                                        tSubscribedSessionSets &session_tbl)
 {
     auto it_sessions = mSessionSubscribeTable.find(code);
+    if (it_sessions == mSessionSubscribeTable.end())
+    {
+        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(code));
+    }
     if (it_sessions != mSessionSubscribeTable.end())
     {
         if (!filter)
