@@ -862,7 +862,8 @@ void CFdbBaseObject::subscribe(CFdbSession *session,
     {
         filter = "";
     }
-    mSessionSubscribeTable[msg][session][obj_id][filter] = type;
+    SubscribeTable_t &subscribe_table = fdbIsGroup(msg) ? mGroupSubscribeTable : mEventSubscribeTable;
+    subscribe_table[msg][session][obj_id][filter] = type;
 }
 
 void CFdbBaseObject::unsubscribe(CFdbSession *session,
@@ -870,8 +871,10 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session,
                                  FdbObjectId_t obj_id,
                                  const char *filter)
 {
-    auto it_sessions = mSessionSubscribeTable.find(msg);
-    if (it_sessions != mSessionSubscribeTable.end())
+    SubscribeTable_t &subscribe_table = fdbIsGroup(msg) ? mGroupSubscribeTable : mEventSubscribeTable;
+    
+    auto it_sessions = subscribe_table.find(msg);
+    if (it_sessions != subscribe_table.end())
     {
         auto &sessions = it_sessions->second;
         auto it_objects = sessions.find(session);
@@ -906,15 +909,16 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session,
         }
         if (sessions.empty())
         {
-            mSessionSubscribeTable.erase(it_sessions);
+            subscribe_table.erase(it_sessions);
         }
     }
 }
 
-void CFdbBaseObject::unsubscribe(CFdbSession *session)
+void CFdbBaseObject::unsubscribeSession(SubscribeTable_t &subscribe_table,
+                                        CFdbSession *session)
 {
-    for (auto it_sessions = mSessionSubscribeTable.begin();
-            it_sessions != mSessionSubscribeTable.end();)
+    for (auto it_sessions = subscribe_table.begin();
+            it_sessions != subscribe_table.end();)
     {
         auto the_it_sessions = it_sessions;
         ++it_sessions;
@@ -927,15 +931,22 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session)
         }
         if (sessions.empty())
         {
-            mSessionSubscribeTable.erase(the_it_sessions);
+            subscribe_table.erase(the_it_sessions);
         }
     }
 }
 
-void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
+void CFdbBaseObject::unsubscribe(CFdbSession *session)
 {
-    for (auto it_sessions = mSessionSubscribeTable.begin();
-            it_sessions != mSessionSubscribeTable.end();)
+    unsubscribeSession(mEventSubscribeTable, session);
+    unsubscribeSession(mGroupSubscribeTable, session);
+}
+
+void CFdbBaseObject::unsubscribeObject(SubscribeTable_t &subscribe_table,
+                                       FdbObjectId_t obj_id)
+{
+    for (auto it_sessions = subscribe_table.begin();
+            it_sessions != subscribe_table.end();)
     {
         auto the_it_sessions = it_sessions;
         ++it_sessions;
@@ -960,9 +971,15 @@ void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
         }
         if (sessions.empty())
         {
-            mSessionSubscribeTable.erase(the_it_sessions);
+            subscribe_table.erase(the_it_sessions);
         }
     }
+}
+
+void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
+{
+    unsubscribeObject(mEventSubscribeTable, obj_id);
+    unsubscribeObject(mGroupSubscribeTable, obj_id);
 }
 
 void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
@@ -975,17 +992,11 @@ void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
     }
 }
 
-void CFdbBaseObject::broadcast(CFdbMessage *msg)
+void CFdbBaseObject::broadcast(SubscribeTable_t &subscribe_table,
+                               CFdbMessage *msg, FdbMsgCode_t event)
 {
-    broadcast(msg, false);
-    broadcast(msg, true);
-}
-
-void CFdbBaseObject::broadcast(CFdbMessage *msg, bool group)
-{
-    auto code = msg->code();
-    auto it_sessions = mSessionSubscribeTable.find(group ? fdbMakeGroup(code) : code);
-    if (it_sessions != mSessionSubscribeTable.end())
+    auto it_sessions = subscribe_table.find(event);
+    if (it_sessions != subscribe_table.end())
     {
         auto filter = msg->getFilter();
         if (!filter)
@@ -1028,16 +1039,19 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg, bool group)
         }
     }
 }
+                               
+void CFdbBaseObject::broadcast(CFdbMessage *msg)
+{
+    broadcast(mEventSubscribeTable, msg, msg->code());
+    broadcast(mGroupSubscribeTable, msg, fdbMakeGroup(msg->code()));
+}
 
-bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
+bool CFdbBaseObject::broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg,
+                               CFdbSession *session, FdbMsgCode_t event)
 {
     bool sent = false;
-    auto it_sessions = mSessionSubscribeTable.find(msg->code());
-    if (it_sessions == mSessionSubscribeTable.end())
-    {
-        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(msg->code()));
-    }
-    if (it_sessions != mSessionSubscribeTable.end())
+    auto it_sessions = subscribe_table.find(event);
+    if (it_sessions != subscribe_table.end())
     {
         auto &sessions = it_sessions->second;
         auto it_objects = sessions.find(session);
@@ -1066,17 +1080,28 @@ bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
                         if (it_type != filters.end())
                         {
                             broadcastOneMsg(session, msg, it_type->second);
+                            sent = true;
                         }
                     }
                 }
                 else
                 {
                     broadcastOneMsg(session, msg, it_type->second);
+                    sent = true;
                 }
             }
         }
     }
     return sent;
+}
+
+bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
+{
+    if (!broadcast(mEventSubscribeTable, msg, session, msg->code()))
+    {
+        return broadcast(mGroupSubscribeTable, msg, session, fdbMakeGroup(msg->code()));
+    }
+    return false;
 }
 
 void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filter_tbl)
@@ -1098,10 +1123,11 @@ void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets 
     }
 }
 
-void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
+void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table,
+                                       tFdbSubscribeMsgTbl &table)
 {
-    for (auto it_sessions = mSessionSubscribeTable.begin();
-            it_sessions != mSessionSubscribeTable.end(); ++it_sessions)
+    for (auto it_sessions = subscribe_table.begin();
+            it_sessions != subscribe_table.end(); ++it_sessions)
     {
         auto &filter_table = table[it_sessions->first];
         auto &sessions = it_sessions->second;
@@ -1109,29 +1135,34 @@ void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
     }
 }
 
-void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filters)
+void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
 {
-    auto it_sessions = mSessionSubscribeTable.find(code);
-    if (it_sessions == mSessionSubscribeTable.end())
-    {
-        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(code));
-    }
-    if (it_sessions != mSessionSubscribeTable.end())
+    getSubscribeTable(mEventSubscribeTable, table);
+    getSubscribeTable(mGroupSubscribeTable, table);
+}
+
+void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code,
+                                       tFdbFilterSets &filters)
+{
+    auto it_sessions = subscribe_table.find(code);
+    if (it_sessions != subscribe_table.end())
     {
         auto &sessions = it_sessions->second;
         getSubscribeTable(sessions, filters);
     }
 }
 
-void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
-                                        tFdbFilterSets &filter_tbl)
+void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filters)
 {
-    auto it_sessions = mSessionSubscribeTable.find(code);
-    if (it_sessions == mSessionSubscribeTable.end())
-    {
-        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(code));
-    }
-    if (it_sessions != mSessionSubscribeTable.end())
+    getSubscribeTable(mEventSubscribeTable, code, filters);
+    getSubscribeTable(mGroupSubscribeTable, fdbMakeGroup(code), filters);
+}
+
+void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code,
+                                       CFdbSession *session, tFdbFilterSets &filter_tbl)
+{
+    auto it_sessions = subscribe_table.find(code);
+    if (it_sessions != subscribe_table.end())
     {
         auto &sessions = it_sessions->second;
         auto it_objects = sessions.find(session);
@@ -1154,15 +1185,18 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
     }
 }
 
-void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
-                                       tSubscribedSessionSets &session_tbl)
+void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
+                                        tFdbFilterSets &filter_tbl)
 {
-    auto it_sessions = mSessionSubscribeTable.find(code);
-    if (it_sessions == mSessionSubscribeTable.end())
-    {
-        it_sessions = mSessionSubscribeTable.find(fdbMakeGroup(code));
-    }
-    if (it_sessions != mSessionSubscribeTable.end())
+    getSubscribeTable(mEventSubscribeTable, code, session, filter_tbl);
+    getSubscribeTable(mGroupSubscribeTable, fdbMakeGroup(code), session, filter_tbl);
+}
+
+void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code,
+                                       const char *filter, tSubscribedSessionSets &session_tbl)
+{
+    auto it_sessions = subscribe_table.find(code);
+    if (it_sessions != subscribe_table.end())
     {
         if (!filter)
         {
@@ -1204,6 +1238,13 @@ void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
             }
         }
     }
+}
+
+void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
+                                       tSubscribedSessionSets &session_tbl)
+{
+    getSubscribeTable(mEventSubscribeTable, code, filter, session_tbl);
+    getSubscribeTable(mGroupSubscribeTable, fdbMakeGroup(code), filter, session_tbl);
 }
 
 FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId_t obj_id)

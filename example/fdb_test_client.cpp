@@ -299,7 +299,7 @@ protected:
             case NTF_GROUP_TEST1:
             case NTF_GROUP_TEST2:
             case NTF_GROUP_TEST3:
-                FDB_LOG_I("Broadcast of group message is received: %d\n", fdbEventCode(msg->code()));
+                FDB_LOG_I("Broadcast of group message %d is received. Init: %d\n", fdbEventCode(msg->code()), msg->isInitialResponse());
             break;
             default:
             break;

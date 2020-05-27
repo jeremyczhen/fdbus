@@ -766,7 +766,8 @@ private:
     typedef std::map<FdbMsgCode_t, SessionTable_t> SubscribeTable_t;
 
     CBaseWorker *mWorker;
-    SubscribeTable_t mSessionSubscribeTable;
+    SubscribeTable_t mEventSubscribeTable;
+    SubscribeTable_t mGroupSubscribeTable;
     FdbObjectId_t mObjId;
     uint32_t mFlag;
     EFdbEndpointRole mRole;
@@ -777,21 +778,32 @@ private:
                    FdbObjectId_t obj_id,
                    const char *filter,
                    CFdbSubscribeType type);
+
     void unsubscribe(CFdbSession *session,
                      FdbMsgCode_t msg,
                      FdbObjectId_t obj_id,
                      const char *filter);
+    void unsubscribeSession(SubscribeTable_t &subscribe_table, CFdbSession *session);
     void unsubscribe(CFdbSession *session);
+    void unsubscribeObject(SubscribeTable_t &subscribe_table, FdbObjectId_t obj_id);
     void unsubscribe(FdbObjectId_t obj_id);
+
     void broadcast(CFdbMessage *msg);
-    void broadcast(CFdbMessage *msg, bool group);
+    void broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg, FdbMsgCode_t event);
+    bool broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg, CFdbSession *session, FdbMsgCode_t event);
 
     bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_data, int32_t log_size);
                        
     void getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filters);
+    void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, CFdbSession *session,
+                           tFdbFilterSets &filter_tbl);
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
+    void getSubscribeTable(SubscribeTable_t &subscribe_table, tFdbSubscribeMsgTbl &table);
+    void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, tFdbFilterSets &filters);
+    void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, const char *filter,
+                            tSubscribedSessionSets &session_tbl);
     
     void callOnSubscribe(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnBroadcast(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);

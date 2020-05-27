@@ -100,6 +100,9 @@ public:
         broadcast(NTF_CJSON_TEST, builder);
         cJSON_Delete(f);
         }
+        broadcast(NTF_GROUP_TEST1);
+        broadcast(NTF_GROUP_TEST2);
+        broadcast(NTF_GROUP_TEST3);
     }
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first)
