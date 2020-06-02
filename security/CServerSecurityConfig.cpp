@@ -25,6 +25,7 @@
 #include <grp.h>
 #include <pwd.h>
 #endif
+#include <stdlib.h>
 #include <string.h>
 #include <common_base/cJSON/cJSON.h>
 #include <utils/Log.h>

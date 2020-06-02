@@ -17,6 +17,7 @@
 #ifdef CFG_FDBUS_SECURITY
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <common_base/cJSON/cJSON.h>
 #include <utils/Log.h>

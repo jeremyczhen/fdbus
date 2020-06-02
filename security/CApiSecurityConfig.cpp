@@ -16,6 +16,7 @@
 
 #ifdef CFG_FDBUS_SECURITY
 #include <string.h>
+#include <stdlib.h>
 #include <common_base/cJSON/cJSON.h>
 #include <security/CFdbusSecurityConfig.h>
 #include <common_base/CApiSecurityConfig.h>
