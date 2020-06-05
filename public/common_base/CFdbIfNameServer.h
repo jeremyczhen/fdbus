@@ -148,6 +148,76 @@ private:
         static const uint8_t mMaskTokenList = 1 << 0;
 };
 
+class FdbAddrBindStatus : public IFdbParcelable
+{
+public:
+    const std::string &request_address() const
+    {
+        return mRequestAddr;
+    }
+    void request_address(const std::string &addr)
+    {
+        mRequestAddr = addr;
+    }
+    const std::string &bind_address() const
+    {
+        return mBindAddr;
+    }
+    void bind_address(const std::string &addr)
+    {
+        mBindAddr = addr;
+    }
+
+protected:
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mRequestAddr << mBindAddr;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mRequestAddr >> mBindAddr;
+    }
+
+private:
+    std::string mRequestAddr;
+    std::string mBindAddr;
+};
+
+class FdbMsgAddrBindResults : public IFdbParcelable 
+{
+public:
+    const std::string &service_name() const
+    {
+        return mServiceName;
+    }
+    void service_name(const std::string &name)
+    {
+        mServiceName = name;
+    }
+    CFdbParcelableArray<FdbAddrBindStatus> &address_list()
+    {
+        return mAddrList;
+    }
+    FdbAddrBindStatus *add_address_list()
+    {
+        return mAddrList.Add();
+    }
+protected:
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mServiceName
+                   << mAddrList;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mServiceName
+                     >> mAddrList;
+    }
+private:
+    std::string mServiceName;
+    CFdbParcelableArray<FdbAddrBindStatus> mAddrList;
+};
+
 class FdbMsgServerName : public IFdbParcelable
 {
 public:

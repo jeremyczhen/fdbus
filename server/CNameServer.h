@@ -120,7 +120,7 @@ private:
     void setHostInfo(CFdbSession *session, NFdbBase::FdbMsgServiceInfo *msg_svc_info, const char *svc_name);
     void broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessage *msg, FdbMsgCode_t msg_code);
     bool bindNsAddress(tAddressDescTbl &addr_tbl);
-    void checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const char *svc_name);
+    bool reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc_name);
     void buildSpecificTcpAddress(CFdbSession *session, int32_t port, std::string &out_url);
     void populateTokens(const CFdbToken::tTokenList &tokens,
                         NFdbBase::FdbMsgAddressList &list);

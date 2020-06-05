@@ -259,11 +259,9 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 {
     auto svc_name = msg_addr_list.service_name().c_str();
     std::vector<CBaseEndpoint *> endpoints;
-    NFdbBase::FdbMsgAddressList bound_list;
+    NFdbBase::FdbMsgAddrBindResults bound_list;
 
-    bound_list.set_service_name(msg_addr_list.service_name());
-    bound_list.set_host_name(msg_addr_list.host_name());
-    bound_list.set_is_local(msg_addr_list.is_local());
+    bound_list.service_name(msg_addr_list.service_name());
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, true);
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
@@ -291,6 +289,8 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
             do
             {
                 CServerSocket *sk = server->doBind(it->c_str());
+                auto *addr_status = bound_list.add_address_list();
+                addr_status->request_address(*it);
                 if (sk)
                 {
                     CFdbSocketInfo info;
@@ -303,7 +303,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                     {
                         if (addr.mPort == info.mAddress->mPort)
                         {
-                            bound_list.add_address_list(*it);
+                            addr_status->bind_address(*it);
                         }
                         else
                         {
@@ -314,13 +314,13 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                             }
                             CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP,
                                         addr.mAddr.c_str(), info.mAddress->mPort);
-                            bound_list.add_address_list(url);
+                            addr_status->bind_address(url);
                             char_url = url.c_str();
                         }
                     }
                     else
                     {
-                        bound_list.add_address_list(*it);
+                        addr_status->bind_address(*it);
                     }
 
                     LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
@@ -332,6 +332,11 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 #if 0
                     LOG_E("CIntraNameProxy: session %d: Fail to bind to %s! Reconnecting...\n", msg->session(), it->c_str());
 #endif
+                    if (retries == 1)
+                    {
+                        auto *addr_status = bound_list.add_address_list();
+                        addr_status->request_address(*it);
+                    }
                     sysdep_sleep(CNsConfig::getAddressBindRetryInterval());
                 }
             } while (--retries > 0);

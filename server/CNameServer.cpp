@@ -282,17 +282,7 @@ void CNameServer::buildSpecificTcpAddress(CFdbSession *session,
     CFdbSessionInfo sinfo;
     session->getSessionInfo(sinfo);
     auto session_addr = sinfo.mSocketInfo.mAddress;
-    if (session_addr->mType == FDB_SOCKET_IPC)
-    {
-        /*
-         * This should not happen: the client uses unix domain
-         * socket to connect with name server for address of
-         * a server, but name server ask it to connect with the
-         * server via TCP interface.
-         */
-        LOG_E("CNameServer: Unable to determine service address!\n");
-    }
-    else
+    if (session_addr->mType != FDB_SOCKET_IPC)
     {
         // The same port number but a specific IP address
         CBaseSocketFactory::buildUrl(out_url, FDB_SOCKET_TCP,
@@ -425,7 +415,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
 void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    NFdbBase::FdbMsgAddressList addr_list;
+    NFdbBase::FdbMsgAddrBindResults addr_list;
     CFdbParcelableParser parser(addr_list);
     if (!msg->deserialize(parser))
     {
@@ -473,35 +463,37 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     for (auto msg_it = addrs.pool().begin(); msg_it != addrs.pool().end(); ++msg_it)
     {
         CFdbAddressDesc *desc = 0;
+        tAddressDescTbl::iterator desc_it = addr_tbl.mAddrTbl.end();
         for (auto addr_it = addr_tbl.mAddrTbl.begin();
                 addr_it != addr_tbl.mAddrTbl.end(); ++addr_it)
         {
             auto &addr_in_tbl = (*addr_it)->mAddress;
-            if (!msg_it->compare(addr_in_tbl.mUrl))
+            if (!msg_it->request_address().compare(addr_in_tbl.mUrl))
             {
                 desc = *addr_it;
-                desc->mStatus = CFdbAddressDesc::ADDR_BOUND;
-                break;
-            }
-            else if ((addr_in_tbl.mType != FDB_SOCKET_IPC) && (addr_in_tbl.mPort == FDB_SYSTEM_PORT))
-            {
-                CFdbSocketAddr addr;
-                if (CBaseSocketFactory::parseUrl(msg_it->c_str(), addr))
+                if (msg_it->bind_address().empty())
                 {
-                    if (!addr.mAddr.compare(addr_in_tbl.mAddr))
+                    desc_it = addr_it;
+                }
+                else {
+                    desc->mStatus = CFdbAddressDesc::ADDR_BOUND;
+                    if ((addr_in_tbl.mType != FDB_SOCKET_IPC) && 
+                            msg_it->bind_address().compare(addr_in_tbl.mUrl))
                     {
-                        // get port number allocated from system: save it.
-                        CBaseSocketFactory::updatePort(addr_in_tbl, addr.mPort);
-                        desc = *addr_it;
-                        desc->mStatus = CFdbAddressDesc::ADDR_BOUND;
+                        CFdbSocketAddr addr;
+                        if (CBaseSocketFactory::parseUrl(msg_it->bind_address().c_str(), addr))
+                        {
+                            desc->mAddress = addr;
+                        }
                     }
                 }
+                break;
             }
         }
 
         if (!desc)
         {
-            desc = createAddrDesc(msg_it->c_str());
+            desc = createAddrDesc(msg_it->bind_address().c_str());
             if (desc)
             {
                 desc->mStatus = CFdbAddressDesc::ADDR_BOUND;
@@ -511,6 +503,18 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         
         if (desc)
         {
+            if (desc->mStatus != CFdbAddressDesc::ADDR_BOUND)
+            {
+                if (!reconnectToAddress(desc, svc_name.c_str()))
+                {
+                    if (desc_it != addr_tbl.mAddrTbl.end())
+                    {
+                        addr_tbl.mAddrTbl.erase(desc_it);
+                    }
+                }
+                continue;
+            }
+
             if (desc->mAddress.mType == FDB_SOCKET_IPC)
             {
                 broadcast_ipc_addr_list.add_address_list(desc->mAddress.mUrl);
@@ -546,6 +550,17 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     {
         addr_tbl.mAddrTbl.insert(addr_tbl.mAddrTbl.end(), new_addr_tbl.begin(), new_addr_tbl.end());
     }
+
+    if (addr_tbl.mAddrTbl.empty())
+    {
+        mRegistryTbl.erase(reg_it);
+        LOG_I("CNameServer: Service %s: registry fails.\n", svc_name.c_str());
+        return;
+    }
+    else
+    {
+        LOG_I("CNameServer: Service %s is registered.\n", svc_name.c_str());
+    }
     
     if (is_host_server)
     {
@@ -573,8 +588,6 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         }
         connectToHostServer(hs_url.c_str(), true);
     }
-
-    LOG_I("CNameServer: Service %s is registered.\n", svc_name.c_str());
 
     if (!broadcast_all_addr_list.address_list().empty())
     {
@@ -626,58 +639,34 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         // token to local clients according to security level
         broadcastSvcAddrRemote(reg_it->second.mTokens, broadcast_tcp_addr_list);
     }
-
-    checkUnconnectedAddress(addr_tbl, svc_name.c_str());
 }
 
-void CNameServer::checkUnconnectedAddress(CSvcRegistryEntry &desc_tbl, const char *svc_name)
+bool CNameServer::reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc_name)
 {
-    NFdbBase::FdbMsgAddressList addr_list;
-    bool failure_found = false;
-    for (auto desc_it = desc_tbl.mAddrTbl.begin();
-           desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
+    if (addr_desc->reconnect_cnt >= CNsConfig::getAddressBindRetryCnt())
     {
-        auto desc = *desc_it;
-        if (desc->mStatus == CFdbAddressDesc::ADDR_BOUND)
-        {
-            continue;
-        }
-        if (desc->reconnect_cnt >= CNsConfig::getAddressBindRetryCnt())
-        {
-            continue;
-        }
-        desc->reconnect_cnt++;
-        std::string url;
-        bool ret;
-        if (desc->mAddress.mType == FDB_SOCKET_IPC)
-        {
-            ret = allocateIpcAddress(svc_name, url);
-        }
-        else
-        {
-            ret = allocateTcpAddress(svc_name, url);
-        }
-
-        if (ret)
-        {
-            // replace failed address with a new one
-            if (CBaseSocketFactory::parseUrl(url.c_str(), desc->mAddress))
-            {
-                addr_list.add_address_list(url.c_str());
-                failure_found = true;
-            }
-        }
+        return false;
     }
 
-    if (failure_found)
+    addr_desc->reconnect_cnt++;
+    std::string url;
+    bool ret = (addr_desc->mAddress.mType == FDB_SOCKET_IPC) ?
+               allocateIpcAddress(svc_name, url) : allocateTcpAddress(svc_name, url);
+
+    if (ret && CBaseSocketFactory::parseUrl(url.c_str(), addr_desc->mAddress))
     {
+        // replace failed address with a new one
+        NFdbBase::FdbMsgAddressList addr_list;
+        addr_list.add_address_list(url.c_str());
         addr_list.set_service_name(svc_name);
         addr_list.set_host_name((mHostProxy->hostName()));
         addr_list.set_is_local(true);
         CFdbParcelableBuilder builder(addr_list);
         broadcast(NFdbBase::NTF_MORE_ADDRESS, builder, svc_name);
         LOG_E("CNameServer: Service %s: fail to bind address and retry...\n", svc_name);
+        return true;
     }
+    return false;
 }
 
 void CNameServer::notifyRemoteNameServerDrop(const char *host_name)
@@ -1016,7 +1005,7 @@ bool CNameServer::allocateTcpAddress(const std::string &svc_name, std::string &a
             addr_url = url;
             return true;
         }
-        LOG_E("NameServer: TCP address conflict!\n");
+        LOG_E("NameServer: TCP address %s conflict!\n", url.c_str());
     }
     else
     {
@@ -1058,7 +1047,7 @@ bool CNameServer::allocateIpcAddress(const std::string &svc_name, std::string &a
             addr_url = chr_url;
             return true;
         }
-        LOG_E("NameServer: IPC address conflict!\n");
+        LOG_E("NameServer: IPC address %s conflict!\n", chr_url);
     }
     else
     {
