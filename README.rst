@@ -52,7 +52,47 @@ Documentation & Blog
 https://blog.csdn.net/jeremy_cz/article/details/89060291
 
 How to build
-------------
+================
+Build with buildCentral
+-------------------------
+It is recommended to build with buildCentral.
+
+Prepare buildCentral
+^^^^^^^^^^^^^^^^^^^^^^
+1. Install python from `Python <https://www.python.org/downloads/>`_
+2. Install the following modules:
+
+ - sudo pip install python-magic
+ - sudo pip install networkx
+ - sudo pip install simplejson
+
+3. Download buildCentral:
+
+ - git clone https://github.com/jeremyczhen/buildCentral.git
+
+Build with buildCentral
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+1. Enter buildCentral/workspace to download FDBus and protobuf:
+
+ - git clone https://github.com/jeremyczhen/fdbus.git
+ - git clone https://github.com/jeremyczhen/protobuf.git
+
+2. Supposing we are at root of buildCentral (buildCentral/), build host (Windows, Ubuntu, ...) version of FDBus with the following command. FDBus can be found at: ``output/stage/host``.
+
+ - tools/buildCentral/install/mk -thost
+
+3. Cross build for other architectures and FDBus can be found at: ``output/stage/$variant/$target_arch/``:
+
+ - tools/buildCentral/install/mk -tarm-qnx          - build for ARM QNX
+ - tools/buildCentral/install/mk -twin-lin          - build for Windows Linario
+
+4. You can configure toolchain at: ``project/build/buildcentralrc``
+
+For more details please find help for `buildCentral <https://github.com/jeremyczhen/buildCentral>`_
+
+Build with commands
+---------------------
 For Ubuntu host version (running at host machine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -277,4 +317,3 @@ Known issues
 
  | 1. Issue: sem_timedwait() is used as notifier and blocker of event loop, leading to timer failure when TOD is changed since sem_wait() take CLOCK_REALTIME clock for timeout control.
  |    Solution: When creating worker thread, pass FDB_WORKER_ENABLE_FD_LOOP as parameter, forcing poll() instead of sem_timedwait() as loop notifier and blocker
-

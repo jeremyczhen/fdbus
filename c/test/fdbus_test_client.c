@@ -42,8 +42,10 @@ static void on_reply(fdb_client_t *self,
                      int32_t status,
                      void *user_data)
 {
+    int32_t i;
+
     FDB_LOG_D("on reply: sid: %d, code: %d, size: %d\n", sid, msg_code, data_size);
-    for (int32_t i = 0; i < data_size; ++i)
+    for (i = 0; i < data_size; ++i)
     {
         FDB_LOG_D("    data received: %d\n", msg_data[i]);
     }
@@ -56,10 +58,11 @@ static void on_broadcast(fdb_client_t *self,
                          int32_t data_size,
                          const char *filter)
 {
+    int32_t i;
 
     FDB_LOG_D("on broadcast: sid: %d, code: %d, size: %d, filter: %s\n",
                 sid, msg_code, data_size, filter);
-    for (int32_t i = 0; i < data_size; ++i)
+    for (i = 0; i < data_size; ++i)
     {
         FDB_LOG_D("    data received: %d\n", msg_data[i]);
     }
@@ -67,9 +70,11 @@ static void on_broadcast(fdb_client_t *self,
 
 int main(int argc, char **argv)
 {
+    int32_t i;
+
     fdb_start();
     fdb_client_t **client_array = (fdb_client_t **)malloc(sizeof(fdb_client_t *) * argc);
-    for (int32_t i = 0; i < (argc - 1); ++i)
+    for (i = 0; i < (argc - 1); ++i)
     {
         char url[1024];
         snprintf(url, sizeof(url), "svc://%s", argv[i + 1]);
@@ -83,11 +88,13 @@ int main(int argc, char **argv)
     uint32_t msg_code = 0;
     while (1)
     {
-        for (int32_t i = 0; i < Fdb_Num_Elems(buffer); ++i)
+        int32_t i;
+
+        for (i = 0; i < Fdb_Num_Elems(buffer); ++i)
         {
             buffer[i] = count++;
         }
-        for (int32_t i = 0; i < (argc - 1); ++i)
+        for (i = 0; i < (argc - 1); ++i)
         {
             fdb_client_invoke_async(client_array[i], msg_code++, buffer, Fdb_Num_Elems(buffer), 0, 0, 0);
         }
