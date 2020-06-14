@@ -32,12 +32,8 @@ else()
     include(rule_base.cmake)
 endif()
 
-if(DEFINED WORKSPACE_ROOT)
-    set(PACKAGE_SOURCE_ROOT ${WORKSPACE_ROOT}/fdbus)
-else()
-    get_filename_component(PACKAGE_SOURCE_ROOT ${CMAKE_SOURCE_DIR} PATH)
-    get_filename_component(PACKAGE_SOURCE_ROOT ${PACKAGE_SOURCE_ROOT} PATH)
-endif()
+get_filename_component(PACKAGE_SOURCE_ROOT ${CMAKE_SOURCE_DIR} PATH)
+get_filename_component(PACKAGE_SOURCE_ROOT ${PACKAGE_SOURCE_ROOT} PATH)
 
 set(IDL_GEN_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 

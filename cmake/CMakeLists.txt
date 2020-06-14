@@ -60,11 +60,7 @@ else()
     include(rule_base.cmake)
 endif()
 
-if(DEFINED WORKSPACE_ROOT)
-    set(PACKAGE_SOURCE_ROOT ${WORKSPACE_ROOT}/fdbus)
-else()
-    get_filename_component(PACKAGE_SOURCE_ROOT ${CMAKE_SOURCE_DIR} PATH)
-endif()
+get_filename_component(PACKAGE_SOURCE_ROOT ${CMAKE_SOURCE_DIR} PATH)
 
 print_variable(PACKAGE_SOURCE_ROOT)
 

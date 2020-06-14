@@ -629,6 +629,7 @@ sckt::uint TCPSocket::Send(const sckt::byte* data, uint size){
             }
 #endif
         }else{
+            errorCode = 0;
             sent += res;
             left -= res;
             data += res;
@@ -666,6 +667,9 @@ sckt::uint TCPSocket::Recv(sckt::byte* buf, uint maxSize){
                 break;
             }
 #endif
+        }
+        else{
+            errorCode = 0;
         }
     }while(errorCode == M_EINTR);
     
@@ -824,6 +828,9 @@ bool SocketSet::CheckSockets(uint timeoutMillis){
 #else
             errorCode = errno;
 #endif
+        }
+        else {
+            errorCode = 0;
         }
     }while(errorCode == M_EINTR);
     
