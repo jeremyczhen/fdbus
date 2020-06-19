@@ -9,7 +9,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libcommon-base
 
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT -DCONFIG_FDB_NO_RTTI
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT
 
 SRC_FILES := 
@@ -27,8 +27,8 @@ LOCAL_SRC_FILES += server/CBaseNameProxy.cpp \
                    server/CIntraNameProxy.cpp \
                    security/cJSON/cJSON.c
 
-FDB_IDL_GEN_DIR := $(LOCAL_PATH)/idl
 FDB_PROTO_DIR := example/idl
+FDB_IDL_GEN_DIR := $(LOCAL_PATH)/$(FDB_PROTO_DIR)
 
 LOCAL_SRC_FILES += platform/CEventFd_eventfd.cpp
 
@@ -120,7 +120,6 @@ LOCAL_SRC_FILES:= \
                 security/CServerSecurityConfig.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
                 libcommon-base
 
 include $(BUILD_EXECUTABLE)
@@ -138,7 +137,6 @@ LOCAL_SRC_FILES:= \
                 security/CHostSecurityConfig.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
                 libcommon-base
 
 include $(BUILD_EXECUTABLE)
@@ -154,7 +152,6 @@ LOCAL_SRC_FILES:= \
                 server/main_ls.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
                 libcommon-base
 include $(BUILD_EXECUTABLE)
 
@@ -169,7 +166,6 @@ LOCAL_SRC_FILES:= \
                 server/main_lh.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
                 libcommon-base
 include $(BUILD_EXECUTABLE)
 
@@ -185,7 +181,6 @@ LOCAL_SRC_FILES:= \
                 server/CLogPrinter.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
                 libcommon-base
 
 include $(BUILD_EXECUTABLE)
@@ -202,25 +197,46 @@ LOCAL_SRC_FILES:= \
                 server/CLogPrinter.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
                 libcommon-base
 include $(BUILD_EXECUTABLE)
 
 #=====================================================================================
-#                            build fdbtest (native test)                             |
+#                      build fdbtest_client (native test)                            |
 #=====================================================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE:= fdbtest 
+LOCAL_MODULE:= fdbtest_client
 FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_GEN_DIR)/common.base.Example.pb.h\>
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
+LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDBUS_PROTO_FULL_FEATURE -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
-                example/client_server_object.cpp \
+                example/fdb_test_client.cpp \
                 example/CFdbProtoMsgBuilder.cpp \
                 $(FDB_PROTO_DIR)/common.base.Example.proto
 
 LOCAL_SHARED_LIBRARIES := \
-                libprotobuf-cpp-full-rtti \
+                libprotobuf-cpp-full \
+                libcommon-base
+
+LOCAL_PROTOC_OPTIMIZE_TYPE := full 
+LOCAL_PROTOC_FLAGS := -I.
+
+include $(BUILD_EXECUTABLE)
+
+#=====================================================================================
+#                      build fdbtest_server (native test)                            |
+#=====================================================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE:= fdbtest_server
+FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_GEN_DIR)/common.base.Example.pb.h\>
+LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDBUS_PROTO_FULL_FEATURE -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
+LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_SRC_FILES:= \
+                example/fdb_test_server.cpp \
+                example/CFdbProtoMsgBuilder.cpp \
+                $(FDB_PROTO_DIR)/common.base.Example.proto
+
+LOCAL_SHARED_LIBRARIES := \
+                libprotobuf-cpp-full \
                 libcommon-base
 
 LOCAL_PROTOC_OPTIMIZE_TYPE := full 

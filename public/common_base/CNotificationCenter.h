@@ -152,7 +152,7 @@ private:
                     CMethodJob< CBaseNotificationCenter<T> > *job,
                     CBaseJob::Ptr &ref)
     {
-        onNotifyJob *the_job = dynamic_cast<onNotifyJob *>(job);
+        onNotifyJob *the_job = fdb_dynamic_cast_if_available<onNotifyJob *>(job);
         if (the_job)
         {
             the_job->mNotification->run(the_job->mData);

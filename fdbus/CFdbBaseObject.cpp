@@ -236,7 +236,7 @@ public:
 
 void CFdbBaseObject::callOnSubscribe(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<COnSubscribeJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<COnSubscribeJob *>(job);
     if (the_job)
     {
         onSubscribe(the_job->mMsgRef);
@@ -279,7 +279,7 @@ public:
 
 void CFdbBaseObject::callOnBroadcast(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<COnBroadcastJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<COnBroadcastJob *>(job);
     if (the_job)
     {
         onBroadcast(the_job->mMsgRef);
@@ -321,7 +321,7 @@ public:
 
 void CFdbBaseObject::callOnInvoke(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<COnInvokeJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<COnInvokeJob *>(job);
     if (the_job)
     {
         onInvoke(the_job->mMsgRef);
@@ -364,7 +364,7 @@ public:
 
 void CFdbBaseObject::callOnOffline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    COnOfflineJob *the_job = dynamic_cast<COnOfflineJob *>(job);
+    COnOfflineJob *the_job = fdb_dynamic_cast_if_available<COnOfflineJob *>(job);
     if (the_job)
     {
         onOffline(the_job->mSid, the_job->mIsLast);
@@ -422,7 +422,7 @@ public:
 
 void CFdbBaseObject::callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<COnOnlineJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<COnOnlineJob *>(job);
     if (the_job)
     {
         if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
@@ -478,7 +478,7 @@ public:
 
 void CFdbBaseObject::callOnReply(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<COnReplyJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<COnReplyJob *>(job);
     if (the_job)
     {
         onReply(the_job->mMsgRef);
@@ -525,7 +525,7 @@ public:
 
 void CFdbBaseObject::callOnStatus(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<COnStatusJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<COnStatusJob *>(job);
     if (the_job)
     {
         onStatus(the_job->mMsgRef
@@ -1315,7 +1315,7 @@ public:
 
 void CFdbBaseObject::callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CBindObjectJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CBindObjectJob *>(job);
     if (the_job)
     {
         the_job->mOid = doBind(the_job->mEndpoint, the_job->mOid);
@@ -1352,7 +1352,7 @@ public:
 
 void CFdbBaseObject::callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CConnectObjectJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CConnectObjectJob *>(job);
     if (the_job)
     {
         the_job->mOid = doConnect(the_job->mEndpoint, the_job->mOid);

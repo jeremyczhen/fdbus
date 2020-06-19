@@ -149,7 +149,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, false);
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
-        auto client = dynamic_cast<CBaseClient *>(*ep_it);
+        auto client = fdb_dynamic_cast_if_available<CBaseClient *>(*ep_it);
         if (!client)
         {
             LOG_E("CIntraNameProxy: Session %d: Fail to convert to CBaseEndpoint!\n", msg->session());
@@ -265,7 +265,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, true);
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
-        auto server = dynamic_cast<CBaseServer *>(*ep_it);
+        auto server = fdb_dynamic_cast_if_available<CBaseServer *>(*ep_it);
         if (!server)
         {
             LOG_E("CIntraNameProxy: session %d: Fail to convert to CIntraNameProxy!\n", msg->session());

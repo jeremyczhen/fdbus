@@ -175,7 +175,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 if (out_going_msg)
                 {
                     CServiceSubscribeMsg *svc_sub_msg =
-                                    dynamic_cast<CServiceSubscribeMsg *>(out_going_msg);
+                                    fdb_dynamic_cast_if_available<CServiceSubscribeMsg *>(out_going_msg);
                     if (svc_sub_msg)
                     {
                         subscriber = svc_sub_msg->getSubscriber();

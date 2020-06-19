@@ -109,7 +109,7 @@ FdbSocketId_t CBaseServer::bind(const char *url)
 
 void CBaseServer::cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CBindServerJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CBindServerJob *>(job);
     if (!the_job)
     {
         return;
@@ -170,7 +170,7 @@ CServerSocket *CBaseServer::doBind(const char *url)
     auto session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already bound, do nothing */
     {
-        return dynamic_cast<CServerSocket *>(session_container);
+        return fdb_dynamic_cast_if_available<CServerSocket *>(session_container);
     }
 
     auto server_imp = CBaseSocketFactory::createServerSocket(addr);
@@ -203,7 +203,7 @@ public:
 
 void CBaseServer::cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CUnbindServerJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CUnbindServerJob *>(job);
     if (!the_job)
     {
         return;

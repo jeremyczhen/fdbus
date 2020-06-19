@@ -50,10 +50,15 @@ void CFdbProtoMsgBuilder::toBuffer(uint8_t *buffer, int32_t size)
 
 bool CFdbProtoMsgBuilder::toString(std::string &msg_txt) const
 {
+#if defined(__cpp_rtti) || defined(FDBUS_PROTO_FULL_FEATURE)
     bool ret = true;
     try
     {
+#if defined(__cpp_rtti)
         const auto &full_msg = dynamic_cast<const ::google::protobuf::Message &>(mMessage);
+#elif defined(FDBUS_PROTO_FULL_FEATURE)
+        const auto &full_msg = static_cast<const ::google::protobuf::Message &>(mMessage);
+#endif
         try
         {
             if (!google::protobuf::TextFormat::PrintToString(full_msg, &msg_txt))
@@ -72,6 +77,9 @@ bool CFdbProtoMsgBuilder::toString(std::string &msg_txt) const
     }
 
     return ret;
+#else
+    return false;
+#endif
 }
 
 CFdbProtoMsgParser::CFdbProtoMsgParser(CFdbProtoMessage &message)

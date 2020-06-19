@@ -67,6 +67,14 @@ bool fdbValidFdbId(T id)
 {
     return id != (T)FDB_INVALID_ID;
 }
+template<typename To, typename From>
+inline To fdb_dynamic_cast_if_available(From from) {
+#if defined(CONFIG_FDB_NO_RTTI) || !defined(__cpp_rtti)
+  return static_cast<To>(from);
+#else
+  return dynamic_cast<To>(from);
+#endif
+}
 #endif
 
 #ifndef Fdb_Num_Elems

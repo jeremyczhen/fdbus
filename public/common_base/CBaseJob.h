@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 #include "CBaseSemaphore.h"
+#include "common_defs.h"
 
 class CBaseWorker;
 class CBaseJob
@@ -138,7 +139,7 @@ private:
 template <typename T>
 T castToMessage(CBaseJob::Ptr &job_ref)
 {
-    return dynamic_cast<T>(job_ref.get());
+    return fdb_dynamic_cast_if_available<T>(job_ref.get());
 }
 
 #endif

@@ -67,7 +67,7 @@ void CClientSocket::getSocketInfo(CFdbSocketInfo &info)
 
 void CClientSocket::onSessionDeleted(CFdbSession *session)
 {
-    auto client = dynamic_cast<CBaseClient *>(mOwner);
+    auto client = fdb_dynamic_cast_if_available<CBaseClient *>(mOwner);
     
     if (mOwner->isReconnect() && session->internalError() && client)
     {
@@ -140,7 +140,7 @@ FdbSessionId_t CBaseClient::connect(const char *url)
 
 void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CConnectClientJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CConnectClientJob *>(job);
     if (!the_job)
     {
         return;
@@ -206,7 +206,7 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
     auto session_container = getSocketByUrl(url);
     if (session_container) /* If the address is already connected, do nothing */
     {
-        return dynamic_cast<CClientSocket *>(session_container);
+        return fdb_dynamic_cast_if_available<CClientSocket *>(session_container);
     }
 
     auto client_imp = CBaseSocketFactory::createClientSocket(addr);
@@ -253,7 +253,7 @@ public:
 
 void CBaseClient::cbDisconnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CDisconnectClientJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CDisconnectClientJob *>(job);
     if (!the_job)
     {
         return;
@@ -315,7 +315,7 @@ bool CBaseClient::hostConnected(const char *host_name)
     for (auto it = containers.begin(); it != containers.end(); ++it)
     {
         auto sessions = it->second;
-        auto client_socket = dynamic_cast<CClientSocket *>(sessions);
+        auto client_socket = fdb_dynamic_cast_if_available<CClientSocket *>(sessions);
         if (client_socket)
         {
             if (!client_socket->connectedHost().compare(host_name))

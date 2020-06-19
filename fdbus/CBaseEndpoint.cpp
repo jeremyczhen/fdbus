@@ -473,7 +473,7 @@ public:
 void CBaseEndpoint::callRegisterEndpoint(CBaseWorker *worker,
                 CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
-    auto the_job = dynamic_cast<CRegisterJob *>(job);
+    auto the_job = fdb_dynamic_cast_if_available<CRegisterJob *>(job);
     if (the_job)
     {
         the_job->mEpid = CFdbContext::getInstance()->registerEndpoint(this);
