@@ -77,7 +77,7 @@ private:
 };
 
 CFdEventLoop::CFdEventLoop()
-    : mWatchBlackList(0)
+    : mWatchRecursiveCnt(0)
     , mNotifyWatch(0)
     , mRebuildPollFd(false)
 {
@@ -94,7 +94,7 @@ CFdEventLoop::~CFdEventLoop()
 
 bool CFdEventLoop::watchDestroyed(CSysFdWatch *watch)
 {
-    if (mWatchBlackList && (mWatchBlackList->find(watch) != mWatchBlackList->end()))
+    if (mWatchBlackList.find(watch) != mWatchBlackList.end())
     {
         LOG_I("CFdEventLoop: watch is destroyed inside callback.\n");
         return true;
@@ -104,10 +104,7 @@ bool CFdEventLoop::watchDestroyed(CSysFdWatch *watch)
 
 void CFdEventLoop::addWatchToBlacklist(CSysFdWatch *watch)
 {
-    if (mWatchBlackList)
-    {
-        mWatchBlackList->insert(watch);
-    }
+    mWatchBlackList.insert(watch);
 }
 
 void CFdEventLoop::buildFdArray()
@@ -139,10 +136,40 @@ void CFdEventLoop::buildFdArray()
     }
 }
 
+void CFdEventLoop::buildInputFdArray(tWatchPollTbl &watches, tFdPollTbl &fds)
+{
+    // skip the first fd that is dedicated to job queue
+    auto wi = mWatchWorkingList.begin();
+    if ((wi == mWatchWorkingList.end()) || (++wi == mWatchWorkingList.end()))
+    {
+        return;
+    }
+    for (; wi != mWatchWorkingList.end(); ++wi)
+    {
+        int fd = (*wi)->descriptor();
+        if (fd < 0)
+        {
+            LOG_E("CFdEventLoop: Bad file descriptor: %d!\n", fd);
+            continue;
+        }
+
+        pollfd pfd;
+        pfd.fd = fd;
+        pfd.events = (int16_t)(*wi)->flags() & POLLIN;
+        if (!pfd.events)
+        {
+            continue;
+        }
+        pfd.revents = 0;
+        fds.push_back(pfd);
+
+        watches.push_back(*wi);
+    }
+}
+
 void CFdEventLoop::processWatches()
 {
-    tWatchTbl watch_black_list;
-    enableWatchBlackList(&watch_black_list);
+    beginWatchBlackList();
     /*
      * Since the first fd is for job processing and might delete other watches,
      * handle it at last.
@@ -240,7 +267,52 @@ void CFdEventLoop::processWatches()
             }
         }
     }
-    enableWatchBlackList(0);
+    endWatchBlackList();
+}
+
+void CFdEventLoop::processInputWatches(tWatchPollTbl &watches, tFdPollTbl &fds)
+{
+    beginWatchBlackList();
+    /*
+     * Since the first fd is for job processing and might delete other watches,
+     * handle it at last.
+     */
+    tWatchPollTbl::reverse_iterator wit;
+    tFdPollTbl::reverse_iterator fdit;
+    for (wit = watches.rbegin(), fdit = fds.rbegin();
+           wit != watches.rend(); ++wit, ++fdit)
+    {
+        auto w = *wit;
+        if (watchDestroyed(w))
+        {
+            continue;
+        }
+        int32_t events = w->convertRetEvents(fdit->revents);
+        fdit->revents = 0;
+        if (events & (POLLIN))
+        {
+            bool io_error = false;
+            if (events & POLLIN)
+            {
+                try
+                {
+                    w->onInput(io_error);
+                }
+                catch (...)
+                {
+                    LOG_E("CFdEventLoop: Exception received at line %d of file %s!\n", __LINE__, __FILE__);
+                }
+                if (watchDestroyed(w))
+                {
+                    continue;
+                }
+            }
+            if (io_error)
+            {
+            }
+        }
+    }
+    endWatchBlackList();
 }
 
 void CFdEventLoop::dispatch()
@@ -269,6 +341,29 @@ void CFdEventLoop::dispatch()
         LOG_E("CFdEventLoop: Error polling!\n");
         // avoid exhaustive of CPU power
         sysdep_sleep(LOOP_DEFAULT_INTERVAL);
+    }
+}
+
+void CFdEventLoop::dispatchInput(int32_t timeout)
+{
+    tWatchPollTbl watches;
+    tFdPollTbl fds;
+
+    buildInputFdArray(watches, fds);
+    if (fds.empty())
+    {
+        sysdep_sleep(timeout);
+        return;
+    }
+
+    int ret = poll(fds.data(), (int32_t)fds.size(), timeout);
+    if (ret > 0)
+    {
+        processInputWatches(watches, fds);
+    }
+    else if (ret < 0)
+    {
+        sysdep_sleep(timeout);
     }
 }
 
@@ -328,6 +423,26 @@ void CFdEventLoop::uninstallWatches()
     	CSysFdWatch *watch = *wi;
         ++wi;
         removeWatch(watch);
+    }
+}
+
+void CFdEventLoop::beginWatchBlackList()
+{
+    if (!mWatchRecursiveCnt++)
+    {
+        mWatchBlackList.clear();
+    }
+}
+
+void CFdEventLoop::endWatchBlackList()
+{
+    if (mWatchRecursiveCnt)
+    {
+        mWatchRecursiveCnt--;
+    }
+    if (!mWatchRecursiveCnt)
+    {
+        mWatchBlackList.clear();
     }
 }
 

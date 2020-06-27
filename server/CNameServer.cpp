@@ -38,6 +38,7 @@ CNameServer::CNameServer()
 #else
     mNsPort = CNsConfig::getIntNameServerTcpPort();
 #endif
+    mNsName = CNsConfig::getNameServerName();
     mServerSecruity.importSecurity();
     role(FDB_OBJECT_ROLE_NS_SERVER);
     

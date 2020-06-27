@@ -9,8 +9,8 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE := libcommon-base
 
-LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT -DCONFIG_FDB_NO_RTTI
-LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT -DCONFIG_FDB_NO_RTTI -DCONFIG_FDB_MESSAGE_METADATA
+LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT -DCONFIG_FDB_MESSAGE_METADATA
 
 SRC_FILES := 
 SRC_FILES += $(wildcard $(LOCAL_PATH)/fdbus/*.cpp)
@@ -170,6 +170,20 @@ LOCAL_SHARED_LIBRARIES := \
 include $(BUILD_EXECUTABLE)
 
 #=====================================================================================
+#                              build lsclt (list client)                             |
+#=====================================================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE:= lsclt
+LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_SRC_FILES:= \
+                server/main_lc.cpp
+
+LOCAL_SHARED_LIBRARIES := \
+                libcommon-base
+include $(BUILD_EXECUTABLE)
+
+#=====================================================================================
 #                             build logsvc (log service)                             |
 #=====================================================================================
 include $(CLEAR_VARS)
@@ -242,4 +256,32 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_PROTOC_OPTIMIZE_TYPE := full 
 LOCAL_PROTOC_FLAGS := -I.
 
+include $(BUILD_EXECUTABLE)
+
+#=====================================================================================
+#                 build fdbxclient (throughput test client)                          |
+#=====================================================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE:= fdbxclient
+LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_SRC_FILES:= \
+                server/main_xclient.cpp
+
+LOCAL_SHARED_LIBRARIES := \
+                libcommon-base
+include $(BUILD_EXECUTABLE)
+
+#=====================================================================================
+#                 build fdbxserver (throughput test server)                          |
+#=====================================================================================
+include $(CLEAR_VARS)
+LOCAL_MODULE:= fdbxserver
+LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
+LOCAL_SRC_FILES:= \
+                server/main_xserver.cpp
+
+LOCAL_SHARED_LIBRARIES := \
+                libcommon-base
 include $(BUILD_EXECUTABLE)

@@ -617,10 +617,16 @@ sckt::uint TCPSocket::Send(const sckt::byte* data, uint size){
 
     int res;
     do{
-        res = (int)send(CastToSocket(this->socket), reinterpret_cast<const char*>(data), left, MSG_NOSIGNAL | 0 /* MSG_DONTWAIT */);
+        res = (int)send(CastToSocket(this->socket), reinterpret_cast<const char*>(data), left, MSG_NOSIGNAL | MSG_DONTWAIT);
         if(res == M_SOCKET_ERROR){
 #ifdef __WIN32__
             errorCode = WSAGetLastError();
+            if (errorCode == WSAETIMEDOUT)
+            {
+                res = 0;
+                sent = 0;
+                break;
+            }
 #else //linux/unix
             errorCode = errno;
             if ((errorCode == EAGAIN) || (errorCode == EWOULDBLOCK)) {

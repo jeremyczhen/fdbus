@@ -35,9 +35,11 @@ public:
     void addWatch(CSysFdWatch *watch, bool enb);
     void removeWatch(CSysFdWatch *watch);
     void dispatch();
+    void dispatchInput(int32_t timeout);
     bool notify();
     bool init(CBaseWorker *worker);
-protected:
+
+private:
     typedef std::list< CSysFdWatch *> tCFdWatchList;
     typedef std::set<CSysFdWatch *> tWatchTbl;
     typedef std::vector<CSysFdWatch *> tWatchPollTbl;
@@ -46,23 +48,23 @@ protected:
     bool watchDestroyed(CSysFdWatch *watch);
     void addWatchToBlacklist(CSysFdWatch *watch);
     void uninstallWatches();
-    void enableWatchBlackList(tWatchTbl *black_list)
-    {
-        mWatchBlackList = black_list;
-    }
+    void beginWatchBlackList();
+    void endWatchBlackList();
 
-    pollfd *mFds;
     tFdPollTbl mPollFds;
     tCFdWatchList mWatchList;
     tCFdWatchList mWatchWorkingList;
     tWatchPollTbl mPollWatches;
-    tWatchTbl *mWatchBlackList;
-private:
+    tWatchTbl mWatchBlackList;
+    int32_t mWatchRecursiveCnt;
     CNotifyFdWatch *mNotifyWatch;
     CEventFd mEventFd;
     bool mRebuildPollFd;
+    
     void buildFdArray();
+    void buildInputFdArray(tWatchPollTbl &watches, tFdPollTbl &fds);
     void processWatches();
+    void processInputWatches(tWatchPollTbl &watches, tFdPollTbl &fds);
     bool registerWatch(CSysFdWatch *watch, bool enable);
     bool enableWatch(CSysFdWatch *watch, bool enable);
     bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);

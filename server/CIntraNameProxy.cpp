@@ -68,6 +68,7 @@ CIntraNameProxy::CIntraNameProxy()
     , mNotificationCenter(this)
     , mEnableReconnectToNS(true)
 {
+    worker(FDB_CONTEXT);
     mConnectTimer.attach(FDB_CONTEXT, false);
 }
 

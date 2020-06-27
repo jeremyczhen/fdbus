@@ -744,7 +744,15 @@ protected:
     bool invokeSideband(FdbMsgCode_t code
                       , IFdbMsgBuilder &data
                       , int32_t timeout = 0);
+    bool invokeSideband(FdbMsgCode_t code
+                      , const void *buffer = 0
+                      , int32_t size = 0
+                      , int32_t timeout = 0);
     bool sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendSideband(FdbMsgCode_t code
+                    , const void *buffer = 0
+                    , int32_t size = 0);
+    
     virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref)
     {}
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)

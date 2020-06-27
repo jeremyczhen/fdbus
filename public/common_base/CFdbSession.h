@@ -17,6 +17,7 @@
 #ifndef _CFDBSESSION_
 #define _CFDBSESSION_
 
+#include <string>
 #include "CBaseFdWatch.h"
 #include "common_defs.h"
 #include "CFdbMessage.h"
@@ -44,7 +45,7 @@ public:
     bool sendMessage(const uint8_t *buffer, int32_t size);
     bool sendMessage(CBaseJob::Ptr &ref);
     bool sendMessage(CFdbMessage *msg);
-    FdbSessionId_t sid()
+    FdbSessionId_t sid() const
     {
         return mSid;
     }
@@ -56,7 +57,7 @@ public:
     {
         return mContainer;
     }
-    bool internalError()
+    bool internalError() const
     {
         return mInternalError;
     }
@@ -65,7 +66,7 @@ public:
         mInternalError = active;
     }
     void securityLevel(int32_t level);
-    int32_t securityLevel()
+    int32_t securityLevel() const
     {
         return mSecurityLevel;
     }
@@ -73,6 +74,14 @@ public:
     std::string &token()
     {
         return mToken;
+    }
+    const std::string &senderName() const
+    {
+        return mSenderName;
+    }
+    void senderName(const char *name)
+    {
+        mSenderName = name;
     }
     bool hostIp(std::string &host_ip);
     bool peerIp(std::string &host_ip);
@@ -104,6 +113,7 @@ private:
     bool mInternalError;
     int32_t mSecurityLevel;
     std::string mToken;
+    std::string mSenderName;
 };
 
 #endif

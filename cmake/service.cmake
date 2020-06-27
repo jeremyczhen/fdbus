@@ -22,6 +22,10 @@ add_executable(lshost
     ${PACKAGE_SOURCE_ROOT}/server/main_lh.cpp
 )
 
+add_executable(lsclt
+    ${PACKAGE_SOURCE_ROOT}/server/main_lc.cpp
+)
+
 add_executable(logsvc
     ${PACKAGE_SOURCE_ROOT}/server/main_log_server.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
@@ -32,4 +36,12 @@ add_executable(logviewer
     ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
 )
 
-install(TARGETS name_server host_server lssvc lshost logsvc logviewer RUNTIME DESTINATION usr/bin)
+add_executable(fdbxclient
+    ${PACKAGE_SOURCE_ROOT}/server/main_xclient.cpp
+)
+
+add_executable(fdbxserver
+    ${PACKAGE_SOURCE_ROOT}/server/main_xserver.cpp
+)
+
+install(TARGETS name_server host_server lssvc lshost lsclt logsvc logviewer fdbxclient fdbxserver RUNTIME DESTINATION usr/bin)

@@ -19,6 +19,7 @@
 #include <common_base/CFdbSession.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbIfMessageHeader.h>
+#include <common_base/CFdbIfNameServer.h>
 #include <utils/Log.h>
 
 CServerSocket::CServerSocket(CBaseServer *owner
@@ -232,6 +233,11 @@ void CBaseServer::unbind(FdbSocketId_t skid)
 void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto session = FDB_CONTEXT->getSession(msg->session());
+    if (!session)
+    {
+        return;
+    }
     switch (msg->code())
     {
         case FDB_SIDEBAND_AUTH:
@@ -244,11 +250,6 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                 return;
             }
             
-            auto session = FDB_CONTEXT->getSession(msg->session());
-            if (!session)
-            {
-                return;
-            }
             int32_t security_level = FDB_SECURITY_LEVEL_NONE;
             auto token = "";
             if (authen.has_token_list() && !authen.token_list().tokens().empty())
@@ -263,6 +264,56 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             session->token(token);
             LOG_I("CBaseServer: security is set: session: %d, level: %d.\n",
                     msg->session(), security_level);
+        }
+        break;
+        case FDB_SIDEBAND_SESSION_INFO:
+        {
+            NFdbBase::FdbSessionInfo sinfo;
+            CFdbParcelableParser parser(sinfo);
+            if (!msg->deserialize(parser))
+            {
+                msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
+                return;
+            }
+            session->senderName(sinfo.sender_name().c_str());
+        }
+        break;
+        case FDB_SIDEBAND_QUERY_CLIENT:
+        {
+            NFdbBase::FdbMsgClientTable clt_tbl;
+            clt_tbl.set_endpoint_name(name().c_str());
+            clt_tbl.set_server_name(nsName().c_str());
+            auto &containers = getContainer();
+            for (auto socket_it = containers.begin(); socket_it != containers.end(); ++socket_it)
+            {
+                auto container = socket_it->second;
+                if (!container->mConnectedSessionTable.empty())
+                {
+                    // get a snapshot of the table to avoid modification of the table in callback
+                    auto tbl = container->mConnectedSessionTable;
+                    for (auto session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
+                    {
+                        auto session = *session_it;
+                        CFdbSessionInfo sinfo;
+                        session->getSessionInfo(sinfo);
+                        auto *cinfo = clt_tbl.add_client_tbl();
+                        cinfo->set_peer_name(session->senderName().c_str());
+                        std::string addr;
+                        if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
+                        {
+                            addr = sinfo.mSocketInfo.mAddress->mAddr.c_str();
+                        }
+                        else
+                        {
+                            addr = sinfo.mConn->mPeerIp + ":" +
+                                   std::to_string(sinfo.mConn->mPeerPort);
+                        }
+                        cinfo->set_peer_address(addr.c_str());
+                    }
+                }
+            }
+            CFdbParcelableBuilder builder(clt_tbl);
+            msg->replySideband(msg_ref, builder);
         }
         break;
         default:

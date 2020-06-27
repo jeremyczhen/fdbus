@@ -898,3 +898,8 @@ void CBaseWorker::discardQueuedJobs(bool urgent)
     discardJobs(urgent);
 }
 
+void CBaseWorker::dispatchInput(int32_t timeout)
+{
+    mEventLoop->dispatchInput(timeout);
+}
+

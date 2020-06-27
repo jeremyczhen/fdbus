@@ -36,6 +36,8 @@ public:
 
     virtual void dispatch()
     {}
+    virtual void dispatchInput(int32_t timeout)
+    {}
     virtual bool notify()
     {
         return true;

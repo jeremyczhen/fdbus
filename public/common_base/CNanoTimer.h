@@ -25,13 +25,11 @@ public:
 #define INVALID_TIME            (uint64_t)~0
     CNanoTimer()
     {
-        totalTimer_ = 0;
         startTimer_ = 0;
     }
 
     void reset(void)
     {
-        totalTimer_ = 0;
         startTimer_ = 0;
     }
 
@@ -40,51 +38,43 @@ public:
         return sysdep_getsystemtime_nano();
     }
 
-    void startTimer(uint64_t start_time = INVALID_TIME)
+    void start(uint64_t start_time = INVALID_TIME)
     {
         startTimer_ = (start_time == INVALID_TIME) ? getNanoSecTimer() : start_time;
     }
-    void stopTimer(uint64_t stop_time = INVALID_TIME)
+    uint64_t snapshot(uint64_t cur_time = INVALID_TIME)
     {
-        uint64_t end = (stop_time == INVALID_TIME) ? getNanoSecTimer() : stop_time;
-        totalTimer_ += end - startTimer_;
-        startTimer_ = 0;
+        uint64_t end = (cur_time == INVALID_TIME) ? getNanoSecTimer() : cur_time;
+        return end - startTimer_;
     }
-    inline uint64_t getTotalSeconds()
+    inline uint64_t snapshotSeconds(uint64_t cur_time = INVALID_TIME)
     {
-        return totalTimer_ / 1000000000;
+        return snapshot(cur_time) / 1000000000;
     }
-    inline uint64_t getTotalMilliseconds()
+    inline uint64_t snapshotMilliseconds(uint64_t cur_time = INVALID_TIME)
     {
-        return totalTimer_ / 1000000;
+        return snapshot(cur_time) / 1000000;
     }
-    inline uint64_t getTotalMicroseconds()
+    inline uint64_t snapshotMicroseconds(uint64_t cur_time = INVALID_TIME)
     {
-        return totalTimer_ / 1000;
+        return snapshot(cur_time) / 1000;
     }
-    inline uint64_t getTotalNanoseconds()
+    inline uint64_t snapshotNanoseconds(uint64_t cur_time = INVALID_TIME)
     {
-        return totalTimer_;
-    }
-    inline uint64_t getCurrentSeconds()
-    {
-        return (totalTimer_ + (startTimer_ > 0 ? getNanoSecTimer() - startTimer_ : 0)) / 1000000000;
+        return snapshot(cur_time);
     }
 
 private:
     uint64_t startTimer_;
-    uint64_t totalTimer_;
 };
 #else
 struct sNanoTimer
 {
     uint64_t startTimer_;
-    uint64_t totalTimer_;
 };
 
 static inline void createNanoTimer(struct sNanoTimer *timer)
 {
-    timer->totalTimer_ = 0;
     timer->startTimer_ = 0;
 }
 
@@ -99,32 +89,27 @@ static void startNanoTimer(struct sNanoTimer *timer)
 {
     timer->startTimer_ = getNanoSecTimer();
 }
-static void stopNanoTimer(struct sNanoTimer *timer)
+static void snapshotNanoTimer(struct sNanoTimer *timer)
 {
     //assert(startTimer_ > 0);
     uint64_t end = getNanoSecTimer();
-    timer->totalTimer_ += end - timer->startTimer_;
-    timer->startTimer_ = 0;
+    return end - timer->startTimer_;
 }
-static inline uint32_t getTotalSeconds(struct sNanoTimer *timer)
+static inline uint32_t snapshotSeconds(struct sNanoTimer *timer)
 {
-    return timer->totalTimer_ / 1000000000;
+    return snapshotNanoTimer(timer) / 1000000000;
 }
-static inline uint32_t getTotalMilliseconds(struct sNanoTimer *timer)
+static inline uint32_t snapshotMilliseconds(struct sNanoTimer *timer)
 {
-    return timer->totalTimer_ / 1000000;
+    return snapshotNanoTimer(timer) / 1000000;
 }
-static inline uint32_t getTotalMicroseconds(struct sNanoTimer *timer)
+static inline uint32_t snapshotMicroseconds(struct sNanoTimer *timer)
 {
-    return timer->totalTimer_ / 1000;
+    return snapshotNanoTimer(timer) / 1000;
 }
-static inline uint32_t getTotalNanoseconds(struct sNanoTimer *timer)
+static inline uint32_t snapshotNanoseconds(struct sNanoTimer *timer)
 {
-    return timer->totalTimer_;
-}
-static inline uint32_t getCurrentSeconds(struct sNanoTimer *timer)
-{
-    return (timer->totalTimer_ + (timer->startTimer_ > 0 ? getNanoSecTimer() - timer->startTimer_ : 0)) / 1000000000;
+    return snapshotNanoTimer(timer);
 }
 
 #endif

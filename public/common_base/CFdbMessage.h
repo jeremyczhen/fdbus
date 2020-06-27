@@ -74,6 +74,8 @@ enum EFdbSidebandMessage
 {
     FDB_SIDEBAND_AUTH = 0,
     FDB_SIDEBAND_WATCHDOG = 1,
+    FDB_SIDEBAND_SESSION_INFO = 2,
+    FDB_SIDEBAND_QUERY_CLIENT = 3,
     FDB_SIDEBAND_SYSTEM_MAX = 4095,
     FDB_SIDEBAND_USER_MIN = FDB_SIDEBAND_SYSTEM_MAX + 1
 };
@@ -472,7 +474,7 @@ private:
     CFdbMessage(NFdbBase::CFdbMessageHeader &head
                 , CFdbMsgPrefix &prefix
                 , uint8_t *buffer
-                , FdbSessionId_t sid);
+                , CFdbSession *session);
 
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
@@ -598,6 +600,7 @@ private:
     bool invokeSideband(int32_t timeout = 0);
     bool sendSideband();
     static bool replySideband(CBaseJob::Ptr &msg_ref, IFdbMsgBuilder &data);
+    static bool replySideband(CBaseJob::Ptr &msg_ref, const void *buffer = 0, int32_t size = 0);
     void encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
     void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
 
@@ -629,6 +632,7 @@ private:
 
     friend class CFdbSession;
     friend class CFdbBaseObject;
+    friend class CBaseServer;
     friend class CFdbBroadcastMsg;
     friend class CLogProducer;
     friend class CLogPrinter;
@@ -660,9 +664,9 @@ protected:
     CFdbBroadcastMsg(NFdbBase::CFdbMessageHeader &head
                      , CFdbMsgPrefix &prefix
                      , uint8_t *buffer
-                     , FdbSessionId_t sid
+                     , CFdbSession *session 
                      , const char *filter)
-        : CFdbMessage(head, prefix, buffer, sid)
+        : CFdbMessage(head, prefix, buffer, session)
     {
         if (filter)
         {

@@ -470,6 +470,86 @@ private:
     CFdbParcelableArray<FdbMsgServiceInfo> mServiceTbl;
 };
 
+class FdbMsgClientInfo : public IFdbParcelable
+{
+public:
+    const std::string &peer_name() const
+    {
+        return mPeerName;
+    }
+    void set_peer_name(const char *name)
+    {
+        mPeerName = name;
+    }
+    const std::string &peer_address() const
+    {
+        return mPeerAddress;
+    }
+    void set_peer_address(const char *address)
+    {
+        mPeerAddress = address;
+    }
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mPeerName
+                   << mPeerAddress;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mPeerName
+                     >> mPeerAddress;
+    }
+private:
+    std::string mPeerName;
+    std::string mPeerAddress;
+};
+
+class FdbMsgClientTable : public IFdbParcelable
+{
+public:
+    const std::string &endpoint_name() const
+    {
+        return mEndpointName;
+    }
+    void set_endpoint_name(const char *endpoint)
+    {
+        mEndpointName = endpoint;
+    }
+    const std::string &server_name() const
+    {
+        return mServerName;
+    }
+    void set_server_name(const char *name)
+    {
+        mServerName = name;
+    }
+    CFdbParcelableArray<FdbMsgClientInfo> &client_tbl()
+    {
+        return mClientTbl;
+    }
+    FdbMsgClientInfo *add_client_tbl()
+    {
+        return mClientTbl.Add();
+    }
+
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mEndpointName
+                   << mServerName 
+                   << mClientTbl;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mEndpointName
+                     >> mServerName 
+                     >> mClientTbl;
+    }
+private:
+    std::string mEndpointName;
+    std::string mServerName;
+    CFdbParcelableArray<FdbMsgClientInfo> mClientTbl;
+};
+
 }
 
 #endif

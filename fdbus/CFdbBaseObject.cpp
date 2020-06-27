@@ -20,6 +20,7 @@
 #include <common_base/CBaseWorker.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbContext.h>
+#include <common_base/CFdbIfMessageHeader.h>
 #include <utils/Log.h>
 
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
@@ -455,6 +456,15 @@ bool CFdbBaseObject::migrateOnOnlineToWorker(FdbSessionId_t sid, bool is_first, 
 
 void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
 {
+    if (isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT))
+    {
+        // send session info from client to primary object of server
+        NFdbBase::FdbSessionInfo sinfo;
+        sinfo.set_sender_name(mName.c_str());
+        CFdbParcelableBuilder builder(sinfo);
+        sendSideband(FDB_SIDEBAND_SESSION_INFO, builder);
+    }
+
     if (!migrateOnOnlineToWorker(session->sid(), is_first))
     {
         if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
@@ -732,7 +742,7 @@ bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
             delete msg;
             return false;
         }
-        
+
         CBaseJob::Ptr ref(msg);
         bool ret = msg->subscribe(ref, timeout);
         msg_ref = ref;
@@ -1468,6 +1478,21 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
     }
     return msg->invokeSideband(timeout);
 }
+
+bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
+                                  , const void *buffer
+                                  , int32_t size
+                                  , int32_t timeout)
+{
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->invokeSideband(timeout);
+}
+
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
     auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
@@ -1479,3 +1504,13 @@ bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
     return msg->sendSideband();
 }
 
+bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, const void *buffer, int32_t size)
+{
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->sendSideband();
+}

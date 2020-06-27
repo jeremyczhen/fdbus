@@ -98,7 +98,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg)
 CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
                          , CFdbMsgPrefix &prefix
                          , uint8_t *buffer
-                         , FdbSessionId_t sid
+                         , CFdbSession *session
                         )
     : mType(FDB_MT_REPLY)
     , mCode(head.code())
@@ -107,7 +107,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mHeadSize(prefix.mHeadLength)
     , mOffset(0)
     , mExtraSize(prefix.mTotalLength - mPrefixSize - mHeadSize - mPayloadSize)
-    , mSid(sid)
+    , mSid(session->sid())
     , mOid(head.object_id())
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
@@ -119,9 +119,10 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
         LOG_E("CFdbMessage: mExtraSize is less than 0: %d %d %d\n",
                 prefix.mTotalLength, mHeadSize, mPayloadSize);
     }
-    if (head.has_sender_name())
+
+    if (!session->senderName().empty())
     {
-        mSenderName = head.sender_name().c_str();
+        mSenderName = session->senderName();
     }
 };
 
@@ -197,7 +198,7 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
 {
     mType = type;
     mFlag |= MSG_FLAG_REPLIED;
-    if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
+    if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         mFlag &= ~MSG_FLAG_REPLIED;
         LOG_E("CFdbMessage: Fail to send message job to FDB_CONTEXT!\n");
@@ -238,7 +239,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     
     fdb_msg->mType = FDB_MT_REPLY;
     fdb_msg->mFlag |= MSG_FLAG_REPLIED;
-    if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
+    if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         fdb_msg->mFlag &= ~MSG_FLAG_REPLIED;
         LOG_E("CFdbMessage: Fail to send reply job to FDB_CONTEXT!\n");
@@ -255,7 +256,7 @@ bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char 
         return false;
     }
     fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
-    if (!CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref))
+    if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         LOG_E("CFdbMessage: Fail to send status job to FDB_CONTEXT!\n");
         return false;
@@ -404,7 +405,7 @@ bool CFdbMessage::broadcastLogNoQueue()
 bool CFdbMessage::broadcast()
 {
    mType = FDB_MT_BROADCAST;
-   if (!CFdbContext::getInstance()->sendAsyncEndeavor(this))
+   if (!CFdbContext::getInstance()->sendAsync(this))
    {
        LOG_E("CFdbMessage: Fail to send broadcast job to FDB_CONTEXT!\n");
        return false;
@@ -470,14 +471,6 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
     msg_hdr.set_payload_size(mPayloadSize);
 
     encodeDebugInfo(msg_hdr, session);
-    if (mSenderName.empty())
-    {
-        msg_hdr.set_sender_name(session->getEndpointName().c_str());
-    }
-    else
-    {
-        msg_hdr.set_sender_name(mSenderName.c_str());
-    }
 
     if (mType == FDB_MT_BROADCAST)
     {
@@ -802,7 +795,7 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
     {
         auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
         fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
-        CFdbContext::getInstance()->sendAsyncEndeavor(msg_ref);
+        CFdbContext::getInstance()->sendAsync(msg_ref);
     }
 }
 
@@ -819,9 +812,8 @@ void CFdbMessage::parseTimestamp(const CFdbMsgMetadata &metadata
     }
     else
     {
-        timer.startTimer(metadata.mSendTime);
-        timer.stopTimer(metadata.mArriveTime);
-        client_to_server = timer.getTotalMicroseconds();
+        timer.start(metadata.mSendTime);
+        client_to_server = timer.snapshotMicroseconds(metadata.mArriveTime);
     }
 
     if (!metadata.mArriveTime || !metadata.mReplyTime)
@@ -831,9 +823,8 @@ void CFdbMessage::parseTimestamp(const CFdbMsgMetadata &metadata
     else
     {
         timer.reset();
-        timer.startTimer(metadata.mArriveTime);
-        timer.stopTimer(metadata.mReplyTime);
-        server_to_reply = timer.getTotalMicroseconds();
+        timer.start(metadata.mArriveTime);
+        server_to_reply = timer.snapshotMicroseconds(metadata.mReplyTime);
     }
 
     if (!metadata.mReplyTime || !metadata.mReceiveTime)
@@ -843,9 +834,8 @@ void CFdbMessage::parseTimestamp(const CFdbMsgMetadata &metadata
     else
     {
         timer.reset();
-        timer.startTimer(metadata.mReplyTime);
-        timer.stopTimer(metadata.mReceiveTime);
-        reply_to_client = timer.getTotalMicroseconds();
+        timer.start(metadata.mReplyTime);
+        reply_to_client = timer.snapshotMicroseconds(metadata.mReceiveTime);
     }
 
     if (!metadata.mSendTime || !metadata.mReceiveTime)
@@ -855,9 +845,8 @@ void CFdbMessage::parseTimestamp(const CFdbMsgMetadata &metadata
     else
     {
         timer.reset();
-        timer.startTimer(metadata.mSendTime);
-        timer.stopTimer(metadata.mReceiveTime);
-        total = timer.getTotalMicroseconds();
+        timer.start(metadata.mSendTime);
+        total = timer.snapshotMicroseconds(metadata.mReceiveTime);
     }
 }
 
@@ -1093,3 +1082,16 @@ bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref, IFdbMsgBuilder &data)
     return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
 }
 
+bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref, const void *buffer, int32_t size)
+{
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
+    {
+        return false;
+    }
+    if (!fdb_msg->serialize((uint8_t *)buffer, size))
+    {
+        return false;
+    }
+    return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
+}

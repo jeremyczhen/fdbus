@@ -92,19 +92,6 @@ public:
     {
         mPayloadSize = payload_size;
     }
-    bool has_sender_name() const
-    {
-        return !!(mOptions & mMaskSenderName);
-    }
-    const std::string &sender_name() const
-    {
-        return mSenderName;
-    }
-    void set_sender_name(const char *sender_name)
-    {
-        mSenderName = sender_name;
-        mOptions |= mMaskSenderName;
-    }
     bool has_broadcast_filter() const
     {
         return !!(mOptions & mMaskHeadFilter);
@@ -154,10 +141,6 @@ public:
                    << mObjId
                    << mPayloadSize
                    << mOptions;
-        if (mOptions & mMaskSenderName)
-        {
-            serializer << mSenderName;
-        }
         if (mOptions & mMaskHeadFilter)
         {
             serializer << mFilter;
@@ -183,10 +166,6 @@ public:
                      >> mPayloadSize
                      >> mOptions;
         mType = (EFdbMessageType)msg_type;
-        if (mOptions & mMaskSenderName)
-        {
-            deserializer >> mSenderName;
-        }
         if (mOptions & mMaskHeadFilter)
         {
             deserializer >> mFilter;
@@ -213,7 +192,6 @@ private:
     uint64_t mSendArriveTime;
     uint64_t mReplyTime;
     uint8_t mOptions;
-        static const uint8_t mMaskSenderName = 1 << 0;
         static const uint8_t mMaskHeadFilter = 1 << 1;
         static const uint8_t mMaskSenderArriveTime = 1 << 2;
         static const uint8_t mMaskReplyTime = 1 << 3;
@@ -522,6 +500,29 @@ private:
     FdbMsgTokens mTokenList;
     uint8_t mOptions;
         static const uint8_t mMaskTokenList = 1 << 0;
+};
+
+class FdbSessionInfo : public IFdbParcelable
+{
+public:
+    const std::string &sender_name() const
+    {
+        return mSenderName;
+    }
+    void set_sender_name(const char *name)
+    {
+        mSenderName = name;
+    }
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mSenderName;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mSenderName;
+    }
+private:
+    std::string mSenderName;
 };
 }
 

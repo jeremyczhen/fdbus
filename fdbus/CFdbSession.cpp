@@ -66,7 +66,7 @@ CFdbSession::~CFdbSession()
 bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
 {
     int32_t retries = FDB_SEND_RETRIES;
-    while ((size > 0) && (retries > 0))
+    while (1)
     {
         int32_t cnt = mSocket->send((uint8_t *)buffer, size);
         if (cnt < 0)
@@ -76,8 +76,13 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         buffer += cnt;
         size -= cnt;
         retries--;
+        if ((size <= 0) || (retries <= 0))
+        {
+            break;
+        }
+        FDB_CONTEXT->dispatchInput(10);
     }
-    return retries > 0;
+    return size <= 0;
 }
 
 bool CFdbSession::sendMessage(CFdbMessage *msg)
@@ -256,16 +261,15 @@ void CFdbSession::onHup()
 void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
                             CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto msg = new CFdbMessage(head, prefix, buffer, this);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
-    msg->type(FDB_MT_REPLY);
     msg->checkLogEnabled(mContainer->owner(), false);
     if (object)
     {
         msg->decodeDebugInfo(head, this);
-        if (msg->type() == FDB_MT_SIDEBAND_REQUEST)
+        if (head.type() == FDB_MT_SIDEBAND_REQUEST)
         {
             object->onSidebandInvoke(msg_ref);
             // check if auto-reply is required
@@ -310,7 +314,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
             delete[] buffer;
             return;
         }
-        
+
         auto object = mContainer->owner()->getObject(msg, false);
         if (msg && object)
         {
@@ -323,7 +327,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
                 {
                     object->doReply(msg_ref);
                 }
-                else if (head.type() == FDB_MT_SIDEBAND_REQUEST)
+                else if (head.type() == FDB_MT_SIDEBAND_REPLY)
                 {
                     object->onSidebandReply(msg_ref);
                 }
@@ -362,7 +366,7 @@ void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
     {
         filter = head.broadcast_filter().c_str();
     }
-    auto msg = new CFdbBroadcastMsg(head, prefix, buffer, mSid, filter);
+    auto msg = new CFdbBroadcastMsg(head, prefix, buffer, this, filter);
     auto object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
     if (object)
@@ -377,7 +381,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
                                  uint8_t *buffer, bool subscribe)
 {
     auto object_id = head.object_id();
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto msg = new CFdbMessage(head, prefix, buffer, this);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
     
@@ -476,7 +480,7 @@ void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head,
                            CFdbMessage::CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto msg = new CFdbMessage(head, prefix, buffer, this);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 

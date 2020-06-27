@@ -69,6 +69,7 @@ private:
 
     friend class CBaseEndpoint;
     friend class CFdbSession;
+    friend class CBaseServer;
 };
 
 #endif

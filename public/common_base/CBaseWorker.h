@@ -167,6 +167,8 @@ public:
         return urgent ? mUrgentJobQueue.sizeLimit() : mNormalJobQueue.sizeLimit();
     }
 
+    void dispatchInput(int32_t timeout);
+
 protected:
     /*
      * called after job queue is initialized but thread is not started. You can
