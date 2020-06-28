@@ -66,7 +66,7 @@ public:
         uint64_t inst_data_rate = mIntervalBytesSent / interval_s;
         uint64_t avg_trans_rate = mTotalRequest / total_s;
         uint64_t inst_trans_rate = mIntervalRequest / interval_s;
-        uint64_t pending_req = (mTotalRequest < mTotalReply) ? 0 : (mTotalRequest - mTotalReply);
+        uint64_t pending_req = fdb_bi_direction ? ((mTotalRequest < mTotalReply) ? 0 : (mTotalRequest - mTotalReply)) : 0;
         uint64_t avg_delay = mTotalReply ? mTotalDelay / mTotalReply : 0;
         
         printf("%12u B/s %12u B/s %8u Req/s %8u Req/s %8u %6u %10u us %10u us\n",
@@ -238,6 +238,11 @@ void CXTestJob::run(CBaseWorker *worker, Ptr &ref)
             fdb_xtest_client->sendData();
         }
     }
+    if (fdb_delay)
+    {
+        sysdep_usleep(fdb_delay);
+    }
+
     CBaseWorker *peer_worker;
     if (fdb_worker_A->isSelf())
     {
@@ -246,10 +251,6 @@ void CXTestJob::run(CBaseWorker *worker, Ptr &ref)
     else
     {
         peer_worker = fdb_worker_A;
-    }
-    if (fdb_delay)
-    {
-        sysdep_sleep(fdb_delay);
     }
 
     peer_worker->sendAsync(new CXTestJob());
@@ -307,7 +308,7 @@ int main(int argc, char **argv)
         std::cout << "Usage: fdbxclient[ -b block size][ -s burst size][-d delay][ -o]" << std::endl;
         std::cout << "    -b block size: specify size of date sent for each request" << std::endl;
         std::cout << "    -s burst size: specify how many requests are sent in batch for a burst" << std::endl;
-        std::cout << "    -d delay: specify delay between two bursts" << std::endl;
+        std::cout << "    -d delay: specify delay between two bursts in micro second" << std::endl;
         std::cout << "    -u: if not specified, dual-way (request-reply) are tested; otherwise only test one way (request)" << std::endl;
         exit(0);
     }

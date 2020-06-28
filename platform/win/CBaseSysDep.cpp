@@ -70,7 +70,14 @@ void sysdep_sleep
 )
 {
     Sleep(static_cast<DWORD>(msecTimeout));
-    return;
+}
+
+void sysdep_usleep
+(
+    uint32_t microsecTimeout
+)
+{
+    Sleep(static_cast<DWORD>(microsecTimeout / 1000));
 }
 
 int poll(pollfd *fds, int n_fds, int timeout_milliseconds)

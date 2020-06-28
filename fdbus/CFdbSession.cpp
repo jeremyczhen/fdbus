@@ -24,6 +24,7 @@
 
 #define FDB_SEND_RETRIES 65535
 #define FDB_RECV_RETRIES 65535
+#define FDB_SEND_DELAY 1
 
 CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CSocketImp *socket)
     : CBaseFdWatch(socket->getFd(), POLLIN | POLLHUP | POLLERR)
@@ -80,7 +81,7 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         {
             break;
         }
-        FDB_CONTEXT->dispatchInput(10);
+        FDB_CONTEXT->dispatchInput(FDB_SEND_DELAY);
     }
     return size <= 0;
 }

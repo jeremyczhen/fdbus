@@ -97,6 +97,7 @@ extern "C"
 #endif
 
 void sysdep_sleep(uint32_t msecTimeout);
+void sysdep_usleep(uint32_t microsecTimeout);
 // Returns time in msec since system started.
 uint64_t sysdep_getsystemtime_milli();
 uint64_t sysdep_getsystemtime_nano();

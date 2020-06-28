@@ -57,7 +57,14 @@ void sysdep_sleep
 )
 {
     static_cast<void>(usleep(static_cast<useconds_t>(msecTimeout * 1000U)));
-    return;
+}
+
+void sysdep_usleep
+(
+    uint32_t microsecTimeout
+)
+{
+    static_cast<void>(usleep(static_cast<useconds_t>(microsecTimeout)));
 }
 
 void sysdep_gethostname(char *name, int32_t size)
