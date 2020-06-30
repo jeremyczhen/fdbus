@@ -214,7 +214,7 @@ public:
     {
         uint8_t value = 0;
         deserializer >> value;
-        mValue = value;
+        mValue = !!value;
     }
     std::ostringstream &format(std::ostringstream &stream) const
     {

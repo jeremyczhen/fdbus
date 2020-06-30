@@ -81,7 +81,7 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         {
             break;
         }
-        FDB_CONTEXT->dispatchInput(FDB_SEND_DELAY);
+        worker()->dispatchInput(FDB_SEND_DELAY);
     }
     return size <= 0;
 }

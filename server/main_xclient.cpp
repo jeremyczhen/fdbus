@@ -305,7 +305,7 @@ int main(int argc, char **argv)
         std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
                                       << FDB_VERSION_MINOR << "."
                                       << FDB_VERSION_BUILD << std::endl;
-        std::cout << "Usage: fdbxclient[ -b block size][ -s burst size][-d delay][ -o]" << std::endl;
+        std::cout << "Usage: fdbxclient[ -b block size][ -s burst size][-d delay][ -u]" << std::endl;
         std::cout << "    -b block size: specify size of date sent for each request" << std::endl;
         std::cout << "    -s burst size: specify how many requests are sent in batch for a burst" << std::endl;
         std::cout << "    -d delay: specify delay between two bursts in micro second" << std::endl;
