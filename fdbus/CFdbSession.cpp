@@ -22,8 +22,8 @@
 #include <utils/Log.h>
 #include <common_base/CFdbIfMessageHeader.h>
 
-#define FDB_SEND_RETRIES 65535
-#define FDB_RECV_RETRIES 65535
+#define FDB_SEND_RETRIES (1024 * 10)
+#define FDB_RECV_RETRIES 256
 #define FDB_SEND_DELAY 1
 
 CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CSocketImp *socket)

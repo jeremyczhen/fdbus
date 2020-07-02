@@ -623,12 +623,10 @@ private:
     std::string mSenderName;
     std::string mStringData;
 
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
     uint64_t mSendTime;     // the time when message is sent from client
     uint64_t mArriveTime;   // the time when message is arrived at server
     uint64_t mReplyTime;    // the time when message is replied by server
     uint64_t mReceiveTime;     // the time when message is received by client
-#endif
 
     friend class CFdbSession;
     friend class CFdbBaseObject;

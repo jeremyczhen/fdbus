@@ -515,11 +515,13 @@ void CFdbMessage::freeRawBuffer()
 bool CFdbMessage::allocCopyRawBuffer(const void *src, int32_t payload_size)
 {
     int32_t total_size = maxReservedSize() + payload_size + mExtraSize;
-    mBuffer = new uint8_t[total_size];
+    uint8_t *buffer = new uint8_t[total_size];
     if (src)
     {
-        memcpy(mBuffer +  maxReservedSize(), src, payload_size);
+        memcpy(buffer +  maxReservedSize(), src, payload_size);
     }
+    releaseBuffer();
+    mBuffer = buffer;
     return true;
 }
 
@@ -532,7 +534,6 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
     {
         checkLogEnabled(object);
     }
-    releaseBuffer();
     
     mFlag |= MSG_FLAG_EXTERNAL_BUFFER;
     int32_t size = data.build();
@@ -571,7 +572,6 @@ bool CFdbMessage::serialize(const void *buffer, int32_t size, const CFdbBaseObje
     {
         checkLogEnabled(object);
     }
-    releaseBuffer();
     
     mFlag |= MSG_FLAG_EXTERNAL_BUFFER;
     mPayloadSize = size;

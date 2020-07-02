@@ -128,7 +128,7 @@ public:
     /*
      * Return event loop of the worker. Don't call it for most of time.
      */
-    CBaseEventLoop *getLoop()
+    CBaseEventLoop *getLoop() const
     {
         return mEventLoop;
     }
@@ -162,9 +162,14 @@ public:
             mNormalJobQueue.sizeLimit(size);
         }
     }
-    uint32_t jobQueueSizeLimit(bool urgent = false)
+    uint32_t jobQueueSizeLimit(bool urgent = false) const
     {
         return urgent ? mUrgentJobQueue.sizeLimit() : mNormalJobQueue.sizeLimit();
+    }
+
+    uint32_t jobQueueSize(bool urgent = false) const
+    {
+        return urgent ? mUrgentJobQueue.size() : mNormalJobQueue.size();
     }
 
     void dispatchInput(int32_t timeout);

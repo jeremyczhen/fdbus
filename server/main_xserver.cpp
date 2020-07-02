@@ -29,8 +29,8 @@ public:
         static bool title_printed = false;
         if (!title_printed)
         {
-            printf("%12s       %12s     %8s     %8s\n",
-                   "Avg Data Rate", "Inst Data Rate", "Avg Trans", "Inst Trans");
+            printf("%12s       %12s     %8s     %8s %8s\n",
+                   "Avg Data Rate", "Inst Data Rate", "Avg Trans", "Inst Trans", "Pending Rep");
             title_printed = true;
         }
         uint64_t interval_s = mIntervalNanoTimer.snapshotSeconds();
@@ -43,9 +43,10 @@ public:
         uint64_t avg_trans_rate = mTotalRequest / total_s;
         uint64_t inst_trans_rate = mIntervalRequest / interval_s;
 
-        printf("%12u B/s %12u B/s %8u Req/s %8u Req/s\n",
+        printf("%12u B/s %12u B/s %8u Req/s %8u Req/s %8u\n",
                 (uint32_t)avg_data_rate, (uint32_t)inst_data_rate,
-                (uint32_t)avg_trans_rate, (uint32_t)inst_trans_rate);
+                (uint32_t)avg_trans_rate, (uint32_t)inst_trans_rate,
+                FDB_CONTEXT->jobQueueSize());
         
         resetInterval();
     }
