@@ -662,7 +662,7 @@ sckt::uint TCPSocket::Recv(sckt::byte* buf, uint maxSize){
     int errorCode = 0;
     
     do{
-        len = (int)recv(CastToSocket(this->socket), reinterpret_cast<char *>(buf), maxSize, MSG_DONTWAIT);
+        len = (int)recv(CastToSocket(this->socket), reinterpret_cast<char *>(buf), maxSize, 0/*MSG_DONTWAIT*/);
         if(len == M_SOCKET_ERROR){
 #ifdef __WIN32__
             errorCode = WSAGetLastError();

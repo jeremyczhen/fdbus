@@ -22,7 +22,7 @@
 #define FDB_LOG_TAG "FDBTEST"
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
-#include "CFdbProtoMsgBuilder.h"
+#include <common_base/CFdbProtoMsgBuilder.h>
 
 #define OBJ_FROM_SERVER_TO_CLIENT 1
 

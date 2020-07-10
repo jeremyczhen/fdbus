@@ -26,9 +26,10 @@ public:
     {
         return mSerializer.bufferSize();
     }
-    void toBuffer(uint8_t *buffer, int32_t size)
+    bool toBuffer(uint8_t *buffer, int32_t size)
     {
         mSerializer.toBuffer(buffer, size);
+        return true;
     }
     CFdbSimpleSerializer &serializer()
     {

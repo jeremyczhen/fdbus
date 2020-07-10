@@ -26,7 +26,7 @@ public:
     CFdbCJsonMsgBuilder(const cJSON *message);
     ~CFdbCJsonMsgBuilder();
     int32_t build();
-    void toBuffer(uint8_t *buffer, int32_t size);
+    bool toBuffer(uint8_t *buffer, int32_t size);
     bool toString(std::string &msg_txt) const;
     
 private:

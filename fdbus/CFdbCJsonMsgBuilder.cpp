@@ -35,7 +35,7 @@ int32_t CFdbCJsonMsgBuilder::build()
     return mSize;
 }
 
-void CFdbCJsonMsgBuilder::toBuffer(uint8_t *buffer, int32_t size)
+bool CFdbCJsonMsgBuilder::toBuffer(uint8_t *buffer, int32_t size)
 {
     int32_t s = size;
     if (size > mSize)
@@ -46,6 +46,7 @@ void CFdbCJsonMsgBuilder::toBuffer(uint8_t *buffer, int32_t size)
     {
         strncpy((char *)buffer, mJson, s);
     }
+    return true;
 }
 
 bool CFdbCJsonMsgBuilder::toString(std::string &msg_txt) const

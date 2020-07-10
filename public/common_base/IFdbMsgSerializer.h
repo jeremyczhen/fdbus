@@ -24,8 +24,9 @@ public:
     {
         return -1;
     }
-    virtual void toBuffer(uint8_t *buffer, int32_t size)
+    virtual bool toBuffer(uint8_t *buffer, int32_t size)
     {
+        return true;
     }
     virtual ~IFdbMsgBuilder()
     {

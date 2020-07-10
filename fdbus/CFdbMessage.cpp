@@ -493,7 +493,10 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
     int32_t prefix_offset = head_offset - mPrefixSize;
     mOffset = prefix_offset;
 
-    builder.toBuffer(mBuffer + head_offset, head_size);
+    if (!builder.toBuffer(mBuffer + head_offset, head_size))
+    {
+        return false;
+    }
 
     // Update offset and head size according to actual head size
     CFdbMsgPrefix prefix(getRawDataSize(), mHeadSize);
@@ -544,7 +547,10 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
     mPayloadSize = size;
     if (allocCopyRawBuffer(0, mPayloadSize))
     {
-        data.toBuffer(mBuffer + maxReservedSize(), mPayloadSize);
+        if (!data.toBuffer(mBuffer + maxReservedSize(), mPayloadSize))
+        {
+            return false;
+        }
     }
 
     if (object)

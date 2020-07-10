@@ -224,7 +224,6 @@ LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 example/fdb_test_client.cpp \
-                example/CFdbProtoMsgBuilder.cpp \
                 $(FDB_PROTO_DIR)/common.base.Example.proto
 
 LOCAL_SHARED_LIBRARIES := \
@@ -246,7 +245,6 @@ LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
                 example/fdb_test_server.cpp \
-                example/CFdbProtoMsgBuilder.cpp \
                 $(FDB_PROTO_DIR)/common.base.Example.proto
 
 LOCAL_SHARED_LIBRARIES := \
