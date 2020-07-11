@@ -45,12 +45,6 @@ private:
     typedef std::vector<CSysFdWatch *> tWatchPollTbl;
     typedef std::vector<pollfd> tFdPollTbl;
 
-    bool watchDestroyed(CSysFdWatch *watch);
-    void addWatchToBlacklist(CSysFdWatch *watch);
-    void uninstallWatches();
-    void beginWatchBlackList();
-    void endWatchBlackList();
-
     tFdPollTbl mPollFds;
     tCFdWatchList mWatchList;
     tCFdWatchList mWatchWorkingList;
@@ -61,6 +55,12 @@ private:
     CEventFd mEventFd;
     bool mRebuildPollFd;
     
+    bool watchDestroyed(CSysFdWatch *watch);
+    void addWatchToBlacklist(CSysFdWatch *watch);
+    void uninstallWatches();
+    void beginWatchBlackList();
+    void endWatchBlackList();
+
     void buildFdArray();
     void buildInputFdArray(tWatchPollTbl &watches, tFdPollTbl &fds);
     void processWatches();

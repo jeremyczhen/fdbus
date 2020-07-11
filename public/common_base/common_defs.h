@@ -74,6 +74,15 @@ inline To fdb_dynamic_cast_if_available(From from) {
 #else
   return dynamic_cast<To>(from);
 #endif
+
+#define fdb_remove_value_from_container(_container, _value) do { \
+    auto it = std::find((_container).begin(), (_container).end(), _value); \
+    if (it != (_container).end()) \
+    { \
+        (_container).erase(it); \
+    } \
+} while (0)
+
 }
 #endif
 

@@ -59,18 +59,18 @@ private:
     typedef std::list< CSysLoopTimer *> tLoopTimerList;
     typedef std::set<CSysLoopTimer *> tTimerTbl;
 
+    tLoopTimerList mTimerList;
+    tLoopTimerList mTimerWorkingList;
+    tTimerTbl mTimerBlackList;
+    int32_t mTimerRecursiveCnt;
+
     bool timerDestroyed(CSysLoopTimer *timer);
     void addTimerToBlacklist(CSysLoopTimer *timer);
     void uninstallTimers();
-    void enableTimerBlackList(tTimerTbl *black_list)
-    {
-        mTimerBlackList = black_list;
-    }
 
-    tLoopTimerList mTimerList;
-    tLoopTimerList mTimerWorkingList;
-    tTimerTbl *mTimerBlackList;
-    
+    void beginTimerBlackList();
+    void endTimerBlackList();
+
     friend CSysLoopTimer;
 };
 

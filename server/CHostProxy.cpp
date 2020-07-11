@@ -22,6 +22,7 @@
 #include <utils/Log.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
+#include <algorithm>
 
 #define FDB_HOST_NAME_MAX 1024
 
@@ -420,7 +421,7 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
         dst_pool.insert(dst_pool.end(), src_pool.begin(), src_pool.end());
         
     }
-    query->mPendingReqTbl->remove(query->mHostIp);
+    fdb_remove_value_from_container(*(query->mPendingReqTbl), query->mHostIp);
     
     for (auto it = query->mPendingReqTbl->begin(); it != query->mPendingReqTbl->end();)
     {

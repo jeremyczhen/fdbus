@@ -20,6 +20,8 @@
 #include <common_base/CBaseSysDep.h>
 #include <common_base/CBaseEventLoop.h>
 #include <common_base/CSysLoopTimer.h>
+#include <algorithm>
+#include <common_base/common_defs.h>
 
 /*-----------------------------------------------------------------------------
  * CLASS IMPLEMENTATIONS
@@ -41,7 +43,8 @@ void CSysLoopTimer::enable(bool enb, uint64_t time_start, int32_t init_value)
 {
     if (mEnable)
     {
-        mEventLoop->mTimerWorkingList.remove(this);
+        fdb_remove_value_from_container(mEventLoop->mTimerWorkingList, this);
+        mEnable = false;
     }
 
     if (enb)
@@ -72,8 +75,8 @@ void CSysLoopTimer::enable(bool enb, uint64_t time_start, int32_t init_value)
             }
         }
         mEventLoop->mTimerWorkingList.insert(ti, this);
+        mEnable = true;
     }
-    mEnable = enb;
 }
 
 void CSysLoopTimer::config(EEnable enb, EEnable rpt, int32_t interval, int32_t init_value)
@@ -103,7 +106,7 @@ void CSysLoopTimer::config(EEnable enb, EEnable rpt, int32_t interval, int32_t i
 }
 
 CBaseEventLoop::CBaseEventLoop()
-    : mTimerBlackList(0)
+    : mTimerRecursiveCnt(0)
 {
 }
 
@@ -114,7 +117,7 @@ CBaseEventLoop::~CBaseEventLoop()
 
 bool CBaseEventLoop::timerDestroyed(CSysLoopTimer *timer)
 {
-    if (mTimerBlackList && (mTimerBlackList->find(timer) != mTimerBlackList->end()))
+    if ((mTimerBlackList.find(timer) != mTimerBlackList.end()))
     {
         LOG_I("CBaseEventLoop: Timer is destroyed inside callback.\n");
         return true;
@@ -141,16 +144,13 @@ void CBaseEventLoop::removeTimer(CSysLoopTimer *timer)
 {
     addTimerToBlacklist(timer);
     timer->enable(false);
-    mTimerList.remove(timer);
+    fdb_remove_value_from_container(mTimerList, timer);
     timer->eventloop(0);
 }
 
 void CBaseEventLoop::addTimerToBlacklist(CSysLoopTimer *timer)
 {
-    if (mTimerBlackList)
-    {
-        mTimerBlackList->insert(timer);
-    }
+    mTimerBlackList.insert(timer);
 }
 
 void CBaseEventLoop::uninstallTimers()
@@ -183,6 +183,26 @@ int32_t CBaseEventLoop::getMostRecentTime()
     return wait_time;
 }
 
+void CBaseEventLoop::beginTimerBlackList()
+{
+    if (!mTimerRecursiveCnt++)
+    {
+        mTimerBlackList.clear();
+    }
+}
+
+void CBaseEventLoop::endTimerBlackList()
+{
+    if (mTimerRecursiveCnt)
+    {
+        mTimerRecursiveCnt--;
+    }
+    if (!mTimerRecursiveCnt)
+    {
+        mTimerBlackList.clear();
+    }
+}
+
 void CBaseEventLoop::processTimers()
 {
     uint64_t now_millis = sysdep_getsystemtime_milli();
@@ -200,8 +220,7 @@ void CBaseEventLoop::processTimers()
     }
     if (!tos.empty())
     {
-        tTimerTbl timer_black_list;
-        enableTimerBlackList(&timer_black_list);
+        beginTimerBlackList();
         for (auto ti = tos.begin(); ti != tos.end(); ++ti)
         {
             (*ti)->enable((*ti)->repeat(), now_millis);
@@ -226,7 +245,7 @@ void CBaseEventLoop::processTimers()
                 }
             }
         }
-        enableTimerBlackList(0);
+        endTimerBlackList();
     }
 }
 

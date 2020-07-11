@@ -398,7 +398,7 @@ bool CFdEventLoop::addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool
     {
         if (wi != wlist.end())
         {
-            wlist.remove(watch);
+            wlist.erase(wi);
             did = true;
         }
     }

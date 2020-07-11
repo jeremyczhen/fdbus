@@ -18,6 +18,7 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
 #include <utils/Log.h>
+#include <algorithm>
 
 CFdbSessionContainer::CFdbSessionContainer(FdbSocketId_t skid
         , CBaseEndpoint *owner)
@@ -65,7 +66,7 @@ void CFdbSessionContainer::addSession(CFdbSession *session)
 
 void CFdbSessionContainer::removeSession(CFdbSession *session)
 {
-    mConnectedSessionTable.remove(session);
+    fdb_remove_value_from_container(mConnectedSessionTable, session);
 }
 
 void CFdbSessionContainer::callSessionDestroyHook(CFdbSession *session)
