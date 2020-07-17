@@ -12,25 +12,44 @@ LOCAL_MODULE := libcommon-base
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT -DCONFIG_FDB_NO_RTTI -DCONFIG_FDB_MESSAGE_METADATA
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\" -DCONFIG_DEBUG_LOG -DCONFIG_SOCKET_PEERCRED -DCONFIG_SOCKET_CONNECT_TIMEOUT=0 -DCONFIG_LOG_TO_STDOUT -DCONFIG_FDB_MESSAGE_METADATA
 
-SRC_FILES := 
-SRC_FILES += $(wildcard $(LOCAL_PATH)/fdbus/*.cpp)
-SRC_FILES += $(wildcard $(LOCAL_PATH)/platform/linux/*.cpp)
-SRC_FILES += $(wildcard $(LOCAL_PATH)/platform/socket/*.cpp)
-SRC_FILES += $(wildcard $(LOCAL_PATH)/platform/socket/*/*.cpp)
-SRC_FILES += $(wildcard $(LOCAL_PATH)/security/*.cpp)
-SRC_FILES += $(wildcard $(LOCAL_PATH)/utils/*.cpp)
-SRC_FILES += $(wildcard $(LOCAL_PATH)/worker/*.cpp)
+SRC_FILES := fdbus/CBaseClient.cpp \
+             fdbus/CFdbBaseObject.cpp \
+             fdbus/CFdbMessage.cpp \
+             fdbus/CFdbSimpleSerializer.cpp \
+             fdbus/CBaseEndpoint.cpp \
+             fdbus/CFdbCJsonMsgBuilder.cpp  \
+             fdbus/CFdbSessionContainer.cpp \
+             fdbus/CLogProducer.cpp \
+             fdbus/CBaseServer.cpp \
+             fdbus/CFdbContext.cpp \
+             fdbus/CFdbSession.cpp \
+             platform/CEventFd_eventfd.cpp \
+             platform/linux/CBaseMutexLock.cpp \
+             platform/linux/CBasePipe.cpp \
+             platform/linux/CBaseSemaphore.cpp \
+             platform/linux/CBaseSysDep.cpp \
+             platform/linux/CBaseThread.cpp \
+             platform/socket/CBaseSocketFactory.cpp \
+             platform/socket/linux/CLinuxSocket.cpp \
+             platform/socket/sckt-0.5/sckt.cpp \
+             security/CApiSecurityConfig.cpp \
+             security/CFdbToken.cpp \
+             security/CFdbusSecurityConfig.cpp \
+             security/CHostSecurityConfig.cpp \
+             security/CServerSecurityConfig.cpp \
+             utils/fdb_option_parser.cpp \
+             worker/CBaseEventLoop.cpp \
+             worker/CBaseWorker.cpp \
+             worker/CFdEventLoop.cpp \
+             worker/CThreadEventLoop.cpp \
+             server/CBaseNameProxy.cpp \
+             server/CIntraNameProxy.cpp \
+             security/cJSON/cJSON.c
 
-LOCAL_SRC_FILES := $(SRC_FILES:$(LOCAL_PATH)/%=%)
-
-LOCAL_SRC_FILES += server/CBaseNameProxy.cpp \
-                   server/CIntraNameProxy.cpp \
-                   security/cJSON/cJSON.c
+LOCAL_SRC_FILES := $(SRC_FILES)
 
 FDB_PROTO_DIR := example/idl
-FDB_IDL_GEN_DIR := $(LOCAL_PATH)/$(FDB_PROTO_DIR)
-
-LOCAL_SRC_FILES += platform/CEventFd_eventfd.cpp
+FDB_IDL_GEN_DIR := vendor/bosch/common-base/$(FDB_PROTO_DIR)
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
                    $(LOCAL_PATH)/public
@@ -76,9 +95,7 @@ include $(BUILD_JAVA_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_SDK_VERSION := current
 LOCAL_MODULE := fdbus-java-client
-LOCAL_PROTOC_OPTIMIZE_TYPE := lite 
-LOCAL_PROTOC_FLAGS := -Iidl
-LOCAL_SOURCE_FILES_ALL_GENERATED := true
+LOCAL_PROTOC_OPTIMIZE_TYPE := lite
 LOCAL_SRC_FILES := jni/test/MediaClient.java \
             jni/test/FdbusProtoBuilder.java \
             jni/test/CPerson.java \
@@ -93,9 +110,7 @@ include $(BUILD_JAVA_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_SDK_VERSION := current
 LOCAL_MODULE := fdbus-java-server
-LOCAL_PROTOC_OPTIMIZE_TYPE := lite 
-LOCAL_PROTOC_FLAGS := -Iidl
-LOCAL_SOURCE_FILES_ALL_GENERATED := true
+LOCAL_PROTOC_OPTIMIZE_TYPE := lite
 LOCAL_SRC_FILES := jni/test/MediaServer.java \
             jni/test/FdbusProtoBuilder.java \
             jni/test/CPerson.java \
@@ -187,7 +202,7 @@ include $(BUILD_EXECUTABLE)
 #                             build logsvc (log service)                             |
 #=====================================================================================
 include $(CLEAR_VARS)
-LOCAL_MODULE:= logsvc 
+LOCAL_MODULE:= logsvc
 LOCAL_CPPFLAGS := -frtti -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
@@ -214,12 +229,12 @@ LOCAL_SHARED_LIBRARIES := \
                 libcommon-base
 include $(BUILD_EXECUTABLE)
 
+FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_GEN_DIR)/common.base.Example.pb.h\>
 #=====================================================================================
 #                      build fdbtest_client (native test)                            |
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= fdbtest_client
-FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_GEN_DIR)/common.base.Example.pb.h\>
 LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDBUS_PROTO_FULL_FEATURE -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
@@ -230,8 +245,7 @@ LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full \
                 libcommon-base
 
-LOCAL_PROTOC_OPTIMIZE_TYPE := full 
-LOCAL_PROTOC_FLAGS := -I.
+LOCAL_PROTOC_OPTIMIZE_TYPE := full
 
 include $(BUILD_EXECUTABLE)
 
@@ -240,7 +254,6 @@ include $(BUILD_EXECUTABLE)
 #=====================================================================================
 include $(CLEAR_VARS)
 LOCAL_MODULE:= fdbtest_server
-FDB_IDL_EXAMPLE_H = \<$(FDB_IDL_GEN_DIR)/common.base.Example.pb.h\>
 LOCAL_CPPFLAGS := -fexceptions -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG -DFDBUS_PROTO_FULL_FEATURE -DFDB_IDL_EXAMPLE_H=$(FDB_IDL_EXAMPLE_H)
 LOCAL_CFLAGS := -Wno-unused-parameter -D__LINUX__ -DCONFIG_DEBUG_LOG
 LOCAL_SRC_FILES:= \
@@ -251,8 +264,7 @@ LOCAL_SHARED_LIBRARIES := \
                 libprotobuf-cpp-full \
                 libcommon-base
 
-LOCAL_PROTOC_OPTIMIZE_TYPE := full 
-LOCAL_PROTOC_FLAGS := -I.
+LOCAL_PROTOC_OPTIMIZE_TYPE := full
 
 include $(BUILD_EXECUTABLE)
 
