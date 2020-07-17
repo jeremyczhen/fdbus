@@ -46,6 +46,7 @@ FDB_PROTO_DIR = "example/idl"
 FDB_IDL_GEN_DIR = "vendor/YOUR_COMPANY_NAME/fdbus/" + FDB_PROTO_DIR
 cc_library_shared {
     name: "libcommon-base",
+    vendor_available: true,
 
     cppflags: [
         "-frtti",
@@ -84,6 +85,7 @@ cc_library_shared {
 //=====================================================================================
 cc_library_shared {
     name: "libfdbus-jni",
+
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -173,6 +175,7 @@ java_library {
 //=====================================================================================
 cc_binary {
     name: "name-server",
+    vendor_available: true,
     //LOCAL_INIT_RC := fdbus-name-server.rc
     cppflags: [
         "-frtti",
@@ -205,6 +208,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "host-server",
+    vendor_available: true,
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -233,6 +237,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "lssvc",
+    vendor_available: true,
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -256,6 +261,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "lshost",
+    vendor_available: true,
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -279,6 +285,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "lsclt",
+    vendor_available: true,
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -302,6 +309,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "logsvc",
+    vendor_available: true,
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -328,6 +336,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "logviewer",
+    vendor_available: true,
     cppflags: [
         "-frtti",
         "-fexceptions",
@@ -355,6 +364,7 @@ FDB_IDL_EXAMPLE_H = "<" + FDB_IDL_GEN_DIR + "/common.base.Example.pb.h>"
 //=====================================================================================
 cc_binary {
     name: "fdbtest_client",
+    vendor_available: true,
     cppflags: [
         "-fexceptions",
         "-Wno-unused-parameter",
@@ -389,6 +399,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "fdbtest_server",
+    vendor_available: true,
     cppflags: [
         "-fexceptions",
         "-Wno-unused-parameter",
@@ -423,6 +434,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "fdbxclient",
+    vendor_available: true,
     cppflags: [
         "-fexceptions",
         "-Wno-unused-parameter",
@@ -445,6 +457,7 @@ cc_binary {
 //=====================================================================================
 cc_binary {
     name: "fdbxserver",
+    vendor_available: true,
     cppflags: [
         "-fexceptions",
         "-Wno-unused-parameter",
