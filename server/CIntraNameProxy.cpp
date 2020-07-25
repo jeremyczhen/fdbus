@@ -96,6 +96,14 @@ void CIntraNameProxy::addAddressListener(const char *svc_name)
     }
 }
 
+void CIntraNameProxy::removeAddressListener(const char *svc_name)
+{
+    if (connected())
+    {
+        unsubscribeListener(NFdbBase::NTF_MORE_ADDRESS, svc_name);
+    }
+}
+
 void CIntraNameProxy::registerService(const char *svc_name)
 {
     if (!connected())

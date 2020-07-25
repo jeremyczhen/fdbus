@@ -146,6 +146,7 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
         return;
     }
 
+    enableMigrate(true);
     std::string svc_url;
     const char *url;
     if (the_job->mUrl.empty())
@@ -262,7 +263,8 @@ void CBaseClient::cbDisconnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job
     doDisconnect(the_job->mSid);
     if (!fdbValidFdbId(the_job->mSid))
     {
-        unregisterSelf();
+        releaseServiceAddress();
+        enableMigrate(false);
         // From now on, there will be no jobs migrated to worker thread. Applying a
         // flush to worker thread to ensure no one refers to the object.
     }

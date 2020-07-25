@@ -111,6 +111,16 @@ public class FdbusServer
     }
 
     /*
+     * rebind an address
+     * The server should has been bound with bind(String url) then
+     *     unbound with unbind()
+     */
+    public boolean bind()
+    {
+        return bind("svc://" + busName());
+    }
+
+    /*
      * release bound address
      */
     public boolean unbind()

@@ -34,13 +34,28 @@ public class MediaServer
         int mElapseTime;
     
         private FdbusServer mServer;
+        private Timer mTimer;
         
         public FdbusMediaServer(String name)
         {
             mServer = new FdbusServer(name);
             mElapseTime = 0;
+            mTimer = null;
         }
 
+        public void startBroadcast()
+        {
+            mTimer = new Timer();
+            mTimer.schedule(this, 400, 400);
+        }
+
+        public void stopBroadcast()
+        {
+            if (mTimer != null)
+            {
+                mTimer.cancel();
+            }
+        }
         public FdbusServer server()
         {
             return mServer;
@@ -182,13 +197,6 @@ public class MediaServer
         }
     }
 
-    Timer mTimer;
-    public void startBroadcast(TimerTask tt)
-    {
-        mTimer = new Timer();
-        mTimer.schedule(tt, 400, 400);
-    }
-    
     private FdbusMediaServer createServer(String name)
     {
         FdbusMediaServer svr = new FdbusMediaServer(name);
@@ -206,13 +214,50 @@ public class MediaServer
         {
             FdbusMediaServer server = svr.createServer(arg + "_server");
             server.server().bind("svc://" + arg);
-            svr.startBroadcast(server);
+            server.startBroadcast();
             
             servers.add(server);
         }
-        
-        try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
-        //Thread.sleep(5000000);
+
+        // test dynamic behavior: bind/unbind, create/destroy
+        while (true)
+        {
+            System.out.println("=====================bind/unbind test=========================");
+            try{Thread.sleep(2500);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("unbinding...");
+            for (FdbusMediaServer server : servers)
+            {
+                server.server().unbind();
+            }
+            try{Thread.sleep(50);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("binding...");
+            for (FdbusMediaServer server : servers)
+            {
+                server.server().bind();
+            }
+
+            System.out.println("=====================create/destroy test=========================");
+            try{Thread.sleep(2500);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("destroying...");
+            for (FdbusMediaServer server : servers)
+            {
+                server.stopBroadcast();
+                server.server().destroy();
+            }
+            servers.clear();
+            try{Thread.sleep(50);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("create...");
+            for (String arg : args)
+            {
+                FdbusMediaServer server = svr.createServer(arg + "_server");
+                server.server().bind("svc://" + arg);
+                server.startBroadcast();
+
+                servers.add(server);
+            }
+        }
+
+        //try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
     }
 }
 

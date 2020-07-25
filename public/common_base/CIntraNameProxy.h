@@ -38,6 +38,7 @@ public:
     void addServiceListener(const char *svc_name, FdbSessionId_t subscriber);
     void removeServiceListener(const char *svc_name);
     void addAddressListener(const char *svc_name);
+    void removeAddressListener(const char *svc_name);
     void registerService(const char *svc_name);
     void registerService(const char *svc_name, std::vector<std::string> &addr_tbl);
     void unregisterService(const char *svc_name);

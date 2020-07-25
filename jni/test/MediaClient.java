@@ -33,9 +33,10 @@ public class MediaClient
 {
     private class FdbusMediaClient extends TimerTask implements FdbusClientListener
     {
-        public final static int CONFIG_SYNC_INVOKE = 1;
+        public final static int CONFIG_SYNC_INVOKE = 0;
 
-        int mSongId;
+        private int mSongId;
+        private Timer mTimer;
         
         private FdbusClient mClient;
         
@@ -43,6 +44,21 @@ public class MediaClient
         {
             mClient = new FdbusClient(name);
             mSongId = 0;
+            mTimer = null;
+        }
+
+        public void startServerInvoker()
+        {
+            mTimer = new Timer();
+            mTimer.schedule(this, 300, 300);
+        }
+
+        public void stopServerInvoker()
+        {
+            if (mTimer != null)
+            {
+                mTimer.cancel();
+            }
         }
 
         public FdbusClient client()
@@ -170,13 +186,6 @@ public class MediaClient
         }
     }
 
-    Timer mTimer;
-    public void startServerInvoker(TimerTask tt)
-    {
-        mTimer = new Timer();
-        mTimer.schedule(tt, 500, 500);
-    }
-
     private FdbusMediaClient createClient(String name)
     {
         FdbusMediaClient clt = new FdbusMediaClient(name);
@@ -194,12 +203,49 @@ public class MediaClient
         {
             FdbusMediaClient client = clt.createClient(arg + "_client");
             client.client().connect("svc://" + arg);
-            clt.startServerInvoker(client);
+            client.startServerInvoker();
 
             clients.add(client);
         }
+
+        // test dynamic behavior: connect/disconnect, create/destroy
+        while (true)
+        {
+            System.out.println("=====================connect/disconnect test=========================");
+            try{Thread.sleep(3000);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("disconnect...");
+            for (FdbusMediaClient client : clients)
+            {
+                client.client().disconnect();
+            }
+            try{Thread.sleep(50);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("connect...");
+            for (FdbusMediaClient client : clients)
+            {
+                client.client().connect();
+            }
+
+            System.out.println("=====================create/destroy test=========================");
+            try{Thread.sleep(3000);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("destroying...");
+            for (FdbusMediaClient client : clients)
+            {
+                client.stopServerInvoker();
+                client.client().destroy();
+            }
+            clients.clear();
+            try{Thread.sleep(50);}catch(InterruptedException e){System.out.println(e);}
+            System.out.println("create...");
+            for (String arg : args)
+            {
+                FdbusMediaClient client = clt.createClient(arg + "_client");
+                client.client().connect("svc://" + arg);
+                client.startServerInvoker();
+
+                clients.add(client);
+            }
+        }
         
-        try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
-        //Thread.sleep(5000000);
+        //try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
     }
 }

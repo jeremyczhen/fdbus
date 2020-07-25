@@ -12,9 +12,9 @@ set(CMAKE_JAVA_INCLUDE_PATH ${FDBUS_JAVA_SRC_DIR})
 set(CMAKE_JAVA_COMPILE_FLAGS -Xlint:unchecked -Xlint:deprecation)
 
 add_jar(fdbus-jni-jar ${JNI_JAVA_SRC}
-        OUTPUT_DIR ${PACKAGE_SOURCE_ROOT}/build/install/usr/share/fdbus
+        OUTPUT_DIR ${CMAKE_INSTALL_PREFIX}/usr/share/fdbus
         OUTPUT_NAME fdbus-jni
-        GENERATE_NATIVE_HEADERS fdbus-native DESTINATION ${PACKAGE_SOURCE_ROOT}/build/idl-gen)
+        GENERATE_NATIVE_HEADERS fdbus-native DESTINATION ${CMAKE_INSTALL_PREFIX}/usr/share/fdbus)
 
 set(FDBUS_CPP_SRC_ROOT ${PACKAGE_SOURCE_ROOT}/jni/src/cpp)
 file(GLOB JNI_CPP_SRC "${FDBUS_CPP_SRC_ROOT}/*.cpp")

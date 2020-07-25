@@ -43,7 +43,7 @@ SRC_FILES = [
 ]
 
 FDB_PROTO_DIR = "example/idl"
-FDB_IDL_GEN_DIR = "vendor/YOUR_COMPANY_NAME/fdbus/" + FDB_PROTO_DIR
+FDB_IDL_GEN_DIR = "vendor/bosch/fdbus/" + FDB_PROTO_DIR
 cc_library_shared {
     name: "libcommon-base",
     vendor_available: true,

@@ -117,7 +117,8 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
                     error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
                 }
             }
-            
+
+#if 0
             jobject user_data = 0;
             if (msg->mUserData)
             {
@@ -125,15 +126,20 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
                 env->DeleteGlobalRef(msg->mUserData);
                 msg->mUserData = 0;
             }
-            
+#endif
             env->CallVoidMethod(mJavaClient,
                                 CFdbusClientParam::mOnReply,
                                 msg->session(),
                                 msg->code(),
                                 CGlobalParam::createRawPayloadBuffer(env, msg),
                                 error_code,
-                                user_data
+                                msg->mUserData
                                 );
+            if (msg->mUserData)
+            {
+                env->DeleteGlobalRef(msg->mUserData);
+                msg->mUserData = 0;
+            }
         }
     }
     CGlobalParam::releaseJniEnv(env);

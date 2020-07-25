@@ -125,6 +125,16 @@ public class FdbusClient
     }
 
     /*
+     * reconnect to server
+     * The client should has been connected with connect(String url) then
+     *     disconnect with disconnect()
+     */
+    public boolean connect()
+    {
+        return connect("svc://" + busName());
+    }
+
+    /*
      * disconnect to server
      */
     public boolean disconnect()

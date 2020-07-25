@@ -38,15 +38,6 @@ CBaseEndpoint::~CBaseEndpoint()
     enableMigrate(false);
     autoRemove(false);
     
-    auto &object_tbl = mObjectContainer.getContainer();
-    while (!object_tbl.empty())
-    {
-        auto it = object_tbl.begin();
-        CFdbBaseObject *object = it->second;
-        removeObject(object);
-    }
-    
-    deleteSocket();
     unregisterSelf();
     //CFdbContext::getInstance()->mEndpointContainer.deleteEntry(mEpid);
 }
@@ -508,6 +499,15 @@ public:
 void CBaseEndpoint::callUnregisterEndpoint(CBaseWorker *worker,
             CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
+    auto &object_tbl = mObjectContainer.getContainer();
+    while (!object_tbl.empty())
+    {
+        auto it = object_tbl.begin();
+        CFdbBaseObject *object = it->second;
+        removeObject(object);
+    }
+
+    deleteSocket();
     CFdbContext::getInstance()->unregisterEndpoint(this);
 }
 
@@ -609,3 +609,33 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
     return true;
 }
 
+bool CBaseEndpoint::releaseServiceAddress()
+{
+    if (role() == FDB_OBJECT_ROLE_NS_SERVER)
+    {
+        return false;
+    }
+    if (mNsName.empty())
+    {
+        // server name is not ready: this might happen when name server
+        // is connected but bind() or connect() is not called.
+        return false;
+    }
+
+    auto name_proxy = FDB_CONTEXT->getNameProxy();
+    if (!name_proxy)
+    {
+        return false;
+    }
+
+    if (role() == FDB_OBJECT_ROLE_SERVER)
+    {
+        name_proxy->removeAddressListener(mNsName.c_str());
+        name_proxy->unregisterService(mNsName.c_str());
+    }
+    else
+    {
+        name_proxy->removeServiceListener(mNsName.c_str());
+    }
+    return true;
+}
