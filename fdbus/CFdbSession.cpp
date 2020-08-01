@@ -38,13 +38,6 @@ CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CS
 
 CFdbSession::~CFdbSession()
 {
-#if 0
-    LOG_I("CFdbSession: session %d is destroyed!\n", (int32_t)mSid);
-#endif
-    mContainer->owner()->deleteConnectedSession(this);
-    mContainer->owner()->unsubscribeSession(this);
-    CFdbContext::getInstance()->unregisterSession(mSid);
-
     auto &sn_generator = mPendingMsgTable.getContainer();
     while (!sn_generator.empty())
     {
@@ -53,6 +46,10 @@ CFdbSession::~CFdbSession()
                          "Message is destroyed due to broken connection.");
         mPendingMsgTable.deleteEntry(it);
     }
+
+    mContainer->owner()->deleteConnectedSession(this);
+    mContainer->owner()->unsubscribeSession(this);
+    CFdbContext::getInstance()->unregisterSession(mSid);
 
     if (mSocket)
     {

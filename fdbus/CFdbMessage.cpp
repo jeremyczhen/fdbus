@@ -930,11 +930,6 @@ void CFdbMessage::setLogData(const char *log_data)
     }
 }
 
-bool CFdbMessage::isSubscribe()
-{
-    return (mType == FDB_MT_SUBSCRIBE_REQ) && (mCode == FDB_CODE_SUBSCRIBE);
-}
-
 void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
 {
     if (!(mFlag & MSG_FLAG_ENABLE_LOG))

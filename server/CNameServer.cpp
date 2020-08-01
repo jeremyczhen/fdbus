@@ -183,13 +183,16 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
         if (allocateIpcAddress(svc_name, url))
         {
             desc = createAddrDesc(url.c_str());
-            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-            addr_tbl.mAddrTbl.push_back(desc);
-            if (msg_addr_list)
+            if (desc)
             {
-                msg_addr_list->add_address_list(desc->mAddress.mUrl);
+                desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
+                addr_tbl.mAddrTbl.push_back(desc);
+                if (msg_addr_list)
+                {
+                    msg_addr_list->add_address_list(desc->mAddress.mUrl);
+                }
+                address_created = true;
             }
-            address_created = true;
         }
 
         // host server is forced to bind to tcp address
@@ -207,13 +210,16 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
         if (allocateTcpAddress(svc_name, url))
         {
             desc = createAddrDesc(url.c_str());
-            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-            addr_tbl.mAddrTbl.push_back(desc);
-            if (msg_addr_list)
+            if (desc)
             {
-                msg_addr_list->add_address_list(desc->mAddress.mUrl);
+                desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
+                addr_tbl.mAddrTbl.push_back(desc);
+                if (msg_addr_list)
+                {
+                    msg_addr_list->add_address_list(desc->mAddress.mUrl);
+                }
+                address_created = true;
             }
-            address_created = true;
         }
     }
     return address_created;

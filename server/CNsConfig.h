@@ -36,6 +36,11 @@ public:
 #define NS_CFG_ADDRESS_BIND_RETRY_NR    5
 #define NS_CFG_ADDRESS_BIND_RETRY_INTERVAL 200
 #define NS_CFG_ADDRESS_BIND_RETRY_CNT   5
+#ifdef FDB_CONFIG_UDS_ABSTRACT
+    #define NS_CFG_UDS_ADDRESS_PREFIX  "@"
+#else
+    #define NS_CFG_UDS_ADDRESS_PREFIX  ""
+#endif
 
     static const char *getHostServerName()
     {
@@ -49,12 +54,12 @@ public:
 
     static const char *getNameServerIpcPath()
     {
-        return FDB_URL_IPC FDB_CFG_SOCKET_PATH "/" "fdb-ns";
+        return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ns";
     }
 
     static const char *getHostServerIpcPath()
     {
-        return FDB_URL_IPC FDB_CFG_SOCKET_PATH "/" "fdb-hs";
+        return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-hs";
     }
 
     static const char *getNameServerTcpPort()
@@ -79,7 +84,7 @@ public:
 
     static const char *getIpcPathBase()
     {
-        return FDB_URL_IPC FDB_CFG_SOCKET_PATH "/" "fdb-ipc";
+        return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ipc";
     }
 
     static int32_t getTcpPortMin()

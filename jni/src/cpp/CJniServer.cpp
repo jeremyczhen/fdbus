@@ -61,7 +61,7 @@ void CJniServer::onOnline(FdbSessionId_t sid, bool is_first)
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
-        env->CallVoidMethod(mJavaServer, CFdbusServerParam::mOnOnline, sid);
+        env->CallVoidMethod(mJavaServer, CFdbusServerParam::mOnOnline, sid, is_first);
     }
     CGlobalParam::releaseJniEnv(env);
 }
@@ -71,7 +71,7 @@ void CJniServer::onOffline(FdbSessionId_t sid, bool is_last)
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
-        env->CallVoidMethod(mJavaServer, CFdbusServerParam::mOnOffline, sid);
+        env->CallVoidMethod(mJavaServer, CFdbusServerParam::mOnOffline, sid, is_last);
     }
     CGlobalParam::releaseJniEnv(env);
 }

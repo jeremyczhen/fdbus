@@ -44,6 +44,7 @@ public:
         : CBaseMessage(code)
         , mUserData(user_data)
     {
+        userDefined(true);
     }
     void *mUserData;
 };
@@ -83,28 +84,32 @@ void CCClient::onReply(CBaseJob::Ptr &msg_ref)
     {
         return;
     }
-    auto *fdb_msg = castToMessage<CCInvokeMsg *>(msg_ref);
-    if (fdb_msg)
+
+    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    int32_t error_code = NFdbBase::FDB_ST_OK;
+    if (fdb_msg->isStatus())
     {
-        int32_t error_code = NFdbBase::FDB_ST_OK;
-        if (fdb_msg->isStatus())
+        std::string reason;
+        if (!fdb_msg->decodeStatus(error_code, reason))
         {
-            std::string reason;
-            if (!fdb_msg->decodeStatus(error_code, reason))
-            {
-                FDB_LOG_E("onReply: fail to decode status!\n");
-                error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
-            }
+            FDB_LOG_E("onReply: fail to decode status!\n");
+            error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
         }
-        
-        mClient->on_reply_func(mClient,
-                               fdb_msg->session(),
-                               fdb_msg->code(),
-                               fdb_msg->getPayloadBuffer(),
-                               fdb_msg->getPayloadSize(),
-                               error_code,
-                               fdb_msg->mUserData);
     }
+
+    CCInvokeMsg *c_msg = 0;
+    if (fdb_msg->isUserDefined())
+    {
+        c_msg = castToMessage<CCInvokeMsg *>(msg_ref);
+    }
+
+    mClient->on_reply_func(mClient,
+                           fdb_msg->session(),
+                           fdb_msg->code(),
+                           fdb_msg->getPayloadBuffer(),
+                           fdb_msg->getPayloadSize(),
+                           error_code,
+                           c_msg ? c_msg->mUserData : 0);
 }
 
 void CCClient::onBroadcast(CBaseJob::Ptr &msg_ref)

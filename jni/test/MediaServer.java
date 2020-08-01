@@ -35,12 +35,14 @@ public class MediaServer
     
         private FdbusServer mServer;
         private Timer mTimer;
+        private boolean mTimerRunning;
         
         public FdbusMediaServer(String name)
         {
             mServer = new FdbusServer(name);
             mElapseTime = 0;
             mTimer = null;
+            mTimerRunning = false;
         }
 
         public void startBroadcast()
@@ -54,6 +56,10 @@ public class MediaServer
             if (mTimer != null)
             {
                 mTimer.cancel();
+                while (mTimerRunning)
+                {
+                    try{Thread.sleep(2);}catch(InterruptedException e){System.out.println(e);}
+                }
             }
         }
         public FdbusServer server()
@@ -187,6 +193,7 @@ public class MediaServer
 
         public void run()
         {
+            mTimerRunning = true;
             NFdbExample.ElapseTime.Builder proto_builder = NFdbExample.ElapseTime.newBuilder();
             proto_builder.setHour(0);
             proto_builder.setMinute(0);
@@ -194,6 +201,7 @@ public class MediaServer
             NFdbExample.ElapseTime et = proto_builder.build();
             FdbusProtoBuilder builder = new FdbusProtoBuilder(et);
             mServer.broadcast(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter", builder);
+            mTimerRunning = false;
         }
     }
 

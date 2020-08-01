@@ -37,14 +37,16 @@ public class MediaClient
 
         private int mSongId;
         private Timer mTimer;
+        private boolean mTimerRunning;
         
         private FdbusClient mClient;
-        
+
         public FdbusMediaClient(String name)
         {
             mClient = new FdbusClient(name);
             mSongId = 0;
             mTimer = null;
+            mTimerRunning = false;
         }
 
         public void startServerInvoker()
@@ -58,6 +60,10 @@ public class MediaClient
             if (mTimer != null)
             {
                 mTimer.cancel();
+                while (mTimerRunning)
+                {
+                    try{Thread.sleep(2);}catch(InterruptedException e){System.out.println(e);}
+                }
             }
         }
 
@@ -68,7 +74,7 @@ public class MediaClient
         
         public void onOnline(int sid)
         {
-            System.out.println(mClient.endpointName() + ": onOnline is received.");
+            System.out.println(mClient.endpointName() + ": onOnline is received: " + sid);
             ArrayList<SubscribeItem> subscribe_items = new ArrayList<SubscribeItem>();
             subscribe_items.add(SubscribeItem.newEvent(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter"));
             subscribe_items.add(SubscribeItem.newEvent(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "raw_buffer"));
@@ -76,7 +82,7 @@ public class MediaClient
         }
         public void onOffline(int sid)
         {
-            System.out.println(mClient.endpointName() + ": onOffline is received.");
+            System.out.println(mClient.endpointName() + ": onOffline is received: " + sid);
         }
 
         private void handleReplyMsg(FdbusMessage msg, boolean sync)
@@ -162,14 +168,15 @@ public class MediaClient
 
         public void run()
         {
+            mTimerRunning = true;
             NFdbExample.SongId.Builder proto_builder = NFdbExample.SongId.newBuilder();
             proto_builder.setId(mSongId);
             NFdbExample.SongId song_id = proto_builder.build();
             FdbusProtoBuilder builder = new FdbusProtoBuilder(song_id);
 
-            ArrayList<String> usr_data = new ArrayList<String>();
             if (CONFIG_SYNC_INVOKE == 0)
             {
+                ArrayList<String> usr_data = new ArrayList<String>();
                 for (int i = 0; i < 10000; ++i)
                 {
                     usr_data.add(new String("a quick fox dump over brown dog " + i));
@@ -183,6 +190,7 @@ public class MediaClient
                 handleReplyMsg(msg, true);
             }
             mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE, null, null, 0);
+            mTimerRunning = false;
         }
     }
 

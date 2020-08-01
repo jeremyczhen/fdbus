@@ -67,6 +67,7 @@ typedef int socklen_t;
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <stddef.h>
 //#include <scm_cred.h>
 
 #define M_INVALID_SOCKET (-1)
@@ -339,10 +340,17 @@ void TCPServerSocket::Open(const IPAddress& ip, bool disableNaggle){
         memset(&sockAddr, 0, sizeof(sockAddr));
         sockAddr.sun_family = AF_UNIX;
         strcpy(sockAddr.sun_path, ip.ipc_path.c_str());
+        socklen_t addr_len;
+#ifdef FDB_CONFIG_UDS_ABSTRACT
+        sockAddr.sun_path[0] = '\0';
+        addr_len = ip.ipc_path.size() + offsetof(struct sockaddr_un, sun_path);
+#else
+        addr_len = sizeof(sockAddr);
+#endif
 
         // Bind the socket for listening
         unlink(ip.ipc_path.c_str());
-        if( bind(CastToSocket(this->socket), reinterpret_cast<sockaddr*>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
+        if( bind(CastToSocket(this->socket), reinterpret_cast<sockaddr*>(&sockAddr), addr_len) == M_SOCKET_ERROR ){
             this->Close();
             throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
         }
@@ -441,9 +449,16 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
         memset(&sockAddr, 0, sizeof(sockAddr));
         sockAddr.sun_family = AF_UNIX;
         strcpy(sockAddr.sun_path, ip.ipc_path.c_str());
+        socklen_t addr_len;
+#ifdef FDB_CONFIG_UDS_ABSTRACT
+        sockAddr.sun_path[0] = '\0';
+        addr_len = ip.ipc_path.size() + offsetof(struct sockaddr_un, sun_path);
+#else
+        addr_len = sizeof(sockAddr);
+#endif
 
         // Bind the socket for listening
-        if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr*>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR ){
+        if( connect(CastToSocket(this->socket), reinterpret_cast<sockaddr*>(&sockAddr), addr_len) == M_SOCKET_ERROR ){
             this->Close();
             throw sckt::Exc("TCPServerSocket::Open(): Couldn't bind to local address");
         }

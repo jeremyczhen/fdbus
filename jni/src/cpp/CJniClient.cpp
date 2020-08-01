@@ -43,6 +43,7 @@ public:
         : CBaseMessage(code)
         , mUserData(user_data)
     {
+        userDefined(true);
     }
     jobject mUserData;
     ~CJniInvokeMsg()
@@ -104,42 +105,45 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
-        auto msg = castToMessage<CJniInvokeMsg *>(msg_ref);
-        if (msg)
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
+        int32_t error_code = NFdbBase::FDB_ST_OK;
+        if (msg->isStatus())
         {
-            int32_t error_code = NFdbBase::FDB_ST_OK;
-            if (msg->isStatus())
+            std::string reason;
+            if (!msg->decodeStatus(error_code, reason))
             {
-                std::string reason;
-                if (!msg->decodeStatus(error_code, reason))
-                {
-                    FDB_LOG_E("onReply: fail to decode status!\n");
-                    error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
-                }
+                FDB_LOG_E("onReply: fail to decode status!\n");
+                error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
             }
+        }
+
+        CJniInvokeMsg *jni_msg = 0;
+        if (msg->isUserDefined())
+        {
+            jni_msg = castToMessage<CJniInvokeMsg *>(msg_ref);
+        }
 
 #if 0
-            jobject user_data = 0;
-            if (msg->mUserData)
-            {
-                user_data = env->NewLocalRef(msg->mUserData);
-                env->DeleteGlobalRef(msg->mUserData);
-                msg->mUserData = 0;
-            }
+        jobject user_data = 0;
+        if (msg->mUserData)
+        {
+            user_data = env->NewLocalRef(msg->mUserData);
+            env->DeleteGlobalRef(msg->mUserData);
+            msg->mUserData = 0;
+        }
 #endif
-            env->CallVoidMethod(mJavaClient,
-                                CFdbusClientParam::mOnReply,
-                                msg->session(),
-                                msg->code(),
-                                CGlobalParam::createRawPayloadBuffer(env, msg),
-                                error_code,
-                                msg->mUserData
-                                );
-            if (msg->mUserData)
-            {
-                env->DeleteGlobalRef(msg->mUserData);
-                msg->mUserData = 0;
-            }
+        env->CallVoidMethod(mJavaClient,
+                            CFdbusClientParam::mOnReply,
+                            msg->session(),
+                            msg->code(),
+                            CGlobalParam::createRawPayloadBuffer(env, msg),
+                            error_code,
+                            jni_msg ? jni_msg->mUserData : 0
+                            );
+        if (jni_msg)
+        {
+            env->DeleteGlobalRef(jni_msg->mUserData);
+            jni_msg->mUserData = 0;
         }
     }
     CGlobalParam::releaseJniEnv(env);

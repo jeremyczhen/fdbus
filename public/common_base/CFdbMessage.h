@@ -157,6 +157,7 @@ private:
 #define MSG_FLAG_ENABLE_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 3))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
 #define MSG_FLAG_MANUAL_UPDATE      (1 << (MSG_LOCAL_FLAG_SHIFT + 6))
+#define MSG_FLAG_USER_DEFINED       (1 << (MSG_LOCAL_FLAG_SHIFT + 7))
     
     struct CFdbMsgPrefix
     {
@@ -384,7 +385,7 @@ public:
      *      CBaseEndpoint::reply() (return false) or CBaseEndpoint::status
      *      (return true)
      */
-    bool isStatus()
+    bool isStatus() const
     {
         return !!(mFlag & MSG_FLAG_STATUS);
     }
@@ -393,7 +394,7 @@ public:
      *      CBaseEndpoint::onStatus(), check if the reply indicates
      *      a successful result of fail result.
      */
-    bool isError()
+    bool isError() const
     {
         return (mFlag & (MSG_FLAG_ERROR | MSG_FLAG_STATUS)) == (MSG_FLAG_ERROR | MSG_FLAG_STATUS);
     }
@@ -401,16 +402,36 @@ public:
      * in CBaseEndpoint::onStatus(), check if the reply is automatical reply
      *      to CBaseEndpoint::subscribe().
      */
-    bool isSubscribe();
+    bool isSubscribe() const
+    {
+        return (mType == FDB_MT_SUBSCRIBE_REQ) && (mCode == FDB_CODE_SUBSCRIBE);
+    }
 
-    bool isInitialResponse()
+    bool isInitialResponse() const
     {
         return !!(mFlag & MSG_FLAG_INITIAL_RESPONSE);
     }
 
-    bool isLogEnabled()
+    bool isLogEnabled() const
     {
         return !!(mFlag & MSG_FLAG_ENABLE_LOG);
+    }
+
+    void userDefined(bool active)
+    {
+        if (active)
+        {
+            mFlag |= MSG_FLAG_USER_DEFINED;
+        }
+        else
+        {
+            mFlag &= ~MSG_FLAG_USER_DEFINED;
+        }
+    }
+
+    bool isUserDefined() const
+    {
+        return !!(mFlag & MSG_FLAG_USER_DEFINED);
     }
 
     /*
@@ -498,7 +519,7 @@ private:
         }
     }
 
-    bool manualUpdate()
+    bool manualUpdate() const
     {
         return !!(mFlag & MSG_FLAG_MANUAL_UPDATE);
     }
@@ -570,7 +591,7 @@ private:
         mType = type;
     }
 
-    bool sync()
+    bool sync() const
     {
         return !!(mFlag & MSG_FLAG_SYNC_REPLY);
     }
