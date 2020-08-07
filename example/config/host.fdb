@@ -1,42 +1,47 @@
 {
     "host": {
-        "ubuntu": [
-            {
-                "level": -1,
-                "ip": "default"
-            },
-            {
-                "level": 0,
-                "ip": ["192.168.1.1", "192.168.1.4"]
-            },
-            {
-                "level": 1,
-                "ip": ["192.168.1.3"]
-            }
-        ],
-        "windows": [
-            {
-                "level": -1,
-                "ip": "default"
-            },
-            {
-                "level": 0,
-                "ip": ["192.168.1.1", "192.168.1.2"]
-            }
-        ],
-        "cluster": [
-            {
-                "level": -1,
-                "ip": "default"
-            },
-            {
-                "level": 0,
-                "ip": ["192.168.1.2"]
-            },
-            {
-                "level": 2,
-                "ip":["192.168.1.1"]
-            }
-        ]
+        "ubuntu": {
+            "cred" : "",
+            "permission" : [
+                {
+                    "level": 0,
+                    "hosts": "default"
+                },
+                {
+                    "level": 1,
+                    "hosts": ["windows"]
+                },
+                {
+                    "level": 3,
+                    "hosts": ["cluster"]
+                }
+            ]
+        },
+        "windows": {
+            "cred" : "",
+            "permission" : [
+                {
+                    "level": 0,
+                    "hosts": "default"
+                },
+                {
+                    "level": 3,
+                    "hosts": ["ubuntu", "cluster"]
+                }
+            ]
+        },
+        "cluster": {
+            "cred" : "",
+            "permission" : [
+                {
+                    "level": 0,
+                    "hosts": "default"
+                },
+                {
+                    "level": 3,
+                    "hosts": ["ubuntu", "windows"]
+                }
+            ]
+        }
     }
 }

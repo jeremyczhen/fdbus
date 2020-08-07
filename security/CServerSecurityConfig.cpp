@@ -255,8 +255,8 @@ _quit:
 void CServerSecurityConfig::parseServerConfigFile(const char *path,
                             const char *cfg_file_name, std::string &err_msg)
 {
-    int32_t name_len = strlen(cfg_file_name);
-    int32_t suffix_len = strlen(FDB_CFG_CONFIG_FILE_SUFFIX);
+    int32_t name_len = (int32_t)strlen(cfg_file_name);
+    int32_t suffix_len = (int32_t)strlen(FDB_CFG_CONFIG_FILE_SUFFIX);
     if (name_len <= suffix_len)
     {
         return;

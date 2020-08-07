@@ -25,6 +25,7 @@
 #include <common_base/CBaseServer.h>
 #include <common_base/CSocketImp.h>
 #include <security/CServerSecurityConfig.h>
+#include "CAddressAllocator.h"
 
 namespace NFdbBase {
     class FdbMsgServiceTable;
@@ -78,6 +79,7 @@ private:
         CFdbToken::tTokenList mTokens;
     };
     typedef std::map<std::string, CSvcRegistryEntry> tRegistryTbl;
+    typedef std::map<std::string, CTcpAddressAllocator> tTcpAllocatorTbl;
 
     tRegistryTbl mRegistryTbl;
     CFdbMessageHandle<CNameServer> mMsgHdl;
@@ -98,15 +100,15 @@ private:
     void onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
-    bool allocateTcpAddress(const std::string &svc_name, std::string &addr_url);
-    bool allocateIpcAddress(const std::string &svc_name, std::string &addr_url);
-
-    void buildUrl(const char *id, std::string &url);
-    void buildUrl(uint32_t id, std::string &url);
+    bool allocateAddress(IAddressAllocator &allocator, FdbServerType svc_type, CFdbSocketAddr &sckt_addr);
+    bool allocateTcpAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr);
+    bool allocateIpcAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr);
+    bool allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, CFdbSocketAddr &sckt_addr);
 
     EFdbSocketType getSocketType(FdbSessionId_t sid);
     void removeService(tRegistryTbl::iterator &it);
     CFdbAddressDesc *createAddrDesc(const char *url);
+    CFdbAddressDesc *createAddrDesc(const char *svc_name, EFdbSocketType skt_type);
     void connectToHostServer(const char *hs_url, bool is_local);
     bool addressTypeRegistered(const tAddressDescTbl &addr_list, EFdbSocketType skt_type);
     bool addServiceAddress(const std::string &svc_name,
@@ -153,8 +155,8 @@ private:
     void dumpTokens(CFdbToken::tTokenList &tokens,
                     NFdbBase::FdbMsgAddressList &list);
 
-    uint32_t mTcpPortAllocator;
-    uint32_t mIpcAllocator;
+    CIpcAddressAllocator mIpcAllocator;
+    tTcpAllocatorTbl mTcpAllocators;
     CHostProxy *mHostProxy;
     std::string mInterface;
     int32_t mNsPort;

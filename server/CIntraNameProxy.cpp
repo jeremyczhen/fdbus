@@ -19,7 +19,7 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CBaseSocketFactory.h>
-#include "CNsConfig.h"
+#include <utils/CNsConfig.h>
 #include <utils/Log.h>
 
 bool CIntraNameProxy::connectToNameServer()
@@ -31,13 +31,11 @@ bool CIntraNameProxy::connectToNameServer()
     const char *url;
 #ifdef __WIN32__
     std::string std_url;
-    CBaseSocketFactory::buildUrl(std_url,
-                                 FDB_SOCKET_TCP,
-                                 FDB_LOCAL_HOST,
+    CBaseSocketFactory::buildUrl(std_url, FDB_LOCAL_HOST,
                                  CNsConfig::getNameServerTcpPort());
     url = std_url.c_str();
 #else
-    url = CNsConfig::getNameServerIpcPath();
+    url = CNsConfig::getNameServerIpcUrl();
 #endif
     // timer will stop if connected since onOnline() will be called
     // upon success
@@ -321,8 +319,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                                 LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
                                         msg->session(), svc_name, addr.mPort, info.mAddress->mPort);
                             }
-                            CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP,
-                                        addr.mAddr.c_str(), info.mAddress->mPort);
+                            CBaseSocketFactory::buildUrl(url, addr.mAddr.c_str(), info.mAddress->mPort);
                             addr_status->bind_address(url);
                             char_url = url.c_str();
                         }

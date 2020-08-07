@@ -213,7 +213,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
                 CFdbSocketAddr addr;
                 if (CBaseSocketFactory::parseUrl(ns_url.c_str(), addr))
                 {
-                    CBaseSocketFactory::buildUrl(ns_url, addr.mType, ip_address.c_str(), addr.mPort);
+                    CBaseSocketFactory::buildUrl(ns_url, ip_address.c_str(), addr.mPort);
                 }
                 else
                 {
