@@ -31,11 +31,6 @@ CNameServer::CNameServer()
     : CBaseServer(CNsConfig::getNameServerName())
     , mHostProxy(0)
 {
-#ifdef CFG_ALLOC_PORT_BY_SYSTEM
-    mNsPort = FDB_SYSTEM_PORT;
-#else
-    mNsPort = CNsConfig::getIntNameServerTcpPort();
-#endif
     mNsName = CNsConfig::getNameServerName();
     mServerSecruity.importSecurity();
     role(FDB_OBJECT_ROLE_NS_SERVER);
@@ -115,7 +110,7 @@ void CNameServer::setHostInfo(CFdbSession *session, NFdbBase::FdbMsgServiceInfo 
         host_ip = FDB_IP_ALL_INTERFACE;
     }
     std::string ns_url;
-    CBaseSocketFactory::buildUrl(ns_url, host_ip.c_str(), mNsPort);
+    CBaseSocketFactory::buildUrl(ns_url, host_ip.c_str(), CNsConfig::getNameServerTcpPort());
     msg_svc_info->host_addr().set_ip_address(host_ip);
     msg_svc_info->host_addr().set_ns_url(ns_url);
     msg_svc_info->host_addr().set_host_name(mHostProxy->hostName());
@@ -1047,13 +1042,6 @@ bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
         auto sk = doBind(url);
         if (sk)
         {
-            if ((*it)->mAddress.mType != FDB_SOCKET_IPC)
-            {
-                CFdbSocketInfo info;
-                sk->getSocketInfo(info);
-                mNsPort = info.mAddress->mPort;
-                CBaseSocketFactory::updatePort((*it)->mAddress, mNsPort);
-            }
             (*it)->mStatus = CFdbAddressDesc::ADDR_BOUND;
         }
         else
@@ -1120,14 +1108,7 @@ const std::string CNameServer::getNsTcpUrl(const char *ip_addr)
     }
     if (!host_ip.empty())
     {
-        if (mNsPort == FDB_SYSTEM_PORT)
-        {
-            LOG_E("CNameServer: getNsTcpUrl() is called before name server is bound to TCP address!\n");
-        }
-        else
-        {
-            CBaseSocketFactory::buildUrl(ns_url, host_ip.c_str(), mNsPort);
-        }
+        CBaseSocketFactory::buildUrl(ns_url, host_ip.c_str(), CNsConfig::getNameServerTcpPort());
     }
     return ns_url;
 }

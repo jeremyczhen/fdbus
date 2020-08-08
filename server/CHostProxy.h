@@ -78,6 +78,7 @@ private:
     void hostOnline();
     void hostOnline(FdbMsgCode_t code);
     void isolate();
+    void isolate(tNameProxyTbl::iterator &it);
 
     class CConnectTimer : public CMethodLoopTimer<CHostProxy>
     {

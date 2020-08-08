@@ -84,15 +84,7 @@ void CTcpAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc
     int32_t port = -1;
     if (svc_type == FDB_SVC_NAME_SERVER)
     {
-#ifdef CFG_ALLOC_PORT_BY_SYSTEM
-#ifdef __WIN32__
         port = CNsConfig::getIntNameServerTcpPort();
-#else
-        port = FDB_SYSTEM_PORT;
-#endif // #ifdef __WIN32__
-#else // #ifdef CFG_ALLOC_PORT_BY_SYSTEM
-        port = CNsConfig::getIntNameServerTcpPort();
-#endif
     }
     else if (svc_type == FDB_SVC_HOST_SERVER)
     {

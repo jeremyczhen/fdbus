@@ -159,7 +159,6 @@ private:
     tTcpAllocatorTbl mTcpAllocators;
     CHostProxy *mHostProxy;
     std::string mInterface;
-    int32_t mNsPort;
     CServerSecurityConfig mServerSecruity;
     
     friend class CInterNameProxy;
