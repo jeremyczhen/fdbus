@@ -176,7 +176,7 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
     if ((skt_type == FDB_SOCKET_IPC) &&
             !addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_IPC))
     {
-        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), skt_type);
+        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), FDB_SOCKET_IPC);
         if (desc)
         {
             desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
@@ -200,7 +200,7 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
 
     if (!addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_TCP))
     {
-        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), skt_type);
+        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), FDB_SOCKET_TCP);
         if (desc)
         {
             desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
