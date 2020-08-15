@@ -69,14 +69,14 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
 {
     auto client = fdb_dynamic_cast_if_available<CBaseClient *>(mOwner);
     
-    if (mOwner->isReconnect() && session->internalError() && client)
+    if (mOwner->reconnectEnabled() && mOwner->reconnectActivated() && client)
     {
-        session->internalError(false);
         auto url = mSocket->getAddress().mUrl;
 
         CFdbSessionContainer::onSessionDeleted(session);
         delete this;
 
+        // always connect to server
         if (!client->requestServiceAddress())
         {
             if (FDB_CLIENT_RECONNECT_WAIT_MS)
@@ -85,16 +85,16 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
             }
             if (client->doConnect(url.c_str()))
             {
-                LOG_E("CClientSocket: shutdown due to IO error but reconnected to %s@%s.\n", client->nsName().c_str(), url.c_str());
+                LOG_E("CClientSocket: shutdown but reconnected to %s@%s.\n", client->nsName().c_str(), url.c_str());
             }
             else
             {
-                LOG_E("CClientSocket: shutdown due to IO error and fail to reconnect to %s@%s.\n", client->nsName().c_str(), url.c_str());
+                LOG_E("CClientSocket: shutdown fail to reconnect to %s@%s.\n", client->nsName().c_str(), url.c_str());
             }
         }
         else
         {
-            LOG_E("CClientSocket: %s shutdown due to IO error but try to connect to name server.\n", client->nsName().c_str());
+            LOG_E("CClientSocket: %s shutdown but try to request address and connect again...\n", client->nsName().c_str());
         }
     }
     else
@@ -224,6 +224,7 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
             session->attach(CFdbContext::getInstance());
             if (addConnectedSession(sk, session))
             {
+                activateReconnect(true);
                 return sk;
             }
             else
@@ -263,6 +264,7 @@ void CBaseClient::cbDisconnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job
     doDisconnect(the_job->mSid);
     if (!fdbValidFdbId(the_job->mSid))
     {
+        activateReconnect(false);
         releaseServiceAddress();
         enableMigrate(false);
         // From now on, there will be no jobs migrated to worker thread. Applying a

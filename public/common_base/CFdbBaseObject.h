@@ -46,10 +46,11 @@ typedef std::set<CFdbSession *> tSubscribedSessionSets;
 class CFdbBaseObject
 {
 public:
-#define FDB_OBJ_ENABLED_MIGRATE (1 << 0)
-#define FDB_OBJ_AUTO_REMOVE     (1 << 1)
-#define FDB_OBJ_RECONNECT       (1 << 2)
-#define FDB_OBJ_REGISTERED      (1 << 3)
+#define FDB_OBJ_ENABLED_MIGRATE         (1 << 0)
+#define FDB_OBJ_AUTO_REMOVE             (1 << 1)
+#define FDB_OBJ_RECONNECT_ENABLED       (1 << 2)
+#define FDB_OBJ_REGISTERED              (1 << 3)
+#define FDB_OBJ_RECONNECT_ACTIVATED     (1 << 4)
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -582,17 +583,34 @@ public:
     {
         if (active)
         {
-            mFlag |= FDB_OBJ_RECONNECT;
+            mFlag |= FDB_OBJ_RECONNECT_ENABLED;
         }
         else
         {
-            mFlag &= ~FDB_OBJ_RECONNECT;
+            mFlag &= ~FDB_OBJ_RECONNECT_ENABLED;
         }
     }
 
-    bool isReconnect()
+    bool reconnectEnabled()
     {
-        return !!(mFlag & FDB_OBJ_RECONNECT);
+        return !!(mFlag & FDB_OBJ_RECONNECT_ENABLED);
+    }
+
+    void activateReconnect(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_RECONNECT_ACTIVATED;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_RECONNECT_ACTIVATED;
+        }
+    }
+
+    bool reconnectActivated()
+    {
+        return !!(mFlag & FDB_OBJ_RECONNECT_ACTIVATED);
     }
 
     void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)

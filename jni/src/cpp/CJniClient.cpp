@@ -22,6 +22,8 @@
 #define FDB_LOG_TAG "FDB_JNI"
 #include <common_base/fdb_log_trace.h>
 
+#define FDB_MSG_TYPE_JNI_INVOKE (FDB_MSG_TYPE_SYSTEM + 1)
+
 class CJniClient : public CBaseClient
 {
 public:
@@ -39,13 +41,17 @@ private:
 class CJniInvokeMsg : public CBaseMessage
 {
 public:
+    jobject mUserData;
+
     CJniInvokeMsg(FdbMsgCode_t code, jobject user_data)
         : CBaseMessage(code)
         , mUserData(user_data)
     {
-        userDefined(true);
     }
-    jobject mUserData;
+    FdbMessageType_t getTypeId()
+    {
+        return FDB_MSG_TYPE_JNI_INVOKE;
+    }
     ~CJniInvokeMsg()
     {
         if (mUserData)
@@ -118,7 +124,7 @@ void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
         }
 
         CJniInvokeMsg *jni_msg = 0;
-        if (msg->isUserDefined())
+        if (msg->getTypeId() == FDB_MSG_TYPE_JNI_INVOKE)
         {
             jni_msg = castToMessage<CJniInvokeMsg *>(msg_ref);
         }

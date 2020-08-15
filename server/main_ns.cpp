@@ -18,6 +18,8 @@
 #include <common_base/fdb_option_parser.h>
 #include "CNameServer.h"
 #include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 int main(int argc, char **argv)
 {
@@ -43,14 +45,16 @@ int main(int argc, char **argv)
     char *interface_name = 0;
     int32_t help = 0;
     int32_t ret = 0;
-	const struct fdb_option core_options[] = {
-		{ FDB_OPTION_STRING, "url", 'u', &tcp_addr },
-		{ FDB_OPTION_STRING, "name", 'n', &host_name },
-		{ FDB_OPTION_STRING, "interface", 'n', &interface_name },
+    const struct fdb_option core_options[] = {
+        { FDB_OPTION_STRING, "url", 'u', &tcp_addr },
+        { FDB_OPTION_STRING, "name", 'n', &host_name },
+        { FDB_OPTION_STRING, "interface", 'n', &interface_name },
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
+
+    umask(000);
     
-	fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
+    fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
         std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."

@@ -68,6 +68,10 @@ private:
     bool registerWatch(CSysFdWatch *watch, bool enable);
     bool enableWatch(CSysFdWatch *watch, bool enable);
     bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);
+    void rebuildPollFd()
+    {
+	mRebuildPollFd = true;
+    }
 
     friend CSysFdWatch;
     friend CNotifyFdWatch;

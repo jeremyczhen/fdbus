@@ -25,6 +25,7 @@ CSysFdWatch::CSysFdWatch(int fd, int32_t flags)
     : mFd(fd)
     , mFlags(flags)
     , mEnable(false)
+    , mFatalError(false)
     , mEventLoop(0)
 {}
 
@@ -38,8 +39,21 @@ CSysFdWatch::~CSysFdWatch()
 
 void CSysFdWatch::enable(bool enb)
 {
+    if (enb)
+    {
+        mFatalError = false;
+    }
     mEventLoop->enableWatch(this, enb);
     mEnable = enb;
+}
+
+void CSysFdWatch::fatalError(bool enb)
+{
+    if (mFatalError != enb)
+    {
+	mEventLoop->rebuildPollFd();
+    }
+    mFatalError = enb;
 }
 
 class CNotifyFdWatch : public CSysFdWatch
@@ -117,12 +131,18 @@ void CFdEventLoop::buildFdArray()
     mPollFds.clear();
     mPollWatches.clear();
 
+    tWatchPollTbl fatal_error_watches;
     for (auto wi = mWatchWorkingList.begin(); wi != mWatchWorkingList.end(); ++wi)
     {
         int fd = (*wi)->descriptor();
         if (fd < 0)
         {
             LOG_E("CFdEventLoop: Bad file descriptor: %d!\n", fd);
+            continue;
+        }
+        if ((*wi)->fatalError())
+        {
+            fatal_error_watches.push_back(*wi);
             continue;
         }
 
@@ -133,6 +153,27 @@ void CFdEventLoop::buildFdArray()
         mPollFds.push_back(pfd);
 
         mPollWatches.push_back(*wi);
+    }
+
+    for (auto wi = fatal_error_watches.begin(); wi != fatal_error_watches.end(); ++wi)
+    {
+        beginWatchBlackList();
+        auto w = *wi;
+        try
+        {
+            w->enable(false);
+            w->onError();
+        }
+        catch (...)
+        {
+            LOG_E("CFdEventLoop: Exception received at line %d of file %s!\n", __LINE__, __FILE__);
+            if (!watchDestroyed(w))
+            {
+                removeWatch(w);
+                delete w;
+            }
+        }
+        endWatchBlackList();
     }
 }
 
@@ -184,6 +225,25 @@ void CFdEventLoop::processWatches()
         {
             continue;
         }
+        if (w->fatalError())
+        {
+            try
+            {
+                w->enable(false);
+                w->onError();
+            }
+            catch (...)
+            {
+                LOG_E("CFdEventLoop: Exception received at line %d of file %s!\n", __LINE__, __FILE__);
+                if (!watchDestroyed(w))
+                {
+                    removeWatch(w);
+                    delete w;
+                }
+            }
+            continue;
+        }
+
         int32_t events = w->convertRetEvents(fdit->revents);
         fdit->revents = 0;
         if (events & (POLLIN | POLLOUT | POLLERR | POLLHUP))
@@ -193,6 +253,7 @@ void CFdEventLoop::processWatches()
             {
                 try
                 {
+                    w->enable(false);
                     w->onError();
                 }
                 catch (...)
@@ -233,8 +294,7 @@ void CFdEventLoop::processWatches()
                     continue;
                 }
             }
-            
-            if ((events & POLLOUT) && !io_error)
+            if (events & POLLOUT)
             {
                 try
                 {
@@ -249,10 +309,12 @@ void CFdEventLoop::processWatches()
                     continue;
                 }
             }
-            if (io_error)
+
+            if (io_error || w->fatalError())
             {
                 try
                 {
+                    w->enable(false);
                     w->onError();
                 }
                 catch (...)
