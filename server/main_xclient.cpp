@@ -27,6 +27,7 @@ static uint32_t fdb_burst_size = 16;
 static bool fdb_bi_direction = true;
 static uint32_t fdb_block_size = 1024;
 static uint32_t fdb_delay = 0;
+static bool fdb_sync_invoke = false;
 
 class CStatisticTimer : public CMethodLoopTimer<CXClient>
 {
@@ -82,7 +83,16 @@ public:
     }
     void invokeMethod()
     {
-        invoke(XCLT_TEST_BI_DIRECTION, mBuffer, fdb_block_size);
+	if (fdb_sync_invoke)
+	{
+            CBaseJob::Ptr ref(new CBaseMessage(XCLT_TEST_BI_DIRECTION));
+            invoke(ref);
+	    handleReply(ref);
+	}
+	else
+	{
+            invoke(XCLT_TEST_BI_DIRECTION, mBuffer, fdb_block_size);
+	}
         incrementSend(fdb_block_size);
     }
 protected:
@@ -101,42 +111,7 @@ protected:
     }
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-        auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        CFdbMsgMetadata md;
-        msg->metadata(md);
-        uint64_t c2s, s2r, r2c, total;
-        msg->parseTimestamp(md, c2s, s2r, r2c, total);
-        switch (msg->code())
-        {
-            case XCLT_TEST_BI_DIRECTION:
-            {
-                if (msg->isStatus())
-                {
-                    /* Unable to get intended reply from server... Check what happen. */
-                    if (msg->isError())
-                    {
-                        int32_t error_code;
-                        std::string reason;
-                        if (!msg->decodeStatus(error_code, reason))
-                        {
-                            std::cout << "onReply: fail to decode status!\n" << std::endl;
-                            return;
-                        }
-                        std::cout << "onReply(): status is received: msg code: " << msg->code()
-                                  << ", error_code: " << error_code
-                                  << ", reason: " << reason
-                                  << std::endl;
-                        mFailureCount++;
-                    }
-                    return;
-                }
-                incrementReceive(msg->getPayloadSize());
-                getdownDelay(total);
-            }
-            break;
-            default:
-            break;
-        }
+	handleReply(msg_ref);
     }
 private:
     CNanoTimer mTotalNanoTimer;
@@ -215,6 +190,46 @@ private:
         mTotalDelay += delay;
         mIntervalDelay += delay;
     }
+
+    void handleReply(CBaseJob::Ptr &msg_ref)
+    {
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
+        CFdbMsgMetadata md;
+        msg->metadata(md);
+        uint64_t c2s, s2r, r2c, total;
+        msg->parseTimestamp(md, c2s, s2r, r2c, total);
+        switch (msg->code())
+        {
+            case XCLT_TEST_BI_DIRECTION:
+            {
+                if (msg->isStatus())
+                {
+                    /* Unable to get intended reply from server... Check what happen. */
+                    if (msg->isError())
+                    {
+                        int32_t error_code;
+                        std::string reason;
+                        if (!msg->decodeStatus(error_code, reason))
+                        {
+                            std::cout << "onReply: fail to decode status!\n" << std::endl;
+                            return;
+                        }
+                        std::cout << "onReply(): status is received: msg code: " << msg->code()
+                                  << ", error_code: " << error_code
+                                  << ", reason: " << reason
+                                  << std::endl;
+                        mFailureCount++;
+                    }
+                    return;
+                }
+                incrementReceive(msg->getPayloadSize());
+                getdownDelay(total);
+            }
+            break;
+            default:
+            break;
+        }
+    }
 };
 
 CStatisticTimer::CStatisticTimer(CXClient *client)
@@ -280,11 +295,13 @@ int main(int argc, char **argv)
     int32_t uni_direction = 0;
     uint32_t block_size = 1024;
     uint32_t delay = 0;
+    int32_t sync_invoke = 0;
     const struct fdb_option core_options[] = {
         { FDB_OPTION_INTEGER, "block_size", 'b', &block_size},
         { FDB_OPTION_INTEGER, "burst_size", 's', &burst_size},
         { FDB_OPTION_INTEGER, "delay", 'd', &delay},
         { FDB_OPTION_BOOLEAN, "uni_direction", 'u', &uni_direction},
+        { FDB_OPTION_BOOLEAN, "sync", 'y', &sync_invoke},
         { FDB_OPTION_BOOLEAN, "help", 'h', &help}
     };
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
@@ -293,11 +310,13 @@ int main(int argc, char **argv)
     fdb_bi_direction = !uni_direction;
     fdb_block_size = block_size;
     fdb_delay = delay;
+    fdb_sync_invoke = !!sync_invoke;
 
     std::cout << "block size: " << fdb_block_size
               << ", burst size: " << fdb_burst_size
               << ", bi-direction: " << fdb_bi_direction
               << ", delay: " << fdb_delay
+              << ", sync: " << fdb_sync_invoke
               << std::endl;
 
     if (help)
@@ -310,6 +329,7 @@ int main(int argc, char **argv)
         std::cout << "    -s burst size: specify how many requests are sent in batch for a burst" << std::endl;
         std::cout << "    -d delay: specify delay between two bursts in micro second" << std::endl;
         std::cout << "    -u: if not specified, dual-way (request-reply) are tested; otherwise only test one way (request)" << std::endl;
+        std::cout << "    -y: " << std::endl;
         exit(0);
     }
 

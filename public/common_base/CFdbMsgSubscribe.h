@@ -89,6 +89,12 @@ public:
             deserializer >> (uint8_t &)mType;
         }
     }
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        stream << "event : " << mCode
+               << ", topic : " << mFilter;
+    }
     
 private:
     int32_t mCode;
@@ -118,6 +124,11 @@ public:
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         deserializer >> mSubscribeTbl;
+    }
+protected:
+    void toString(std::ostringstream &stream) const
+    {
+        stream << "mName:"; mSubscribeTbl.format(stream);
     }
 private:
     CFdbParcelableArray<CFdbMsgSubscribeItem> mSubscribeTbl;
