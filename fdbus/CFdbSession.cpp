@@ -22,7 +22,7 @@
 #include <utils/Log.h>
 #include <common_base/CFdbIfMessageHeader.h>
 
-#define FDB_SEND_RETRIES (1024 * 2)
+#define FDB_SEND_RETRIES (1024 * 10)
 #define FDB_RECV_RETRIES 256
 #define FDB_SEND_DELAY 1
 

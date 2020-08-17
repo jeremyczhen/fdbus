@@ -1,5 +1,8 @@
-service fdbus-name-server /system/bin/name-server -u tcp://172.16.5.10:60000
+on post-fs-data
+    mkdir /data/misc/fdbus 0755 system system
+
+service fdbus-name-server /system/bin/name-server -u tcp://192.168.1.1:60000 -n android
     class core
-    user root
-    group root
+    user system
+    group system
     writepid /dev/cpuset/system-background/tasks
