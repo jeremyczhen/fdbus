@@ -18,8 +18,6 @@
 #include <common_base/fdb_option_parser.h>
 #include "CNameServer.h"
 #include <iostream>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 int main(int argc, char **argv)
 {
@@ -52,8 +50,6 @@ int main(int argc, char **argv)
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
-    umask(000);
-    
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {

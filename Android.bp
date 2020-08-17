@@ -39,6 +39,7 @@ SRC_FILES = [
     "worker/CThreadEventLoop.cpp",
     "server/CBaseNameProxy.cpp",
     "server/CIntraNameProxy.cpp",
+    "server/CAddressAllocator.cpp",
     "security/cJSON/cJSON.c",
 ]
 
@@ -60,6 +61,8 @@ cc_library_shared {
         "-DCONFIG_LOG_TO_STDOUT",
         "-DCONFIG_FDB_NO_RTTI",
         "-DCONFIG_FDB_MESSAGE_METADATA",
+        "-DFDB_CONFIG_UDS_ABSTRACT",
+        "-DCFG_ALLOC_PORT_BY_SYSTEM",
     ],
     cflags: [
         "-Wno-unused-parameter",
@@ -70,6 +73,8 @@ cc_library_shared {
         "-DCONFIG_SOCKET_CONNECT_TIMEOUT=0",
         "-DCONFIG_LOG_TO_STDOUT",
         "-DCONFIG_FDB_MESSAGE_METADATA",
+        "-DFDB_CONFIG_UDS_ABSTRACT",
+        "-DCFG_ALLOC_PORT_BY_SYSTEM",
     ],
 
     shared_libs: [
