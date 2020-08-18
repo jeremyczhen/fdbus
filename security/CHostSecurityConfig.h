@@ -25,29 +25,22 @@ class CHostSecurityConfig
 {
 public:
     void importSecurity();
-    int32_t getSecurityLevel(const char *host_name, const char *cred,
-                             EFdbusCredType type = FDB_PERM_CRED_AUTO);
+    int32_t getSecurityLevel(const char *this_host, const char *that_host) const;
+    const std::string *getCred(const char *host_name) const;
 
 private:
     typedef std::map< std::string, int32_t> tCredSecLevelTbl; // host cred->sec level
     struct CHostSecCfg
     {
         int32_t mDefaultLevel;
+        std::string mCred;
         tCredSecLevelTbl mCredSecLevelTbl;
     };
-    struct CPermission
-    {
-        CHostSecCfg mMacAddr;
-        CHostSecCfg mIpAddr;
-    };
-    typedef std::map< std::string, CPermission> tHostSecLevelTbl;
+    typedef std::map< std::string, CHostSecCfg> tHostSecLevelTbl;
     tHostSecLevelTbl mHostSecLevelTbl;
 
     void parseHostSecurityConfig(const char *json_str, std::string &err_msg);
-    void addPermission(const void *json_handle, CHostSecCfg &cfg,
-                        int32_t level, EFdbusCredType type, std::string &err_msg);
-    int32_t getMacSecurityLevel(const char *mac, const CHostSecCfg &sec_cfg);
-    int32_t getIpSecurityLevel(const char *ip, const CHostSecCfg &sec_cfg);
+    void addPermission(const void *json_handle, CHostSecCfg &cfg, int32_t level, std::string &err_msg);
 };
 
 #endif

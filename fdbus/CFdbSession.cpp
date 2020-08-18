@@ -31,7 +31,6 @@ CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CS
     , mSid(sid)
     , mContainer(container)
     , mSocket(socket)
-    , mInternalError(false)
     , mSecurityLevel(FDB_SECURITY_LEVEL_NONE)
 {
 }
@@ -63,6 +62,11 @@ CFdbSession::~CFdbSession()
 
 bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
 {
+    if (fatalError())
+    {
+        return false;
+    }
+
     int32_t retries = FDB_SEND_RETRIES;
     while (1)
     {
@@ -80,7 +84,14 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         }
         worker()->dispatchInput(FDB_SEND_DELAY);
     }
-    return size <= 0;
+
+    if (size > 0)
+    {
+        LOG_E("CFdbSession: Session %d is kicked off for being unable to send %d bytes!\n", mSid, size);
+        fatalError(true);
+        return false;
+    }
+    return true;
 }
 
 bool CFdbSession::sendMessage(CFdbMessage *msg)
@@ -155,7 +166,7 @@ void CFdbSession::onInput(bool &io_error)
 #if 0
         LOG_E("CFdbSession: Session %d: Unable to read prefix: %d!\n", mSid, (int)sizeof(hdr_buf));
 #endif
-        io_error = true;
+        fatalError(true);
         return;
     }
 
@@ -164,7 +175,7 @@ void CFdbSession::onInput(bool &io_error)
     int32_t data_size = prefix.mTotalLength - CFdbMessage::mPrefixSize;
     if (data_size < 0)
     {
-        io_error = true;
+        fatalError(true);
         return;
     }
     /*
@@ -180,7 +191,7 @@ void CFdbSession::onInput(bool &io_error)
     {
         LOG_E("CFdbSession: Session %d: Unable to allocate buffer of size %d!\n",
                 mSid, CFdbMessage::mPrefixSize + data_size);
-        io_error = true;
+        fatalError(true);
         return;
     }
     uint8_t *head_start = whole_buf + CFdbMessage::mPrefixSize;
@@ -188,7 +199,7 @@ void CFdbSession::onInput(bool &io_error)
     {
         LOG_E("CFdbSession: Session %d: Unable to read message: %d!\n", mSid, data_size);
         delete[] whole_buf;
-        io_error = true;
+        fatalError(true);
         return;
     }
 
@@ -198,7 +209,7 @@ void CFdbSession::onInput(bool &io_error)
     {
         LOG_E("CFdbSession: Session %d: Unable to deserialize message head!\n", mSid);
         delete[] whole_buf;
-        io_error = true;
+        fatalError(true);
         return;
     }
 
@@ -235,23 +246,19 @@ void CFdbSession::onInput(bool &io_error)
         default:
             LOG_E("CFdbSession: Message %d: Unknown type!\n", (int32_t)head.serial_number());
             delete[] whole_buf;
-            io_error = true;
+            fatalError(true);
             break;
     }
 }
 
 void CFdbSession::onError()
 {
-    auto endpoint = mContainer->owner();
-    mInternalError = true;
-    delete this;
-    endpoint->checkAutoRemove();
+    onHup();
 }
 
 void CFdbSession::onHup()
 {
     auto endpoint = mContainer->owner();
-    mInternalError = false;
     delete this;
     endpoint->checkAutoRemove();
 }

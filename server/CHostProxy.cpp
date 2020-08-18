@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <vector>
 #include "CHostProxy.h"
 #include <common_base/CInterNameProxy.h>
 #include <common_base/CFdbContext.h>
@@ -47,15 +48,22 @@ CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
     mConnectTimer.attach(FDB_CONTEXT, false);
 }
 
+void CHostProxy::isolate(tNameProxyTbl::iterator &it)
+{
+    auto ns_proxy = it->second;
+    ns_proxy->doDisconnect();
+    LOG_E("CHostProxy: Disconnected to NS of host %s.\n", ns_proxy->getHostIp().c_str());
+    // eventually call deleteNameProxy()
+    delete ns_proxy;
+}
+
 void CHostProxy::isolate()
 {
     for (auto it = mNameProxyTbl.begin(); it != mNameProxyTbl.end();)
     {
-        auto ns_proxy = it->second;
-        ns_proxy->doDisconnect();
+        auto the_it = it;
         ++it;
-        LOG_E("CHostProxy: Disconnected to NS of host %s.\n", ns_proxy->getHostIp().c_str());
-        delete ns_proxy;
+        isolate(the_it);
     }
 }
 
@@ -91,8 +99,8 @@ void CHostProxy::onOnline(FdbSessionId_t sid, bool is_first)
     subscribeListener(NFdbBase::NTF_HOST_ONLINE, true);
     subscribeListener(NFdbBase::NTF_HEART_BEAT, true);
 
-    hostOnline();
     mNameServer->onHostOnline(true);
+    hostOnline();
 
     LOG_I("CHostProxy: connected to host server: %s\n.", mHostUrl.c_str());
 }
@@ -197,6 +205,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
     CFdbParcelableBuilder builder(host_list);
     mNameServer->broadcast(NFdbBase::NTF_HOST_ONLINE_LOCAL, builder);
     auto &addr_list = host_list.address_list();
+    std::vector<std::string> online_host_list;
     for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
     {
         auto &addr = *it;
@@ -213,7 +222,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
                 CFdbSocketAddr addr;
                 if (CBaseSocketFactory::parseUrl(ns_url.c_str(), addr))
                 {
-                    CBaseSocketFactory::buildUrl(ns_url, addr.mType, ip_address.c_str(), addr.mPort);
+                    CBaseSocketFactory::buildUrl(ns_url, ip_address.c_str(), addr.mPort);
                 }
                 else
                 {
@@ -238,38 +247,57 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
                 delete np_it->second;
             }
         }
-        else if (np_it == mNameProxyTbl.end())
+        else
         {
-            auto proxy = new CInterNameProxy(this, ip_address, ns_url, addr.host_name());
-            proxy->enableReconnect(true);
-            proxy->autoRemove(true);
-            if (proxy->connectToNameServer())
+            online_host_list.push_back(ip_address);
+            if (np_it == mNameProxyTbl.end())
             {
-                mNameProxyTbl[ip_address] = proxy;
-                if (addr.has_token_list() && proxy->importTokens(addr.token_list().tokens()))
+                auto proxy = new CInterNameProxy(this, ip_address, ns_url, addr.host_name());
+                proxy->enableReconnect(true);
+                proxy->autoRemove(true);
+                if (proxy->connectToNameServer())
                 {
-                    proxy->updateSecurityLevel();
-                    LOG_I("CHostProxy: tokens of %s is updated.\n", proxy->name().c_str());
-                }
+                    mNameProxyTbl[ip_address] = proxy;
+                    if (addr.has_token_list() && proxy->importTokens(addr.token_list().tokens()))
+                    {
+                        proxy->updateSecurityLevel();
+                        LOG_I("CHostProxy: tokens of %s is updated.\n", proxy->name().c_str());
+                    }
 
-                for (auto filter_it = registered_service_tbl.begin();
-                            filter_it != registered_service_tbl.end(); ++filter_it)
-                {
-                    proxy->addServiceListener(filter_it->c_str(), FDB_INVALID_ID);
-                    LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
-                          filter_it->c_str(), ip_address.c_str());
+                    for (auto filter_it = registered_service_tbl.begin();
+                                filter_it != registered_service_tbl.end(); ++filter_it)
+                    {
+                        proxy->addServiceListener(filter_it->c_str(), FDB_INVALID_ID);
+                        LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
+                              filter_it->c_str(), ip_address.c_str());
+                    }
+                    for (auto filter_it = monitored_service_tbl.begin();
+                                filter_it != monitored_service_tbl.end(); ++filter_it)
+                    {
+                        proxy->addServiceMonitorListener(filter_it->c_str(), FDB_INVALID_ID);
+                        LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
+                              filter_it->c_str(), ip_address.c_str());
+                    }
                 }
-                for (auto filter_it = monitored_service_tbl.begin();
-                            filter_it != monitored_service_tbl.end(); ++filter_it)
+                else
                 {
-                    proxy->addServiceMonitorListener(filter_it->c_str(), FDB_INVALID_ID);
-                    LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
-                          filter_it->c_str(), ip_address.c_str());
+                    delete proxy;
                 }
             }
-            else
+        }
+    }
+
+    if (msg->isInitialResponse() && !online_host_list.empty())
+    {
+        for (auto np_it = mNameProxyTbl.begin(); np_it != mNameProxyTbl.end();)
+        {
+            auto the_np_it = np_it;
+            ++np_it;
+            auto proxy = the_np_it->second;
+            if (std::find(online_host_list.begin(), online_host_list.end(), proxy->getHostIp()) ==
+                    online_host_list.end())
             {
-                delete proxy;
+                isolate(the_np_it);
             }
         }
     }

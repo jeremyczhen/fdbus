@@ -125,6 +125,9 @@ struct CFdbMsgMetadata
     } \
 } while (0);
 
+typedef int32_t FdbMessageType_t;
+#define FDB_MSG_TYPE_SYSTEM       0
+
 class CMessageTimer;
 class CFdbSession;
 class CFdbBaseObject;
@@ -157,7 +160,6 @@ private:
 #define MSG_FLAG_ENABLE_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 3))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
 #define MSG_FLAG_MANUAL_UPDATE      (1 << (MSG_LOCAL_FLAG_SHIFT + 6))
-#define MSG_FLAG_USER_DEFINED       (1 << (MSG_LOCAL_FLAG_SHIFT + 7))
     
     struct CFdbMsgPrefix
     {
@@ -417,23 +419,6 @@ public:
         return !!(mFlag & MSG_FLAG_ENABLE_LOG);
     }
 
-    void userDefined(bool active)
-    {
-        if (active)
-        {
-            mFlag |= MSG_FLAG_USER_DEFINED;
-        }
-        else
-        {
-            mFlag &= ~MSG_FLAG_USER_DEFINED;
-        }
-    }
-
-    bool isUserDefined() const
-    {
-        return !!(mFlag & MSG_FLAG_USER_DEFINED);
-    }
-
     /*
      * Retrieve metadata associated with the message.
      * @oparam metadata: retrieved metadata
@@ -485,6 +470,11 @@ public:
     void setLogData(const char *log_data);
 
     void checkLogEnabled(const CFdbBaseObject *object, bool lock = true);
+
+    virtual FdbMessageType_t getTypeId()
+    {
+        return FDB_MSG_TYPE_SYSTEM;
+    }
 
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);

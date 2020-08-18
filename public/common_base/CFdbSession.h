@@ -57,14 +57,6 @@ public:
     {
         return mContainer;
     }
-    bool internalError() const
-    {
-        return mInternalError;
-    }
-    void internalError(bool active)
-    {
-        mInternalError = active;
-    }
     void securityLevel(int32_t level);
     int32_t securityLevel() const
     {
@@ -110,7 +102,6 @@ private:
     FdbSessionId_t mSid;
     CFdbSessionContainer *mContainer;
     CSocketImp *mSocket;
-    bool mInternalError;
     int32_t mSecurityLevel;
     std::string mToken;
     std::string mSenderName;

@@ -32,8 +32,10 @@ public:
     static bool parseUrl(const char *url, CFdbSocketAddr &addr);
     static bool getIpAddress(tIpAddressTbl &addr_tbl);
     static bool getIpAddress(std::string &address, const char *if_name = 0);
-    static void buildUrl(std::string &url, EFdbSocketType type, const char *ip_path_svc, const char *port = 0);
-    static void buildUrl(std::string &url, EFdbSocketType type, const char *ip_path_svc, int32_t port);
+    static void buildUrl(std::string &url, const char *ip_addr, const char *port);
+    static void buildUrl(std::string &url, const char *ip_addr, int32_t port);
+    static void buildUrl(std::string &url, uint32_t uds_id);
+    static void buildUrl(std::string &url, const char *svc_name);
     static void updatePort(CFdbSocketAddr &addr, int32_t new_port);
 private:
     static int32_t buildTcpAddress(const char *host_addr, CFdbSocketAddr &addr);

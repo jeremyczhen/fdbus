@@ -20,7 +20,7 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <security/CFdbusSecurityConfig.h>
-#include "CNsConfig.h"
+#include <utils/CNsConfig.h>
 #include <utils/Log.h>
 #include <common_base/CFdbIfNameServer.h>
 
@@ -88,6 +88,9 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
         msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
         return;
     }
+
+    //TODO: check host cred and deny unauthorized host from being connected
+
     auto ip_addr = host_addr.ip_address().c_str();
     auto host_name = ip_addr;
     if (!host_addr.host_name().empty())
@@ -98,7 +101,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
     const char *ns_url;
     if (host_addr.ns_url().empty())
     {
-        CBaseSocketFactory::buildUrl(str_ns_url, FDB_SOCKET_TCP, ip_addr, CNsConfig::getNameServerTcpPort());
+        CBaseSocketFactory::buildUrl(str_ns_url, ip_addr, CNsConfig::getNameServerTcpPort());
         ns_url = str_ns_url.c_str();
     }
     else
@@ -120,7 +123,16 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
     info.mIpAddress = ip_addr;
     info.mNsUrl = ns_url;
     info.mHbCount = 0;
-    info.ready = false;
+    info.mReady = false;
+    info.mAuthorized = false;
+    if (host_addr.has_cred() && !host_addr.cred().empty())
+    {
+        auto cred = mHostSecurity.getCred(host_name);
+        if (cred && !cred->compare(host_addr.cred()))
+        {
+            info.mAuthorized = true;
+        }
+    }
     CFdbToken::allocateToken(info.mTokens);
 
     NFdbBase::FdbMsgHostRegisterAck ack;
@@ -138,24 +150,36 @@ void CHostServer::onHostReady(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
 
+    //TODO: check host cred and deny unauthorized host from being connected
+
     auto it = mHostTbl.find(msg->session());
     if (it != mHostTbl.end())
     {
         CHostInfo &info = it->second;
-        info.ready = true;
+        info.mReady = true;
         broadcastSingleHost(msg->session(), true, info);
     }
 }
 
-void CHostServer::addToken(const CFdbSession *session,
-                          const CHostInfo &host_info,
+// give token from 'this_host' to 'that_host' so that 'that_host' can connect with 'this_host'
+void CHostServer::addToken(const CHostInfo &this_host,
+                          const CHostInfo &that_host,
                           NFdbBase::FdbMsgHostAddress &host_addr)
 {
-    int32_t security_level = getSecurityLevel(session, host_info.mHostName.c_str());
-    const char *token = 0;
-    if ((security_level >= 0) && (security_level < (int32_t)host_info.mTokens.size()))
+    int32_t security_level;
+    if (that_host.mAuthorized)
     {
-        token = host_info.mTokens[security_level].c_str();
+         security_level =  mHostSecurity.getSecurityLevel(this_host.mHostName.c_str(), that_host.mHostName.c_str());
+    }
+    else
+    {
+        security_level = FDB_SECURITY_LEVEL_NONE;
+    }
+
+    const char *token = 0;
+    if ((security_level >= 0) && (security_level < (int32_t)this_host.mTokens.size()))
+    {
+        token = this_host.mTokens[security_level].c_str();
     }
     host_addr.token_list().clear_tokens();
     host_addr.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
@@ -177,10 +201,14 @@ void CHostServer::broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo
     {
         tSubscribedSessionSets sessions;
         getSubscribeTable(NFdbBase::NTF_HOST_ONLINE, 0, sessions);
-        for (auto it = sessions.begin(); it != sessions.end(); ++it)
+        for (auto session_it = sessions.begin(); session_it != sessions.end(); ++session_it)
         {
-            CFdbSession *session = *it;
-            addToken(session, info, *addr);
+            CFdbSession *session = *session_it;
+            auto info_it = mHostTbl.find(session->sid());
+            if (info_it != mHostTbl.end()) 
+            {
+                addToken(info, info_it->second, *addr);
+            }
             CFdbParcelableBuilder builder(addr_list);
             broadcast(session->sid(), FDB_OBJECT_MAIN, NFdbBase::NTF_HOST_ONLINE, builder);
         }
@@ -244,14 +272,18 @@ void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *
     for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         auto &info = it->second;
-        if (info.ready)
+        if (info.mReady)
         {
             auto addr = addr_list.add_address_list();
             addr->set_ip_address(info.mIpAddress);
             addr->set_ns_url(info.mNsUrl); // ns_url being empty means offline
             addr->set_host_name(info.mHostName);
 
-            addToken(session, info, *addr);
+            auto info_it = mHostTbl.find(session->sid());
+            if (info_it != mHostTbl.end()) 
+            {
+                addToken(info_it->second, info, *addr);
+            }
         }
     }
     if (!addr_list.address_list().empty())
@@ -275,19 +307,6 @@ void CHostServer::broadcastHeartBeat(CMethodLoopTimer<CHostServer> *timer)
         }
     }
     broadcast(NFdbBase::NTF_HEART_BEAT);
-}
-
-int32_t CHostServer::getSecurityLevel(const CFdbSession *session, const char *host_name)
-{
-    std::string peer_ip;
-    if ((const_cast<CFdbSession *>(session))->peerIp(peer_ip))
-    {
-        return mHostSecurity.getSecurityLevel(host_name, peer_ip.c_str(), FDB_PERM_CRED_IP);
-    }
-    else
-    {
-        return FDB_SECURITY_LEVEL_NONE;
-    }
 }
 
 void CHostServer::populateTokens(const CFdbToken::tTokenList &tokens,

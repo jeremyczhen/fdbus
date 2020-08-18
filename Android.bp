@@ -39,6 +39,7 @@ SRC_FILES = [
     "worker/CThreadEventLoop.cpp",
     "server/CBaseNameProxy.cpp",
     "server/CIntraNameProxy.cpp",
+    "server/CAddressAllocator.cpp",
     "security/cJSON/cJSON.c",
 ]
 
@@ -53,23 +54,32 @@ cc_library_shared {
         "-fexceptions",
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
         "-DCONFIG_SOCKET_PEERCRED",
         "-DCONFIG_SOCKET_CONNECT_TIMEOUT=0",
         "-DCONFIG_LOG_TO_STDOUT",
         "-DCONFIG_FDB_NO_RTTI",
         "-DCONFIG_FDB_MESSAGE_METADATA",
+        "-DFDB_CONFIG_UDS_ABSTRACT",
+        "-DCFG_ALLOC_PORT_BY_SYSTEM",
     ],
     cflags: [
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
         "-DCONFIG_SOCKET_PEERCRED",
         "-DCONFIG_SOCKET_CONNECT_TIMEOUT=0",
         "-DCONFIG_LOG_TO_STDOUT",
         "-DCONFIG_FDB_MESSAGE_METADATA",
+        "-DFDB_CONFIG_UDS_ABSTRACT",
+        "-DCFG_ALLOC_PORT_BY_SYSTEM",
+    ],
+
+    shared_libs: [
+        "liblog",
+        "libutils",
     ],
 
     srcs: SRC_FILES,
@@ -91,7 +101,7 @@ cc_library_shared {
         "-fexceptions",
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
         "-DCFG_JNI_ANDROID",
         "-DFDB_CFG_KEEP_ENV_TYPE",
@@ -99,7 +109,7 @@ cc_library_shared {
     cflags: [
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
         "-DCFG_JNI_ANDROID",
     ],
@@ -176,19 +186,19 @@ java_library {
 cc_binary {
     name: "name-server",
     vendor_available: true,
-    //LOCAL_INIT_RC := fdbus-name-server.rc
+    init_rc: ["fdbus-name-server.rc"],
     cppflags: [
         "-frtti",
         "-fexceptions",
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
     ],
     cflags: [
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
     ],
     srcs: [
@@ -199,7 +209,11 @@ cc_binary {
         "security/CServerSecurityConfig.cpp",
     ],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -214,13 +228,13 @@ cc_binary {
         "-fexceptions",
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
         "-DCONFIG_DEBUG_LOG",
     ],
     cflags: [
         "-Wno-unused-parameter",
         "-D__LINUX__",
-        "-DFDB_CFG_SOCKET_PATH=\"/data/local/tmp\"",
+        "-DFDB_CFG_SOCKET_PATH=\"/data/misc/fdbus\"",
     ],
     srcs: [
         "server/main_hs.cpp",
@@ -228,7 +242,11 @@ cc_binary {
         "security/CHostSecurityConfig.cpp",
     ],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -252,7 +270,11 @@ cc_binary {
     ],
     srcs: ["server/main_ls.cpp"],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -276,7 +298,11 @@ cc_binary {
     ],
     srcs: ["server/main_lh.cpp"],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -300,7 +326,11 @@ cc_binary {
     ],
     srcs: ["server/main_lc.cpp"],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -327,7 +357,11 @@ cc_binary {
         "server/CLogPrinter.cpp",
     ],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -354,7 +388,11 @@ cc_binary {
         "server/CLogPrinter.cpp",
     ],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -386,6 +424,8 @@ cc_binary {
     shared_libs: [
         "libprotobuf-cpp-full",
         "libcommon-base",
+        "liblog",
+        "libutils",
     ],
 
     proto: {
@@ -421,6 +461,8 @@ cc_binary {
     shared_libs: [
         "libprotobuf-cpp-full",
         "libcommon-base",
+        "liblog",
+        "libutils",
     ],
 
     proto: {
@@ -448,7 +490,11 @@ cc_binary {
     ],
     srcs: ["server/main_xclient.cpp"],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }
 
@@ -471,6 +517,10 @@ cc_binary {
     ],
     srcs: ["server/main_xserver.cpp"],
 
-    shared_libs: ["libcommon-base"],
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
 
 }

@@ -843,7 +843,8 @@ bool CBaseWorker::flush(int32_t milliseconds, bool urgent)
 {
     if (isSelf())
     {
-        return false;
+        processJobQueue();
+        return true;
     }
 
     return sendSync(new CBaseJob(), milliseconds, urgent);

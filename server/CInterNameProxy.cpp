@@ -22,6 +22,7 @@
 #include "CNameServer.h"
 #include <utils/Log.h>
 
+#define FDB_MSG_TYPE_SUBSCRIBE (FDB_MSG_TYPE_SYSTEM + 1)
 class CServiceSubscribeMsg : public CFdbMessage
 {
 public:
@@ -33,6 +34,10 @@ public:
     FdbSessionId_t getSubscriber() const
     {
         return mSubscriber;
+    }
+    FdbMessageType_t getTypeId()
+    {
+        return FDB_MSG_TYPE_SUBSCRIBE;
     }
 private:
     FdbSessionId_t mSubscriber;
@@ -172,7 +177,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             if (session)
             {
                 auto out_going_msg = session->peepPendingMessage(msg->sn());
-                if (out_going_msg)
+                if (out_going_msg && (out_going_msg->getTypeId() == FDB_MSG_TYPE_SUBSCRIBE))
                 {
                     CServiceSubscribeMsg *svc_sub_msg =
                                     fdb_dynamic_cast_if_available<CServiceSubscribeMsg *>(out_going_msg);

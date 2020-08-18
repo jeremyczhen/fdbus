@@ -22,7 +22,7 @@
 #include <common_base/cJSON/cJSON.h>
 #include <common_base/CFdbCJsonMsgBuilder.h>
 
-#define FDB_INVOKE_SYNC 1
+#define FDB_INVOKE_SYNC 0
 
 static CBaseWorker main_worker;
 
@@ -99,11 +99,11 @@ public:
     {
         NFdbExample::SongId song_id;
         song_id.set_id(1234);
+        CFdbProtoMsgBuilder builder(song_id);
 
 #if defined(FDB_INVOKE_SYNC)
         /* this version of invoke() is synchronous: once called, it blocks until server call reply() */
         CBaseJob::Ptr ref(new CBaseMessage(REQ_METADATA));
-        CFdbProtoMsgBuilder builder(song_id);
         invoke(ref, builder); /* onInvoke() will be called at server */
 
         /* we return from invoke(); must get reply from server. Check it. */
@@ -166,7 +166,7 @@ public:
          * This is asynchronous verison of invoke(); It returns immediately without blocking
          * Reply from server will be received from onReply() callback
          */
-        invoke(REQ_METADATA, song_id);
+        invoke(REQ_METADATA, builder);
 #endif
 
         invoke(REQ_RAWDATA);

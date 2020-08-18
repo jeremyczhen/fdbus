@@ -108,7 +108,9 @@ private:
         {
             auto &client_info = *it;
             std::cout << "    " <<  client_info.peer_name() << "@"
-                                << client_info.peer_address() << std::endl;
+                                << client_info.peer_address()
+                                << ", security: " << client_info.security_level()
+                                << std::endl;
         }
     }
 

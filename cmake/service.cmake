@@ -5,6 +5,7 @@ add_executable(name_server
     ${PACKAGE_SOURCE_ROOT}/server/CNameServer.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CInterNameProxy.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CHostProxy.cpp
+    ${PACKAGE_SOURCE_ROOT}/server/CAddressAllocator.cpp
     ${PACKAGE_SOURCE_ROOT}/security/CServerSecurityConfig.cpp
 )
 

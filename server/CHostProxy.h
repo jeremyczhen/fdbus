@@ -21,7 +21,7 @@
 #include <common_base/CBaseClient.h>
 #include <common_base/CMethodLoopTimer.h>
 #include <common_base/CFdbIfNameServer.h>
-#include "CNsConfig.h"
+#include <utils/CNsConfig.h>
 
 class CInterNameProxy;
 class CNameServer;
@@ -78,6 +78,7 @@ private:
     void hostOnline();
     void hostOnline(FdbMsgCode_t code);
     void isolate();
+    void isolate(tNameProxyTbl::iterator &it);
 
     class CConnectTimer : public CMethodLoopTimer<CHostProxy>
     {

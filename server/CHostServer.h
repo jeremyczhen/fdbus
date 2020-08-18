@@ -21,7 +21,7 @@
 #include <vector>
 #include <common_base/CBaseServer.h>
 #include <common_base/CMethodLoopTimer.h>
-#include "CNsConfig.h"
+#include <utils/CNsConfig.h>
 #include <security/CHostSecurityConfig.h>
 
 namespace NFdbBase {
@@ -46,7 +46,8 @@ private:
         std::string mIpAddress;
         std::string mNsUrl;
         int32_t mHbCount;
-        bool ready;
+        bool mReady;
+        bool mAuthorized;
         CFdbToken::tTokenList mTokens;
     };
     typedef std::map<FdbSessionId_t, CHostInfo> tHostTbl;
@@ -77,11 +78,9 @@ private:
     void broadcastHeartBeat(CMethodLoopTimer<CHostServer> *timer);
     CHostSecurityConfig mHostSecurity;
 
-    int32_t getSecurityLevel(const CFdbSession *session, const char *host_name);
     void populateTokens(const CFdbToken::tTokenList &tokens,
                         NFdbBase::FdbMsgHostRegisterAck &list);
-    void addToken(const CFdbSession *session,
-                    const CHostInfo &host_info,
+    void addToken(const CHostInfo &this_host, const CHostInfo &that_host,
                     NFdbBase::FdbMsgHostAddress &host_addr);
 };
 

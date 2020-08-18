@@ -85,6 +85,14 @@ public:
     {
         mFd = fd;
     }
+
+    bool fatalError() const
+    {
+        return mFatalError;
+    }
+
+    void fatalError(bool enb);
+
 protected:
     /*-----------------------------------------------------------------------------
      * The virtual function should be implemented by subclass
@@ -120,7 +128,7 @@ protected:
      */
     virtual void onError()
     {
-        enable(false);
+        fatalError(true);
     }
 
     virtual int32_t convertRetEvents(int32_t revents)
@@ -142,6 +150,7 @@ private:
     int mFd;
     int32_t mFlags;
     bool mEnable;
+    bool mFatalError;
     CFdEventLoop *mEventLoop;
     
     friend class CFdEventLoop;

@@ -54,10 +54,20 @@ public:
 
     static const char *getNameServerIpcPath()
     {
+        return NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ns";
+    }
+
+    static const char *getNameServerIpcUrl()
+    {
         return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ns";
     }
 
     static const char *getHostServerIpcPath()
+    {
+        return NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-hs";
+    }
+
+    static const char *getHostServerIpcUrl()
     {
         return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-hs";
     }
@@ -83,6 +93,11 @@ public:
     }
 
     static const char *getIpcPathBase()
+    {
+        return NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ipc";
+    }
+
+    static const char *getIpcUrlBase()
     {
         return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ipc";
     }

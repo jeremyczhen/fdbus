@@ -297,6 +297,19 @@ public:
     {
         return !!(mOptions & mMaskTokenList);
     }
+    void set_cred(const char *cred)
+    {
+        mCred = cred;
+        mOptions |= mMaskCred;
+    }
+    std::string &cred()
+    {
+        return mCred;
+    }
+    bool has_cred() const
+    {
+        return !!(mOptions & mMaskCred);
+    }
 
     void serialize(CFdbSimpleSerializer &serializer) const
     {
@@ -307,6 +320,10 @@ public:
         if (mOptions & mMaskTokenList)
         {
             serializer << mTokenList;
+        }
+        if (mOptions & mMaskCred)
+        {
+            serializer << mCred;
         }
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
@@ -319,14 +336,20 @@ public:
         {
             deserializer >> mTokenList;
         }
+        if (mOptions & mMaskCred)
+        {
+            deserializer >> mCred;
+        }
     }
 private:
     std::string mIpAddress;
     std::string mNsUrl;
     std::string mHostName;
     FdbMsgTokens mTokenList;
+    std::string mCred;
     uint8_t mOptions;
         static const uint8_t mMaskTokenList = 1 << 0;
+        static const uint8_t mMaskCred = 1 << 1;
 };
 
 class FdbMsgHostRegisterAck : public IFdbParcelable
@@ -489,19 +512,30 @@ public:
     {
         mPeerAddress = address;
     }
+    int32_t security_level() const
+    {
+        return mSecurityLevel;
+    }
+    void set_security_level(int32_t sec_level)
+    {
+        mSecurityLevel = sec_level;
+    }
     void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mPeerName
-                   << mPeerAddress;
+                   << mPeerAddress
+                   << mSecurityLevel;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         deserializer >> mPeerName
-                     >> mPeerAddress;
+                     >> mPeerAddress
+                     >> mSecurityLevel;
     }
 private:
     std::string mPeerName;
     std::string mPeerAddress;
+    int32_t mSecurityLevel;
 };
 
 class FdbMsgClientTable : public IFdbParcelable

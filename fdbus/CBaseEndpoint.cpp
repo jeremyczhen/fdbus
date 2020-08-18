@@ -405,7 +405,7 @@ bool CBaseEndpoint::replaceUrlIpAddress(std::string &url, CFdbSession *session,
             {
                 return false;
             }
-            CBaseSocketFactory::buildUrl(url, addr.mType, peer_ip.c_str(), addr.mPort);
+            CBaseSocketFactory::buildUrl(url, peer_ip.c_str(), addr.mPort);
         }
         else
         {

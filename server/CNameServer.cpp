@@ -24,20 +24,13 @@
 #include <common_base/CFdbIfNameServer.h>
 #include <security/CFdbusSecurityConfig.h>
 #include "CHostProxy.h"
-#include "CNsConfig.h"
+#include <utils/CNsConfig.h>
 #include <utils/Log.h>
 
 CNameServer::CNameServer()
     : CBaseServer(CNsConfig::getNameServerName())
-    , mTcpPortAllocator(CNsConfig::getTcpPortMin())
-    , mIpcAllocator(0)
     , mHostProxy(0)
 {
-#ifdef CFG_ALLOC_PORT_BY_SYSTEM
-    mNsPort = FDB_SYSTEM_PORT;
-#else
-    mNsPort = CNsConfig::getIntNameServerTcpPort();
-#endif
     mNsName = CNsConfig::getNameServerName();
     mServerSecruity.importSecurity();
     role(FDB_OBJECT_ROLE_NS_SERVER);
@@ -117,7 +110,7 @@ void CNameServer::setHostInfo(CFdbSession *session, NFdbBase::FdbMsgServiceInfo 
         host_ip = FDB_IP_ALL_INTERFACE;
     }
     std::string ns_url;
-    CBaseSocketFactory::buildUrl(ns_url, FDB_SOCKET_TCP, host_ip.c_str(), mNsPort);
+    CBaseSocketFactory::buildUrl(ns_url, host_ip.c_str(), CNsConfig::getNameServerTcpPort());
     msg_svc_info->host_addr().set_ip_address(host_ip);
     msg_svc_info->host_addr().set_ns_url(ns_url);
     msg_svc_info->host_addr().set_host_name(mHostProxy->hostName());
@@ -175,24 +168,19 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
         msg_addr_list->set_is_local(true);
     }
     
-    CFdbAddressDesc *desc;
-    std::string url;
     if ((skt_type == FDB_SOCKET_IPC) &&
             !addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_IPC))
     {
-        if (allocateIpcAddress(svc_name, url))
+        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), FDB_SOCKET_IPC);
+        if (desc)
         {
-            desc = createAddrDesc(url.c_str());
-            if (desc)
+            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
+            addr_tbl.mAddrTbl.push_back(desc);
+            if (msg_addr_list)
             {
-                desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-                addr_tbl.mAddrTbl.push_back(desc);
-                if (msg_addr_list)
-                {
-                    msg_addr_list->add_address_list(desc->mAddress.mUrl);
-                }
-                address_created = true;
+                msg_addr_list->add_address_list(desc->mAddress.mUrl);
             }
+            address_created = true;
         }
 
         // host server is forced to bind to tcp address
@@ -207,21 +195,19 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
 
     if (!addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_TCP))
     {
-        if (allocateTcpAddress(svc_name, url))
+        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), FDB_SOCKET_TCP);
+        if (desc)
         {
-            desc = createAddrDesc(url.c_str());
-            if (desc)
+            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
+            addr_tbl.mAddrTbl.push_back(desc);
+            if (msg_addr_list)
             {
-                desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-                addr_tbl.mAddrTbl.push_back(desc);
-                if (msg_addr_list)
-                {
-                    msg_addr_list->add_address_list(desc->mAddress.mUrl);
-                }
-                address_created = true;
+                msg_addr_list->add_address_list(desc->mAddress.mUrl);
             }
+            address_created = true;
         }
     }
+
     return address_created;
 }
 
@@ -292,9 +278,7 @@ void CNameServer::buildSpecificTcpAddress(CFdbSession *session,
     if (session_addr->mType != FDB_SOCKET_IPC)
     {
         // The same port number but a specific IP address
-        CBaseSocketFactory::buildUrl(out_url, FDB_SOCKET_TCP,
-                                    sinfo.mConn->mSelfIp.c_str(),
-                                    port);
+        CBaseSocketFactory::buildUrl(out_url, sinfo.mConn->mSelfIp.c_str(), port);
     }
 }
 
@@ -584,12 +568,9 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         else
         {
 #ifdef __WIN32__
-            CBaseSocketFactory::buildUrl(hs_url,
-                                         FDB_SOCKET_TCP,
-                                         FDB_LOCAL_HOST,
-                                         CNsConfig::getHostServerTcpPort());
+            CBaseSocketFactory::buildUrl(hs_url, FDB_LOCAL_HOST, CNsConfig::getHostServerTcpPort());
 #else
-            hs_url = CNsConfig::getHostServerIpcPath();
+            hs_url = CNsConfig::getHostServerIpcUrl();
 #endif
             addr_tbl.mAddrTbl.push_back(createAddrDesc(hs_url.c_str()));
         }
@@ -656,15 +637,13 @@ bool CNameServer::reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc
     }
 
     addr_desc->reconnect_cnt++;
-    std::string url;
-    bool ret = (addr_desc->mAddress.mType == FDB_SOCKET_IPC) ?
-               allocateIpcAddress(svc_name, url) : allocateTcpAddress(svc_name, url);
-
-    if (ret && CBaseSocketFactory::parseUrl(url.c_str(), addr_desc->mAddress))
+    CFdbSocketAddr sckt_addr;
+    bool ret = allocateAddress(addr_desc->mAddress.mType, svc_name, sckt_addr);
+    if (ret && CBaseSocketFactory::parseUrl(sckt_addr.mUrl.c_str(), addr_desc->mAddress))
     {
         // replace failed address with a new one
         NFdbBase::FdbMsgAddressList addr_list;
-        addr_list.add_address_list(url.c_str());
+        addr_list.add_address_list(sckt_addr.mUrl.c_str());
         addr_list.set_service_name(svc_name);
         addr_list.set_host_name((mHostProxy->hostName()));
         addr_list.set_is_local(true);
@@ -928,46 +907,66 @@ CNameServer::CFdbAddressDesc *CNameServer::findAddress(EFdbSocketType type, cons
     return 0;
 }
 
-void CNameServer::buildUrl(const char *id, std::string &url)
-{
-    url = CNsConfig::getIpcPathBase();
-    url += id;
-}
-
-void CNameServer::buildUrl(uint32_t id, std::string &url)
-{
-    char id_string[48];
-    sprintf(id_string, "%u", id);
-    buildUrl(id_string, url);
-}
-
 CNameServer::CFdbAddressDesc *CNameServer::createAddrDesc(const char *url)
 {
     auto desc = new CFdbAddressDesc();
-    if (!CBaseSocketFactory::parseUrl(url, desc->mAddress))
+    if (CBaseSocketFactory::parseUrl(url, desc->mAddress))
     {
-        delete desc;
-        return 0;
+        return desc;
     }
-    return desc;
+
+    delete desc;
+    return 0;
 }
 
-bool CNameServer::allocateTcpAddress(const std::string &svc_name, std::string &addr_url)
+CNameServer::CFdbAddressDesc *CNameServer::createAddrDesc(const char *svc_name, EFdbSocketType sckt_type)
+{
+    CFdbAddressDesc *desc = new CFdbAddressDesc;
+    if (allocateAddress(sckt_type, svc_name, desc->mAddress))
+    {
+        return desc;
+    }
+
+    delete desc;
+    return 0;
+}
+
+bool CNameServer::allocateAddress(IAddressAllocator &allocator, FdbServerType svc_type,
+                                  CFdbSocketAddr &sckt_addr)
+{
+    int32_t retries =  (int32_t)mRegistryTbl.size() + 8; // 8 is just come to me...
+    while (--retries > 0)
+    {
+        allocator.allocate(sckt_addr, svc_type);
+        if (!findAddress(sckt_addr.mType, sckt_addr.mUrl.c_str()))
+        {
+            return true;
+        }
+        if (svc_type != FDB_SVC_USER)
+        {
+            LOG_E("NameServer: address %s conflict!\n", sckt_addr.mUrl.c_str());
+            return false;
+        }
+        if ((sckt_addr.mType == FDB_SOCKET_TCP) && (sckt_addr.mPort == FDB_SYSTEM_PORT))
+        {
+            return true;
+        }
+    }
+
+    LOG_E("NameServer: Fatal Error! allocator goes out of range!\n");
+    return false;
+}
+
+bool CNameServer::allocateTcpAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr)
 {
     const char *str_host_ip = 0;
     std::string host_ip;
-#ifdef CFG_ALLOC_PORT_BY_SYSTEM
-    bool alloc_port_by_system = true;
-#else
-    bool alloc_port_by_system = false;
-#endif
-    bool is_host_server = svc_name == CNsConfig::getHostServerName();
-    bool is_name_server = svc_name == name();
+    FdbServerType svc_type = IAddressAllocator::getSvcType(svc_name.c_str());
     
     if (mInterface.empty())
     {
         // host server binds to all interfaces
-        if (!is_host_server && mHostProxy->hostIp(host_ip))
+        if ((svc_type != FDB_SVC_HOST_SERVER) && mHostProxy->hostIp(host_ip))
         {
             if (host_ip.compare(FDB_LOCAL_HOST))
             {
@@ -985,102 +984,20 @@ bool CNameServer::allocateTcpAddress(const std::string &svc_name, std::string &a
         str_host_ip = FDB_IP_ALL_INTERFACE;
     }
 
-    if (is_host_server || is_name_server || alloc_port_by_system)
-    {
-        int32_t port;
-        if (is_host_server)
-        {
-            port = CNsConfig::getIntHostServerTcpPort();
-        }
-        else if (alloc_port_by_system)
-        {
-#ifdef __WIN32__ 
-            // for windows, port of name server is fixed.
-            port = is_name_server ? CNsConfig::getIntNameServerTcpPort() : FDB_SYSTEM_PORT;
-#else
-            port = FDB_SYSTEM_PORT;
-#endif
-        }
-        else
-        {
-            port = CNsConfig::getIntNameServerTcpPort();
-        }
-        std::string url;
-        CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP, str_host_ip, port);
-        if (alloc_port_by_system || !findAddress(FDB_SOCKET_TCP, url.c_str()))
-        {
-            addr_url = url;
-            return true;
-        }
-        LOG_E("NameServer: TCP address %s conflict!\n", url.c_str());
-    }
-    else
-    {
-        uint32_t alloc_begin;
-        uint32_t alloc_end;
-        alloc_begin = mTcpPortAllocator++;
-        alloc_end = CNsConfig::getTcpPortMax();
-        if (mTcpPortAllocator > alloc_end)
-        {
-            mTcpPortAllocator = CNsConfig::getTcpPortMin();
-        }
-        
-        for (uint32_t id = alloc_begin; id <= alloc_end; ++id)
-        {
-            std::string url;
-            CBaseSocketFactory::buildUrl(url, FDB_SOCKET_TCP, str_host_ip, id);
-            if (!findAddress(FDB_SOCKET_TCP, url.c_str()))
-            {
-                addr_url = url;
-                return true;
-            }
-        }
-        LOG_E("NameServer: Fatal Error! Port number out of range!\n");
-    }
-
-    return false;
+    auto &allocator = mTcpAllocators[str_host_ip];
+    allocator.setInterfaceIp(str_host_ip);
+    return allocateAddress(allocator, svc_type, sckt_addr);
 }
 
-bool CNameServer::allocateIpcAddress(const std::string &svc_name, std::string &addr_url)
+bool CNameServer::allocateIpcAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr)
 {
-    bool is_host_server = svc_name == CNsConfig::getHostServerName();
-    bool is_name_server = svc_name == name();
-    if (is_host_server || is_name_server)
-    {
-        auto chr_url = is_host_server ? CNsConfig::getHostServerIpcPath() :
-                                CNsConfig::getNameServerIpcPath();
-        if (!findAddress(FDB_SOCKET_IPC, chr_url))
-        {
-            addr_url = chr_url;
-            return true;
-        }
-        LOG_E("NameServer: IPC address %s conflict!\n", chr_url);
-    }
-    else
-    {
-        uint32_t alloc_begin;
-        uint32_t alloc_end;
-        alloc_begin = mIpcAllocator++;
-        alloc_end = ~0;
-        if (mIpcAllocator >= alloc_end)
-        {
-            mIpcAllocator = 0;
-        }
-        
-        for (uint32_t id = alloc_begin; id <= alloc_end; ++id)
-        {
-            std::string url;
-            buildUrl(id, url);
-            if (!findAddress(FDB_SOCKET_IPC, url.c_str()))
-            {
-                addr_url = url;
-                return true;
-            }
-        }
-        LOG_E("NameServer: Fatal Error! IPC number out of range!\n");
-    }
+    return allocateAddress(mIpcAllocator, IAddressAllocator::getSvcType(svc_name.c_str()), sckt_addr);
+}
 
-    return false;
+bool CNameServer::allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, CFdbSocketAddr &sckt_addr)
+{
+    return (sckt_type == FDB_SOCKET_IPC) ? allocateIpcAddress(svc_name, sckt_addr) :
+                                          allocateTcpAddress(svc_name, sckt_addr);
 }
 
 EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
@@ -1125,13 +1042,6 @@ bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
         auto sk = doBind(url);
         if (sk)
         {
-            if ((*it)->mAddress.mType != FDB_SOCKET_IPC)
-            {
-                CFdbSocketInfo info;
-                sk->getSocketInfo(info);
-                mNsPort = info.mAddress->mPort;
-                CBaseSocketFactory::updatePort((*it)->mAddress, mNsPort);
-            }
             (*it)->mStatus = CFdbAddressDesc::ADDR_BOUND;
         }
         else
@@ -1198,14 +1108,7 @@ const std::string CNameServer::getNsTcpUrl(const char *ip_addr)
     }
     if (!host_ip.empty())
     {
-        if (mNsPort == FDB_SYSTEM_PORT)
-        {
-            LOG_E("CNameServer: getNsTcpUrl() is called before name server is bound to TCP address!\n");
-        }
-        else
-        {
-            CBaseSocketFactory::buildUrl(ns_url, FDB_SOCKET_TCP, host_ip.c_str(), mNsPort);
-        }
+        CBaseSocketFactory::buildUrl(ns_url, host_ip.c_str(), CNsConfig::getNameServerTcpPort());
     }
     return ns_url;
 }

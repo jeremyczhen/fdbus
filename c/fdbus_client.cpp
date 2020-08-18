@@ -23,6 +23,8 @@
 #define FDB_LOG_TAG "FDB_CLT"
 #include <common_base/fdb_log_trace.h>
 
+#define FDB_MSG_TYPE_C_INVOKE (FDB_MSG_TYPE_SYSTEM + 1)
+
 class CCClient : public CBaseClient
 {
 public:
@@ -44,7 +46,10 @@ public:
         : CBaseMessage(code)
         , mUserData(user_data)
     {
-        userDefined(true);
+    }
+    FdbMessageType_t getTypeId()
+    {
+        return FDB_MSG_TYPE_C_INVOKE;
     }
     void *mUserData;
 };
@@ -98,7 +103,7 @@ void CCClient::onReply(CBaseJob::Ptr &msg_ref)
     }
 
     CCInvokeMsg *c_msg = 0;
-    if (fdb_msg->isUserDefined())
+    if (fdb_msg->getTypeId() == FDB_MSG_TYPE_C_INVOKE)
     {
         c_msg = castToMessage<CCInvokeMsg *>(msg_ref);
     }

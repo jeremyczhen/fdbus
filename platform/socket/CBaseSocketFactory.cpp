@@ -19,6 +19,7 @@
 #include "linux/CLinuxSocket.h"
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/common_defs.h>
+#include <utils/CNsConfig.h>
 
 CClientSocketImp *CBaseSocketFactory::createClientSocket(CFdbSocketAddr &addr)
 {
@@ -193,47 +194,46 @@ bool CBaseSocketFactory::getIpAddress(std::string &address, const char *if_name)
     return false;
 }
 
-void CBaseSocketFactory::buildUrl(std::string &url, EFdbSocketType type, const char *ip_path_svc, const char *port)
+void CBaseSocketFactory::buildUrl(std::string &url, const char *ip_addr, const char *port)
 {
-    switch (type)
+    url = FDB_URL_TCP;
+    if (ip_addr)
     {
-        case FDB_SOCKET_TCP:
-            url = FDB_URL_TCP;
-            if (ip_path_svc)
-            {
-                url = url + ip_path_svc + ":" + port;
-            }
-            else
-            {
-                url = url + ":" + port;
-            }
-        break;
-        case FDB_SOCKET_IPC:
-            url = FDB_URL_IPC;
-            url = url + ":" + ip_path_svc;
-        break;
-        case FDB_SOCKET_SVC:
-            url = FDB_URL_SVC;
-            url = url + ":" + ip_path_svc;
-        break;
-        default:
-        break;
+        url = url + ip_addr + ":" + port;
+    }
+    else
+    {
+        url = url + ":" + port;
     }
 }
 
-void CBaseSocketFactory::buildUrl(std::string &url, EFdbSocketType type, const char *ip_path_svc, int32_t port)
+void CBaseSocketFactory::buildUrl(std::string &url, const char *ip_addr, int32_t port)
 {
     char port_string[64];
     sprintf(port_string, "%u", port);
+    buildUrl(url, ip_addr, port_string);
+}
 
-    buildUrl(url, type, ip_path_svc, port_string);
+void CBaseSocketFactory::buildUrl(std::string &url, uint32_t uds_id)
+{
+    char uds_id_string[64];
+    sprintf(uds_id_string, "%u", uds_id);
+
+    url = CNsConfig::getIpcUrlBase();
+    url += uds_id_string;
+}
+
+void CBaseSocketFactory::buildUrl(std::string &url, const char *svc_name)
+{
+    url = FDB_URL_SVC;
+    url = url + ":" + svc_name;
 }
 
 void CBaseSocketFactory::updatePort(CFdbSocketAddr &addr, int32_t new_port)
 {
     if (new_port != addr.mPort)
     {
-        buildUrl(addr.mUrl, FDB_SOCKET_TCP, addr.mAddr.c_str(), new_port);
+        buildUrl(addr.mUrl, addr.mAddr.c_str(), new_port);
         addr.mPort = new_port;
     }
 }

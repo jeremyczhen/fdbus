@@ -156,7 +156,7 @@ void CJniServer::onSubscribe(CBaseJob::Ptr &msg_ref)
                 FDB_LOG_E("onSubscribe: unable to create subscribe item!\n");
                 continue;
             }
-            env->CallObjectMethod(obj_arr_list, arr_list_add, j_sub_item);
+            env->CallBooleanMethod(obj_arr_list, arr_list_add, j_sub_item);
         }
         FDB_END_FOREACH_SIGNAL()
 

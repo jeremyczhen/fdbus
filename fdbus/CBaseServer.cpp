@@ -311,6 +311,7 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                                    std::to_string(sinfo.mConn->mPeerPort);
                         }
                         cinfo->set_peer_address(addr.c_str());
+                        cinfo->set_security_level(session->securityLevel());
                     }
                 }
             }
