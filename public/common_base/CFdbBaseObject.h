@@ -350,11 +350,11 @@ public:
      *     |                addUpdateItem(list,...) |
      *     |                            \---------->|
      *     |<------------subscribe(list,...)--------|
-     *     |---------broadcast(event1)------------->|
+     *     |---CFdbMessage::broadcast(event1)------>|
      *     |                            /-----------|
      *     |                       onBroadcast()    |
      *     |                            \---------->|
-     *     |---------broadcast(event2)------------->|
+     *     |---CFdbMessage::broadcast(event2)------>|
      *     |                            /-----------|
      *     |                       onBroadcast()    |
      *     |                            \---------->|
@@ -394,20 +394,18 @@ public:
                    , int32_t timeout = 0);
 
     /*
-     * subscribe[2]
+     * subscribeSync
      * Similiar to subscribe[1] but is synchronous. It will block until the
      *      server has registered all messages in list.
-     *
-     * @ioparam msg_ref: if msg_ref doesn't hold anything, CBaseMessage is
-     *      used by default; if msg_ref holds object of (subclass of)
-     *      CBaseMessage, transaction-specific data can be attached.
+     *     A key feature of subscribeSync() is that it can guarantee all
+     *     onBroadcast() is called before returning. This means all events are
+     *     initialized once return from the call.
      *
      * @iparam msg_ist: list of messages to be retrieved
      * @iparam timeout: timer of the transaction
      */
-    bool subscribe(CBaseJob::Ptr &msg_ref
-                   , CFdbMsgSubscribeList &msg_list
-                   , int32_t timeout = 0);
+    bool subscribeSync(CFdbMsgSubscribeList &msg_list
+                       , int32_t timeout = 0);
 
     /*
      * update[1]
@@ -462,18 +460,17 @@ public:
     bool update(CFdbMsgTriggerList &msg_list, CFdbMessage *msg, int32_t timeout = 0);
 
     /*
-     * update[2]
-     * Similiar to update[1] but is synchronous. It will block until the
+     * updateSync
+     * Similiar to update but is synchronous. It will block until the
      *      server has updated all messages in list.
-     *
-     * @ioparam msg_ref: if msg_ref doesn't hold anything, CBaseMessage is
-     *      used by default; if msg_ref holds object of (subclass of)
-     *      CBaseMessage, transaction-specific data can be attached.
+     *     A key feature of updateSync() is that it can guarantee all
+     *     onBroadcast() is called before returning. This means all events are
+     *     initialized once return from the call.
      *
      * @iparam msg_ist: list of messages to be retrieved
      * @iparam timeout: timer of the transaction
      */
-    bool update(CBaseJob::Ptr &msg_ref, CFdbMsgTriggerList &msg_list, int32_t timeout = 0);
+    bool updateSync(CFdbMsgTriggerList &msg_list, int32_t timeout = 0);
 
     /*
      * Unsubscribe messages listed in msg_list

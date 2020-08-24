@@ -718,36 +718,32 @@ bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
     return msg->subscribe(timeout);
 }
 
-bool CFdbBaseObject::subscribe(CBaseJob::Ptr &msg_ref
-                              , CFdbMsgSubscribeList &msg_list
+bool CFdbBaseObject::subscribeSync(CFdbMsgSubscribeList &msg_list
                               , int32_t timeout)
 {
-    auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    if (msg)
+    auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->setDestination(this);
+    CFdbParcelableBuilder builder(msg_list);
+    if (!msg->serialize(builder, this))
     {
-        msg->setDestination(this);
-        CFdbParcelableBuilder builder(msg_list);
-        if (!msg->serialize(builder, this))
-        {
-            return false;
-        }
-        return msg->subscribe(msg_ref, timeout);
+        delete msg;
+        return false;
     }
-    else
+    CBaseJob::Ptr msg_ref(msg);
+    if (!msg->subscribe(msg_ref, timeout))
     {
-        msg = new CBaseMessage(FDB_INVALID_ID, this);
-        CFdbParcelableBuilder builder(msg_list);
-        if (!msg->serialize(builder, this))
-        {
-            delete msg;
-            return false;
-        }
+        return false;
+    }
+    if (msg->isError())
+    {
+        return false;
+    }
+    if (worker())
+    {
+        worker()->flush();
+    }
 
-        CBaseJob::Ptr ref(msg);
-        bool ret = msg->subscribe(ref, timeout);
-        msg_ref = ref;
-        return ret;
-    }
+    return true;
 }
 
 bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
@@ -777,36 +773,32 @@ bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
     return msg->update(timeout);
 }
 
-bool CFdbBaseObject::update(CBaseJob::Ptr &msg_ref
-                            , CFdbMsgTriggerList &msg_list
-                            , int32_t timeout)
+bool CFdbBaseObject::updateSync(CFdbMsgTriggerList &msg_list
+                                , int32_t timeout)
 {
-    auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    if (msg)
+    auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->setDestination(this);
+    CFdbParcelableBuilder builder(msg_list);
+    if (!msg->serialize(builder, this))
     {
-        msg->setDestination(this);
-        CFdbParcelableBuilder builder(msg_list);
-        if (!msg->serialize(builder, this))
-        {
-            return false;
-        }
-        return msg->update(msg_ref, timeout);
+        delete msg;
+        return false;
     }
-    else
+    CBaseJob::Ptr msg_ref(msg);
+    if (!msg->update(msg_ref, timeout))
     {
-        msg = new CBaseMessage(FDB_INVALID_ID, this);
-        CFdbParcelableBuilder builder(msg_list);
-        if (!msg->serialize(builder, this))
-        {
-            delete msg;
-            return false;
-        }
-        
-        CBaseJob::Ptr ref(msg);
-        bool ret = msg->update(ref, timeout);
-        msg_ref = ref;
-        return ret;
+        return false;
     }
+    if (msg->isError())
+    {
+        return false;
+    }
+    if (worker())
+    {
+        worker()->flush();
+    }
+
+    return true;
 }
 
 void CFdbBaseObject::addNotifyItem(CFdbMsgSubscribeList &msg_list
