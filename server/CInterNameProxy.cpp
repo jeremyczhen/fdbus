@@ -75,6 +75,8 @@ CInterNameProxy::CInterNameProxy(CHostProxy *host_proxy,
     , mNsUrl(ns_url)
     , mHostName(host_name)
 {
+    mName = host_proxy->hostName();
+    mName += "(remote)";
 }
 
 CInterNameProxy::~CInterNameProxy()

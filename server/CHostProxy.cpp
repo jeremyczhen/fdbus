@@ -447,7 +447,6 @@ void CHostProxy::finalizeServiceQuery(NFdbBase::FdbMsgServiceTable *svc_tbl, CQu
         const auto &src_pool = svc_tbl->service_tbl().pool();
         auto &dst_pool = query->mSvcTbl->service_tbl().vpool();
         dst_pool.insert(dst_pool.end(), src_pool.begin(), src_pool.end());
-        
     }
     fdb_remove_value_from_container(*(query->mPendingReqTbl), query->mHostIp);
     

@@ -22,6 +22,17 @@
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>
 
+CIntraNameProxy::CIntraNameProxy()
+    : mConnectTimer(this)
+    , mNotificationCenter(this)
+    , mEnableReconnectToNS(true)
+{
+    mName  = std::to_string(CBaseThread::getPid());
+    mName += "(local)";
+    worker(FDB_CONTEXT);
+    mConnectTimer.attach(FDB_CONTEXT, false);
+}
+
 bool CIntraNameProxy::connectToNameServer()
 {
     if (connected())
@@ -58,16 +69,6 @@ CIntraNameProxy::CConnectTimer::CConnectTimer(CIntraNameProxy *proxy)
 void CIntraNameProxy::CConnectTimer::fire()
 {
     enableOneShot(CNsConfig::getNsReconnectInterval());
-}
-
-
-CIntraNameProxy::CIntraNameProxy()
-    : mConnectTimer(this)
-    , mNotificationCenter(this)
-    , mEnableReconnectToNS(true)
-{
-    worker(FDB_CONTEXT);
-    mConnectTimer.attach(FDB_CONTEXT, false);
 }
 
 void CIntraNameProxy::addServiceListener(const char *svc_name, FdbSessionId_t subscriber)

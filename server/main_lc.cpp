@@ -26,12 +26,13 @@
 #include <common_base/CFdbSimpleMsgBuilder.h>
 
 typedef std::set<std::string> FdbClientList_t;
+static const char *fdb_endpoint_name = "fdbus.__ConnFetcher__";
 
 class CConnectionFetcher : public CBaseClient
 {
 public:
     CConnectionFetcher(FdbClientList_t &list)
-        : CBaseClient("fdbus.__ConnFetcher__")
+        : CBaseClient(fdb_endpoint_name)
         , mClientList(list)
     {
 
@@ -107,6 +108,10 @@ private:
         for (auto it = client_list.vpool().begin(); it != client_list.vpool().end(); ++it)
         {
             auto &client_info = *it;
+            if (!client_info.peer_name().compare(fdb_endpoint_name))
+            {
+                continue;
+            }
             std::cout << "    " <<  client_info.peer_name() << "@"
                                 << client_info.peer_address()
                                 << ", security: " << client_info.security_level()

@@ -20,7 +20,7 @@
 #include <utils/CNsConfig.h>
 
 CBaseNameProxy::CBaseNameProxy()
-    : CBaseClient("NameServer")
+    : CBaseClient("")
 {}
 
 void CBaseNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code, const char *svc_name)

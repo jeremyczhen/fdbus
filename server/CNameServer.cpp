@@ -114,7 +114,6 @@ void CNameServer::setHostInfo(CFdbSession *session, NFdbBase::FdbMsgServiceInfo 
     msg_svc_info->host_addr().set_ip_address(host_ip);
     msg_svc_info->host_addr().set_ns_url(ns_url);
     msg_svc_info->host_addr().set_host_name(mHostProxy->hostName());
-    msg_svc_info->service_addr().set_service_name(svc_name ? svc_name : "");
 }
 
 void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local)
