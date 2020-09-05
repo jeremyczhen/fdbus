@@ -35,6 +35,7 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
     std::string sender;
     std::string receiver;
     std::string busname;
+    std::string topic;
     uint8_t msg_type;
     FdbMsgCode_t msg_code;
     uint64_t timestamp;
@@ -49,6 +50,7 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
                  >> busname
                  >> msg_type
                  >> msg_code
+                 >> topic
                  >> timestamp
                  >> payload_size
                  >> msg_sn
@@ -61,6 +63,7 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
               << obj_id << "]["
               << CFdbMessage::getMsgTypeName((EFdbMessageType)msg_type) << "]["
               << msg_code << "]["
+              << topic << "]["
               << msg_sn << "]["
               << payload_size << "]["
               << timestamp << "]{"
@@ -82,7 +85,7 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
     {
         int32_t log_size;
         deserializer >> log_size;
-        std::cout << "Raw data is received. Size: " << log_size << std::endl << "}" << std::endl;
+        std::cout << "No log! Data size: " << log_size << std::endl << "}" << std::endl;
     }
 }
 

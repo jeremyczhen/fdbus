@@ -100,7 +100,7 @@ protected:
                 }
                 if (!mLoggerClientTbl.empty())
                 {
-                    broadcastLogNoQueue(NFdbBase::NTF_FDBUS_LOG, msg->getPayloadBuffer(), msg->getPayloadSize());
+                    broadcastLogNoQueue(NFdbBase::NTF_FDBUS_LOG, msg->getPayloadBuffer(), msg->getPayloadSize(), 0);
                 }
             }
             break;
@@ -139,7 +139,7 @@ protected:
                 }
                 if (!mLoggerClientTbl.empty())
                 {
-                    broadcastLogNoQueue(NFdbBase::NTF_TRACE_LOG, msg->getPayloadBuffer(), msg->getPayloadSize());
+                    broadcastLogNoQueue(NFdbBase::NTF_TRACE_LOG, msg->getPayloadBuffer(), msg->getPayloadSize(), 0);
                 }
             }
             break;

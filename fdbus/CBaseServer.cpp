@@ -298,7 +298,7 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                         auto session = *session_it;
                         CFdbSessionInfo sinfo;
                         session->getSessionInfo(sinfo);
-                        auto *cinfo = clt_tbl.add_client_tbl();
+                        auto cinfo = clt_tbl.add_client_tbl();
                         cinfo->set_peer_name(session->senderName().c_str());
                         std::string addr;
                         if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
@@ -320,6 +320,7 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
         }
         break;
         default:
+            CBaseEndpoint::onSidebandInvoke(msg_ref);
         break;
     }
 }
@@ -334,5 +335,37 @@ bool CBaseServer::onEventAuthentication(CFdbMessage *msg, CFdbSession *session)
 {
     auto security_level = mApiSecurity.getEventSecLevel(msg->code());
     return session->securityLevel() >= security_level;
+}
+
+bool CBaseServer::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
+                                 int32_t size, CFdbSession *session)
+{
+    CBaseMessage msg(code, this);
+    if (topic)
+    {
+        msg.topic(topic);
+    }
+    msg.expectReply(false);
+    if (!msg.serialize(buffer, size, this))
+    {
+        return false;
+    }
+
+    return session->sendMessage(&msg);
+}
+
+void CBaseServer::publishCachedEvents(CFdbSession *session)
+{
+    for (auto it_events = mEventCache.begin(); it_events != mEventCache.end(); ++it_events)
+    {
+        auto event_code = it_events->first;
+        auto &events = it_events->second;
+        for (auto it_data = events.begin(); it_data != events.end(); ++it_data)
+        {
+            auto &filter = it_data->first;
+            auto &data = it_data->second;
+            publishNoQueue(event_code, filter.c_str(), data.mBuffer, data.mSize, session);
+        }
+    }
 }
 

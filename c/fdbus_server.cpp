@@ -122,13 +122,19 @@ void CCServer::onSubscribe(CBaseJob::Ptr &msg_ref)
     }
 }
 
-fdb_server_t *fdb_server_create(const char *name)
+fdb_server_t *fdb_server_create(const char *name, void *user_data)
 {
     auto c_server = new fdb_server_t();
     memset(c_server, 0, sizeof(fdb_server_t));
+    c_server->user_data = user_data;
     auto fdb_server = new CCServer(name, c_server);
     c_server->native_handle = fdb_server;
     return c_server;
+}
+
+void *fdb_server_get_user_data(fdb_server_t *handle)
+{
+    return handle ? handle->user_data : 0;
 }
 
 void fdb_server_register_event_handle(fdb_server_t *handle,

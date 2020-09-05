@@ -410,7 +410,7 @@ protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        FDB_LOG_I("OBJ %d Broadcast is received: %d; filter: %s\n", this->objId(), msg->code(), msg->getFilter());
+        FDB_LOG_I("OBJ %d Broadcast is received: %d; filter: %s\n", this->objId(), msg->code(), msg->topic().c_str());
         //CFdbMsgMetadata md;
         //msg->metadata(md);
         //printMetadata(md);
@@ -419,7 +419,7 @@ protected:
         {
             case NTF_ELAPSE_TIME:
             {
-                std::string filter(msg->getFilter());
+                std::string filter(msg->topic());
                 if (!filter.compare("my_filter"))
                 {
                     NFdbExample::ElapseTime et;

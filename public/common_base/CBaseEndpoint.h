@@ -65,6 +65,8 @@ public:
     }
 
 protected:
+    std::string mNsName;
+
     void deleteSocket(FdbSocketId_t skid = FDB_INVALID_ID);
     void addSocket(CFdbSessionContainer *container);
     void getDefaultSvcUrl(std::string &url);
@@ -77,8 +79,10 @@ protected:
                              std::string *ip_addr = 0, int32_t *port = 0);
     bool requestServiceAddress(const char *server_name = 0);
     bool releaseServiceAddress();
-
-    std::string mNsName;
+    void onSidebandInvoke(CBaseJob::Ptr &msg_ref)
+    {
+        CFdbBaseObject::onSidebandInvoke(msg_ref);
+    }
 
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;

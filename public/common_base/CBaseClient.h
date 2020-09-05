@@ -103,6 +103,27 @@ public:
 
     bool hostConnected(const char *host_name);
 
+    /*
+     * publish[1]
+     * Similiar to send()[1] but topic is added.
+     * @topic: topic to be send
+     */
+    bool publish(FdbMsgCode_t code
+                 , IFdbMsgBuilder &data
+                 , const char *topic = 0
+                 , bool force_update = false);
+
+    /*
+     * publish[2]
+     * Similiar to send()[4] but topic is added.
+     * @topic: topic to be send
+     */
+    bool publish(FdbMsgCode_t code
+                , const char *topic = 0
+                , const uint8_t *buffer = 0
+                , int32_t size = 0
+                , const char *log_data = 0
+                , bool force_update = false);
 protected:
     CClientSocket *doConnect(const char *url, const char *host_name = 0);
     void doDisconnect(FdbSessionId_t sid = FDB_INVALID_ID);
@@ -114,7 +135,7 @@ protected:
     {
         return connected() ? false : true;
     }
-    
+
 private:
     bool mIsLocal;
     void cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, CBaseJob::Ptr &ref);

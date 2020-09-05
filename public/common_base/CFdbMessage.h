@@ -76,6 +76,7 @@ enum EFdbSidebandMessage
     FDB_SIDEBAND_WATCHDOG = 1,
     FDB_SIDEBAND_SESSION_INFO = 2,
     FDB_SIDEBAND_QUERY_CLIENT = 3,
+    FDB_SIDEBAND_QUERY_EVT_CACHE = 4,
     FDB_SIDEBAND_SYSTEM_MAX = 4095,
     FDB_SIDEBAND_USER_MIN = FDB_SIDEBAND_SYSTEM_MAX + 1
 };
@@ -153,6 +154,8 @@ private:
 #define MSG_FLAG_ERROR              (1 << 4)
 #define MSG_FLAG_STATUS             (1 << 5)
 #define MSG_FLAG_INITIAL_RESPONSE   (1 << 6)
+#define MSG_FLAG_GET_EVENT          (1 << 7)
+#define MSG_FLAG_FORCE_UPDATE       (1 << 8)
 
 #define MSG_FLAG_HEAD_OK            (1 << (MSG_LOCAL_FLAG_SHIFT + 0))
 #define MSG_FLAG_ENDPOINT           (1 << (MSG_LOCAL_FLAG_SHIFT + 1))
@@ -362,9 +365,21 @@ public:
     /*
      * Get broadcast filter
      */
-    virtual const char *getFilter() const
+    const std::string &topic() const
     {
-        return "";
+        return mFilter;
+    }
+
+    void topic(const char *tpc)
+    {
+        if (tpc)
+        {
+            mFilter = tpc;
+        }
+        else
+        {
+            mFilter.clear();
+        }
     }
 
     /*
@@ -417,6 +432,16 @@ public:
     bool isLogEnabled() const
     {
         return !!(mFlag & MSG_FLAG_ENABLE_LOG);
+    }
+
+    bool isEventGet() const
+    {
+        return !!(mFlag & MSG_FLAG_GET_EVENT);
+    }
+
+    bool isForceUpdate() const
+    {
+        return !!(mFlag & MSG_FLAG_FORCE_UPDATE);
     }
 
     /*
@@ -492,7 +517,14 @@ private:
               , FdbSessionId_t alt_receiver = FDB_INVALID_ID);
 
     CFdbMessage(FdbMsgCode_t code
-              , CFdbMessage *msg);
+              , CFdbMessage *msg
+              , const char *filter);
+
+    CFdbMessage(FdbMsgCode_t code
+                , CFdbBaseObject *obj
+                , const char *filter
+                , FdbSessionId_t alt_sid = FDB_INVALID_ID
+                , FdbObjectId_t alt_oid = FDB_INVALID_ID);
 
     bool invoke(int32_t timeout = 0);
     static bool invoke(CBaseJob::Ptr &msg_ref
@@ -512,6 +544,61 @@ private:
     bool manualUpdate() const
     {
         return !!(mFlag & MSG_FLAG_MANUAL_UPDATE);
+    }
+
+    void enableLog(bool active)
+    {
+        if (active)
+        {
+            mFlag |= MSG_FLAG_ENABLE_LOG;
+        }
+        else
+        {
+            mFlag &= ~MSG_FLAG_ENABLE_LOG;
+        }
+    }
+
+    void expectReply(bool active)
+    {
+        if (active)
+        {
+            mFlag &= ~MSG_FLAG_NOREPLY_EXPECTED;
+        }
+        else
+        {
+            mFlag |= MSG_FLAG_NOREPLY_EXPECTED;
+        }
+    }
+
+    // Internal used only!!!!!!
+    bool expectReply() const
+    {
+        return !(mFlag & MSG_FLAG_NOREPLY_EXPECTED);
+
+    }
+
+    void setEventGet(bool active)
+    {
+        if (active)
+        {
+            mFlag |= MSG_FLAG_GET_EVENT;
+        }
+        else
+        {
+            mFlag &= ~MSG_FLAG_GET_EVENT;
+        }
+    }
+
+    void forceUpdate(bool active)
+    {
+        if (active)
+        {
+            mFlag |= MSG_FLAG_FORCE_UPDATE;
+        }
+        else
+        {
+            mFlag &= ~MSG_FLAG_FORCE_UPDATE;
+        }
     }
 
     bool send();
@@ -605,15 +692,14 @@ private:
         }
     }
 
-    bool sendLogNoQueue();
-    bool broadcastLogNoQueue();
-
     bool invokeSideband(int32_t timeout = 0);
     bool sendSideband();
     static bool replySideband(CBaseJob::Ptr &msg_ref, IFdbMsgBuilder &data);
     static bool replySideband(CBaseJob::Ptr &msg_ref, const void *buffer = 0, int32_t size = 0);
     void encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
     void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
+
+    static bool replyNoQueue(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -633,6 +719,7 @@ private:
     CMessageTimer *mTimer;
     std::string mSenderName;
     std::string mStringData;
+    std::string mFilter;
 
     uint64_t mSendTime;     // the time when message is sent from client
     uint64_t mArriveTime;   // the time when message is arrived at server
@@ -642,7 +729,7 @@ private:
     friend class CFdbSession;
     friend class CFdbBaseObject;
     friend class CBaseServer;
-    friend class CFdbBroadcastMsg;
+    friend class CBaseClient;
     friend class CLogProducer;
     friend class CLogPrinter;
     friend class CLogServer;
@@ -650,41 +737,5 @@ private:
 };
 
 typedef CFdbMessage CBaseMessage;
-
-class CFdbBroadcastMsg : public CFdbMessage
-{
-public:
-    CFdbBroadcastMsg(FdbMsgCode_t code
-                     , CFdbBaseObject *obj
-                     , const char *filter
-                     , FdbSessionId_t alt_sid = FDB_INVALID_ID
-                     , FdbObjectId_t alt_oid = FDB_INVALID_ID);
-
-    CFdbBroadcastMsg(FdbMsgCode_t code
-                     , CFdbMessage *msg
-                     , const char *filter);
-    
-    const char *getFilter() const
-    {
-        return mFilter.c_str();
-    }
-
-protected:
-    CFdbBroadcastMsg(NFdbBase::CFdbMessageHeader &head
-                     , CFdbMsgPrefix &prefix
-                     , uint8_t *buffer
-                     , CFdbSession *session 
-                     , const char *filter)
-        : CFdbMessage(head, prefix, buffer, session)
-    {
-        if (filter)
-        {
-            mFilter = filter;
-        }
-    }
-private:
-    std::string mFilter;
-    friend class CFdbSession;
-};
 
 #endif

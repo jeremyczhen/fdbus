@@ -332,4 +332,37 @@ bool CBaseClient::hostConnected(const char *host_name)
     return false;
 }
 
+bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *topic, bool force_update)
+{
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    if (topic)
+    {
+        msg->topic(topic);
+    }
+    msg->forceUpdate(force_update);
+    return msg->send();
+}
+
+bool CBaseClient::publish(FdbMsgCode_t code, const char *topic, const uint8_t *buffer,
+                             int32_t size, const char *log_data, bool force_update)
+{
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    msg->setLogData(log_data);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    if (topic)
+    {
+        msg->topic(topic);
+    }
+    msg->forceUpdate(force_update);
+    return msg->send();
+}
 

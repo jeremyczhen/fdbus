@@ -584,6 +584,76 @@ private:
     CFdbParcelableArray<FdbMsgClientInfo> mClientTbl;
 };
 
+class FdbMsgEventCacheItem : public IFdbParcelable
+{
+public:
+    int32_t event() const
+    {
+        return mEvent;
+    }
+    void set_event(int32_t event)
+    {
+        mEvent = event;
+    }
+    const std::string &topic() const
+    {
+        return mTopic;
+    }
+    void set_topic(const char *topic)
+    {
+        mTopic = topic;
+    }
+    int32_t size() const
+    {
+        return mSize;
+    }
+    void set_size(int32_t size)
+    {
+        mSize = size;
+    }
+
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mEvent 
+                   << mTopic 
+                   << mSize;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mEvent 
+                     >> mTopic 
+                     >> mSize;
+    }
+private:
+    int32_t mEvent;
+    std::string mTopic;
+    int32_t mSize;
+};
+
+class FdbMsgEventCache : public IFdbParcelable
+{
+public:
+    CFdbParcelableArray<FdbMsgEventCacheItem> &cache()
+    {
+        return mCache;
+    }
+    FdbMsgEventCacheItem *add_cache()
+    {
+        return mCache.Add();
+    }
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mCache; 
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mCache; 
+    }
+    
+private:
+    CFdbParcelableArray<FdbMsgEventCacheItem> mCache;
+};
+
 }
 
 #endif

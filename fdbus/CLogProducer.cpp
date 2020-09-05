@@ -257,6 +257,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
                          << busname
                          << (uint8_t)msg->type()
                          << msg->code()
+                         << msg->topic()
                          << sysdep_getsystemtime_milli()
                          << msg->getPayloadSize()
                          << msg->sn()

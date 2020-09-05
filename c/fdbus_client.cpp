@@ -131,17 +131,23 @@ void CCClient::onBroadcast(CBaseJob::Ptr &msg_ref)
                                    fdb_msg->code(),
                                    fdb_msg->getPayloadBuffer(),
                                    fdb_msg->getPayloadSize(),
-                                   fdb_msg->getFilter());
+                                   fdb_msg->topic().c_str());
     }
 }
 
-fdb_client_t *fdb_client_create(const char *name)
+fdb_client_t *fdb_client_create(const char *name, void *user_data)
 {
     auto c_client = new fdb_client_t();
     memset(c_client, 0, sizeof(fdb_client_t));
+    c_client->user_data = user_data;
     auto fdb_client = new CCClient(name, c_client);
     c_client->native_handle = fdb_client;
     return c_client;
+}
+
+void *fdb_client_get_user_data(fdb_client_t *handle)
+{
+    return handle ? handle->user_data : 0;
 }
 
 void fdb_client_register_event_handle(fdb_client_t *handle,
@@ -150,6 +156,10 @@ void fdb_client_register_event_handle(fdb_client_t *handle,
                                       fdb_client_reply_fn_t on_reply,
                                       fdb_client_broadcast_fn_t on_broadcast)
 {
+    if (!handle)
+    {
+        return;
+    }
     handle->on_online_func = on_online;
     handle->on_offline_func = on_offline;
     handle->on_reply_func = on_reply;

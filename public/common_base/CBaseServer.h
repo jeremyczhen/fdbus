@@ -77,6 +77,10 @@ protected:
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session);
     bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session);
+
+    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
+                        int32_t size, CFdbSession *session);
+    void publishCachedEvents(CFdbSession *session);
 private:
     CApiSecurityConfig mApiSecurity;
     void cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);

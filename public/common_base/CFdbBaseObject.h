@@ -31,6 +31,12 @@ enum EFdbEndpointRole
     FDB_OBJECT_ROLE_UNKNOWN
 };
 
+enum EFdbCacheUpdateType
+{
+    FDB_UPDATE_ON_CHANGE,
+    FDB_UPDATE_ALWAYS
+};
+
 class CBaseWorker;
 class CFdbSession;
 class CBaseEndpoint;
@@ -51,6 +57,7 @@ public:
 #define FDB_OBJ_RECONNECT_ENABLED       (1 << 2)
 #define FDB_OBJ_REGISTERED              (1 << 3)
 #define FDB_OBJ_RECONNECT_ACTIVATED     (1 << 4)
+#define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 5)
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -231,8 +238,30 @@ public:
               , const char *log_data = 0);
 
     /*
+     * get[1]
+     * Get current value of event code/topic pair asynchronously
+     * The value is returned in the same way as invoke(), i.e., from onReply()
+     */
+    bool get(FdbMsgCode_t code, const char *topic = 0, int32_t timeout = 0);
+
+    /*
+     * get[2]
+     * The same as get[1] except that the given 'msg' can convery extra user
+     *     that can be retrieved from onReply()
+     * The value is returned in the same way as invoke(), i.e., from onReply()
+     */
+    bool get(CFdbMessage *msg, FdbMsgCode_t code, const char *topic = 0, int32_t timeout = 0);
+
+    /*
+     * get[3]
+     * Get current value of event code/topic pair synchronously 
+     * Once return, the value is containd in msg_ref
+     */
+    bool get(CBaseJob::Ptr &msg_ref, FdbMsgCode_t code, const char *topic = 0, int32_t timeout = 0);
+
+    /*
      * broadcast[1]
-     * broadcast message of protocol buffer to all connected clients.
+     * broadcast message to all connected clients.
      * The clients should have already registered message 'code' with
      * optional filter.
      * @iparam code: code of the message to be broadcasted
@@ -258,7 +287,7 @@ public:
      * The event added is updated by brocast() from server or update()
      * from client.
      *
-     * @oparam msg_list: the protobuf holding message sending subscribe
+     * @oparam msg_list: the list holding message sending subscribe
      *      request to server
      * @iparam msg_code: The message code to subscribe
      * @iparam filter: the filter associated with the message.
@@ -274,7 +303,7 @@ public:
      * the clients subscribed the event group that the event belongs
      * to is notified (onBroadcast() is called).
      *
-     * @oparam msg_list: the protobuf holding message sending subscribe
+     * @oparam msg_list: the list holding message sending subscribe
      *      request to server
      * @iparam event_group: The event group to subscribe
      * @iparam filter: the filter associated with the message.
@@ -288,7 +317,7 @@ public:
      * Unlike addNotifyItem(), the event added can only be updated by update()
      * from client.
      *
-     * @oparam msg_list: the protobuf holding message sending subscribe
+     * @oparam msg_list: the list holding message sending subscribe
      *      request to server
      * @iparam msg_code: The message code to subscribe
      * @iparam filter: the filter associated with the message.
@@ -302,7 +331,7 @@ public:
      * Unlike addNotifyGroup(), the event group added can only be updated by
      * update() from client.
      *
-     * @oparam msg_list: the protobuf holding message sending subscribe
+     * @oparam msg_list: the list holding message sending subscribe
      *      request to server
      * @iparam event_group: The event group to subscribe
      * @iparam filter: the filter associated with the message.
@@ -314,7 +343,7 @@ public:
     /*
      * Build update list to trigger update manually.
      *
-     * @oparam msg_list: the protobuf holding message sending update
+     * @oparam msg_list: the list holding message sending update
      *      trigger to server
      * @iparam msg_code: The message code to trigger
      * @iparam filter: the filter associated with the message.
@@ -327,7 +356,7 @@ public:
      * Build update list to trigger update manually.
      * All events in the group will be updated.
      *
-     * @oparam msg_list: the protobuf holding message sending update
+     * @oparam msg_list: the list holding message sending update
      *      trigger to server
      * @iparam event_group: The event group to trigger
      * @iparam filter: the filter associated with the message.
@@ -535,7 +564,7 @@ public:
         return mObjId;
     }
 
-    EFdbEndpointRole role()
+    EFdbEndpointRole role() const
     {
         return mRole;
     }
@@ -571,7 +600,7 @@ public:
         }
     }
 
-    bool autoRemove()
+    bool autoRemove() const
     {
         return !!(mFlag & FDB_OBJ_AUTO_REMOVE);
     }
@@ -588,7 +617,7 @@ public:
         }
     }
 
-    bool reconnectEnabled()
+    bool reconnectEnabled() const
     {
         return !!(mFlag & FDB_OBJ_RECONNECT_ENABLED);
     }
@@ -605,9 +634,26 @@ public:
         }
     }
 
-    bool reconnectActivated()
+    bool reconnectActivated() const
     {
         return !!(mFlag & FDB_OBJ_RECONNECT_ACTIVATED);
+    }
+
+    void enableEventCache(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_ENABLE_EVENT_CACHE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_ENABLE_EVENT_CACHE;
+        }
+    }
+
+    bool enableEventCache() const
+    {
+        return !!(mFlag & FDB_OBJ_ENABLE_EVENT_CACHE);
     }
 
     void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)
@@ -619,6 +665,17 @@ public:
     {
         return mSid;
     }
+
+    void updateEventCache(FdbMsgCode_t event
+                          , const char *topic
+                          , IFdbMsgBuilder &data
+                          , EFdbCacheUpdateType update_type = FDB_UPDATE_ON_CHANGE);
+
+    void updateEventCache(FdbMsgCode_t event
+                          , const char *topic
+                          , const uint8_t *buffer
+                          , int32_t size
+                          , EFdbCacheUpdateType update_type = FDB_UPDATE_ON_CHANGE);
 
     // Internal use only!!!
     bool broadcast(FdbSessionId_t sid
@@ -638,7 +695,22 @@ public:
 
     // Internal use only!!!
     bool broadcast(CFdbMessage *msg, CFdbSession *session);
-    
+
+    /*
+     * request-reply through side band.
+     * Note: Only used internally for FDBus!!!
+     */
+    bool invokeSideband(FdbMsgCode_t code
+                      , IFdbMsgBuilder &data
+                      , int32_t timeout = 0);
+    bool invokeSideband(FdbMsgCode_t code
+                      , const void *buffer = 0
+                      , int32_t size = 0
+                      , int32_t timeout = 0);
+    bool sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendSideband(FdbMsgCode_t code
+                    , const void *buffer = 0
+                    , int32_t size = 0);
 protected:
     std::string mName;
     CBaseEndpoint *mEndpoint; // Which endpoint the object belongs to
@@ -752,24 +824,7 @@ protected:
         }
     }
 
-    /*
-     * request-reply through side band.
-     * Note: Only used internally for FDBus!!!
-     */
-    bool invokeSideband(FdbMsgCode_t code
-                      , IFdbMsgBuilder &data
-                      , int32_t timeout = 0);
-    bool invokeSideband(FdbMsgCode_t code
-                      , const void *buffer = 0
-                      , int32_t size = 0
-                      , int32_t timeout = 0);
-    bool sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool sendSideband(FdbMsgCode_t code
-                    , const void *buffer = 0
-                    , int32_t size = 0);
-    
-    virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref)
-    {}
+    virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
     {}
 
@@ -782,11 +837,32 @@ protected:
         return true;
     }
 
+    // Warning: only used by FDBus internally!!!!!!!
+    void broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter);
+    void broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter, bool force_update);
 private:
-    typedef std::map<std::string, CFdbSubscribeType> FilterTable_t;
-    typedef std::map<FdbObjectId_t, FilterTable_t> ObjectTable_t;
+    struct CSubscribeItem
+    {
+        CFdbSubscribeType mType;
+    };
+    typedef std::map<std::string, CSubscribeItem> SubItemTable_t;
+    typedef std::map<FdbObjectId_t, SubItemTable_t> ObjectTable_t;
     typedef std::map<CFdbSession *, ObjectTable_t> SessionTable_t;
     typedef std::map<FdbMsgCode_t, SessionTable_t> SubscribeTable_t;
+
+    struct CEventData
+    {
+        uint8_t *mBuffer;
+        int32_t mSize;
+        EFdbCacheUpdateType mUpdateType;
+
+        bool setEventCache(const uint8_t *buffer, int32_t size);
+        void replaceEventCache(uint8_t *buffer, int32_t size);
+        CEventData();
+        ~CEventData();
+    };
+    typedef std::map<std::string, CEventData> CacheDataTable_t;
+    typedef std::map<FdbMsgCode_t, CacheDataTable_t> EventCacheTable_t;
 
     CBaseWorker *mWorker;
     SubscribeTable_t mEventSubscribeTable;
@@ -795,6 +871,7 @@ private:
     uint32_t mFlag;
     EFdbEndpointRole mRole;
     FdbSessionId_t mSid;
+    EventCacheTable_t mEventCache;
 
     void subscribe(CFdbSession *session,
                    FdbMsgCode_t msg,
@@ -811,14 +888,14 @@ private:
     void unsubscribeObject(SubscribeTable_t &subscribe_table, FdbObjectId_t obj_id);
     void unsubscribe(FdbObjectId_t obj_id);
 
+    bool updateEventCache(CFdbMessage *msg);
     void broadcast(CFdbMessage *msg);
     void broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg, FdbMsgCode_t event);
     bool broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg, CFdbSession *session, FdbMsgCode_t event);
 
     bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *log_data, int32_t log_size);
-                       
+
     void getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filters);
     void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, CFdbSession *session,
                            tFdbFilterSets &filter_tbl);
@@ -857,13 +934,14 @@ private:
 
     void broadcastOneMsg(CFdbSession *session,
                          CFdbMessage *msg,
-                         CFdbSubscribeType type);
-
+                         CSubscribeItem &sub_item);
+    void broadcastCached(CBaseJob::Ptr &msg_ref);
      
     CBaseEndpoint *endpoint() const
     {
         return mEndpoint;
     }
+    const CEventData *getCachedEventData(FdbMsgCode_t msg_code, const char *filter);
 
     friend class COnSubscribeJob;
     friend class COnBroadcastJob;
@@ -883,7 +961,6 @@ private:
     friend class CFdbMessage;
     friend class CBaseEndpoint;
     friend class CLogProducer;
-    friend class CLogServer;
 };
 
 template<typename T>

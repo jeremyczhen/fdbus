@@ -45,4 +45,12 @@ add_executable(fdbxserver
     ${PACKAGE_SOURCE_ROOT}/server/main_xserver.cpp
 )
 
-install(TARGETS name_server host_server lssvc lshost lsclt logsvc logviewer fdbxclient fdbxserver RUNTIME DESTINATION usr/bin)
+add_executable(ntfcenter
+    ${PACKAGE_SOURCE_ROOT}/server/main_nc.cpp
+)
+
+add_executable(lsevt
+    ${PACKAGE_SOURCE_ROOT}/server/main_le.cpp
+)
+
+install(TARGETS name_server host_server lssvc lshost lsclt logsvc logviewer fdbxclient fdbxserver ntfcenter lsevt RUNTIME DESTINATION usr/bin)

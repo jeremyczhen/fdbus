@@ -20,11 +20,6 @@
 #include <string>
 #include <common_base/CFdbSimpleMsgBuilder.h>
 
-#define FDB_OPT_HAS_SENDER_NAME         (1 << 0)
-#define FDB_OPT_HAS_HEAD_FILTER         (1 << 1)
-#define FDB_OPT_HAS_SEND_ARRIVE_TIME    (1 << 2)
-#define FDB_OPT_HAS_REPLY_TIME          (1 << 3)
-
 class CFdbMessageHeader : public IFdbParcelable
 {
 public:
@@ -81,7 +76,7 @@ public:
     }
     bool has_sender_name() const
     {
-        return !!(mOptions & FDB_OPT_HAS_SENDER_NAME);
+        return !!(mOptions & mOptHasSenderName);
     }
     const std::string &sender_name() const
     {
@@ -90,11 +85,11 @@ public:
     void set_sender_name(const char *sender_name)
     {
         mSenderName = sender_name;
-        mOptions |= FDB_OPT_HAS_SENDER_NAME;
+        mOptions |= mOptHasSenderName;
     }
     bool has_broadcast_filter() const
     {
-        return !!(mOptions & FDB_OPT_HAS_HEAD_FILTER);
+        return !!(mOptions & mOptHasFilter);
     }
     const std::string &broadcast_filter() const
     {
@@ -103,11 +98,11 @@ public:
     void set_broadcast_filter(const char *filter)
     {
         mFilter.assign(filter);
-        mOptions |= FDB_OPT_HAS_HEAD_FILTER;
+        mOptions |= mOptHasFilter;
     }
     bool has_send_or_arrive_time() const
     {
-        return !!(mOptions & FDB_OPT_HAS_SEND_ARRIVE_TIME);
+        return !!(mOptions & mOptHasArriveTime);
     }
     uint64_t send_or_arrive_time() const
     {
@@ -116,11 +111,11 @@ public:
     void set_send_or_arrive_time(uint64_t send_or_arrive_time)
     {
         mSendArriveTime = send_or_arrive_time;
-        mOptions |= FDB_OPT_HAS_SEND_ARRIVE_TIME;
+        mOptions |= mOptHasArriveTime;
     }
     bool has_reply_time() const
     {
-        return !!(mOptions & FDB_OPT_HAS_REPLY_TIME);
+        return !!(mOptions & mOptHasReplyTime);
     }
     uint64_t reply_time() const
     {
@@ -129,25 +124,25 @@ public:
     void set_reply_time(uint64_t reply_time)
     {
         mReplyTime = reply_time;
-        mOptions |= FDB_OPT_HAS_REPLY_TIME;
+        mOptions |= mOptHasReplyTime;
     }
 
     void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mType << mSn << mCode << mFlag << mObjId << mPayloadSize << mOptions;
-        if (mOptions & FDB_OPT_HAS_SENDER_NAME)
+        if (mOptions & mOptHasSenderName)
         {
             serializer << mSenderName;
         }
-        if (mOptions & FDB_OPT_HAS_HEAD_FILTER)
+        if (mOptions & mOptHasFilter)
         {
             serializer << mFilter;
         }
-        if (mOptions & FDB_OPT_HAS_SEND_ARRIVE_TIME)
+        if (mOptions & mOptHasArriveTime)
         {
             serializer << mSendArriveTime;
         }
-        if (mOptions & FDB_OPT_HAS_REPLY_TIME)
+        if (mOptions & mOptHasReplyTime)
         {
             serializer << mReplyTime;
         }
@@ -156,19 +151,19 @@ public:
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         deserializer >> mType >> mSn >> mCode >> mFlag >> mObjId >> mPayloadSize >> mOptions;
-        if (mOptions & FDB_OPT_HAS_SENDER_NAME)
+        if (mOptions & mOptHasSenderName)
         {
             deserializer >> mSenderName;
         }
-        if (mOptions & FDB_OPT_HAS_HEAD_FILTER)
+        if (mOptions & mOptHasFilter)
         {
             deserializer >> mFilter;
         }
-        if (mOptions & FDB_OPT_HAS_SEND_ARRIVE_TIME)
+        if (mOptions & mOptHasArriveTime)
         {
             deserializer >> mSendArriveTime;
         }
-        if (mOptions & FDB_OPT_HAS_REPLY_TIME)
+        if (mOptions & mOptHasReplyTime)
         {
             deserializer >> mReplyTime;
         }
@@ -186,6 +181,10 @@ protected:
     uint64_t mSendArriveTime;
     uint64_t mReplyTime;
     uint8_t mOptions;
+        static const uint8_t mOptHasSenderName = (1 << 0);
+        static const uint8_t mOptHasFilter = (1 << 1);
+        static const uint8_t mOptHasArriveTime = (1 << 2);
+        static const uint8_t mOptHasReplyTime = (1 << 3);
 };
 
 #endif

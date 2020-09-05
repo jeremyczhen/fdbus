@@ -78,7 +78,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     setDestination(obj, alt_receiver);
 }
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
     : mType(FDB_MT_BROADCAST)
     , mCode(code)
     , mSn(msg->mSn)
@@ -93,6 +93,12 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg)
     , mTimer(0)
     , mSenderName(msg->mSenderName)
 {
+    if (filter)
+    {
+        mFilter = filter;
+    }
+    mFlag |= msg->mFlag & (MSG_FLAG_MANUAL_UPDATE | MSG_FLAG_ENABLE_LOG);
+
 }
 
 CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
@@ -124,7 +130,51 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     {
         mSenderName = session->senderName();
     }
+
+    if (head.has_broadcast_filter())
+    {
+        mFilter = head.broadcast_filter().c_str();
+    }
 };
+
+CFdbMessage::CFdbMessage(FdbMsgCode_t code
+                         , CFdbBaseObject *obj
+                         , const char *filter
+                         , FdbSessionId_t alt_sid
+                         , FdbObjectId_t alt_oid)
+    : mType(FDB_MT_BROADCAST)
+    , mCode(code)
+    , mSn(FDB_INVALID_ID)
+    , mPayloadSize(0)
+    , mHeadSize(0)
+    , mOffset(0)
+    , mExtraSize(0)
+    , mBuffer(0)
+    , mFlag(0)
+    , mTimer(0)
+{
+    setDestination(obj, FDB_INVALID_ID);
+    if (filter)
+    {
+        mFilter = filter;
+    }
+
+    if (fdbValidFdbId(alt_sid))
+    {
+        mSid = alt_sid;
+        mFlag &= ~MSG_FLAG_ENDPOINT;
+        mSenderName = obj->name();
+    }
+    else
+    {
+        mEpid = obj->epid();
+        mFlag |= MSG_FLAG_ENDPOINT;
+    }
+    if (fdbValidFdbId(alt_oid))
+    {
+        mOid = alt_oid;
+    }
+}
 
 CFdbMessage::~CFdbMessage()
 {
@@ -248,6 +298,28 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     return true;
 }
 
+bool CFdbMessage::replyNoQueue(CBaseJob::Ptr &msg_ref, const void *buffer, int32_t size)
+{
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
+    {
+        return false;
+    }
+    if (!fdb_msg->serialize((uint8_t *)buffer, size))
+    {
+        return false;
+    }
+ 
+    fdb_msg->mType = FDB_MT_REPLY;
+    fdb_msg->mFlag |= MSG_FLAG_REPLIED;
+    auto session = fdb_msg->getSession();
+    if (session)
+    {
+        session->sendMessage(fdb_msg);
+    }
+    return true;
+}
+
 bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description)
 {
     auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
@@ -335,31 +407,18 @@ bool CFdbMessage::send()
     return invoke(msg_ref, FDB_MSG_TX_NO_REPLY, -1);
 }
 
-bool CFdbMessage::sendLogNoQueue()
-{
-    mFlag |= MSG_FLAG_NOREPLY_EXPECTED;
-    mFlag &= ~MSG_FLAG_ENABLE_LOG;
-    mType = FDB_MT_REQUEST;
-
-    auto session = getSession();
-    if (session)
-    {
-        return session->sendMessage(this);
-    }
-    return false;
-}
-
 bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , IFdbMsgBuilder &data
                            , const char *filter)
 {
-    auto msg = new CFdbBroadcastMsg(code, this, filter);
+    auto msg = new CFdbMessage(code, this, filter);
     msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
     if (!msg->serialize(data))
     {
         delete msg;
         return false;
     }
+    msg->forceUpdate(true);
     return msg->broadcast();
 }
 
@@ -369,37 +428,15 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , const char *filter
                            , const char *log_data)
 {
-    auto msg = new CFdbBroadcastMsg(code, this, filter);
-    msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
+    auto msg = new CFdbMessage(code, this, filter);
     if (!msg->serialize(buffer, size))
     {
         delete msg;
         return false;
     }
+    msg->forceUpdate(true);
     msg->setLogData(log_data);
     return msg->broadcast();
-}
-
-bool CFdbMessage::broadcastLogNoQueue()
-{
-    mType = FDB_MT_BROADCAST;
-    mFlag &= ~MSG_FLAG_ENABLE_LOG;
-
-    auto endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
-    if (endpoint)
-    {
-        // Broadcast per object!!!
-        auto object = endpoint->getObject(this, true);
-        if (object)
-        {
-            object->broadcast(this);
-        }
-        return true;
-    }
-    else
-    {
-        return false;
-    }
 }
 
 bool CFdbMessage::broadcast()
@@ -472,13 +509,10 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
 
     encodeDebugInfo(msg_hdr, session);
 
-    if (mType == FDB_MT_BROADCAST)
+    auto filter = mFilter.c_str();
+    if (filter[0] != '\0')
     {
-        auto filter = getFilter();
-        if (filter && (filter[0] != '\0'))
-        {
-            msg_hdr.set_broadcast_filter(filter);
-        }
+        msg_hdr.set_broadcast_filter(filter);
     }
 
     CFdbParcelableBuilder builder(msg_hdr);
@@ -926,7 +960,6 @@ void CFdbMessage::setLogData(const char *log_data)
     if (log_data)
     {
         mStringData = log_data;
-        mFlag |= MSG_FLAG_ENABLE_LOG;
     }
 }
 
@@ -1009,50 +1042,6 @@ void CFdbMessage::metadata(CFdbMsgMetadata &metadata)
     metadata.mReplyTime = 0;
     metadata.mReceiveTime = 0;
 #endif
-}
-
-CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
-                                 , CFdbBaseObject *obj
-                                 , const char *filter
-                                 , FdbSessionId_t alt_sid
-                                 , FdbObjectId_t alt_oid)
-    : CFdbMessage(code, obj, FDB_INVALID_ID)
-{
-    if (filter)
-    {
-        mFilter = filter;
-    }
-
-    if (fdbValidFdbId(alt_sid))
-    {
-        mSid = alt_sid;
-        mFlag &= ~MSG_FLAG_ENDPOINT;
-        mSenderName = obj->name();
-    }
-    else
-    {
-        mEpid = obj->epid();
-        mFlag |= MSG_FLAG_ENDPOINT;
-    }
-    if (fdbValidFdbId(alt_oid))
-    {
-        mOid = alt_oid;
-    }
-    mType = FDB_MT_BROADCAST;
-}
-
-CFdbBroadcastMsg::CFdbBroadcastMsg(FdbMsgCode_t code
-                                 , CFdbMessage *msg
-                                 , const char *filter)
-    : CFdbMessage(code, msg)
-{
-    if (filter)
-    {
-        mFilter = filter;
-    }
-    mFlag |= msg->mFlag & MSG_FLAG_MANUAL_UPDATE;
-
-    mType = FDB_MT_BROADCAST;
 }
 
 bool CFdbMessage::invokeSideband(int32_t timeout)

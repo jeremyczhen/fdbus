@@ -19,4 +19,9 @@ add_executable(fdbservertest
     ${IDL_GEN_ROOT}/idl-gen/common.base.Example.pb.cc
 )
 
-install(TARGETS fdbobjtest fdbjobtest fdbclienttest fdbservertest RUNTIME DESTINATION usr/bin)
+add_executable(fdbntfcentertest
+    ${PACKAGE_SOURCE_ROOT}/example/fdb_test_server.cpp
+    ${IDL_GEN_ROOT}/idl-gen/common.base.Example.pb.cc
+)
+
+install(TARGETS fdbobjtest fdbjobtest fdbclienttest fdbservertest fdbntfcentertest RUNTIME DESTINATION usr/bin)

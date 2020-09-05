@@ -53,6 +53,7 @@ typedef void (*fdb_client_broadcast_fn_t)(struct fdb_client_tag *self,
 typedef struct fdb_client_tag
 {
     void *native_handle;
+    void *user_data;
     fdb_client_online_fn_t on_online_func;
     fdb_client_offline_fn_t on_offline_func;
     fdb_client_reply_fn_t on_reply_func;
@@ -60,7 +61,9 @@ typedef struct fdb_client_tag
 }fdb_client_t;
 
 LIB_EXPORT
-fdb_client_t *fdb_client_create(const char *name);
+fdb_client_t *fdb_client_create(const char *name, void *user_data);
+LIB_EXPORT
+void *fdb_client_get_user_data(fdb_client_t *handle);
 LIB_EXPORT
 void fdb_client_register_event_handle(fdb_client_t *handle,
                                       fdb_client_online_fn_t on_online,

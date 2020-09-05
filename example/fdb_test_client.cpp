@@ -219,13 +219,13 @@ protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref)
     {
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        FDB_LOG_I("Broadcast is received: %d; filter: %s\n", msg->code(), msg->getFilter());
+        FDB_LOG_I("Broadcast is received: %d; filter: %s\n", msg->code(), msg->topic().c_str());
 
         switch (msg->code())
         {
             case NTF_ELAPSE_TIME:
             {
-                std::string filter(msg->getFilter());
+                std::string filter(msg->topic());
                 if (!filter.compare("my_filter"))
                 {
                     /*

@@ -62,7 +62,7 @@ CFdbSession::~CFdbSession()
 
 bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
 {
-    if (fatalError())
+    if (fatalError() || !buffer)
     {
         return false;
     }
@@ -366,12 +366,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
 void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
                               CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    const char *filter = "";
-    if (head.has_broadcast_filter())
-    {
-        filter = head.broadcast_filter().c_str();
-    }
-    auto msg = new CFdbBroadcastMsg(head, prefix, buffer, this, filter);
+    auto msg = new CFdbMessage(head, prefix, buffer, this);
     auto object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
     if (object)

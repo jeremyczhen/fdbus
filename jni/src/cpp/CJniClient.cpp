@@ -163,8 +163,8 @@ void CJniClient::onBroadcast(CBaseJob::Ptr &msg_ref)
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
         if (msg)
         {
-            auto c_filter = msg->getFilter();
-            jstring filter = c_filter ? env->NewStringUTF(c_filter) : 0;
+            auto c_filter = msg->topic().c_str();
+            jstring filter = env->NewStringUTF(c_filter);
             env->CallVoidMethod(mJavaClient,
                                 CFdbusClientParam::mOnBroadcast,
                                 msg->session(),

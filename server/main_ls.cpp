@@ -192,12 +192,12 @@ int main(int argc, char **argv)
 #endif
     int32_t help = 0;
 	const struct fdb_option core_options[] = {
-		{ FDB_OPTION_BOOLEAN, "follow", 'f', &ls_follow },
-		{ FDB_OPTION_BOOLEAN, "verbose", 'v', &ls_verbose },
-        { FDB_OPTION_BOOLEAN, "help", 'h', &help }
+            { FDB_OPTION_BOOLEAN, "follow", 'f', &ls_follow },
+            { FDB_OPTION_BOOLEAN, "verbose", 'v', &ls_verbose },
+            { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
-	fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
+    fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
         std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."

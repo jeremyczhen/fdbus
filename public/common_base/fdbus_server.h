@@ -41,6 +41,7 @@ typedef void (*fdb_server_subscribe_fn_t)(struct fdb_server_tag *self,
 typedef struct fdb_server_tag
 {
     void *native_handle;
+    void *user_data;
     fdb_server_online_fn_t on_online_func;
     fdb_server_offline_fn_t on_offline_func;
     fdb_server_invoke_fn_t on_invoke_func;
@@ -48,7 +49,9 @@ typedef struct fdb_server_tag
 }fdb_server_t;
 
 LIB_EXPORT
-fdb_server_t *fdb_server_create(const char *name);
+fdb_server_t *fdb_server_create(const char *name, void *user_data);
+LIB_EXPORT
+void *fdb_server_get_user_data(fdb_server_t *handle);
 LIB_EXPORT
 void fdb_server_register_event_handle(fdb_server_t *handle,
                                       fdb_server_online_fn_t on_online,

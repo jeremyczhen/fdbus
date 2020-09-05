@@ -78,28 +78,9 @@ Build with buildCentral
  - git clone https://github.com/jeremyczhen/fdbus.git
  - git clone https://github.com/jeremyczhen/protobuf.git
 
-2. Supposing we are at root of buildCentral (buildCentral/), build host (Windows, Ubuntu, ...) version of FDBus with the following command.
-
- **for windows:**
-
- - tools/buildCentral/install/mk -thost -g vsxx
-
-Where the vsxx stands for solution of which visual studio you would like to generate, including:
-
- - **vs10**: Visual Studio 10 2010
- - **vs11**: Visual Studio 11 2012
- - **vs12**: Visual Studio 12 2013
- - **vs14**: Visual Studio 14 2015
- - **vs15**: Visual Studio 15 2017
- - **vs16**: Visual Studio 16 2019
- - **vs9**: Visual Studio 9 2008
-
-Solution file can be found at ``output/stage/host``. Open solution file with visual studio then yo can build it.
-
- **for Linux**
+2. Supposing we are at root of buildCentral (buildCentral/), build host (Windows, Ubuntu, ...) version of FDBus with the following command. FDBus can be found at: ``output/stage/host``.
 
  - tools/buildCentral/install/mk -thost
-
 
 3. Cross build for other architectures and FDBus can be found at: ``output/stage/$variant/$target_arch/``:
 
