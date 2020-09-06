@@ -51,6 +51,7 @@ public:
     static jmethodID mOnOnline;
     static jmethodID mOnOffline;
     static jmethodID mOnReply;
+    static jmethodID mOnGetEvent;
     static jmethodID mOnBroadcast;
     static bool init(JNIEnv *env, jclass clazz);
 };

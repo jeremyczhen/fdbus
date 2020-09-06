@@ -333,6 +333,58 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
     return false;
 }
 
+JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusServer_fdb_1enable_1event_1cache
+                            (JNIEnv *env, jobject, jlong handle, jboolean enable)
+{
+    auto server = (CJniServer *)handle;
+    if (server)
+    {
+        server->enableEventCache(enable);
+    }
+}
+
+JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusServer_fdb_1init_1event_1cache
+                            (JNIEnv *env,
+                             jobject,
+                             jlong handle,
+                             jint event,
+                             jstring topic,
+                             jbyteArray event_data,
+                             jboolean always_update)
+{
+    auto server = (CJniServer *)handle;
+    if (!server)
+    {
+        return;
+    }
+    
+    const char *c_topic = 0;
+    if (topic)
+    {
+        c_topic = env->GetStringUTFChars(topic, 0);
+    }
+    
+    jbyte *c_array = 0;
+    int len_arr = 0;
+    if (event_data)
+    {
+        c_array = env->GetByteArrayElements(event_data, 0);
+        len_arr = env->GetArrayLength(event_data);
+    }
+
+    server->initEventCache(event, c_topic, c_array, len_arr, always_update);
+    
+    if (c_array)
+    {
+        env->ReleaseByteArrayElements(event_data, c_array, 0);
+    }
+    if (c_topic)
+    {
+        env->ReleaseStringUTFChars(topic, c_topic);
+    }
+}
+
+
 static const JNINativeMethod gFdbusServerMethods[] = {
     {(char *)"fdb_create",
              (char *)"(Ljava/lang/String;)J",
@@ -358,6 +410,12 @@ static const JNINativeMethod gFdbusServerMethods[] = {
     {(char *)"fdb_log_enabled",
              (char *)"(JI)Z",
              (void*) Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled},
+    {(char *)"fdb_enable_event_cache",
+             (char *)"(JZ)V",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1enable_1event_1cache},
+    {(char *)"fdb_init_event_cache",
+             (char *)"(JILjava/lang/String;[BZ)V",
+             (void*) Java_ipc_fdbus_FdbusServer_fdb_1init_1event_1cache}
 };
   
 int register_fdbus_server(JNIEnv *env)

@@ -110,6 +110,16 @@ fdb_client_reply_fn_t = ctypes.CFUNCTYPE(None,                                  
                                          ctypes.c_int,                           #status
                                          ctypes.c_void_p                         #user_data
                                          )
+fdb_client_get_event_fn_t = ctypes.CFUNCTYPE(None,                               #return
+                                             ctypes.c_void_p,                    #handle
+                                             ctypes.c_int,                       #sid
+                                             ctypes.c_int,                       #msg_code
+                                             ctypes.c_char_p                     #topic
+                                             ctypes.POINTER(ctypes.c_byte),      #msg_data
+                                             ctypes.c_int,                       #data_size
+                                             ctypes.c_int,                       #status
+                                             ctypes.c_void_p                     #user_data
+                                         )
 fdb_client_broadcast_fn_t = ctypes.CFUNCTYPE(None,                               #return
                                              ctypes.c_void_p,                    #handle
                                              ctypes.c_int,                       #sid
@@ -153,15 +163,18 @@ class FdbusClient(object):
                                                               fdb_client_online_fn_t,
                                                               fdb_client_offline_fn_t,
                                                               fdb_client_reply_fn_t,
+                                                              fdb_client_get_event_fn_t,
                                                               fdb_client_broadcast_fn_t]
         self.online_func = self.getOnOnlineFunc()
         self.offline_func = self.getOnOfflineFunc()
         self.reply_func = self.getOnReplyFunc()
+        self.get_event_func = self.getOnGetEventFunc()
         self.broadcast_func = self.getOnBroadcast()
         fdb_clib.fdb_client_register_event_handle(self.native,
                                                   self.online_func,
                                                   self.offline_func,
                                                   self.reply_func,
+                                                  self.get_event_func,
                                                   self.broadcast_func)
     # private method
     def getOnOnlineFunc(self):
@@ -190,6 +203,24 @@ class FdbusClient(object):
                          status,
                          user_data)
         return fdb_client_reply_fn_t(callOnReply)
+
+    # private method
+    def getOnGetEventFunc(self):
+        def callOnGetEvent(handle,
+                           sid,
+                           event,
+                           topic,
+                           event_data,
+                           data_size,
+                           status,
+                           user_data):
+            self.onGetEvent(sid,
+                            event,
+                            topic,
+                            fdbusCtypes2buffer(event_data, data_size),
+                            status,
+                            user_data)
+        return fdb_client_get_event_fn_t(callOnGetEvent)
 
     # private method
     def getOnBroadcast(self):
@@ -322,6 +353,63 @@ class FdbusClient(object):
                                  data_size,
                                  castToChar(log_data))
 
+    def publish(self, event, topic = None, event_data = None, log_data = None, always_update = False):
+        global fdb_clib
+        if event_data is None:
+            data_size = 0
+        else:
+            data_size = len(event_data)
+
+        fdb_clib.fdb_client_publish.argtypes = [ctypes.c_void_p,
+                                                ctypes.c_int,
+                                                ctypes.c_char_p,
+                                                ctypes.c_char_p,
+                                                ctypes.c_int,
+                                                ctypes.c_char_p,
+                                                ctypes.c_bool]
+        fdb_clib.fdb_client_publish(self.native,
+                                    event,
+                                    castToChar(topic),
+                                    event_data,
+                                    data_size,
+                                    castToChar(log_data),
+                                    always_update)
+
+    def get_async(self, event, topic = None, timeout = 0, user_data = None):
+        global fdb_clib
+        fdb_clib.fdb_client_get_event_async.argtypes = [ctypes.c_void_p,
+                                                        ctypes.c_int,
+                                                        ctypes.c_char_p,
+                                                        ctypes.c_int,
+                                                        ctypes.c_void_p
+                                                        ]
+        fdb_clib.fdb_client_get_event_async(self.native,
+                                            event,
+                                            castToChar(topic),
+                                            timeout,
+                                            user_data)
+
+    def get_sync(self, event, topic = None, timeout = 0):
+        global fdb_clib
+        ret = ReturnMessage()
+        fdb_clib.fdb_client_get_event_sync.argtypes = [ctypes.c_void_p,
+                                                       ctypes.c_int,
+                                                       ctypes.c_char_p,
+                                                       ctypes.c_int,
+                                                       ctypes.POINTER(ReturnMessage)
+                                                       ]
+        fdb_clib.fdb_client_get_event_sync(self.native,
+                                           event,
+                                           castToChar(topic),
+                                           timeout,
+                                           ctypes.byref(ret))
+        return {'sid' : ret.sid,
+                'msg_code' : ret.msg_code,
+                'topic' : topic,
+                'msg_data' : fdbusCtypes2buffer(ret.msg_data, ret.data_size),
+                'status' : ret.status,
+                'msg_buffer' : ret.msg_buffer}
+
     """
     public method
     subscribe list of events upon the server
@@ -401,6 +489,16 @@ class FdbusClient(object):
             data_size = len(msg_data)
         print('onReply for client ', self.name,
               ', code: ', msg_code,
+              ', size: ', data_size)
+
+    def onGetEvent(self, sid, event, topic, event_data, status, user_data):
+        if event_data is None:
+            data_size = 0
+        else:
+            data_size = len(event_data)
+        print('onGetEvent for client ', self.name,
+              ', code: ', event,
+              ', topic: ', topic,
               ', size: ', data_size)
         
     """
@@ -624,6 +722,32 @@ class FdbusServer(object):
                                        event_data,
                                        data_size,
                                        log_data)
+
+    def enable_event_cache(self, enable):
+        global fdb_clib
+        fdb_clib.fdb_server_enable_event_cache.argtypes = [ctypes.c_void_p,
+                                                           ctypes.c_bool]
+        fdb_clib.fdb_server_enable_event_cache(self.native, enable)
+
+    def init_event_cache(self, event, topic, event_data, always_update):
+        global fdb_clib
+        if event_data is None:
+            data_size = 0
+        else:
+            data_size = len(event_data)
+
+        fdb_clib.fdb_server_init_event_cache.argtypes = [ctypes.c_void_p,
+                                                         ctypes.c_int,
+                                                         ctypes.c_char_p,
+                                                         ctypes.c_char_p,
+                                                         ctypes.c_int,
+                                                         ctypes.c_bool]
+        fdb_clib.fdb_server_init_event_cache(self.native,
+                                             event,
+                                             castToChar(topic),
+                                             event_data,
+                                             data_size,
+                                             always_update)
 
     """
     Callback method and should be overrided

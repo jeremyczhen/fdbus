@@ -257,4 +257,31 @@ void fdb_message_destroy(void *reply_handle)
     msg_ref->reset();
     delete msg_ref;
 }
+void fdb_server_enable_event_cache(fdb_server_t *handle, fdb_bool_t enable)
+{
+    if (!handle || !handle->native_handle)
+    {
+        return;
+    }
+
+    auto fdb_server = (CCServer *)handle->native_handle;
+    fdb_server->enableEventCache(enable);
+}
+
+void fdb_server_init_event_cache(fdb_server_t *handle,
+                                 FdbMsgCode_t event,
+                                 const char *topic,
+                                 const uint8_t *event_data,
+                                 int32_t data_size,
+                                 fdb_bool_t always_update)
+{
+    if (!handle || !handle->native_handle)
+    {
+        return;
+    }
+
+    auto fdb_server = (CCServer *)handle->native_handle;
+    fdb_server->initEventCache(event, topic, event_data, data_size, always_update);
+}
+
 

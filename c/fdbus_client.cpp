@@ -15,6 +15,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <common_base/CBaseClient.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CLogProducer.h>
@@ -34,6 +35,7 @@ protected:
     void onOnline(FdbSessionId_t sid, bool is_first);
     void onOffline(FdbSessionId_t sid, bool is_last);
     void onReply(CBaseJob::Ptr &msg_ref);
+    void onGetEvent(CBaseJob::Ptr &msg_ref);
     void onBroadcast(CBaseJob::Ptr &msg_ref);
 private:
     fdb_client_t *mClient;
@@ -58,6 +60,7 @@ CCClient::CCClient(const char *name, fdb_client_t *c_handle)
     : CBaseClient(name)
     , mClient(c_handle)
 {
+    enableReconnect(true);
 }
 
 CCClient::~CCClient()
@@ -117,6 +120,41 @@ void CCClient::onReply(CBaseJob::Ptr &msg_ref)
                            c_msg ? c_msg->mUserData : 0);
 }
 
+void CCClient::onGetEvent(CBaseJob::Ptr &msg_ref)
+{
+    if (!mClient || !mClient->on_reply_func)
+    {
+        return;
+    }
+
+    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    int32_t error_code = NFdbBase::FDB_ST_OK;
+    if (fdb_msg->isStatus())
+    {
+        std::string reason;
+        if (!fdb_msg->decodeStatus(error_code, reason))
+        {
+            FDB_LOG_E("onReply: fail to decode status!\n");
+            error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
+        }
+    }
+
+    CCInvokeMsg *c_msg = 0;
+    if (fdb_msg->getTypeId() == FDB_MSG_TYPE_C_INVOKE)
+    {
+        c_msg = castToMessage<CCInvokeMsg *>(msg_ref);
+    }
+
+    mClient->on_get_event_func(mClient,
+                               fdb_msg->session(),
+                               fdb_msg->code(),
+                               fdb_msg->topic().c_str(),
+                               fdb_msg->getPayloadBuffer(),
+                               fdb_msg->getPayloadSize(),
+                               error_code,
+                               c_msg ? c_msg->mUserData : 0);
+}
+
 void CCClient::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
     if (!mClient || !mClient->on_broadcast_func)
@@ -154,6 +192,7 @@ void fdb_client_register_event_handle(fdb_client_t *handle,
                                       fdb_client_online_fn_t on_online,
                                       fdb_client_offline_fn_t on_offline,
                                       fdb_client_reply_fn_t on_reply,
+                                      fdb_client_get_event_fn_t on_get_event,
                                       fdb_client_broadcast_fn_t on_broadcast)
 {
     if (!handle)
@@ -163,6 +202,7 @@ void fdb_client_register_event_handle(fdb_client_t *handle,
     handle->on_online_func = on_online;
     handle->on_offline_func = on_offline;
     handle->on_reply_func = on_reply;
+    handle->on_get_event_func = on_get_event;
     handle->on_broadcast_func = on_broadcast;
 }
 
@@ -278,9 +318,16 @@ fdb_bool_t fdb_client_invoke_sync(fdb_client_t *handle,
 
 void fdb_client_release_return_msg(fdb_message_t *ret_msg)
 {
-    if (ret_msg && ret_msg->msg_buffer)
+    if (ret_msg)
     {
-        delete[] (uint8_t *)ret_msg->msg_buffer;
+        if (ret_msg->topic)
+        {
+            free(ret_msg->topic);
+        }
+        if (ret_msg->msg_buffer)
+        {
+            delete[] (uint8_t *)ret_msg->msg_buffer;
+        }
     }
 }
                                   
@@ -350,5 +397,93 @@ fdb_bool_t fdb_client_unsubscribe(fdb_client_t *handle,
                                   sub_items[i].topic);
     }
     return fdb_client->unsubscribe(subscribe_list);
+}
+
+fdb_bool_t fdb_client_publish(fdb_client_t *handle,
+                              FdbMsgCode_t event,
+                              const char *topic,
+                              const uint8_t *event_data,
+                              int32_t data_size,
+                              const char *log_data,
+                              fdb_bool_t always_update)
+{
+    if (!handle || !handle->native_handle)
+    {
+        return fdb_false;
+    }
+    
+    auto fdb_client = (CCClient *)handle->native_handle;
+    
+    return fdb_client->publish(event, topic, event_data, data_size, log_data, always_update);
+}
+
+fdb_bool_t fdb_client_get_event_async(fdb_client_t *handle,
+                                      FdbMsgCode_t event,
+                                      const char *topic,
+                                      int32_t timeout,
+                                      void *user_data)
+{
+    if (!handle || !handle->native_handle)
+    {
+        return fdb_false;
+    }
+    
+    auto fdb_client = (CCClient *)handle->native_handle;
+    
+    auto fdb_msg = new CCInvokeMsg(event, user_data);
+    return fdb_client->get(fdb_msg, topic, timeout);
+}
+
+fdb_bool_t fdb_client_get_event_sync(fdb_client_t *handle,
+                                     FdbMsgCode_t event,
+                                     const char *topic,
+                                     int32_t timeout,
+                                     fdb_message_t *ret_msg)
+{
+    if (ret_msg)
+    {
+        ret_msg->status = NFdbBase::FDB_ST_UNKNOWN;
+        ret_msg->msg_buffer = 0;
+        ret_msg->topic = 0;
+    }
+    if (!handle || !handle->native_handle)
+    {
+        return fdb_false;
+    }
+    
+    auto fdb_client = (CCClient *)handle->native_handle;
+    
+    auto fdb_msg = new CBaseMessage(event);
+    CBaseJob::Ptr ref(fdb_msg);
+    if (!fdb_client->get(ref, topic, timeout))
+    {
+        FDB_LOG_E("fdb_client_get_event_sync: unable to call method\n");
+        return fdb_false;
+    }
+    
+    int32_t error_code = NFdbBase::FDB_ST_OK;
+    if (fdb_msg->isStatus())
+    {
+        std::string reason;
+        if (!fdb_msg->decodeStatus(error_code, reason))
+        {
+            FDB_LOG_E("onReply: fail to decode status!\n");
+            error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
+        }
+    }
+    
+    if (ret_msg)
+    {
+        ret_msg->sid = fdb_msg->session();
+        ret_msg->msg_code = fdb_msg->code();
+        ret_msg->topic = strdup(fdb_msg->topic().c_str());
+        ret_msg->msg_data = fdb_msg->getPayloadBuffer();
+        // avoid buffer from being released.
+        ret_msg->msg_buffer = fdb_msg->ownBuffer();
+        ret_msg->data_size = fdb_msg->getPayloadSize();
+        ret_msg->status = error_code;
+    }
+    
+    return fdb_true;
 }
 

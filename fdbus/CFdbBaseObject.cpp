@@ -164,7 +164,7 @@ bool CFdbBaseObject::get(FdbMsgCode_t code, const char *topic, int32_t timeout)
     return msg->invoke(timeout);
 }
 
-bool CFdbBaseObject::get(CFdbMessage *msg, FdbMsgCode_t code, const char *topic, int32_t timeout)
+bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
 {
     msg->setDestination(this, FDB_INVALID_ID);
     if (!msg->serialize(0, 0, this))
@@ -180,7 +180,7 @@ bool CFdbBaseObject::get(CFdbMessage *msg, FdbMsgCode_t code, const char *topic,
     return msg->invoke(timeout);
 }
 
-bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, FdbMsgCode_t code, const char *topic, int32_t timeout)
+bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t timeout)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setDestination(this, FDB_INVALID_ID);
@@ -587,6 +587,46 @@ bool CFdbBaseObject::migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker 
     return false;
 }
 
+class COnGetEventJob : public CMethodJob<CFdbBaseObject>
+{
+public:
+    COnGetEventJob(CFdbBaseObject *object, CBaseJob::Ptr &msg_ref)
+        : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnGetEvent, JOB_FORCE_RUN)
+        , mMsgRef(msg_ref)
+    {}
+
+    CBaseJob::Ptr mMsgRef;
+};
+
+void CFdbBaseObject::callOnGetEvent(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
+{
+    auto the_job = fdb_dynamic_cast_if_available<COnGetEventJob *>(job);
+    if (the_job)
+    {
+        onGetEvent(the_job->mMsgRef);
+    }
+}
+
+bool CFdbBaseObject::migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
+{
+    if (!worker)
+    {
+        worker = mWorker;
+    }
+    if (worker)
+    {
+        if (enableMigrate())
+        {
+            if (!worker->sendAsync(new COnGetEventJob(this, msg_ref)))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate onreply to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 class COnStatusJob : public CMethodJob<CFdbBaseObject>
 {
 public:
@@ -754,6 +794,14 @@ void CFdbBaseObject::doReply(CBaseJob::Ptr &msg_ref)
     if (!migrateOnReplyToWorker(msg_ref))
     {
         onReply(msg_ref);
+    }
+}
+
+void CFdbBaseObject::doGetEvent(CBaseJob::Ptr &msg_ref)
+{
+    if (!migrateGetEventToWorker(msg_ref))
+    {
+        onGetEvent(msg_ref);
     }
 }
 
@@ -1204,7 +1252,7 @@ bool CFdbBaseObject::updateEventCache(CFdbMessage *msg)
         auto updated = cached_event.setEventCache(msg->getPayloadBuffer(), msg->getPayloadSize());
         if (!updated)
         {
-            if ((cached_event.mUpdateType == FDB_UPDATE_ON_CHANGE) && !msg->isForceUpdate())
+            if (!cached_event.mAlwaysUpdate && !msg->isForceUpdate())
             {
                 return false;
             }
@@ -1640,17 +1688,17 @@ bool CFdbBaseObject::broadcast(FdbSessionId_t sid
     return msg->broadcast();
 }
 
-void CFdbBaseObject::updateEventCache(FdbMsgCode_t event
-                                      , const char *topic
-                                      , IFdbMsgBuilder &data
-                                      , EFdbCacheUpdateType update_type)
+void CFdbBaseObject::initEventCache(FdbMsgCode_t event
+                                    , const char *topic
+                                    , IFdbMsgBuilder &data
+                                    , bool always_update)
 {
     if (!topic)
     {
         topic = "";
     }
     auto &cached_event = mEventCache[event][topic];
-    cached_event.mUpdateType = update_type;
+    cached_event.mAlwaysUpdate = always_update;
     int32_t size = data.build();
     if (size < 0)
     {
@@ -1660,19 +1708,19 @@ void CFdbBaseObject::updateEventCache(FdbMsgCode_t event
     data.toBuffer(cached_event.mBuffer, size);
 }
                 
-void CFdbBaseObject::updateEventCache(FdbMsgCode_t event
-                                      , const char *topic
-                                      , const uint8_t *buffer
-                                      , int32_t size
-                                      , EFdbCacheUpdateType update_type)
+void CFdbBaseObject::initEventCache(FdbMsgCode_t event
+                                    , const char *topic
+                                    , const void *buffer
+                                    , int32_t size
+                                    , bool always_update)
 {
     if (!topic)
     {
         topic = "";
     }
     auto &cached_event = mEventCache[event][topic];
-    cached_event.mUpdateType = update_type;
-    cached_event.setEventCache(buffer, size);
+    cached_event.mAlwaysUpdate = always_update;
+    cached_event.setEventCache((const uint8_t *)buffer, size);
 }
 
 bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
@@ -1727,7 +1775,7 @@ bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, const void *buffer, int32_t
 CFdbBaseObject::CEventData::CEventData()
     : mBuffer(0)
     , mSize(0)
-    , mUpdateType(FDB_UPDATE_ON_CHANGE)
+    , mAlwaysUpdate(false)
 {
 }
 
@@ -1774,16 +1822,9 @@ bool CFdbBaseObject::CEventData::setEventCache(const uint8_t *buffer, int32_t si
         mSize = size;
     }
 
-    if (size)
+    if (size && buffer)
     {
-        if (buffer)
-        {
-            memcpy(mBuffer, buffer, size);
-        }
-        else
-        {
-            memset(mBuffer, 0, size);
-        }
+        memcpy(mBuffer, buffer, size);
     }
     return true;
 }

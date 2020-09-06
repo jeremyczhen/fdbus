@@ -31,6 +31,7 @@ typedef struct fdb_message_tag
     int32_t data_size;
     int32_t status;
     void *msg_buffer;
+    char *topic;
 }fdb_message_t;
 
 struct fdb_client_tag;
@@ -43,6 +44,14 @@ typedef void (*fdb_client_reply_fn_t)(struct fdb_client_tag *self,
                                       int32_t data_size,
                                       int32_t status,
                                       void *user_data);
+typedef void (*fdb_client_get_event_fn_t)(struct fdb_client_tag *self,
+                                          FdbSessionId_t sid,
+                                          FdbMsgCode_t msg_code,
+                                          const char *topic,
+                                          const uint8_t *msg_data,
+                                          int32_t data_size,
+                                          int32_t status,
+                                          void *user_data);
 typedef void (*fdb_client_broadcast_fn_t)(struct fdb_client_tag *self,
                                           FdbSessionId_t sid,
                                           FdbMsgCode_t msg_code,
@@ -57,6 +66,7 @@ typedef struct fdb_client_tag
     fdb_client_online_fn_t on_online_func;
     fdb_client_offline_fn_t on_offline_func;
     fdb_client_reply_fn_t on_reply_func;
+    fdb_client_get_event_fn_t on_get_event_func;
     fdb_client_broadcast_fn_t on_broadcast_func;
 }fdb_client_t;
 
@@ -69,6 +79,7 @@ void fdb_client_register_event_handle(fdb_client_t *handle,
                                       fdb_client_online_fn_t on_online,
                                       fdb_client_offline_fn_t on_offline,
                                       fdb_client_reply_fn_t on_reply,
+                                      fdb_client_get_event_fn_t on_get_event,
                                       fdb_client_broadcast_fn_t on_broadcast);
 
 LIB_EXPORT
@@ -113,6 +124,28 @@ LIB_EXPORT
 fdb_bool_t fdb_client_unsubscribe(fdb_client_t *handle,
                                   const fdb_subscribe_item_t *sub_items,
                                   int32_t nr_items);
+
+LIB_EXPORT
+fdb_bool_t fdb_client_publish(fdb_client_t *handle,
+                              FdbMsgCode_t event,
+                              const char *topic,
+                              const uint8_t *event_data,
+                              int32_t data_size,
+                              const char *log_data,
+                              fdb_bool_t always_update);
+
+LIB_EXPORT
+fdb_bool_t fdb_client_get_event_async(fdb_client_t *handle,
+                                      FdbMsgCode_t event,
+                                      const char *topic,
+                                      int32_t timeout,
+                                      void *user_data);
+
+fdb_bool_t fdb_client_get_event_sync(fdb_client_t *handle,
+                                     FdbMsgCode_t event,
+                                     const char *topic,
+                                     int32_t timeout,
+                                     fdb_message_t *ret_msg);
 
 #ifdef __cplusplus
 }

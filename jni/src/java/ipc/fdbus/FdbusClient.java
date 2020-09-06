@@ -51,6 +51,23 @@ public class FdbusClient
     private native String fdb_endpoint_name(long native_handle);
     private native String fdb_bus_name(long native_handle);
     private native boolean fdb_log_enabled(long native_handle, int msg_type);
+
+    private native boolean fdb_publish(long native_handle,
+                                       int event,
+                                       String topic,
+                                       byte[] event_data,
+                                       String log_msg,
+                                       boolean force_update);
+    
+    private native boolean fdb_get_event_async(long native_handle,
+                                               int event,
+                                               String topic,
+                                               Object user_data,
+                                               int timeout);
+    private native FdbusMessage fdb_get_event_sync(long native_handle,
+                                                   int event,
+                                                   String topic,
+                                                   int timeout);
 	
     private long mNativeHandle;
     private FdbusClientListener mFdbusListener;
@@ -253,6 +270,31 @@ public class FdbusClient
         return fdb_log_enabled(mNativeHandle, msg_type);
     }
 
+    public boolean publish(int event, String topic, Object msg, boolean always_update)
+    {
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, logEnabled(Fdbus.FDB_MT_REQUEST));
+        if (builder == null)
+        {
+            return false;
+        }
+        return fdb_publish(mNativeHandle,
+                           event,
+                           topic,
+                           builder.toBuffer(),
+                           builder.toString(),
+                           always_update);
+    }
+
+    public boolean getAsync(int event, String topic, Object user_data, int timeout)
+    {
+        return fdb_get_event_async(mNativeHandle, event, topic, user_data, timeout);
+    }
+
+    public FdbusMessage getSync(int event, String topic, int timeout)
+    {
+        return fdb_get_event_sync(mNativeHandle, event, topic, timeout);
+    }
+
     private void callbackOnline(int sid)
     {
         if (mFdbusListener != null)
@@ -281,6 +323,20 @@ public class FdbusClient
             mFdbusListener.onReply(msg);
         }
     }
+
+private void callbackGetEvent(int sid,
+                              int msg_code,
+                              String topic,
+                              byte[] payload,
+                              int status,
+                              Object user_data)
+{
+    if (mFdbusListener != null)
+    {
+        FdbusMessage msg = new FdbusMessage(sid, msg_code, topic, payload, user_data, status);
+        mFdbusListener.onGetEvent(msg);
+    }
+}
     
     private void callbackBroadcast(int sid,
                                    int msg_code,

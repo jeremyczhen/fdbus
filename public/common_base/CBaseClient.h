@@ -120,7 +120,7 @@ public:
      */
     bool publish(FdbMsgCode_t code
                 , const char *topic = 0
-                , const uint8_t *buffer = 0
+                , const void *buffer = 0
                 , int32_t size = 0
                 , const char *log_data = 0
                 , bool force_update = false);

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public class FdbusServer
 {
     private native long fdb_create(String name);
+    private native void fdb_enable_event_cache(long native_handle, boolean enable);
     private native void fdb_destroy(long native_handle);
     private native boolean fdb_bind(long native_handle, String url);
     private native boolean fdb_unbind(long native_handle);
@@ -37,6 +38,12 @@ public class FdbusServer
     private native String fdb_endpoint_name(long native_handle);
     private native String fdb_bus_name(long native_handle);
     private native boolean fdb_log_enabled(long native_handle, int msg_type);
+
+    private native void fdb_init_event_cache(long native_handle,
+                                             int event,
+                                             String topic,
+                                             byte[] data,
+                                             boolean always_update);
     
     private long mNativeHandle;
     private FdbusServerListener mFdbusListener;
@@ -151,6 +158,18 @@ public class FdbusServer
                             builder.toString());
     }
 
+    public boolean initEventCache(int event, String topic, Object msg, boolean always_update)
+    {
+        FdbusMsgBuilder builder = Fdbus.encodeMessage(msg, false);
+        if (builder == null)
+        {
+            return false;
+        }
+
+        fdb_init_event_cache(mNativeHandle, event, topic, builder.toBuffer(), always_update);
+        return true;
+    }
+
     /*
      * broadcast event to client without topic
      */
@@ -180,6 +199,11 @@ public class FdbusServer
     public boolean logEnabled(int msg_type)
     {
         return fdb_log_enabled(mNativeHandle, msg_type);
+    }
+
+    public void enableEventCache(boolean enable)
+    {
+        fdb_enable_event_cache(mNativeHandle, enable);
     }
     
     private void callbackOnline(int sid, boolean is_first)

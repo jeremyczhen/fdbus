@@ -39,6 +39,7 @@ public class FdbusMessage
     private void initialize(long handle,
                             int sid,
                             int msg_code,
+                            String topic,
                             byte[] payload,
                             Object user_data,
                             int status)
@@ -48,29 +49,37 @@ public class FdbusMessage
         mMsgCode = msg_code;
         mPayload = payload;
         mUserData = user_data;
-        mTopic = null;
+        mTopic = topic;
         mStatus = status;
     }
     
     public FdbusMessage(int sid, int msg_code, byte[] payload, Object user_data, int status)
     {
-        initialize(0, sid, msg_code, payload, user_data, status);
+        initialize(0, sid, msg_code, null, payload, user_data, status);
+    }
+    public FdbusMessage(int sid, int msg_code, String topic, byte[] payload, Object user_data, int status)
+    {
+        initialize(0, sid, msg_code, topic, payload, user_data, status);
     }
     public FdbusMessage(int sid, int msg_code, byte[] payload, Object user_data)
     {
-        initialize(0, sid, msg_code, payload, user_data, Fdbus.FDB_ST_OK);
+        initialize(0, sid, msg_code, null, payload, user_data, Fdbus.FDB_ST_OK);
     }
     public FdbusMessage(int sid, int msg_code, byte[] payload, int status)
     {
-        initialize(0, sid, msg_code, payload, null, status);
+        initialize(0, sid, msg_code, null, payload, null, status);
+    }
+    public FdbusMessage(int sid, int msg_code, String topic, byte[] payload, int status)
+    {
+        initialize(0, sid, msg_code, topic, payload, null, status);
     }
     public FdbusMessage(int sid, int msg_code, byte[] payload)
     {
-        initialize(0, sid, msg_code, payload, null, Fdbus.FDB_ST_OK);
+        initialize(0, sid, msg_code, null, payload, null, Fdbus.FDB_ST_OK);
     }
     public FdbusMessage(long handle, int sid, int msg_code, byte[] payload)
     {
-        initialize(handle, sid, msg_code, payload, null, Fdbus.FDB_ST_OK);
+        initialize(handle, sid, msg_code, null, payload, null, Fdbus.FDB_ST_OK);
     }
 
     /*

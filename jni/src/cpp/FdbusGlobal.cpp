@@ -28,6 +28,7 @@ JavaVM* CGlobalParam::mJvm = 0;
 jmethodID CFdbusClientParam::mOnOnline = 0;
 jmethodID CFdbusClientParam::mOnOffline = 0;
 jmethodID CFdbusClientParam::mOnReply = 0;
+jmethodID CFdbusClientParam::mOnGetEvent = 0;
 jmethodID CFdbusClientParam::mOnBroadcast = 0;
 
 jmethodID CFdbusServerParam::mOnOnline = 0;
@@ -161,6 +162,12 @@ bool CFdbusClientParam::init(JNIEnv *env, jclass clazz)
     if (!mOnReply)
     {
         FDB_LOG_E("CFdbusClientParam::init: fail to get method mOnReply!\n");
+        goto _quit;
+    }
+    mOnGetEvent = env->GetMethodID(clazz, "callbackGetEvent", "(IILjava/lang/String;[BILjava/lang/Object;)V");
+    if (!mOnGetEvent)
+    {
+        FDB_LOG_E("CFdbusClientParam::init: fail to get method mOnGetEvent!\n");
         goto _quit;
     }
     mOnBroadcast = env->GetMethodID(clazz, "callbackBroadcast", "(IILjava/lang/String;[B)V");

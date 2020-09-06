@@ -37,6 +37,12 @@ public interface FdbusClientListener
     public void onReply(FdbusMessage msg);
 
     /*
+     * called when event is received from server (via getAsync()/getSync())
+     * @msg - the message replied from server
+     */
+    public void onGetEvent(FdbusMessage msg);
+
+    /*
      * called when event is broadcasted from server
      * @msg - the message broadcasted by server
      */

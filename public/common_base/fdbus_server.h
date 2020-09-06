@@ -67,6 +67,9 @@ LIB_EXPORT
 fdb_bool_t fdb_server_unbind(fdb_server_t *handle);
 
 LIB_EXPORT
+void fdb_server_enable_event_cache(fdb_server_t *handle, fdb_bool_t enable);
+
+LIB_EXPORT
 fdb_bool_t fdb_server_broadcast(fdb_server_t *handle,
                                 FdbMsgCode_t msg_code,
                                 const char *topic,
@@ -90,6 +93,14 @@ fdb_bool_t fdb_message_broadcast(void *reply_handle,
 
 LIB_EXPORT
 void fdb_message_destroy(void *reply_handle);
+
+LIB_EXPORT
+void fdb_server_init_event_cache(fdb_server_t *handle,
+                                 FdbMsgCode_t event,
+                                 const char *topic,
+                                 const uint8_t *event_data,
+                                 int32_t data_size,
+                                 fdb_bool_t always_update);
 
 #ifdef __cplusplus
 }

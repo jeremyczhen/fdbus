@@ -348,7 +348,7 @@ bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *t
     return msg->send();
 }
 
-bool CBaseClient::publish(FdbMsgCode_t code, const char *topic, const uint8_t *buffer,
+bool CBaseClient::publish(FdbMsgCode_t code, const char *topic, const void *buffer,
                              int32_t size, const char *log_data, bool force_update)
 {
     auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);

@@ -283,7 +283,9 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
         }
         else
         {
-            if (object->onMessageAuthentication(msg, this))
+            bool allowed = msg->isEventGet() ? object->onEventAuthentication(msg, this) :
+                                               object->onMessageAuthentication(msg, this);
+            if (allowed)
             {
                 object->doInvoke(msg_ref);
             }
@@ -330,7 +332,14 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
             {
                 if (head.type() == FDB_MT_REPLY)
                 {
-                    object->doReply(msg_ref);
+                    if (msg->isEventGet())
+                    {
+                        object->doGetEvent(msg_ref);
+                    }
+                    else
+                    {
+                        object->doReply(msg_ref);
+                    }
                 }
                 else if (head.type() == FDB_MT_SIDEBAND_REPLY)
                 {
@@ -340,7 +349,14 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
                 {
                     if (msg->mType == FDB_MT_REQUEST)
                     {
-                        object->doReply(msg_ref);
+                        if (msg->isEventGet())
+                        {
+                            object->doGetEvent(msg_ref);
+                        }
+                        else
+                        {
+                            object->doReply(msg_ref);
+                        }
                     }
                     else if (msg->mType == FDB_MT_SIDEBAND_REQUEST)
                     {

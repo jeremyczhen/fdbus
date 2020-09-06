@@ -158,18 +158,9 @@ protected:
         processEvent(msg_ref, "Notification");
     }
 
-    void onReply(CBaseJob::Ptr &msg_ref)
+    void onGetEvent(CBaseJob::Ptr &msg_ref)
     {
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        if (!msg->isEventGet())
-        {
-            /*
-             * We get here to process reply to normal method call, i.e., reply to invoke()
-             */
-            FDB_LOG_I("reply to invoke is received!\n");
-            // Process reply case by case
-            return;
-        }
         /*
          * We get here to process reply to event retrieving, i.e., reply to get()
          */
@@ -179,14 +170,20 @@ protected:
             std::string reason;
             if (!msg->decodeStatus(id, reason))
             {
-                FDB_LOG_E("Reply: fail to decode status!\n");
+                FDB_LOG_E("GetEvent: fail to decode status!\n");
                 return;
             }
             /* Check if something is wrong... */
-            FDB_LOG_E("Reply error: msg code: %d, id: %d, reason: %s\n", msg->code(), id, reason.c_str());
+            FDB_LOG_E("GetEvent error: msg code: %d, id: %d, reason: %s\n", msg->code(), id, reason.c_str());
             return;
         }
-        processEvent(msg_ref, "Reply");
+        processEvent(msg_ref, "GetEvent");
+    }
+
+    void onReply(CBaseJob::Ptr &msg_ref)
+    {
+        auto msg = castToMessage<CBaseMessage *>(msg_ref);
+        FDB_LOG_I("Reply to invoke is received: %d, %s!\n", msg->code(), msg->topic().c_str());
     }
 
     /* check if something happen... */
