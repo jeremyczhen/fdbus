@@ -79,7 +79,7 @@ int main(int argc, char **argv)
         char url[1024];
         snprintf(url, sizeof(url), "svc://%s", argv[i + 1]);
         client_array[i] = fdb_client_create(argv[i + 1], 0);
-        fdb_client_register_event_handle(client_array[i], on_online, on_offline, on_reply, on_broadcast);
+        fdb_client_register_event_handle(client_array[i], on_online, on_offline, on_reply, 0, on_broadcast);
         fdb_client_connect(client_array[i], url);
     }
 

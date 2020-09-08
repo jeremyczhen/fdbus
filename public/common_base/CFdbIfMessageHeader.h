@@ -187,7 +187,6 @@ private:
     uint32_t mFlag;
     uint32_t mObjId;
     uint32_t mPayloadSize;
-    std::string mSenderName;
     std::string mFilter;
     uint64_t mSendArriveTime;
     uint64_t mReplyTime;

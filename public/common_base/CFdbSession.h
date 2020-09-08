@@ -105,6 +105,7 @@ private:
     int32_t mSecurityLevel;
     std::string mToken;
     std::string mSenderName;
+    int32_t mRecursiveDepth;
 };
 
 #endif

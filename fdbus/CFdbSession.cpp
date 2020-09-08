@@ -25,6 +25,7 @@
 #define FDB_SEND_RETRIES (1024 * 10)
 #define FDB_RECV_RETRIES 256
 #define FDB_SEND_DELAY 1
+#define FDB_SEND_MAX_RECURSIVE 128
 
 CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CSocketImp *socket)
     : CBaseFdWatch(socket->getFd(), POLLIN | POLLHUP | POLLERR)
@@ -32,6 +33,7 @@ CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CS
     , mContainer(container)
     , mSocket(socket)
     , mSecurityLevel(FDB_SECURITY_LEVEL_NONE)
+    , mRecursiveDepth(0)
 {
 }
 
@@ -68,11 +70,13 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
     }
 
     int32_t retries = FDB_SEND_RETRIES;
+    mRecursiveDepth++;
     while (1)
     {
         int32_t cnt = mSocket->send((uint8_t *)buffer, size);
         if (cnt < 0)
         {
+            mRecursiveDepth--;
             return false;
         }
         buffer += cnt;
@@ -82,15 +86,20 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         {
             break;
         }
-        worker()->dispatchInput(FDB_SEND_DELAY);
+        if (mRecursiveDepth < FDB_SEND_MAX_RECURSIVE)
+        {
+            worker()->dispatchInput(FDB_SEND_DELAY);
+        }
     }
+    mRecursiveDepth--;
 
     if (size > 0)
     {
         LOG_E("CFdbSession: Session %d is kicked off for being unable to send %d bytes!\n", mSid, size);
         fatalError(true);
         return false;
-    }
+    } 
+
     return true;
 }
 

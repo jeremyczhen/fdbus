@@ -141,6 +141,10 @@ public class MediaClient
             }
             handleReplyMsg(msg, false);
         }
+
+        public void onGetEvent(FdbusMessage msg)
+        {
+        }
         
         public void onBroadcast(FdbusMessage msg)
         {

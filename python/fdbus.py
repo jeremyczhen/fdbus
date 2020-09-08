@@ -114,7 +114,7 @@ fdb_client_get_event_fn_t = ctypes.CFUNCTYPE(None,                              
                                              ctypes.c_void_p,                    #handle
                                              ctypes.c_int,                       #sid
                                              ctypes.c_int,                       #msg_code
-                                             ctypes.c_char_p                     #topic
+                                             ctypes.c_char_p,                    #topic
                                              ctypes.POINTER(ctypes.c_byte),      #msg_data
                                              ctypes.c_int,                       #data_size
                                              ctypes.c_int,                       #status
@@ -224,7 +224,8 @@ class FdbusClient(object):
 
     # private method
     def getOnBroadcast(self):
-        def callOnBroadcast(handle, sid,
+        def callOnBroadcast(handle,
+                            sid,
                             event_code,
                             event_data,
                             data_size,
@@ -404,9 +405,9 @@ class FdbusClient(object):
                                            timeout,
                                            ctypes.byref(ret))
         return {'sid' : ret.sid,
-                'msg_code' : ret.msg_code,
+                'event' : ret.msg_code,
                 'topic' : topic,
-                'msg_data' : fdbusCtypes2buffer(ret.msg_data, ret.data_size),
+                'event_data' : fdbusCtypes2buffer(ret.msg_data, ret.data_size),
                 'status' : ret.status,
                 'msg_buffer' : ret.msg_buffer}
 

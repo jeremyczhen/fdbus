@@ -691,7 +691,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1get_1event_1sync
     auto invoke_msg = new CBaseMessage(event);
     CBaseJob::Ptr ref(invoke_msg);
     
-    jboolean ret = client->invoke(ref, c_topic, timeout);
+    jboolean ret = client->get(ref, c_topic, timeout);
 
     if (c_topic)
     {
