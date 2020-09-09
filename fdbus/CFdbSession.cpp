@@ -90,6 +90,11 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         {
             worker()->dispatchInput(FDB_SEND_DELAY);
         }
+        else
+        {
+            // Sorry just slow down...
+            sysdep_sleep(FDB_SEND_DELAY);
+        }
     }
     mRecursiveDepth--;
 
