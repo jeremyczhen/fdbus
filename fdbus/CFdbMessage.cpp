@@ -60,6 +60,8 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mMigrateObject(0)
+    , mMigrateFlag(0)
 {
 }
 
@@ -74,6 +76,8 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mMigrateObject(0)
+    , mMigrateFlag(0)
 {
     setDestination(obj, alt_receiver);
 }
@@ -92,6 +96,8 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mFlag(0)
     , mTimer(0)
     , mSenderName(msg->mSenderName)
+    , mMigrateObject(0)
+    , mMigrateFlag(0)
 {
     if (filter)
     {
@@ -118,6 +124,8 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
+    , mMigrateObject(0)
+    , mMigrateFlag(0)
 {
     if (mExtraSize < 0)
     {
@@ -152,6 +160,8 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mMigrateObject(0)
+    , mMigrateFlag(0)
 {
     setDestination(obj, FDB_INVALID_ID);
     if (filter)
@@ -211,6 +221,17 @@ void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid)
 
 void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
 {
+    if (mMigrateObject)
+    {
+        // process callback migrated from context thread to worker therad
+        auto object = mMigrateObject;
+        auto flag = mMigrateFlag;
+        mMigrateObject = 0;
+        mMigrateFlag = 0;
+        object->remoteCallback(ref, flag);
+        return;
+    }
+    // process request from other threads to context thread
     switch (mType)
     {
         case FDB_MT_REQUEST:

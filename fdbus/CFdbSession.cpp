@@ -337,7 +337,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
         }
 
         auto object = mContainer->owner()->getObject(msg, false);
-        if (msg && object)
+        if (object)
         {
             msg->update(head, prefix);
             msg->decodeDebugInfo(head, this);

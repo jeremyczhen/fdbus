@@ -888,14 +888,8 @@ private:
     void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, const char *filter,
                             tSubscribedSessionSets &session_tbl);
     
-    void callOnSubscribe(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
-    void callOnBroadcast(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
-    void callOnInvoke(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnOffline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
-    void callOnReply(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
-    void callOnGetEvent(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
-    void callOnStatus(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callUnbindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
@@ -914,10 +908,7 @@ private:
     bool migrateOnOnlineToWorker(FdbSessionId_t sid, bool is_first, CBaseWorker *worker = 0);
     bool migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
     bool migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
-    bool migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref
-                                 , int32_t error_code
-                                 , const char *description
-                                 , CBaseWorker *worker = 0);
+    bool migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
 
     void doSubscribe(CBaseJob::Ptr &msg_ref);
     void doBroadcast(CBaseJob::Ptr &msg_ref);
@@ -945,6 +936,7 @@ private:
         return mEndpoint;
     }
     const CEventData *getCachedEventData(FdbMsgCode_t msg_code, const char *filter);
+    void remoteCallback(CBaseJob::Ptr &msg_ref, long flag);
 
     friend class COnSubscribeJob;
     friend class COnBroadcastJob;

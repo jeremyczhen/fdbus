@@ -700,6 +700,11 @@ private:
     void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
 
     static bool replyNoQueue(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
+    void setRemoteCall(CFdbBaseObject *object, long flag)
+    {
+        mMigrateObject = object;
+        mMigrateFlag = flag;
+    }
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -725,6 +730,9 @@ private:
     uint64_t mArriveTime;   // the time when message is arrived at server
     uint64_t mReplyTime;    // the time when message is replied by server
     uint64_t mReceiveTime;     // the time when message is received by client
+
+    CFdbBaseObject *mMigrateObject;
+    long mMigrateFlag;
 
     friend class CFdbSession;
     friend class CFdbBaseObject;

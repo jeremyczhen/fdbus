@@ -22,7 +22,7 @@
 #include <common_base/cJSON/cJSON.h>
 #include <common_base/CFdbCJsonMsgBuilder.h>
 
-#define FDB_INVOKE_SYNC 0
+#define FDB_INVOKE_SYNC 1
 
 static CBaseWorker main_worker;
 
@@ -123,11 +123,7 @@ public:
                 FDB_LOG_E("onReply: fail to decode status!\n");
                 return;
             }
-            /* Check if something is wrong... */
-            if (msg->isError())
-            {
-                FDB_LOG_I("sync reply: status is received: msg code: %d, id: %d, reason: %s\n", msg->code(), id, reason.c_str());
-            }
+            FDB_LOG_I("sync reply: status is received: msg code: %d, id: %d, reason: %s\n", msg->code(), id, reason.c_str());
             return;
         }
 
@@ -154,7 +150,7 @@ public:
                 folder_name = now_playing.folder_name().c_str();
             }
             int32_t elapse_time = now_playing.elapse_time();
-            FDB_LOG_I("artist: %s, album: %s, genre: %s, title: %s, file name: %s, folder name: %s, elapse time: %d\n",
+            FDB_LOG_I("sync reply - artist: %s, album: %s, genre: %s, title: %s, file name: %s, folder name: %s, elapse time: %d\n",
                         artist, album, genre, title, file_name, folder_name, elapse_time);
         }
         else
@@ -360,7 +356,7 @@ protected:
                         folder_name = now_playing.folder_name().c_str();
                     }
                     int32_t elapse_time = now_playing.elapse_time();
-                    FDB_LOG_I("artist: %s, album: %s, genre: %s, title: %s, file name: %s, folder name: %s, elapse time: %d\n",
+                    FDB_LOG_I("async reply - artist: %s, album: %s, genre: %s, title: %s, file name: %s, folder name: %s, elapse time: %d\n",
                                 artist, album, genre, title, file_name, folder_name, elapse_time);
                 }
                 else
