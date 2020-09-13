@@ -1811,3 +1811,37 @@ void CFdbBaseObject::remoteCallback(CBaseJob::Ptr &msg_ref, long flag)
         break;
     }
 }
+
+class CPrepareDestroyJob : public CMethodJob<CFdbBaseObject>
+{
+public:
+    CPrepareDestroyJob(CFdbBaseObject *object)
+        : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callPrepareDestroy, JOB_FORCE_RUN)
+    {
+    }
+};
+
+void CFdbBaseObject::callPrepareDestroy(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
+{
+    enableMigrate(false);
+    autoRemove(false);
+}
+
+void CFdbBaseObject::prepareDestroy()
+{
+    /*
+     * Why not just call callPrepareDestroy()? Supposing the following case:
+     * CFdbContext is executing the following logic:
+     * 1. check if migration flag is set;
+     * 2. if set, migrate callback to worker thread.
+     * between 1 and 2, call callPrepareDestroy() followed by flush(). It might
+     * be possible that the job to flush is in front of the job for migration.
+     */
+    CFdbContext::getInstance()->sendSyncEndeavor(new CPrepareDestroyJob(this), 0, true);
+    if (mWorker)
+    {
+        // Make sure no pending remote callback is queued
+        mWorker->flush();
+    }
+}
+

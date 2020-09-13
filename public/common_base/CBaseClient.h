@@ -124,6 +124,8 @@ public:
                 , int32_t size = 0
                 , const char *log_data = 0
                 , bool force_update = false);
+
+    void prepareDestroy();
 protected:
     CClientSocket *doConnect(const char *url, const char *host_name = 0);
     void doDisconnect(FdbSessionId_t sid = FDB_INVALID_ID);

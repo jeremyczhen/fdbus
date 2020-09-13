@@ -200,7 +200,7 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusServer_fdb_1destroy
     auto server = (CJniServer *)handle;
     if (server)
     {
-        server->unbind();
+        server->prepareDestroy();
         delete server;
     }
 }

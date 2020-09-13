@@ -64,6 +64,8 @@ public:
         return mEpid;
     }
 
+    void prepareDestroy();
+
 protected:
     std::string mNsName;
 
@@ -99,9 +101,9 @@ private:
     void deleteConnectedSession(CFdbSession *session);
 
     FdbEndpointId_t registerSelf();
-    void unregisterSelf();
+    void destroySelf(bool prepare);
     void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
-    void callUnregisterEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
+    void callDestroyEndpoint(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
     CFdbBaseObject *findObject(FdbObjectId_t obj_id, bool server_only);
     bool importTokens(const CFdbParcelableArray<std::string> &in_tokens);
     int32_t checkSecurityLevel(const char *token);
@@ -124,7 +126,7 @@ private:
     friend class CFdbBaseObject;
     friend class CServerSocket;
     friend class CRegisterJob;
-    friend class CUnregisterJob;
+    friend class CDestroyJob;
 };
 
 #endif

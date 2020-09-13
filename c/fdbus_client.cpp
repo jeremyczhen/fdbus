@@ -213,7 +213,7 @@ void fdb_client_destroy(fdb_client_t *handle)
         return;
     }
     auto fdb_client = (CCClient *)handle->native_handle;
-    fdb_client->disconnect();
+    fdb_client->prepareDestroy();
     delete fdb_client;
     delete handle;
 }

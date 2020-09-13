@@ -366,3 +366,9 @@ bool CBaseClient::publish(FdbMsgCode_t code, const char *topic, const void *buff
     return msg->send();
 }
 
+void CBaseClient::prepareDestroy()
+{
+    disconnect();
+    CBaseEndpoint::prepareDestroy();
+}
+

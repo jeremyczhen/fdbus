@@ -35,13 +35,14 @@ CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpoint
 
 CBaseEndpoint::~CBaseEndpoint()
 {
-    enableMigrate(false);
-    autoRemove(false);
-    
-    unregisterSelf();
-    //CFdbContext::getInstance()->mEndpointContainer.deleteEntry(mEpid);
+    destroySelf(false);
 }
 
+void CBaseEndpoint::prepareDestroy()
+{
+    CFdbBaseObject::prepareDestroy();
+    destroySelf(true);
+}
 
 void CBaseEndpoint::addSocket(CFdbSessionContainer *container)
 {
@@ -487,35 +488,46 @@ FdbEndpointId_t CBaseEndpoint::registerSelf()
 }
 
 //================================== unregister ==========================================
-class CUnregisterJob : public CMethodJob<CBaseEndpoint>
+class CDestroyJob : public CMethodJob<CBaseEndpoint>
 {
 public:
-    CUnregisterJob(CBaseEndpoint *object)
-        : CMethodJob<CBaseEndpoint>(object, &CBaseEndpoint::callUnregisterEndpoint, JOB_FORCE_RUN)
+    CDestroyJob(CBaseEndpoint *object, bool prepare)
+        : CMethodJob<CBaseEndpoint>(object, &CBaseEndpoint::callDestroyEndpoint, JOB_FORCE_RUN)
+        , mPrepare(prepare)
     {
     }
+    bool mPrepare;
 };
 
-void CBaseEndpoint::callUnregisterEndpoint(CBaseWorker *worker,
+void CBaseEndpoint::callDestroyEndpoint(CBaseWorker *worker,
             CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
 {
-    auto &object_tbl = mObjectContainer.getContainer();
-    while (!object_tbl.empty())
+    auto the_job = fdb_dynamic_cast_if_available<CDestroyJob *>(job);
+    if (the_job->mPrepare)
     {
-        auto it = object_tbl.begin();
-        CFdbBaseObject *object = it->second;
-        removeObject(object);
+        CFdbContext::getInstance()->unregisterEndpoint(this);
     }
+    else
+    {
+        auto &object_tbl = mObjectContainer.getContainer();
+        while (!object_tbl.empty())
+        {
+            auto it = object_tbl.begin();
+            CFdbBaseObject *object = it->second;
+            removeObject(object);
+        }
 
-    deleteSocket();
-    CFdbContext::getInstance()->unregisterEndpoint(this);
+        deleteSocket();
+        // ensure if prepare is not called, it still can be unregistered.
+        CFdbContext::getInstance()->unregisterEndpoint(this);
+    }
 }
 
-void CBaseEndpoint::unregisterSelf()
+void CBaseEndpoint::destroySelf(bool prepare)
 {
     if (registered())
     {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CUnregisterJob(this));
+        CFdbContext::getInstance()->sendSyncEndeavor(new CDestroyJob(this, prepare));
         registered(false);
     }
 }

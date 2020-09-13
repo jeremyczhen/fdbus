@@ -157,7 +157,7 @@ void fdb_server_destroy(fdb_server_t *handle)
     }
 
     auto fdb_server = (CCServer *)handle->native_handle;
-    fdb_server->unbind();
+    fdb_server->prepareDestroy();
     delete fdb_server;
     delete handle;
 }

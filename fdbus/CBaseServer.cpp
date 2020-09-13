@@ -369,3 +369,9 @@ void CBaseServer::publishCachedEvents(CFdbSession *session)
     }
 }
 
+void CBaseServer::prepareDestroy()
+{
+    unbind();
+    CBaseEndpoint::prepareDestroy();
+}
+

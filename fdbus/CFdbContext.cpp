@@ -71,14 +71,14 @@ bool CFdbContext::destroy()
         auto name_proxy = mNameProxy;
         mNameProxy = 0;
         name_proxy->enableNsMonitor(false);
-        name_proxy->disconnect();
+        name_proxy->prepareDestroy();
         delete name_proxy;
     }
     if (mLogger)
     {
         auto logger = mLogger;
         mLogger = 0;
-        logger->disconnect();
+        logger->prepareDestroy();
         delete logger;
     }
 

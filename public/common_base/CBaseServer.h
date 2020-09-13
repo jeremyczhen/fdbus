@@ -73,6 +73,8 @@ public:
      */
     void unbind(FdbSocketId_t skid = FDB_INVALID_ID);
 
+    void prepareDestroy();
+
 protected:
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session);

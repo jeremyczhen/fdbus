@@ -258,7 +258,7 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusClient_fdb_1destroy
     auto client = (CJniClient *)handle;
     if (client)
     {
-        client->disconnect();
+        client->prepareDestroy();
         delete client;
     }
 }

@@ -843,6 +843,7 @@ bool CBaseWorker::flush(int32_t milliseconds, bool urgent)
 {
     if (isSelf())
     {
+        mEventLoop->lock();
         processJobQueue();
         return true;
     }

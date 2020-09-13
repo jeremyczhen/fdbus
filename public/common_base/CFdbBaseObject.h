@@ -688,6 +688,8 @@ public:
     bool sendSideband(FdbMsgCode_t code
                     , const void *buffer = 0
                     , int32_t size = 0);
+
+    virtual void prepareDestroy();
 protected:
     std::string mName;
     CBaseEndpoint *mEndpoint; // Which endpoint the object belongs to
@@ -894,6 +896,7 @@ private:
     void callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callUnbindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callDisconnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
+    void callPrepareDestroy(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
 
     /*
      * The following methods migrate onXXX() callbacks to specified worker thread.
@@ -950,6 +953,7 @@ private:
     friend class CConnectObjectJob;
     friend class CUnbindObjectJob;
     friend class CDisconnectObjectJob;
+    friend class CPrepareDestroyJob;
 
     friend class CBaseClient;
     friend class CBaseServer;
