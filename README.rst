@@ -5,22 +5,18 @@ Introduction
 
 .. image:: https://readthedocs.org/projects/fdbus/badge/?version=latest
 
-``FDBus`` is a middleware development framework targeting the following objectives:
+``FDBus`` is an easy-to-use, light weight and high performance IPC framework. It is something like ``DBus`` or ``SOME/IP``, but with its own characteristics:
 
-- Inter-Process Communication (``IPC``) within single host and cross the network
-- System abstraction (``Windows``, ``Linux``, ``QNX``)
-- Components based on which middleware is built (job, worker, timer, watch...)
-
-It is something like ``DBus`` or ``SOME/IP``, but with its own characteristic:
-
-- **Distributed** : unlike ``DBus``, it has no central hub
+- **Distributed** : unlike ``DBus``, it has no central hub; client and serives are connected directly
 - **High performance** : endpoints talk to each other directly
 - **Addressing by name** : service is addressable through logic name
 - **Address allocation** : service address is allocated dynamically
-- **Networking** : communication inside host and cross hosts
+- **Networking** : communication inside host and across network
 - **IDL and code generation** : google protocol buffer is recommended
-- **Language binding** : C++ Java
-- **Total slution** : it is more than an ``IPC`` machanism. it is a middleware development framework
+- **Language binding** : C++ C Java Python
+- **Total slution** : it is more than an ``IPC`` machanism. it is more like a middleware development framework
+- **Notification Center** : In addition to distributed service, it also support centralized notification center like MQTT
+- **Logging and Debugging** : All FDBus messages can be filtered and logged; services can be monitored; connected clients can be listed...
 
 Its usage can be found in the following fields:
 
@@ -28,6 +24,7 @@ Its usage can be found in the following fields:
 - Inter VM communication between guest OSes in hypervisor
 - SOHO Gateway
 - Instrument for distributed industry control
+- Backbone to support SOA (Service-Oriented Architecture)
 
 Supported system
 ----------------
@@ -312,8 +309,3 @@ Authenication of host
 
 TBD
 
-Known issues
-^^^^^^^^^^^^^^^^^^^^^
-
- | 1. Issue: sem_timedwait() is used as notifier and blocker of event loop, leading to timer failure when TOD is changed since sem_wait() take CLOCK_REALTIME clock for timeout control.
- |    Solution: When creating worker thread, pass FDB_WORKER_ENABLE_FD_LOOP as parameter, forcing poll() instead of sem_timedwait() as loop notifier and blocker
