@@ -54,7 +54,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
-    , mExtraSize(0)
     , mSid(FDB_INVALID_ID)
     , mOid(FDB_INVALID_ID)
     , mBuffer(0)
@@ -72,7 +71,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
-    , mExtraSize(0)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
@@ -89,7 +87,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
-    , mExtraSize(0)
     , mSid(msg->mSid)
     , mOid(msg->mOid)
     , mBuffer(0)
@@ -118,7 +115,6 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mPayloadSize(head.payload_size())
     , mHeadSize(prefix.mHeadLength)
     , mOffset(0)
-    , mExtraSize(prefix.mTotalLength - mPrefixSize - mHeadSize - mPayloadSize)
     , mSid(session->sid())
     , mOid(head.object_id())
     , mBuffer(buffer)
@@ -127,13 +123,6 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
-    if (mExtraSize < 0)
-    {
-        mExtraSize = 0;
-        LOG_E("CFdbMessage: mExtraSize is less than 0: %d %d %d\n",
-                prefix.mTotalLength, mHeadSize, mPayloadSize);
-    }
-
     if (!session->senderName().empty())
     {
         mSenderName = session->senderName();
@@ -156,7 +145,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
-    , mExtraSize(0)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
@@ -572,7 +560,7 @@ void CFdbMessage::freeRawBuffer()
 
 bool CFdbMessage::allocCopyRawBuffer(const void *src, int32_t payload_size)
 {
-    int32_t total_size = maxReservedSize() + payload_size + mExtraSize;
+    int32_t total_size = maxReservedSize() + payload_size;
     uint8_t *buffer = new uint8_t[total_size];
     if (src)
     {

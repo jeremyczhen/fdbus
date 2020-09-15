@@ -285,12 +285,7 @@ public:
 
     int32_t getRawDataSize() const
     {
-        return mPrefixSize + mHeadSize + mPayloadSize + mExtraSize;
-    }
-
-    int32_t getExtraDataSize() const
-    {
-        return mExtraSize;
+        return mPrefixSize + mHeadSize + mPayloadSize;
     }
 
     /*
@@ -368,6 +363,11 @@ public:
     const std::string &topic() const
     {
         return mFilter;
+    }
+    // for backward compatible; never use it anymore!!!
+    const char *getFilter() const
+    {
+        return "Obsoleted!!!";
     }
 
     void topic(const char *tpc)
@@ -712,7 +712,6 @@ private:
     int32_t mPayloadSize;
     int32_t mHeadSize;
     int32_t mOffset;
-    int32_t mExtraSize;
     union
     {
         FdbSessionId_t mSid;
