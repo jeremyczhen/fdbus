@@ -121,7 +121,7 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
             auto logger = CFdbContext::getInstance()->getLogger();
             if (logger)
             {
-                logger->logMessage(msg, mContainer->owner());
+                logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
             }
         }
         return true;
@@ -284,7 +284,7 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
-    msg->checkLogEnabled(mContainer->owner(), false);
+    checkLogEnabled(msg);
     if (object)
     {
         msg->decodeDebugInfo(head, this);
@@ -422,7 +422,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
         // correct the type so that checkLogEnabled() can get correct
         // sender name and receiver name
         msg->type(FDB_MT_BROADCAST);
-        msg->checkLogEnabled(mContainer->owner(), false);
+        checkLogEnabled(msg);
         msg->decodeDebugInfo(head, this);
         const CFdbMsgSubscribeItem *sub_item;
         int32_t ret;
@@ -502,7 +502,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
     
 _reply_status:
     msg->type(FDB_MT_STATUS); // correct the type
-    msg->checkLogEnabled(mContainer->owner(), false);
+    checkLogEnabled(msg);
     msg->sendStatus(this, error_code, error_msg);
 }
 
@@ -606,4 +606,16 @@ bool CFdbSession::peerIp(std::string &host_ip)
     host_ip = sinfo.mConn->mPeerIp;
     return true;
 
+}
+
+void CFdbSession::checkLogEnabled(CFdbMessage *msg)
+{
+    if (!msg->isLogEnabled())
+    {
+        CLogProducer *logger = CFdbContext::getInstance()->getLogger();
+        if (logger && logger->checkLogEnabled(msg->type(), mSenderName.c_str(), mContainer->owner(), false))
+        {
+            msg->enableLog(true);
+        }
+    }
 }

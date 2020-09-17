@@ -28,7 +28,7 @@ class CLogProducer : public CBaseClient
 {
 public:
     CLogProducer();
-    void logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint);
+    void logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint);
     bool checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *info);
 
@@ -36,7 +36,6 @@ public:
                          const char *sender_name,
                          const CBaseEndpoint *endpoint,
                          bool lock = true);
-    bool checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock = true);
     static const int32_t mMaxTraceLogSize = 4096;
 protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref);

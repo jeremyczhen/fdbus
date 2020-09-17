@@ -97,6 +97,7 @@ private:
     void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
     void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
     void doUpdate(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void checkLogEnabled(CFdbMessage *msg);
 
     PendingMsgTable_t mPendingMsgTable;
     FdbSessionId_t mSid;

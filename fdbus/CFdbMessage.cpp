@@ -92,7 +92,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mSenderName(msg->mSenderName)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -123,11 +122,6 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
-    if (!session->senderName().empty())
-    {
-        mSenderName = session->senderName();
-    }
-
     if (head.has_broadcast_filter())
     {
         mFilter = head.broadcast_filter().c_str();
@@ -161,7 +155,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     {
         mSid = alt_sid;
         mFlag &= ~MSG_FLAG_ENDPOINT;
-        mSenderName = obj->name();
     }
     else
     {
@@ -204,7 +197,6 @@ void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid)
         mFlag |= MSG_FLAG_ENDPOINT;
     }
     mOid = obj->objId();
-    //mSenderName = obj->name();
 }
 
 void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
@@ -977,7 +969,7 @@ void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
     if (!(mFlag & MSG_FLAG_ENABLE_LOG))
     {
         CLogProducer *logger = CFdbContext::getInstance()->getLogger();
-        if (logger && logger->checkLogEnabled(this, object->endpoint(), lock))
+        if (logger && logger->checkLogEnabled(mType, 0, object->endpoint(), lock))
         {
             mFlag |= MSG_FLAG_ENABLE_LOG;
         }

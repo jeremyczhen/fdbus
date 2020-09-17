@@ -472,19 +472,6 @@ public:
         return mOid;
     }
 
-    const std::string &senderName() const
-    {
-        return mSenderName;
-    }
-
-    void senderName(const char *sender_name)
-    {
-        if (sender_name)
-        {
-            mSenderName = sender_name;
-        }
-    }
-
     EFdbMessageType type() const
     {
         return mType;
@@ -721,7 +708,6 @@ private:
     uint8_t *mBuffer;
     uint32_t mFlag;
     CMessageTimer *mTimer;
-    std::string mSenderName;
     std::string mStringData;
     std::string mFilter;
 

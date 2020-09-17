@@ -119,7 +119,7 @@ const char *CLogProducer::getReceiverName(EFdbMessageType type,
         default:
             if (!sender_name || (sender_name[0] == '\0'))
             {
-                receiver = "__ANY__";
+                receiver = (type == FDB_MT_BROADCAST) ? "__ANY__" : "__UNKNOWN__";
             }
             else
             {
@@ -232,20 +232,15 @@ bool CLogProducer::checkLogEnabled(EFdbMessageType type,
     }
 }
 
-bool CLogProducer::checkLogEnabled(const CFdbMessage *msg, const CBaseEndpoint *endpoint, bool lock)
-{
-    return checkLogEnabled(msg->type(), msg->senderName().c_str(), endpoint, lock);
-}
-
-void CLogProducer::logMessage(CFdbMessage *msg, CBaseEndpoint *endpoint)
+void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint)
 {
     if (!msg->isLogEnabled())
     {
         return;
     }
-    
+
     auto sender = endpoint->name().c_str();
-    auto receiver = getReceiverName(msg->type(), msg->senderName().c_str(), endpoint);
+    auto receiver = getReceiverName(msg->type(), sender_name, endpoint);
     auto busname = endpoint->nsName().c_str();
     auto proxy = FDB_CONTEXT->getNameProxy();
 

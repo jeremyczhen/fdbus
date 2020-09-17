@@ -781,9 +781,10 @@ bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
 }
 
 bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
-                           , int32_t timeout)
+                              , int32_t timeout)
 {
     auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -797,6 +798,7 @@ bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
                               , CFdbMessage *msg
                               , int32_t timeout)
 {
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     msg->setDestination(this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
@@ -811,6 +813,7 @@ bool CFdbBaseObject::subscribeSync(CFdbMsgSubscribeList &msg_list
                               , int32_t timeout)
 {
     auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     msg->setDestination(this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
@@ -839,6 +842,7 @@ bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
                             , int32_t timeout)
 {
     auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
@@ -852,6 +856,7 @@ bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
                             , CFdbMessage *msg
                             , int32_t timeout)
 {
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     msg->setDestination(this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
@@ -866,6 +871,7 @@ bool CFdbBaseObject::updateSync(CFdbMsgTriggerList &msg_list
                                 , int32_t timeout)
 {
     auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     msg->setDestination(this);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
