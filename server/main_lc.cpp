@@ -26,7 +26,7 @@
 #include <common_base/CFdbSimpleMsgBuilder.h>
 
 typedef std::set<std::string> FdbClientList_t;
-static const char *fdb_endpoint_name = "fdbus.__ConnFetcher__";
+static const char *fdb_endpoint_name = "org.fdbus.connection-fetcher";
 
 class CConnectionFetcher : public CBaseClient
 {
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
     {
         std::string server_addr;
         auto &server_name = *it;
-        server_addr = FDB_URL_SVC; 
+        server_addr = FDB_URL_SVC;
         server_addr += server_name;
         auto fetcher = new CConnectionFetcher(client_tbl);
         fetcher->connect(server_addr.c_str());

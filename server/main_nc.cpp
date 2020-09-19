@@ -23,8 +23,6 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbSession.h>
 
-#define FDB_NOTIFICATION_CENTER_NAME "fdbus.notification-center"
-
 class CNotificationCenter;
 class CNotificationCenterProxy : public CBaseClient
 {

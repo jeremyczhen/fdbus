@@ -28,7 +28,7 @@
 #define FDB_HOST_NAME_MAX 1024
 
 CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
-    : CBaseClient("HostServer")
+    : CBaseClient(0)
     , mNameServer(ns)
     , mConnectTimer(this)
 {
@@ -45,6 +45,7 @@ CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
         buffer[FDB_HOST_NAME_MAX - 1] = '\0';
         mHostName = buffer;
     }
+    mName = mHostName;
     mConnectTimer.attach(FDB_CONTEXT, false);
 }
 

@@ -33,9 +33,11 @@ typedef FdbMsgCode_t FdbEventCode_t;
 typedef uint32_t FdbObjectId_t;
 typedef uint8_t FdbEventGroup_t;
 
-#define FDB_NAME_SERVER_NAME "__NameServer__"
-#define FDB_HOST_SERVER_NAME "__HostServer__"
-#define FDB_LOG_SERVER_NAME "__LogServer__"
+#define FDB_NAME_SERVER_NAME            "org.fdbus.name-server"
+#define FDB_HOST_SERVER_NAME            "org.fdbus.host-server"
+#define FDB_LOG_SERVER_NAME             "org.fdbus.log-server"
+#define FDB_NOTIFICATION_CENTER_NAME    "org.fdbus.notification-center"
+#define FDB_XTEST_NAME                  "org.fdbus.xtest-server"
 
 #define FDB_URL_TCP_IND "tcp"
 #define FDB_URL_IPC_IND "ipc"

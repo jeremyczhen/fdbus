@@ -343,9 +343,9 @@ int main(int argc, char **argv)
     fdb_worker_A->start();
     fdb_worker_B->start();
     fdb_statistic_worker->start();
-    fdb_xtest_client = new CXClient("xtest_client");
+    fdb_xtest_client = new CXClient(FDB_XTEST_NAME);
 
-    fdb_xtest_client->connect("svc://fdbus.__xtest__");
+    fdb_xtest_client->connect();
 
     /* convert main thread into worker */
     CBaseWorker background_worker;

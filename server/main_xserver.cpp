@@ -144,8 +144,8 @@ int main(int argc, char **argv)
     fdb_statistic_worker = new CBaseWorker();
     fdb_statistic_worker->start();
 
-    auto server = new CXServer("xtest_server");
-    server->bind("svc://fdbus.__xtest__");
+    auto server = new CXServer(FDB_XTEST_NAME);
+    server->bind();
 
     /* convert main thread into worker */
     CBaseWorker background_worker;

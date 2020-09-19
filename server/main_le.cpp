@@ -26,7 +26,7 @@
 #include <utils/Log.h>
 #include <common_base/CFdbSimpleMsgBuilder.h>
 
-static const char *fdb_endpoint_name = "fdbus.__EventFetcher__";
+static const char *fdb_endpoint_name = "org.fdbus.event-fetcher";
 static int32_t fdb_obj_id = FDB_OBJECT_MAIN;
 static CBaseClient *fdb_event_fetcher = 0;
 
