@@ -57,10 +57,9 @@ public:
     {
         for (auto it = mPeerTbl.begin(); it != mPeerTbl.end(); ++it)
         {
-            (*it)->disconnect();
+            (*it)->prepareDestroy();
             delete *it;
         }
-        unbind();
     }
     void syncEventPool(FdbSessionId_t sid)
     {
@@ -83,12 +82,12 @@ protected:
             /* avoid back and forth between NCs */
             if (session->senderName().compare((*it)->nsName()))
             {
-                (*it)->publish(msg->code()
-                              , msg->topic().c_str()
-                              , msg->getPayloadBuffer()
-                              , msg->getPayloadSize()
-                              , 0
-                              , msg->isForceUpdate());
+                (*it)->publishNoQueue(msg->code()
+                                      , msg->topic().c_str()
+                                      , msg->getPayloadBuffer()
+                                      , msg->getPayloadSize()
+                                      , 0
+                                      , msg->isForceUpdate());
             }
         }
     }

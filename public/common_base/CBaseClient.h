@@ -126,6 +126,10 @@ public:
                 , bool force_update = false);
 
     void prepareDestroy();
+
+    /* Warning!!! Internal use only!!! */
+    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
+                        int32_t size, const char *log_data, bool force_update);
 protected:
     CClientSocket *doConnect(const char *url, const char *host_name = 0);
     void doDisconnect(FdbSessionId_t sid = FDB_INVALID_ID);

@@ -366,6 +366,27 @@ bool CBaseClient::publish(FdbMsgCode_t code, const char *topic, const void *buff
     return msg->send();
 }
 
+bool CBaseClient::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
+                                 int32_t size, const char *log_data, bool force_update)
+{
+    CBaseMessage msg(code, this);
+    msg.expectReply(false);
+    msg.forceUpdate(force_update);
+    msg.setLogData(log_data);
+    if (!msg.serialize(buffer, size, this))
+    {
+        return false;
+    }
+    msg.topic(topic);
+
+    auto session = preferredPeer();
+    if (session)
+    {
+        return session->sendMessage(&msg);
+    }
+    return false;
+}
+
 void CBaseClient::prepareDestroy()
 {
     disconnect();

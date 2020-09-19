@@ -168,10 +168,7 @@ bool CFdbBaseObject::get(FdbMsgCode_t code, const char *topic, int32_t timeout)
         delete msg;
         return false;
     }
-    if (topic)
-    {
-        msg->topic(topic);
-    }
+    msg->topic(topic);
     msg->setEventGet(true);
     return msg->invoke(timeout);
 }
@@ -184,10 +181,7 @@ bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
         delete msg;
         return false;
     }
-    if (topic)
-    {
-        msg->topic(topic);
-    }
+    msg->topic(topic);
     msg->setEventGet(true);
     return msg->invoke(timeout);
 }
@@ -200,10 +194,7 @@ bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t time
     {
         return false;
     }
-    if (topic)
-    {
-        msg->topic(topic);
-    }
+    msg->topic(topic);
     msg->setEventGet(true);
     return msg->invoke(msg_ref, timeout);
 }
@@ -293,6 +284,7 @@ void CFdbBaseObject::broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, in
 bool CFdbBaseObject::unsubscribe(CFdbMsgSubscribeList &msg_list)
 {
     auto msg = new CBaseMessage(FDB_INVALID_ID, this);
+    msg->type(FDB_MT_SUBSCRIBE_REQ);
     CFdbParcelableBuilder builder(msg_list);
     if (!msg->serialize(builder, this))
     {
