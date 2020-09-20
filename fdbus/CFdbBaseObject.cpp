@@ -654,7 +654,8 @@ void CFdbBaseObject::doInvoke(CBaseJob::Ptr &msg_ref)
             }
             else
             {
-                msg->status(msg_ref, NFdbBase::FDB_ST_NON_EXIST, "Event/topic doesn't exists!");
+                msg->statusf(msg_ref, NFdbBase::FDB_ST_NON_EXIST, "Event %d topic %s doesn't exists!",
+                             msg->code(), msg->topic().c_str());
             }
             return;
         }

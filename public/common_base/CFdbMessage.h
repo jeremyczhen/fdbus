@@ -244,6 +244,7 @@ public:
      * @iparam desctiption: optional description of the error
      */
     static bool status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
+    static bool statusf(CBaseJob::Ptr &msg_ref, int32_t error_code, ...);
 
     bool broadcast(FdbMsgCode_t code
                    , IFdbMsgBuilder &data

@@ -15,6 +15,7 @@
  */
 
 #include <string.h>
+#include <stdarg.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbContext.h>
@@ -27,6 +28,7 @@
 
 #define FDB_MSG_TX_SYNC         (1 << 0)
 #define FDB_MSG_TX_NO_REPLY     (1 << 1)
+#define FDB_MAX_STATUS_SIZE     1024
 
 class CMessageTimer : public CBaseLoopTimer
 {
@@ -335,6 +337,18 @@ bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char 
         return false;
     }
     return true;
+}
+
+bool CFdbMessage::statusf(CBaseJob::Ptr &msg_ref, int32_t error_code, ...)
+{
+    char description[FDB_MAX_STATUS_SIZE];
+    description[0] = '\0';
+    va_list args;
+    va_start(args, error_code);
+    const char *format = va_arg(args, const char *);
+    vsnprintf(description, FDB_MAX_STATUS_SIZE, format, args);
+    va_end(args);
+    return status(msg_ref, error_code, description);
 }
 
 bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
