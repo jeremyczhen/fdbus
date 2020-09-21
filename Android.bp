@@ -396,6 +396,66 @@ cc_binary {
 
 }
 
+//=====================================================================================
+//                    build ntfcenter (notification center)                           |
+//=====================================================================================
+cc_binary {
+    name: "ntfcenter",
+    vendor_available: true,
+    cppflags: [
+        "-frtti",
+        "-fexceptions",
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+    ],
+    cflags: [
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+    ],
+    srcs: [
+        "server/main_nc.cpp",
+    ],
+
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
+
+}
+
+//=====================================================================================
+//                       build lsevt (list cached events)                             |
+//=====================================================================================
+cc_binary {
+    name: "lsevt",
+    vendor_available: true,
+    cppflags: [
+        "-frtti",
+        "-fexceptions",
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+    ],
+    cflags: [
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+    ],
+    srcs: [
+        "server/main_le.cpp",
+    ],
+
+    shared_libs: [
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
+
+}
+
 FDB_IDL_EXAMPLE_H = "<" + FDB_IDL_GEN_DIR + "/common.base.Example.pb.h>"
 //=====================================================================================
 //                      build fdbtest_client (native test)                            |
@@ -522,5 +582,42 @@ cc_binary {
         "liblog",
         "libutils",
     ],
+
+}
+
+//=====================================================================================
+//               build fdbntfcentertest (test for notification center)                |
+//=====================================================================================
+cc_binary {
+    name: "fdbntfcentertest",
+    vendor_available: true,
+    cppflags: [
+        "-fexceptions",
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+        "-DFDBUS_PROTO_FULL_FEATURE",
+        "-DFDB_IDL_EXAMPLE_H=" + FDB_IDL_EXAMPLE_H,
+    ],
+    cflags: [
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+    ],
+    srcs: [
+        "example/fdb_test_notification_center.cpp",
+        FDB_PROTO_DIR + "/common.base.Example.proto",
+    ],
+
+    shared_libs: [
+        "libprotobuf-cpp-full",
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
+
+    proto: {
+        type: "full",
+    },
 
 }
