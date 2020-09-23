@@ -111,6 +111,10 @@ private:
     CFdbAddressDesc *createAddrDesc(const char *svc_name, EFdbSocketType skt_type);
     void connectToHostServer(const char *hs_url, bool is_local);
     bool addressTypeRegistered(const tAddressDescTbl &addr_list, EFdbSocketType skt_type);
+    bool addOneServiceAddress(const std::string &svc_name,
+                              CSvcRegistryEntry &addr_tbl,
+                              EFdbSocketType skt_type,
+                              NFdbBase::FdbMsgAddressList *msg_addr_list);
     bool addServiceAddress(const std::string &svc_name,
                             CSvcRegistryEntry &addr_tbl,
                             EFdbSocketType skt_type,

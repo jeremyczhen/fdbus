@@ -145,9 +145,31 @@ bool CNameServer::addressTypeRegistered(const tAddressDescTbl &addr_list,
 {
     for (auto it = addr_list.begin(); it != addr_list.end(); ++it)
     {
-        const CFdbAddressDesc *addr_desc = *it;
+        auto *addr_desc = *it;
         if (addr_desc->mAddress.mType == skt_type)
         {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CNameServer::addOneServiceAddress(const std::string &svc_name,
+                                       CSvcRegistryEntry &addr_tbl,
+                                       EFdbSocketType skt_type,
+                                       NFdbBase::FdbMsgAddressList *msg_addr_list)
+{
+    if (!addressTypeRegistered(addr_tbl.mAddrTbl, skt_type))
+    {
+        auto desc = createAddrDesc(svc_name.c_str(), skt_type);
+        if (desc)
+        {
+            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
+            addr_tbl.mAddrTbl.push_back(desc);
+            if (msg_addr_list)
+            {
+                msg_addr_list->add_address_list(desc->mAddress.mUrl);
+            }
             return true;
         }
     }
@@ -159,55 +181,20 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
                                     EFdbSocketType skt_type,
                                     NFdbBase::FdbMsgAddressList *msg_addr_list)
 {
-    bool address_created = false;
     if (msg_addr_list)
     {
         msg_addr_list->set_service_name(svc_name);
         msg_addr_list->set_host_name((mHostProxy->hostName()));
         msg_addr_list->set_is_local(true);
     }
-    
-    if ((skt_type == FDB_SOCKET_IPC) &&
-            !addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_IPC))
+ 
+    if (skt_type == FDB_SOCKET_IPC)
     {
-        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), FDB_SOCKET_IPC);
-        if (desc)
-        {
-            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-            addr_tbl.mAddrTbl.push_back(desc);
-            if (msg_addr_list)
-            {
-                msg_addr_list->add_address_list(desc->mAddress.mUrl);
-            }
-            address_created = true;
-        }
-
-        // host server is forced to bind to tcp address
-        if (svc_name != CNsConfig::getHostServerName())
-        {
-            if (!mHostProxy->connected())
-            {
-                return address_created;
-            }
-        }
+        addOneServiceAddress(svc_name, addr_tbl, FDB_SOCKET_IPC, msg_addr_list);
     }
+    addOneServiceAddress(svc_name, addr_tbl, FDB_SOCKET_TCP, msg_addr_list);
 
-    if (!addressTypeRegistered(addr_tbl.mAddrTbl, FDB_SOCKET_TCP))
-    {
-        CFdbAddressDesc *desc = createAddrDesc(svc_name.c_str(), FDB_SOCKET_TCP);
-        if (desc)
-        {
-            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-            addr_tbl.mAddrTbl.push_back(desc);
-            if (msg_addr_list)
-            {
-                msg_addr_list->add_address_list(desc->mAddress.mUrl);
-            }
-            address_created = true;
-        }
-    }
-
-    return address_created;
+    return msg_addr_list ? !msg_addr_list->address_list().empty() : false;
 }
 
 bool CNameServer::addServiceAddress(const std::string &svc_name,
@@ -965,11 +952,27 @@ bool CNameServer::allocateTcpAddress(const std::string &svc_name, CFdbSocketAddr
     if (mInterface.empty())
     {
         // host server binds to all interfaces
-        if ((svc_type != FDB_SVC_HOST_SERVER) && mHostProxy->hostIp(host_ip))
+        if (svc_type != FDB_SVC_HOST_SERVER)
         {
-            if (host_ip.compare(FDB_LOCAL_HOST))
+            if (mHostProxy->hostIp(host_ip))
             {
-                str_host_ip = host_ip.c_str();
+                if (host_ip.compare(FDB_LOCAL_HOST))
+                {
+                    str_host_ip = host_ip.c_str();
+                }
+            }
+            else if (mTcpAllocators.empty())
+            {   // if not able to get IP address of connected host server, and
+                // never has been connected with host server, just leave
+#ifndef __WIN32__
+                return false;
+#endif
+            }
+            else
+            {   // since have connected with host server once, retrieve it.
+                // This is not perfect because we just guess the address is the same
+                auto it = mTcpAllocators.begin();
+                str_host_ip = it->first.c_str();
             }
         }
     }
