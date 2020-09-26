@@ -154,26 +154,27 @@ bool CNameServer::addressTypeRegistered(const tAddressDescTbl &addr_list,
     return false;
 }
 
-bool CNameServer::addOneServiceAddress(const std::string &svc_name,
+void CNameServer::addOneServiceAddress(const std::string &svc_name,
                                        CSvcRegistryEntry &addr_tbl,
                                        EFdbSocketType skt_type,
                                        NFdbBase::FdbMsgAddressList *msg_addr_list)
 {
     if (!addressTypeRegistered(addr_tbl.mAddrTbl, skt_type))
     {
-        auto desc = createAddrDesc(svc_name.c_str(), skt_type);
-        if (desc)
+        tSocketAddrTbl sckt_addr_tbl;
+        allocateAddress(skt_type, svc_name.c_str(), sckt_addr_tbl);
+        for (auto it = sckt_addr_tbl.begin(); it != sckt_addr_tbl.end(); ++it)
         {
+            auto desc = new CFdbAddressDesc;
+            desc->mAddress = *it;
             desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
             addr_tbl.mAddrTbl.push_back(desc);
             if (msg_addr_list)
             {
                 msg_addr_list->add_address_list(desc->mAddress.mUrl);
             }
-            return true;
         }
     }
-    return false;
 }
 
 bool CNameServer::addServiceAddress(const std::string &svc_name,
@@ -187,7 +188,7 @@ bool CNameServer::addServiceAddress(const std::string &svc_name,
         msg_addr_list->set_host_name((mHostProxy->hostName()));
         msg_addr_list->set_is_local(true);
     }
- 
+
     if (skt_type == FDB_SOCKET_IPC)
     {
         addOneServiceAddress(svc_name, addr_tbl, FDB_SOCKET_IPC, msg_addr_list);
@@ -619,12 +620,30 @@ bool CNameServer::reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc
 {
     if (addr_desc->reconnect_cnt >= CNsConfig::getAddressBindRetryCnt())
     {
+        LOG_E("CNameServer: Service %s: fail to bind address.\n", svc_name);
         return false;
     }
-
     addr_desc->reconnect_cnt++;
+
+    // allocate another address
+    IAddressAllocator *allocator;
+    if (addr_desc->mAddress.mType == FDB_SOCKET_IPC)
+    {
+        allocator = &mIpcAllocator;
+    }
+    else
+    {
+        auto it = mTcpAllocators.find(addr_desc->mAddress.mAddr);
+        if (it == mTcpAllocators.end())
+        {
+            LOG_E("CNameServer: Service %s: unable to allocate address for IP %s\n", svc_name,
+                  addr_desc->mAddress.mAddr.c_str());
+            return false;
+        }
+        allocator = &it->second;
+    }
     CFdbSocketAddr sckt_addr;
-    bool ret = allocateAddress(addr_desc->mAddress.mType, svc_name, sckt_addr);
+    bool ret = allocateAddress(*allocator, IAddressAllocator::getSvcType(svc_name), sckt_addr);
     if (ret && CBaseSocketFactory::parseUrl(sckt_addr.mUrl.c_str(), addr_desc->mAddress))
     {
         // replace failed address with a new one
@@ -660,6 +679,7 @@ void CNameServer::onHostOnline(bool online)
     {
         return;
     }
+    createTcpAllocator();
     for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
     {
         if (!it->first.compare(CNsConfig::getHostServerName()))
@@ -905,18 +925,6 @@ CNameServer::CFdbAddressDesc *CNameServer::createAddrDesc(const char *url)
     return 0;
 }
 
-CNameServer::CFdbAddressDesc *CNameServer::createAddrDesc(const char *svc_name, EFdbSocketType sckt_type)
-{
-    CFdbAddressDesc *desc = new CFdbAddressDesc;
-    if (allocateAddress(sckt_type, svc_name, desc->mAddress))
-    {
-        return desc;
-    }
-
-    delete desc;
-    return 0;
-}
-
 bool CNameServer::allocateAddress(IAddressAllocator &allocator, FdbServerType svc_type,
                                   CFdbSocketAddr &sckt_addr)
 {
@@ -943,63 +951,109 @@ bool CNameServer::allocateAddress(IAddressAllocator &allocator, FdbServerType sv
     return false;
 }
 
-bool CNameServer::allocateTcpAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr)
+void CNameServer::createTcpAllocator()
 {
-    const char *str_host_ip = 0;
+    // get IP address of connected HS. For Windows, IP of both remote HS and
+    // local HS can be retrieved. But for local HS FDB_LOCAL_HOST might be
+    // returned and should converted to FDB_IP_ALL_INTERFACE. For local NS of
+    // xNX since connection is UDS IP address can not be retrieved.
     std::string host_ip;
-    FdbServerType svc_type = IAddressAllocator::getSvcType(svc_name.c_str());
-    
-    if (mInterface.empty())
+    if (mHostProxy->hostIp(host_ip))
     {
-        // host server binds to all interfaces
-        if (svc_type != FDB_SVC_HOST_SERVER)
+        if (!host_ip.compare(FDB_LOCAL_HOST))
         {
-            if (mHostProxy->hostIp(host_ip))
+            host_ip = FDB_IP_ALL_INTERFACE;
+        }
+    }
+    if (!host_ip.empty())
+    {   // add ip address of HS if connection with HS is via TCP
+        // this means interface of HS will always binded
+        auto &allocator = mTcpAllocators[host_ip];
+        allocator.setInterfaceIp(host_ip.c_str());
+    }
+
+    for (auto it = mIpInterfaces.begin(); it != mIpInterfaces.end(); ++it)
+    {
+        auto &allocator = mTcpAllocators[*it];
+        allocator.setInterfaceIp(it->c_str());
+    }
+
+    if (!mNameInterfaces.empty())
+    {
+        CBaseSocketFactory::tIpAddressTbl interfaces;
+        CBaseSocketFactory::getIpAddress(interfaces);
+        for (auto it = mNameInterfaces.begin(); it != mNameInterfaces.end(); ++it)
+        {
+            auto if_pair = interfaces.find(*it);
+            if (if_pair == interfaces.end())
             {
-                if (host_ip.compare(FDB_LOCAL_HOST))
-                {
-                    str_host_ip = host_ip.c_str();
-                }
-            }
-            else if (mTcpAllocators.empty())
-            {   // if not able to get IP address of connected host server, and
-                // never has been connected with host server, just leave
-#ifndef __WIN32__
-                return false;
-#endif
+                LOG_E("CNameServer: interface %s doesn't exist and is skipped.", it->c_str());
             }
             else
-            {   // since have connected with host server once, retrieve it.
-                // This is not perfect because we just guess the address is the same
-                auto it = mTcpAllocators.begin();
-                str_host_ip = it->first.c_str();
+            {
+                auto &allocator = mTcpAllocators[if_pair->second];
+                allocator.setInterfaceIp(if_pair->second.c_str());
             }
         }
     }
-    else
-    {
-        CBaseSocketFactory::getIpAddress(host_ip, mInterface.c_str());
-        str_host_ip = host_ip.c_str();
-    }
-    if (!str_host_ip || (str_host_ip[0] == '\0'))
-    {
-        str_host_ip = FDB_IP_ALL_INTERFACE;
-    }
 
-    auto &allocator = mTcpAllocators[str_host_ip];
-    allocator.setInterfaceIp(str_host_ip);
-    return allocateAddress(allocator, svc_type, sckt_addr);
+    if (mTcpAllocators.empty())
+    {   // for local HS of xNX, we come here if interface is not specified
+        auto &allocator = mTcpAllocators[FDB_IP_ALL_INTERFACE];
+        allocator.setInterfaceIp(FDB_IP_ALL_INTERFACE);
+    }
 }
 
-bool CNameServer::allocateIpcAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr)
+void CNameServer::allocateTcpAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl)
 {
-    return allocateAddress(mIpcAllocator, IAddressAllocator::getSvcType(svc_name.c_str()), sckt_addr);
+    const char *str_host_ip = 0;
+    std::string host_ip;
+    auto svc_type = IAddressAllocator::getSvcType(svc_name.c_str());
+
+    if (mTcpAllocators.empty())
+    {
+        if (mHostProxy->connected())
+        {
+            // It is not possible to come here. But anyway have to do something
+            // to avoid failure
+            auto &allocator = mTcpAllocators[FDB_IP_ALL_INTERFACE];
+            allocator.setInterfaceIp(FDB_IP_ALL_INTERFACE);
+        }
+        else
+        {
+#ifdef __WIN32__
+            // For windows, since TCP is the only connection, force to bind to inet
+            createTcpAllocator();
+#else
+            // Don't allocate TCP address until HS is online
+            return;
+#endif
+        }
+    }
+
+    for (auto it = mTcpAllocators.begin(); it != mTcpAllocators.end(); ++it)
+    {
+        sckt_addr_tbl.resize(sckt_addr_tbl.size() + 1);
+        if (!allocateAddress(it->second, svc_type, sckt_addr_tbl.back()))
+        {
+            sckt_addr_tbl.pop_back();
+        }
+    }
 }
 
-bool CNameServer::allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, CFdbSocketAddr &sckt_addr)
+void CNameServer::allocateIpcAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl)
 {
-    return (sckt_type == FDB_SOCKET_IPC) ? allocateIpcAddress(svc_name, sckt_addr) :
-                                          allocateTcpAddress(svc_name, sckt_addr);
+    sckt_addr_tbl.resize(sckt_addr_tbl.size() + 1);
+    if (!allocateAddress(mIpcAllocator, IAddressAllocator::getSvcType(svc_name.c_str()), sckt_addr_tbl.back()))
+    {
+        sckt_addr_tbl.pop_back();
+    }
+}
+
+void CNameServer::allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl)
+{
+    (sckt_type == FDB_SOCKET_IPC) ? allocateIpcAddress(svc_name, sckt_addr_tbl) :
+                                    allocateTcpAddress(svc_name, sckt_addr_tbl);
 }
 
 EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
@@ -1056,12 +1110,26 @@ bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
     return success;
 }
 
-bool CNameServer::online(const char *hs_url, const char *hs_name, const char *interface_name)
+bool CNameServer::online(const char *hs_url, const char *hs_name,
+                         char **interface_ips, uint32_t num_interface_ips,
+                         char **interface_names, uint32_t num_interface_names)
 {
-    if (interface_name)
+    if (interface_ips && num_interface_ips)
     {
-        mInterface = interface_name;
+        for (uint32_t i = 0; i < num_interface_ips; ++i)
+        {
+            mIpInterfaces.insert(interface_ips[i]);
+        }
     }
+
+    if (interface_names && num_interface_names)
+    {
+        for (uint32_t i = 0; i < num_interface_names; ++i)
+        {
+            mNameInterfaces.insert(interface_names[i]);
+        }
+    }
+
     mHostProxy = new CHostProxy(this, hs_name);
 #ifdef __WIN32__
     EFdbSocketType skt_type = FDB_SOCKET_TCP;

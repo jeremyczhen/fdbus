@@ -60,7 +60,9 @@ private:
 public:
     CNameServer();
     ~CNameServer();
-    bool online(const char *hs_url = 0, const char *host_name = 0, const char *interface_name = 0);
+    bool online(const char *hs_url = 0, const char *hs_name = 0,
+                char **interface_ips = 0, uint32_t num_interface_ips = 0,
+                char **interface_names = 0, uint32_t num_interface_names = 0);
     const std::string getNsTcpUrl(const char *ip_addr = 0);
     void populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local);
 
@@ -80,10 +82,19 @@ private:
     };
     typedef std::map<std::string, CSvcRegistryEntry> tRegistryTbl;
     typedef std::map<std::string, CTcpAddressAllocator> tTcpAllocatorTbl;
+    typedef std::vector<CFdbSocketAddr> tSocketAddrTbl;
+    typedef std::set<std::string> tInterfaceTbl;
 
     tRegistryTbl mRegistryTbl;
     CFdbMessageHandle<CNameServer> mMsgHdl;
     CFdbSubscribeHandle<CNameServer> mSubscribeHdl;
+
+    CIpcAddressAllocator mIpcAllocator;
+    tTcpAllocatorTbl mTcpAllocators;
+    CHostProxy *mHostProxy;
+    CServerSecurityConfig mServerSecruity;
+    tInterfaceTbl mIpInterfaces;
+    tInterfaceTbl mNameInterfaces;
 
     void populateAddrList(const tAddressDescTbl &addr_tbl,
                           NFdbBase::FdbMsgAddressList &list, EFdbSocketType type);
@@ -100,18 +111,18 @@ private:
     void onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
+    void createTcpAllocator();
     bool allocateAddress(IAddressAllocator &allocator, FdbServerType svc_type, CFdbSocketAddr &sckt_addr);
-    bool allocateTcpAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr);
-    bool allocateIpcAddress(const std::string &svc_name, CFdbSocketAddr &sckt_addr);
-    bool allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, CFdbSocketAddr &sckt_addr);
+    void allocateTcpAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
+    void allocateIpcAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
+    void allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
 
     EFdbSocketType getSocketType(FdbSessionId_t sid);
     void removeService(tRegistryTbl::iterator &it);
     CFdbAddressDesc *createAddrDesc(const char *url);
-    CFdbAddressDesc *createAddrDesc(const char *svc_name, EFdbSocketType skt_type);
     void connectToHostServer(const char *hs_url, bool is_local);
     bool addressTypeRegistered(const tAddressDescTbl &addr_list, EFdbSocketType skt_type);
-    bool addOneServiceAddress(const std::string &svc_name,
+    void addOneServiceAddress(const std::string &svc_name,
                               CSvcRegistryEntry &addr_tbl,
                               EFdbSocketType skt_type,
                               NFdbBase::FdbMsgAddressList *msg_addr_list);
@@ -159,12 +170,6 @@ private:
     void dumpTokens(CFdbToken::tTokenList &tokens,
                     NFdbBase::FdbMsgAddressList &list);
 
-    CIpcAddressAllocator mIpcAllocator;
-    tTcpAllocatorTbl mTcpAllocators;
-    CHostProxy *mHostProxy;
-    std::string mInterface;
-    CServerSecurityConfig mServerSecruity;
-    
     friend class CInterNameProxy;
 };
 

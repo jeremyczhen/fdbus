@@ -40,13 +40,15 @@ int main(int argc, char **argv)
 #endif
     char *tcp_addr = 0;
     char *host_name = 0;
-    char *interface_name = 0;
+    char *interface_ips = 0;
+    char *interface_names = 0;
     int32_t help = 0;
     int32_t ret = 0;
     const struct fdb_option core_options[] = {
         { FDB_OPTION_STRING, "url", 'u', &tcp_addr },
         { FDB_OPTION_STRING, "name", 'n', &host_name },
-        { FDB_OPTION_STRING, "interface", 'n', &interface_name },
+        { FDB_OPTION_STRING, "interface ip list", 'i', &interface_ips },
+        { FDB_OPTION_STRING, "interface name list", 'm', &interface_names },
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
@@ -56,18 +58,26 @@ int main(int argc, char **argv)
         std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
                                       << FDB_VERSION_MINOR << "."
                                       << FDB_VERSION_BUILD << std::endl;
-        std::cout << "Usage: name_server[ -n host_name][ -u host_url]" << std::endl;
+        std::cout << "Usage: name_server[ -n host_name][ -u host_url][ -i ip1,ip2...][ -m if_name1,if_name2...]" << std::endl;
         std::cout << "Service naming server" << std::endl;
         std::cout << "    -n host_name: host name of this machine" << std::endl;
         std::cout << "    -u host_url: the URL of host server to be connected" << std::endl;
+        std::cout << "    -i ip1,ip2...: interfaces to listen on in form of IP address" << std::endl;
+        std::cout << "    -m if_name1,if_name2...: interfaces to listen on in form of interface name" << std::endl;
         return 0;
     }
+
+    uint32_t num_interface_ips = 0;
+    char **interface_ips_array = interface_ips ? strsplit(interface_ips, ",", &num_interface_ips) : 0;
+    uint32_t num_interface_names = 0;
+    char **interface_names_array = interface_names ? strsplit(interface_names, ",", &num_interface_names) : 0;
 
     FDB_CONTEXT->enableNameProxy(false);
     FDB_CONTEXT->enableLogger(false);
     FDB_CONTEXT->init();
     CNameServer *ns = new CNameServer();
-    if (!ns->online(tcp_addr, host_name, interface_name))
+    if (!ns->online(tcp_addr, host_name, interface_ips_array, num_interface_ips,
+                    interface_names_array, num_interface_names))
     {
         ret = -1;
         goto _quit;
