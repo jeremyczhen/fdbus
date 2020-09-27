@@ -73,7 +73,7 @@ protected:
     void onInvoke(CBaseJob::Ptr &msg_ref);
     void onOffline(FdbSessionId_t sid, bool is_last);
 private:
-    typedef std::list<CFdbAddressDesc *> tAddressDescTbl;
+    typedef std::list<CFdbAddressDesc> tAddressDescTbl;
     struct CSvcRegistryEntry
     {
         FdbSessionId_t mSid;
@@ -90,11 +90,11 @@ private:
     CFdbSubscribeHandle<CNameServer> mSubscribeHdl;
 
 #ifdef __WIN32__
-    CTcpAddressAllocator mLocalAllocator;
+    CTcpAddressAllocator mLocalAllocator; // local host address(lo) allocator
 #else
-    CIpcAddressAllocator mIpcAllocator;
+    CIpcAddressAllocator mIpcAllocator; // UDS address allocator
 #endif
-    tTcpAllocatorTbl mTcpAllocators;
+    tTcpAllocatorTbl mTcpAllocators; // TCP (other than lo for windows) address allocator
     CHostProxy *mHostProxy;
     CServerSecurityConfig mServerSecruity;
     tInterfaceTbl mIpInterfaces;
@@ -124,9 +124,8 @@ private:
 
     EFdbSocketType getSocketType(FdbSessionId_t sid);
     void removeService(tRegistryTbl::iterator &it);
-    CFdbAddressDesc *createAddrDesc(const char *url);
     void connectToHostServer(const char *hs_url, bool is_local);
-    bool addressTypeRegistered(const tAddressDescTbl &addr_list, EFdbSocketType skt_type);
+    bool addressRegistered(const tAddressDescTbl &addr_list, CFdbSocketAddr &sckt_addr);
     void addOneServiceAddress(const std::string &svc_name,
                               CSvcRegistryEntry &addr_tbl,
                               EFdbSocketType skt_type,

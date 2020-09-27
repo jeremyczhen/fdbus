@@ -61,17 +61,8 @@ CNameServer::~CNameServer()
 {
     if (mHostProxy)
     {
+        mHostProxy->prepareDestroy();
         delete mHostProxy;
-    }
-
-    for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
-    {
-        auto &desc_tbl = it->second;
-        for (auto desc_it = desc_tbl.mAddrTbl.begin();
-                desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
-        {
-            delete *desc_it;
-        }
     }
 }
 
@@ -96,11 +87,11 @@ void CNameServer::populateAddrList(const tAddressDescTbl &addr_tbl,
 {
     for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
     {
-        if ((type == FDB_SOCKET_MAX) || (type == (*it)->mAddress.mType))
+        if ((type == FDB_SOCKET_MAX) || (type == it->mAddress.mType))
         {
-            if ((*it)->mStatus == CFdbAddressDesc::ADDR_BOUND)
+            if (it->mStatus == CFdbAddressDesc::ADDR_BOUND)
             {
-                list.add_address_list((*it)->mAddress.mUrl);
+                list.add_address_list(it->mAddress.mUrl);
             }
         }
     }
@@ -144,18 +135,17 @@ void CNameServer::populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServ
     }
 }
 
-bool CNameServer::addressTypeRegistered(const tAddressDescTbl &addr_list,
-                                        EFdbSocketType skt_type)
+bool CNameServer::addressRegistered(const tAddressDescTbl &addr_list,
+                                    CFdbSocketAddr &sckt_addr)
 {
     for (auto it = addr_list.begin(); it != addr_list.end(); ++it)
     {
-        auto *addr_desc = *it;
-        if (addr_desc->mAddress.mType == skt_type)
+        auto &addr_desc = *it;
+        // Only one interface is allowed for each service.
+        if ((addr_desc.mAddress.mType == sckt_addr.mType) &&
+             !addr_desc.mAddress.mAddr.compare(sckt_addr.mAddr))
         {
-            if ((skt_type == FDB_SOCKET_IPC) || (addr_desc->mAddress.mAddr.compare(FDB_LOCAL_HOST)))
-            {
-                return true;
-            }
+            return true;
         }
     }
     return false;
@@ -166,20 +156,22 @@ void CNameServer::addOneServiceAddress(const std::string &svc_name,
                                        EFdbSocketType skt_type,
                                        NFdbBase::FdbMsgAddressList *msg_addr_list)
 {
-    if (!addressTypeRegistered(addr_tbl.mAddrTbl, skt_type))
+    tSocketAddrTbl sckt_addr_tbl;
+    allocateAddress(skt_type, svc_name.c_str(), sckt_addr_tbl);
+    for (auto it = sckt_addr_tbl.begin(); it != sckt_addr_tbl.end(); ++it)
     {
-        tSocketAddrTbl sckt_addr_tbl;
-        allocateAddress(skt_type, svc_name.c_str(), sckt_addr_tbl);
-        for (auto it = sckt_addr_tbl.begin(); it != sckt_addr_tbl.end(); ++it)
+        if (addressRegistered(addr_tbl.mAddrTbl, *it))
         {
-            auto desc = new CFdbAddressDesc;
-            desc->mAddress = *it;
-            desc->mStatus = CFdbAddressDesc::ADDR_PENDING;
-            addr_tbl.mAddrTbl.push_back(desc);
-            if (msg_addr_list)
-            {
-                msg_addr_list->add_address_list(desc->mAddress.mUrl);
-            }
+            continue;
+        }
+
+        addr_tbl.mAddrTbl.resize(addr_tbl.mAddrTbl.size() + 1);
+        auto &desc = addr_tbl.mAddrTbl.back();
+        desc.mAddress = *it;
+        desc.mStatus = CFdbAddressDesc::ADDR_PENDING;
+        if (msg_addr_list)
+        {
+            msg_addr_list->add_address_list(desc.mAddress.mUrl);
         }
     }
 }
@@ -452,10 +444,10 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         for (auto addr_it = addr_tbl.mAddrTbl.begin();
                 addr_it != addr_tbl.mAddrTbl.end(); ++addr_it)
         {
-            auto &addr_in_tbl = (*addr_it)->mAddress;
+            auto &addr_in_tbl = addr_it->mAddress;
             if (!msg_it->request_address().compare(addr_in_tbl.mUrl))
             {
-                desc = *addr_it;
+                desc = &(*addr_it);
                 if (msg_it->bind_address().empty())
                 {
                     desc_it = addr_it;
@@ -478,11 +470,16 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
 
         if (!desc)
         {
-            desc = createAddrDesc(msg_it->bind_address().c_str());
-            if (desc)
+            new_addr_tbl.resize(new_addr_tbl.size() + 1);
+            desc = &new_addr_tbl.back();
+            if (CBaseSocketFactory::parseUrl(msg_it->bind_address().c_str(), desc->mAddress))
             {
                 desc->mStatus = CFdbAddressDesc::ADDR_BOUND;
-                new_addr_tbl.push_back(desc);
+            }
+            else
+            {
+                new_addr_tbl.pop_back();
+                desc = 0;
             }
         }
 
@@ -561,12 +558,13 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         }
         else
         {
+            addr_tbl.mAddrTbl.resize(addr_tbl.mAddrTbl.size() + 1);
+            auto &desc = addr_tbl.mAddrTbl.back();
 #ifdef __WIN32__
-            CBaseSocketFactory::buildUrl(hs_url, FDB_LOCAL_HOST, CNsConfig::getHostServerTcpPort());
+            allocateAddress(mLocalAllocator, FDB_SVC_HOST_SERVER, desc.mAddress);
 #else
-            hs_url = CNsConfig::getHostServerIpcUrl();
+            allocateAddress(mIpcAllocator, FDB_SVC_HOST_SERVER, desc.mAddress);
 #endif
-            addr_tbl.mAddrTbl.push_back(createAddrDesc(hs_url.c_str()));
         }
         connectToHostServer(hs_url.c_str(), true);
     }
@@ -595,8 +593,8 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
         for (auto addr_it = addr_tbl.mAddrTbl.begin();
                 addr_it != addr_tbl.mAddrTbl.end(); ++addr_it)
         {
-            if (((*addr_it)->mAddress.mType == FDB_SOCKET_IPC) &&
-                    ((*addr_it)->mStatus != CFdbAddressDesc::ADDR_FREE))
+            if ((addr_it->mAddress.mType == FDB_SOCKET_IPC) &&
+                    (addr_it->mStatus != CFdbAddressDesc::ADDR_FREE))
             {
                 ipc_bound = true;
                 break;
@@ -722,7 +720,6 @@ void CNameServer::onHostOnline(bool online)
 void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
 {
     auto svc_name = reg_it->first.c_str();
-    auto &desc_tbl = reg_it->second;
 
     LOG_I("CNameServer: Service %s is unregistered.\n", svc_name);
     NFdbBase::FdbMsgAddressList broadcast_addr_list;
@@ -748,12 +745,7 @@ void CNameServer::removeService(tRegistryTbl::iterator &reg_it)
     CFdbParcelableBuilder builder(broadcast_addr_list);
     broadcast(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, builder, svc_name);
     }
-    
-    for (auto desc_it = desc_tbl.mAddrTbl.begin();
-            desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
-    {
-        delete *desc_it;
-    }
+
     mRegistryTbl.erase(reg_it);
 }
 
@@ -917,28 +909,15 @@ CNameServer::CFdbAddressDesc *CNameServer::findAddress(EFdbSocketType type, cons
         for (auto desc_it = desc_tbl.mAddrTbl.begin();
                 desc_it != desc_tbl.mAddrTbl.end(); ++desc_it)
         {
-            auto addr_desc = *desc_it;
-            if ((type == FDB_SOCKET_MAX) || (addr_desc->mAddress.mType == type))
+            if ((type == FDB_SOCKET_MAX) || (desc_it->mAddress.mType == type))
             {
-                if (addr_desc->mAddress.mUrl == url)
+                if (desc_it->mAddress.mUrl == url)
                 {
-                    return addr_desc;
+                    return &(*desc_it);
                 }
             }
         }
     }
-    return 0;
-}
-
-CNameServer::CFdbAddressDesc *CNameServer::createAddrDesc(const char *url)
-{
-    auto desc = new CFdbAddressDesc();
-    if (CBaseSocketFactory::parseUrl(url, desc->mAddress))
-    {
-        return desc;
-    }
-
-    delete desc;
     return 0;
 }
 
@@ -972,8 +951,8 @@ void CNameServer::createTcpAllocator()
 {
     // get IP address of connected HS. For Windows, IP of both remote HS and
     // local HS can be retrieved. But for local HS FDB_LOCAL_HOST might be
-    // returned and should converted to FDB_IP_ALL_INTERFACE. For local NS of
-    // xNX since connection is UDS IP address can not be retrieved.
+    // returned and should be skipped. For local NS of xNX since connection
+    // is UDS IP address can not be retrieved.
     std::string host_ip;
     if (mHostProxy->hostIp(host_ip))
     {
@@ -1004,7 +983,7 @@ void CNameServer::createTcpAllocator()
             auto if_pair = interfaces.find(*it);
             if (if_pair == interfaces.end())
             {
-                LOG_E("CNameServer: interface %s doesn't exist and is skipped.", it->c_str());
+                LOG_E("CNameServer: interface %s doesn't exist and is skipped.\n", it->c_str());
             }
             else
             {
@@ -1131,15 +1110,15 @@ bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
     bool success = true;
     for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
     {
-        if ((*it)->mStatus == CFdbAddressDesc::ADDR_BOUND)
+        if (it->mStatus == CFdbAddressDesc::ADDR_BOUND)
         {
             continue;
         }
-        auto url = (*it)->mAddress.mUrl.c_str();
+        auto url = it->mAddress.mUrl.c_str();
         auto sk = doBind(url);
         if (sk)
         {
-            (*it)->mStatus = CFdbAddressDesc::ADDR_BOUND;
+            it->mStatus = CFdbAddressDesc::ADDR_BOUND;
         }
         else
         {

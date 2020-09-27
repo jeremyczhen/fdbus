@@ -93,7 +93,7 @@ inline To fdb_dynamic_cast_if_available(From from) {
 #endif
 
 #if !defined(FDB_CFG_CONFIG_PATH)
-#define FDB_CFG_CONFIG_PATH "etc/fdbus"
+#define FDB_CFG_CONFIG_PATH "/etc/fdbus"
 #endif
 
 #define FDB_CFG_CONFIG_FILE_SUFFIX ".fdb"
