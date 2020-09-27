@@ -51,6 +51,10 @@ CNameServer::CNameServer()
     mSubscribeHdl.registerCallback(NFdbBase::NTF_HOST_ONLINE_LOCAL, &CNameServer::onHostOnlineReg);
 
     mSubscribeHdl.registerCallback(NFdbBase::NTF_HOST_INFO, &CNameServer::onHostInfoReg);
+
+#ifdef __WIN32__
+    mLocalAllocator.setInterfaceIp(FDB_LOCAL_HOST);
+#endif
 }
 
 CNameServer::~CNameServer()
@@ -148,7 +152,10 @@ bool CNameServer::addressTypeRegistered(const tAddressDescTbl &addr_list,
         auto *addr_desc = *it;
         if (addr_desc->mAddress.mType == skt_type)
         {
-            return true;
+            if ((skt_type == FDB_SOCKET_IPC) || (addr_desc->mAddress.mAddr.compare(FDB_LOCAL_HOST)))
+            {
+                return true;
+            }
         }
     }
     return false;
@@ -478,7 +485,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
                 new_addr_tbl.push_back(desc);
             }
         }
-        
+
         if (desc)
         {
             if (desc->mStatus != CFdbAddressDesc::ADDR_BOUND)
@@ -537,7 +544,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
     }
     else
     {
-        LOG_I("CNameServer: Service %s is registered.\n", svc_name.c_str());
+        LOG_I("CNameServer: Registry request of service %s is processed.\n", svc_name.c_str());
     }
     
     if (is_host_server)
@@ -621,6 +628,7 @@ bool CNameServer::reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc
     if (addr_desc->reconnect_cnt >= CNsConfig::getAddressBindRetryCnt())
     {
         LOG_E("CNameServer: Service %s: fail to bind address.\n", svc_name);
+        addr_desc->reconnect_cnt = 0;
         return false;
     }
     addr_desc->reconnect_cnt++;
@@ -629,15 +637,21 @@ bool CNameServer::reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc
     IAddressAllocator *allocator;
     if (addr_desc->mAddress.mType == FDB_SOCKET_IPC)
     {
+#ifdef __WIN32__
+        addr_desc->reconnect_cnt = 0;
+        return false;
+#else
         allocator = &mIpcAllocator;
+#endif
     }
     else
     {
         auto it = mTcpAllocators.find(addr_desc->mAddress.mAddr);
         if (it == mTcpAllocators.end())
-        {
+        {   // We come here if the address is not allocated by NS or HS fail to bind
             LOG_E("CNameServer: Service %s: unable to allocate address for IP %s\n", svc_name,
                   addr_desc->mAddress.mAddr.c_str());
+            addr_desc->reconnect_cnt = 0;
             return false;
         }
         allocator = &it->second;
@@ -657,6 +671,8 @@ bool CNameServer::reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc
         LOG_E("CNameServer: Service %s: fail to bind address and retry...\n", svc_name);
         return true;
     }
+
+    addr_desc->reconnect_cnt = 0;
     return false;
 }
 
@@ -679,6 +695,7 @@ void CNameServer::onHostOnline(bool online)
     {
         return;
     }
+
     createTcpAllocator();
     for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
     {
@@ -962,7 +979,7 @@ void CNameServer::createTcpAllocator()
     {
         if (!host_ip.compare(FDB_LOCAL_HOST))
         {
-            host_ip = FDB_IP_ALL_INTERFACE;
+            host_ip = "";
         }
     }
     if (!host_ip.empty())
@@ -1004,10 +1021,29 @@ void CNameServer::createTcpAllocator()
     }
 }
 
+void CNameServer::allocateTcpAddress(FdbServerType svc_type, tSocketAddrTbl &sckt_addr_tbl)
+{
+    for (auto it = mTcpAllocators.begin(); it != mTcpAllocators.end(); ++it)
+    {
+        sckt_addr_tbl.resize(sckt_addr_tbl.size() + 1);
+        if (!allocateAddress(it->second, svc_type, sckt_addr_tbl.back()))
+        {
+            sckt_addr_tbl.pop_back();
+        }
+    }
+
+#ifdef __WIN32__
+    // For windows, always allocate from local host
+    sckt_addr_tbl.resize(sckt_addr_tbl.size() + 1);
+    if (!allocateAddress(mLocalAllocator, svc_type, sckt_addr_tbl.back()))
+    {
+        sckt_addr_tbl.pop_back();
+    }
+#endif
+}
+
 void CNameServer::allocateTcpAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl)
 {
-    const char *str_host_ip = 0;
-    std::string host_ip;
     auto svc_type = IAddressAllocator::getSvcType(svc_name.c_str());
 
     if (mTcpAllocators.empty())
@@ -1021,33 +1057,38 @@ void CNameServer::allocateTcpAddress(const std::string &svc_name, tSocketAddrTbl
         }
         else
         {
+            if (svc_type == FDB_SVC_HOST_SERVER)
+            {
+                createTcpAllocator();
+                allocateTcpAddress(svc_type, sckt_addr_tbl);
+                // This is not grace but workable since address of host server does
+                // not depends on context
+                mTcpAllocators.clear();
+            }
 #ifdef __WIN32__
-            // For windows, since TCP is the only connection, force to bind to inet
-            createTcpAllocator();
+            if (svc_type == FDB_SVC_HOST_SERVER)
+            {   // for windows, we still need to allocate local address for other services.
+                return;
+            }
 #else
-            // Don't allocate TCP address until HS is online
+            // Don't allocate TCP address until HS is online: onHostOnline()->createTcpAllocator()
             return;
 #endif
         }
     }
 
-    for (auto it = mTcpAllocators.begin(); it != mTcpAllocators.end(); ++it)
-    {
-        sckt_addr_tbl.resize(sckt_addr_tbl.size() + 1);
-        if (!allocateAddress(it->second, svc_type, sckt_addr_tbl.back()))
-        {
-            sckt_addr_tbl.pop_back();
-        }
-    }
+    allocateTcpAddress(svc_type, sckt_addr_tbl);
 }
 
 void CNameServer::allocateIpcAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl)
 {
+#ifndef __WIN32__
     sckt_addr_tbl.resize(sckt_addr_tbl.size() + 1);
     if (!allocateAddress(mIpcAllocator, IAddressAllocator::getSvcType(svc_name.c_str()), sckt_addr_tbl.back()))
     {
         sckt_addr_tbl.pop_back();
     }
+#endif
 }
 
 void CNameServer::allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl)
@@ -1131,13 +1172,8 @@ bool CNameServer::online(const char *hs_url, const char *hs_name,
     }
 
     mHostProxy = new CHostProxy(this, hs_name);
-#ifdef __WIN32__
-    EFdbSocketType skt_type = FDB_SOCKET_TCP;
-#else
-    EFdbSocketType skt_type = FDB_SOCKET_IPC;
-#endif
     auto ns_name = name().c_str();
-    addServiceAddress(ns_name, FDB_INVALID_ID, skt_type, 0);
+    addServiceAddress(ns_name, FDB_INVALID_ID, FDB_SOCKET_IPC, 0);
     auto it = mRegistryTbl.find(ns_name);
     if (it == mRegistryTbl.end())
     {

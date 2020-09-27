@@ -89,7 +89,11 @@ private:
     CFdbMessageHandle<CNameServer> mMsgHdl;
     CFdbSubscribeHandle<CNameServer> mSubscribeHdl;
 
+#ifdef __WIN32__
+    CTcpAddressAllocator mLocalAllocator;
+#else
     CIpcAddressAllocator mIpcAllocator;
+#endif
     tTcpAllocatorTbl mTcpAllocators;
     CHostProxy *mHostProxy;
     CServerSecurityConfig mServerSecruity;
@@ -114,6 +118,7 @@ private:
     void createTcpAllocator();
     bool allocateAddress(IAddressAllocator &allocator, FdbServerType svc_type, CFdbSocketAddr &sckt_addr);
     void allocateTcpAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
+    void allocateTcpAddress(FdbServerType svc_type, tSocketAddrTbl &sckt_addr_tbl);
     void allocateIpcAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
     void allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
 

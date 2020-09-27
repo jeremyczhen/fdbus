@@ -294,11 +294,11 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
         for (auto it = addr_list.pool().begin(); it != addr_list.pool().end(); ++it)
         {
+            auto *addr_status = bound_list.add_address_list();
+            addr_status->request_address(*it);
             do
             {
                 CServerSocket *sk = server->doBind(it->c_str());
-                auto *addr_status = bound_list.add_address_list();
-                addr_status->request_address(*it);
                 if (sk)
                 {
                     CFdbSocketInfo info;
@@ -339,11 +339,6 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
 #if 0
                     LOG_E("CIntraNameProxy: session %d: Fail to bind to %s! Reconnecting...\n", msg->session(), it->c_str());
 #endif
-                    if (retries == 1)
-                    {
-                        auto *addr_status = bound_list.add_address_list();
-                        addr_status->request_address(*it);
-                    }
                     sysdep_sleep(CNsConfig::getAddressBindRetryInterval());
                 }
             } while (--retries > 0);
