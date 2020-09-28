@@ -17,6 +17,7 @@
 #include <vector>
 #include <common_base/CBaseNameProxy.h>
 #include <common_base/CFdbMessage.h>
+#include <common_base/CBaseSocketFactory.h>
 #include <utils/CNsConfig.h>
 
 CBaseNameProxy::CBaseNameProxy()
@@ -39,10 +40,23 @@ void CBaseNameProxy::unsubscribeListener(NFdbBase::FdbNsMsgCode code, const char
 
 void CBaseNameProxy::replaceSourceUrl(NFdbBase::FdbMsgAddressList &msg_addr_list, CFdbSession *session)
 {
+    std::string peer_ip;
+    peerIp(peer_ip, session);
     auto &addr_list = msg_addr_list.address_list();
     for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
     {
-        replaceUrlIpAddress(*it, session);
+        CFdbSocketAddr addr;
+        if (CBaseSocketFactory::parseUrl(it->c_str(), addr))
+        {
+            if ((addr.mType == FDB_SOCKET_IPC) || (addr.mAddr == FDB_LOCAL_HOST))
+            {
+                continue;
+            }
+            if ((addr.mAddr == FDB_IP_ALL_INTERFACE) && !peer_ip.empty())
+            {
+                CBaseSocketFactory::buildUrl(*it, peer_ip.c_str(), addr.mPort);
+            }
+        }
     }
 }
 

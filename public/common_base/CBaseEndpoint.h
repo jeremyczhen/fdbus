@@ -77,8 +77,6 @@ protected:
         mEpid = epid;
     }
 
-    bool replaceUrlIpAddress(std::string &url, CFdbSession *session = 0,
-                             std::string *ip_addr = 0, int32_t *port = 0);
     bool requestServiceAddress(const char *server_name = 0);
     bool releaseServiceAddress();
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref)

@@ -20,7 +20,7 @@
 #include <stdint.h>
 
 #define FDB_VERSION_MAJOR 4
-#define FDB_VERSION_MINOR 2
+#define FDB_VERSION_MINOR 3
 #define FDB_VERSION_BUILD 0
 
 #define FDB_INVALID_ID (~0)

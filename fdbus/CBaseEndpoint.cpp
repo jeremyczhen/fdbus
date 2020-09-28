@@ -16,7 +16,6 @@
 
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CIntraNameProxy.h>
@@ -386,44 +385,6 @@ bool CBaseEndpoint::peerIp(std::string &peer_ip, CFdbSession *session)
         session = preferredPeer();
     }
     return session ? session->peerIp(peer_ip) : false;
-}
-
-bool CBaseEndpoint::replaceUrlIpAddress(std::string &url, CFdbSession *session,
-                                        std::string *ip_addr, int32_t *port)
-{
-    CFdbSocketAddr addr;
-    if (CBaseSocketFactory::parseUrl(url.c_str(), addr))
-    {
-        std::string peer_ip;
-        if (addr.mType != FDB_SOCKET_TCP)
-        {
-            return false;
-        }
-        if (addr.mAddr == FDB_IP_ALL_INTERFACE)
-        {
-            peerIp(peer_ip, session);
-            if (peer_ip.empty())
-            {
-                return false;
-            }
-            CBaseSocketFactory::buildUrl(url, peer_ip.c_str(), addr.mPort);
-        }
-        else
-        {
-            url = addr.mUrl;
-        }
-        
-        if (ip_addr)
-        {
-            *ip_addr = peer_ip;
-        }
-        if (port)
-        {
-            *port = addr.mPort;
-        }
-        return true;
-    }
-    return false;
 }
 
 CFdbBaseObject *CBaseEndpoint::findObject(FdbObjectId_t obj_id, bool server_only)

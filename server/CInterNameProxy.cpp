@@ -18,6 +18,7 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CFdbSession.h>
+#include <common_base/CBaseSocketFactory.h>
 #include "CHostProxy.h"
 #include "CNameServer.h"
 #include <utils/Log.h>
@@ -172,7 +173,55 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
             if (session)
             {
-                replaceSourceUrl(msg_addr_list, session);
+                // make sure 1) only 1 address is broadcasted;
+                //           2) UDS and FDB_LOCAL_HOST is not broadcasted;
+                //           3) FDB_IP_ALL_INTERFACE is replaced by peer address
+                //           4) order of interface:
+                //              identical to peer -> all interface (should be replaced) -> others
+                std::string peer_ip;
+                std::string best_candidate;
+                std::string fallback_candidate;
+                peerIp(peer_ip, session);
+                CFdbParcelableArray<std::string>::tPool pool = msg_addr_list.address_list().vpool();
+                msg_addr_list.address_list().vpool().clear();
+                for (auto it = pool.begin(); it != pool.end(); ++it)
+                {
+                    CFdbSocketAddr addr;
+                    if (CBaseSocketFactory::parseUrl(it->c_str(), addr))
+                    {
+                        if ((addr.mType == FDB_SOCKET_IPC) || (addr.mAddr == FDB_LOCAL_HOST))
+                        {
+                            continue;
+                        }
+                        if (addr.mAddr == peer_ip)
+                        {
+                            best_candidate = *it;
+                            break;
+                        }
+                        if ((addr.mAddr == FDB_IP_ALL_INTERFACE) && !peer_ip.empty())
+                        {
+                            CBaseSocketFactory::buildUrl(best_candidate, peer_ip.c_str(), addr.mPort);
+                            continue;
+                        }
+                        if (fallback_candidate.empty())
+                        {
+                            fallback_candidate = *it;
+                        }
+                    }
+                }
+                if (!best_candidate.empty())
+                {
+                    msg_addr_list.add_address_list(best_candidate);
+                }
+                else if (!fallback_candidate.empty())
+                {
+                    msg_addr_list.add_address_list(fallback_candidate);
+                }
+                else
+                {
+                    LOG_E("CInterNameProxy: unable to broadcast address for server %s!\n", svc_name);
+                    return;
+                }
             }
 
             FdbSessionId_t subscriber = FDB_INVALID_ID;
