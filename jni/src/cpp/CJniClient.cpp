@@ -615,11 +615,11 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1publish
     }
     
     jboolean ret = client->publish((FdbMsgCode_t)event,
-                                   c_topic,
                                    (const uint8_t *)c_array,
                                    len_arr,
-                                   c_log_data,
-                                   always_update);
+                                   c_topic,
+                                   always_update,
+                                   c_log_data);
     if (c_array)
     {
         env->ReleaseByteArrayElements(event_data, c_array, 0);

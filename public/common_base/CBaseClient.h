@@ -119,11 +119,11 @@ public:
      * @topic: topic to be send
      */
     bool publish(FdbMsgCode_t code
-                , const char *topic = 0
                 , const void *buffer = 0
                 , int32_t size = 0
-                , const char *log_data = 0
-                , bool force_update = false);
+                , const char *topic = 0
+                , bool force_update = false
+                , const char *log_data = 0);
 
     void prepareDestroy();
 

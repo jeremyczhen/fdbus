@@ -612,6 +612,7 @@ void CFdbBaseObject::doSubscribe(CBaseJob::Ptr &msg_ref)
     {
         /* broadcast current value of event/filter pair */
         broadcastCached(msg_ref);
+        CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
         return;
     }
 

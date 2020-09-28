@@ -104,6 +104,7 @@ public:
             publish(NTF_CJSON_TEST + event_id_start, builder, "topic 3");
             cJSON_Delete(data);
             }
+            publish(REQ_CREATE_MEDIAPLAYER + event_id_start, 0, 0, 0, true);
         }
         else
         {
@@ -137,7 +138,7 @@ protected:
                 addNotifyItem(subscribe_list, REQ_METADATA + event_id_start, "topic 2");
                 addNotifyItem(subscribe_list, NTF_CJSON_TEST + event_id_start, "topic 3");
                 /* subscribe them, leading to onSubscribe() to be called at server */
-                subscribe(subscribe_list);
+                subscribeSync(subscribe_list);
             }
         }
     }
