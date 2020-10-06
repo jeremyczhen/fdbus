@@ -179,15 +179,16 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 //           4) order of interface:
                 //              identical to peer -> all interface (should be replaced) -> others
                 std::string peer_ip;
-                std::string best_candidate;
-                std::string fallback_candidate;
+                NFdbBase::FdbMsgAddressItem *best_candidate = 0;
+                NFdbBase::FdbMsgAddressItem *fallback_candidate = 0;
                 peerIp(peer_ip, session);
-                CFdbParcelableArray<std::string>::tPool pool = msg_addr_list.address_list().vpool();
+                CFdbParcelableArray<NFdbBase::FdbMsgAddressItem>::tPool pool =
+                                                msg_addr_list.address_list().vpool();
                 msg_addr_list.address_list().vpool().clear();
                 for (auto it = pool.begin(); it != pool.end(); ++it)
                 {
                     CFdbSocketAddr addr;
-                    if (CBaseSocketFactory::parseUrl(it->c_str(), addr))
+                    if (CBaseSocketFactory::parseUrl(it->tcp_ipc_url().c_str(), addr))
                     {
                         if ((addr.mType == FDB_SOCKET_IPC) || (addr.mAddr == FDB_LOCAL_HOST))
                         {
@@ -195,27 +196,30 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                         }
                         if (addr.mAddr == peer_ip)
                         {
-                            best_candidate = *it;
+                            best_candidate = &(*it);
                             break;
                         }
                         if ((addr.mAddr == FDB_IP_ALL_INTERFACE) && !peer_ip.empty())
                         {
-                            CBaseSocketFactory::buildUrl(best_candidate, peer_ip.c_str(), addr.mPort);
+                            best_candidate = &(*it);
+                            it->set_tcp_ipc_address(peer_ip);
                             continue;
                         }
-                        if (fallback_candidate.empty())
+                        if (!fallback_candidate)
                         {
-                            fallback_candidate = *it;
+                            fallback_candidate = &(*it);
                         }
                     }
                 }
-                if (!best_candidate.empty())
+                if (best_candidate)
                 {
-                    msg_addr_list.add_address_list(best_candidate);
+                    auto item = msg_addr_list.add_address_list();
+                    *item = *best_candidate;
                 }
-                else if (!fallback_candidate.empty())
+                else if (fallback_candidate)
                 {
-                    msg_addr_list.add_address_list(fallback_candidate);
+                    auto item = msg_addr_list.add_address_list();
+                    *item = *fallback_candidate;
                 }
                 else
                 {

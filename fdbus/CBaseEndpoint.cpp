@@ -19,6 +19,7 @@
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CIntraNameProxy.h>
+#include <common_base/CFdbIfMessageHeader.h>
 #include <utils/Log.h>
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
@@ -39,6 +40,7 @@ CBaseEndpoint::~CBaseEndpoint()
 
 void CBaseEndpoint::prepareDestroy()
 {
+    autoRemove(false);
     CFdbBaseObject::prepareDestroy();
     destroySelf(true);
 }
@@ -115,23 +117,6 @@ void CBaseEndpoint::checkAutoRemove()
     {
         delete this;
     }
-}
-
-CFdbSessionContainer *CBaseEndpoint::getSocketByUrl(const char *url)
-{
-    auto &containers = getContainer();
-    for (auto it = containers.begin(); it != containers.end(); ++it)
-    {
-        auto container = it->second;
-        CFdbSocketInfo info;
-        container->getSocketInfo(info);
-        if (!info.mAddress->mUrl.compare(url))
-        {
-            return container;
-        }
-    }
-
-    return 0;
 }
 
 void CBaseEndpoint::getUrlList(std::vector<std::string> &url_list)
@@ -612,3 +597,100 @@ bool CBaseEndpoint::releaseServiceAddress()
     }
     return true;
 }
+
+void CBaseEndpoint::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
+{
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    switch (msg->code())
+    {
+        case FDB_SIDEBAND_SESSION_INFO:
+        {
+            NFdbBase::FdbSessionInfo sinfo;
+            CFdbParcelableParser parser(sinfo);
+            if (!msg->deserialize(parser))
+            {
+                return;
+            }
+            auto session = FDB_CONTEXT->getSession(msg->session());
+            if (!session)
+            {
+                return;
+            }
+            session->senderName(sinfo.sender_name().c_str());
+            std::string peer_ip;
+            int32_t udp_port = FDB_INET_PORT_INVALID;
+            if (sinfo.has_udp_port())
+            {
+                udp_port = sinfo.udp_port();
+            }
+            if ((udp_port != FDB_INET_PORT_INVALID) && session->peerIp(peer_ip))
+            {
+                CFdbSocketAddr &udp_addr = const_cast<CFdbSocketAddr &>(session->getPeerUDPAddress());
+                udp_addr.mAddr = peer_ip;
+                udp_addr.mPort = udp_port;
+            }
+        }
+        break;
+        default:
+            CFdbBaseObject::onSidebandInvoke(msg_ref);
+        break;
+    }
+}
+
+
+void CBaseEndpoint::updateSessionInfo(CFdbSession *session)
+{
+    if ((role() != FDB_OBJECT_ROLE_SERVER) && (role() != FDB_OBJECT_ROLE_CLIENT))
+    {
+        return;
+    }
+
+    CFdbSessionInfo sinfo_connected;
+    session->getSessionInfo(sinfo_connected);
+
+    int32_t udp_port = FDB_INET_PORT_INVALID;
+    if (sinfo_connected.mContainerSocket.mAddress->mType == FDB_SOCKET_TCP)
+    {
+        udp_port = session->container()->getUDPPort();
+    }
+
+    NFdbBase::FdbSessionInfo sinfo_sent;
+    sinfo_sent.set_sender_name(mName.c_str());
+    if (udp_port != FDB_INET_PORT_INVALID)
+    {
+        sinfo_sent.set_udp_port(udp_port);
+    }
+    CFdbParcelableBuilder builder(sinfo_sent);
+    sendSideband(FDB_SIDEBAND_SESSION_INFO, builder);
+}
+
+CFdbSession *CBaseEndpoint::connected(const CFdbSocketAddr &addr)
+{
+    auto &containers = getContainer();
+    for (auto it = containers.begin(); it != containers.end(); ++it)
+    {
+        auto container = it->second;
+        auto session = container->connected(addr);
+        if (session)
+        {
+            return session;
+        }
+    }
+    return 0;
+}
+
+CFdbSession *CBaseEndpoint::bound(const CFdbSocketAddr &addr)
+{
+    auto &containers = getContainer();
+    for (auto it = containers.begin(); it != containers.end(); ++it)
+    {
+        auto container = it->second;
+        auto session = container->bound(addr);
+        if (session)
+        {
+            return session;
+        }
+    }
+    return 0;
+}
+

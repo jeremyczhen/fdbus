@@ -19,6 +19,7 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <common_base/CFdbSession.h>
 #include <common_base/CFdbIfMessageHeader.h>
+#include <common_base/CFdbSession.h>
 #include <utils/Log.h>
 
 #define FDB_CLIENT_RECONNECT_WAIT_MS    1
@@ -27,8 +28,7 @@ CClientSocket::CClientSocket(CBaseClient *owner
                              , FdbSocketId_t skid
                              , CClientSocketImp *socket
                              , const char *host_name)
-    : CFdbSessionContainer(skid, owner)
-    , mSocket(socket)
+    : CFdbSessionContainer(skid, owner, socket)
     , mConnectedHost(host_name ? host_name : "")
 {
 }
@@ -37,13 +37,13 @@ CClientSocket::~CClientSocket()
 {
     // so that onSessionDeleted() will not be called upon session destroy
     enableSessionDestroyHook(false);
-    disconnect();
 }
 
 CFdbSession *CClientSocket::connect()
 {
     CFdbSession *session = 0;
-    auto sock_imp = mSocket->connect();
+    auto socket = fdb_dynamic_cast_if_available<CClientSocketImp *>(mSocket);
+    auto sock_imp = socket->connect();
     if (sock_imp)
     {
         session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
@@ -58,11 +58,6 @@ void CClientSocket::disconnect()
         delete mSocket;
         mSocket = 0;
     }
-}
-
-void CClientSocket::getSocketInfo(CFdbSocketInfo &info)
-{
-    info.mAddress = &mSocket->getAddress();
 }
 
 void CClientSocket::onSessionDeleted(CFdbSession *session)
@@ -176,7 +171,7 @@ void CBaseClient::cbConnect(CBaseWorker *worker, CMethodJob<CBaseClient> *job, C
     }
 }
 
-CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
+CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name, int32_t udp_port)
 {
     CFdbSocketAddr addr;
     EFdbSocketType skt_type;
@@ -204,10 +199,25 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
         return 0;
     }
 
-    auto session_container = getSocketByUrl(url);
-    if (session_container) /* If the address is already connected, do nothing */
+    auto session = connected(addr);
+    if (session)
     {
-        return fdb_dynamic_cast_if_available<CClientSocket *>(session_container);
+        if ((skt_type != FDB_SOCKET_IPC) && (udp_port > FDB_INET_PORT_NOBIND))
+        {
+            CFdbSocketInfo socket_info;
+            if (!session->container()->getUDPSocketInfo(socket_info) ||
+                (socket_info.mAddress->mPort <= FDB_INET_PORT_NOBIND))
+            {
+                session->container()->bindUDPSocket(udp_port);
+                updateSessionInfo(session);
+            }
+        }
+        return fdb_dynamic_cast_if_available<CClientSocket *>(session->container());
+    }
+
+    if (connected())
+    {
+        doDisconnect();
     }
 
     auto client_imp = CBaseSocketFactory::createClientSocket(addr);
@@ -217,6 +227,7 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name)
         auto sk = new CClientSocket(this, skid, client_imp, host_name);
         addSocket(sk);
 
+        sk->bindUDPSocket(udp_port);
         auto session = sk->connect();
         if (session)
         {
@@ -332,7 +343,8 @@ bool CBaseClient::hostConnected(const char *host_name)
     return false;
 }
 
-bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *topic, bool force_update)
+bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *topic,
+                          bool force_update, bool fast)
 {
     auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
     if (!msg->serialize(data, this))
@@ -345,11 +357,12 @@ bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *t
         msg->topic(topic);
     }
     msg->forceUpdate(force_update);
+    msg->preferUDP(fast);
     return msg->send();
 }
 
-bool CBaseClient::publish(FdbMsgCode_t code, const void *buffer, int32_t size,
-                          const char *topic, bool force_update, const char *log_data)
+bool CBaseClient::publish(FdbMsgCode_t code, const void *buffer, int32_t size, const char *topic,
+                          bool force_update, bool fast, const char *log_data)
 {
     auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
     msg->setLogData(log_data);
@@ -363,11 +376,12 @@ bool CBaseClient::publish(FdbMsgCode_t code, const void *buffer, int32_t size,
         msg->topic(topic);
     }
     msg->forceUpdate(force_update);
+    msg->preferUDP(fast);
     return msg->send();
 }
 
-bool CBaseClient::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
-                                 int32_t size, const char *log_data, bool force_update)
+bool CBaseClient::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
+                                 const char *log_data, bool force_update, bool fast)
 {
     CBaseMessage msg(code, this);
     msg.expectReply(false);
@@ -378,6 +392,7 @@ bool CBaseClient::publishNoQueue(FdbMsgCode_t code, const char *topic, const voi
         return false;
     }
     msg.topic(topic);
+    msg.preferUDP(fast);
 
     auto session = preferredPeer();
     if (session)

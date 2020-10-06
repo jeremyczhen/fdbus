@@ -29,11 +29,17 @@
 class CBaseWorker;
 class CFdbSessionContainer;
 class CFdbMessage;
+struct CFdbSocketAddr;
+class CFdbSession;
 
 class CBaseEndpoint : public CEntityContainer<FdbSocketId_t, CFdbSessionContainer *>
                     , public CFdbBaseObject
 {
 public:
+#define FDB_EP_AUTO_REMOVE              (1 << 8)
+#define FDB_EP_RECONNECT_ENABLED        (1 << 9)
+#define FDB_EP_RECONNECT_ACTIVATED      (1 << 10)
+#define FDB_EP_ENABLE_UDP               (1 << 11)
     CBaseEndpoint(const char *name, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     ~CBaseEndpoint();
 
@@ -64,6 +70,74 @@ public:
         return mEpid;
     }
 
+    void autoRemove(bool enb)
+    {
+        if (enb)
+        {
+            mFlag |= FDB_EP_AUTO_REMOVE;
+        }
+        else
+        {
+            mFlag &= ~FDB_EP_AUTO_REMOVE;
+        }
+    }
+
+    bool autoRemove() const
+    {
+        return !!(mFlag & FDB_EP_AUTO_REMOVE);
+    }
+
+    void enableReconnect(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_EP_RECONNECT_ENABLED;
+        }
+        else
+        {
+            mFlag &= ~FDB_EP_RECONNECT_ENABLED;
+        }
+    }
+
+    bool reconnectEnabled() const
+    {
+        return !!(mFlag & FDB_EP_RECONNECT_ENABLED);
+    }
+
+    void activateReconnect(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_EP_RECONNECT_ACTIVATED;
+        }
+        else
+        {
+            mFlag &= ~FDB_EP_RECONNECT_ACTIVATED;
+        }
+    }
+
+    bool reconnectActivated() const
+    {
+        return !!(mFlag & FDB_EP_RECONNECT_ACTIVATED);
+    }
+
+    bool UDPEnabled() const
+    {
+        return !!(mFlag & FDB_EP_ENABLE_UDP);
+    }
+
+    void enableUDP(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_EP_ENABLE_UDP;
+        }
+        else
+        {
+            mFlag &= ~FDB_EP_ENABLE_UDP;
+        }
+    }
+
     void prepareDestroy();
 
 protected:
@@ -79,17 +153,19 @@ protected:
 
     bool requestServiceAddress(const char *server_name = 0);
     bool releaseServiceAddress();
-    void onSidebandInvoke(CBaseJob::Ptr &msg_ref)
-    {
-        CFdbBaseObject::onSidebandInvoke(msg_ref);
-    }
+    void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
 
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
+    tObjectContainer mObjectContainer;
+
+    uint32_t mSessionCnt;
+    FdbObjectId_t mSnAllocator;
+    CFdbToken::tTokenList mTokens;
+    FdbEndpointId_t mEpid;
     
     CFdbSession *preferredPeer();
     void checkAutoRemove();
-    CFdbSessionContainer *getSocketByUrl(const char *url);
     void getUrlList(std::vector<std::string> &url_list);
     FdbObjectId_t addObject(CFdbBaseObject *obj);
     void removeObject(CFdbBaseObject *obj);
@@ -106,15 +182,12 @@ private:
     bool importTokens(const CFdbParcelableArray<std::string> &in_tokens);
     int32_t checkSecurityLevel(const char *token);
     void updateSecurityLevel();
-
-    tObjectContainer mObjectContainer;
-
-    uint32_t mSessionCnt;
-    FdbObjectId_t mSnAllocator;
-    CFdbToken::tTokenList mTokens;
-    FdbEndpointId_t mEpid;
+    void updateSessionInfo(CFdbSession *session);
+    CFdbSession *connected(const CFdbSocketAddr &addr);
+    CFdbSession *bound(const CFdbSocketAddr &addr);
 
     friend class CFdbSession;
+    friend class CFdbUDPSession;
     friend class CFdbMessage;
     friend class CFdbContext;
     friend class CBaseServer;

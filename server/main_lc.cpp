@@ -115,6 +115,7 @@ private:
             std::cout << "    " <<  client_info.peer_name() << "@"
                                 << client_info.peer_address()
                                 << ", security: " << client_info.security_level()
+                                << ", udp: " << client_info.udp_port()
                                 << std::endl;
         }
     }

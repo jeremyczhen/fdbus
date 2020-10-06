@@ -19,6 +19,7 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CBaseSocketFactory.h>
+#include <common_base/CFdbSession.h>
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>
 
@@ -28,7 +29,7 @@ CIntraNameProxy::CIntraNameProxy()
     , mEnableReconnectToNS(true)
 {
     mName  = std::to_string(CBaseThread::getPid());
-    mName += "(local)";
+    mName += "-nsproxy(local)";
     worker(FDB_CONTEXT);
     mConnectTimer.attach(FDB_CONTEXT, false);
 }
@@ -43,10 +44,10 @@ bool CIntraNameProxy::connectToNameServer()
 #ifdef __WIN32__
     std::string std_url;
     CBaseSocketFactory::buildUrl(std_url, FDB_LOCAL_HOST,
-                                 CNsConfig::getNameServerTcpPort());
+                                 CNsConfig::getNameServerTCPPort());
     url = std_url.c_str();
 #else
-    url = CNsConfig::getNameServerIpcUrl();
+    url = CNsConfig::getNameServerIPCUrl();
 #endif
     // timer will stop if connected since onOnline() will be called
     // upon success
@@ -115,26 +116,6 @@ void CIntraNameProxy::registerService(const char *svc_name)
     invoke(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS, builder);
 }
 
-void CIntraNameProxy::registerService(const char *svc_name, std::vector<std::string> &addr_tbl)
-{
-    if (!connected() || addr_tbl.empty())
-    {
-        return;
-    }
-
-    NFdbBase::FdbMsgAddressList addr_list;
-    addr_list.set_service_name(svc_name);
-    addr_list.set_host_name("");
-    addr_list.set_is_local(true);
-    for (auto it = addr_tbl.begin(); it != addr_tbl.end(); ++it)
-    {
-        addr_list.add_address_list(*it);
-    }
-
-    CFdbParcelableBuilder builder(addr_list);
-    send(NFdbBase::REQ_REGISTER_SERVICE, builder);
-}
-
 void CIntraNameProxy::unregisterService(const char *svc_name)
 {
     if (!connected())
@@ -147,7 +128,7 @@ void CIntraNameProxy::unregisterService(const char *svc_name)
     send(NFdbBase::REQ_UNREGISTER_SERVICE, builder);
 }
 
-void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect)
+void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list)
 {
     auto svc_name = msg_addr_list.service_name().c_str();
     const std::string &host_name = msg_addr_list.host_name();
@@ -155,6 +136,18 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
     bool is_offline = msg_addr_list.address_list().empty();
     
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, false);
+    if (!msg->isInitialResponse())
+    {   // if client starts before server, once server appears, only one event is
+        // received by client process. If more than one client connects to the same
+        // server in the same process, shall ask name server to allocate UDP port
+        // for each client. A calling to addServiceListener() will lead to a
+        // broadcast of server address with isInitialResponse() being true. Only
+        // UDP port will be valid and TCP address will be discussed in subsequent broadcast.
+        for (uint32_t i = 1; i < endpoints.size(); ++i)
+        {
+            addServiceListener(svc_name, FDB_INVALID_ID);
+        }
+    }
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
         auto client = fdb_dynamic_cast_if_available<CBaseClient *>(*ep_it);
@@ -183,11 +176,6 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
         {
             if (client->connectionEnabled(msg_addr_list))
             {
-                if (force_reconnect)
-                {
-                    client->doDisconnect();
-                }
-
                 if (msg_addr_list.has_token_list() && client->importTokens(msg_addr_list.token_list().tokens()))
                 {
                     client->updateSecurityLevel();
@@ -197,18 +185,25 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                 client->local(msg_addr_list.is_local());
 
                 replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
-                const auto &addr_list = msg_addr_list.address_list();
-                for (auto it = addr_list.pool().begin(); it != addr_list.pool().end(); ++it)
+                auto &addr_list = msg_addr_list.address_list();
+                for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
                 {
-                    if (!client->doConnect(it->c_str(), host_name.c_str()))
+                    int32_t udp_port = FDB_INET_PORT_INVALID;
+                    if (it->has_udp_port())
                     {
-                        LOG_E("CIntraNameProxy: Session %d: Fail to connect to %s!\n", msg->session(), it->c_str());
+                        udp_port = it->udp_port();
+                    }
+
+                    if (!client->doConnect(it->tcp_ipc_url().c_str(), host_name.c_str(), udp_port))
+                    {
+                        LOG_E("CIntraNameProxy: Session %d: Fail to connect to %s!\n",
+                                msg->session(), it->tcp_ipc_url().c_str());
                         //TODO: do something for me!
                     }
                     else
                     {
                         LOG_E("CIntraNameProxy: Session %d, Server: %s, address %s is connected.\n",
-                                msg->session(), svc_name, it->c_str());
+                                msg->session(), svc_name, it->tcp_ipc_url().c_str());
                         // only connect to the first url of the same server.
                         break;
                     }
@@ -231,7 +226,7 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             {
                 return;
             }
-            processClientOnline(msg, msg_addr_list, true);
+            processClientOnline(msg, msg_addr_list);
         }
         break;
         case NFdbBase::NTF_MORE_ADDRESS:
@@ -287,47 +282,51 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
-        const auto &addr_list = msg_addr_list.address_list();
+        auto &addr_list = msg_addr_list.address_list();
         if (force_reconnect)
         {
             server->doUnbind();
         }
-        for (auto it = addr_list.pool().begin(); it != addr_list.pool().end(); ++it)
+        for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
         {
             auto *addr_status = bound_list.add_address_list();
-            addr_status->request_address(*it);
+            const std::string &tcp_ipc_url = it->tcp_ipc_url();
+            addr_status->request_address(tcp_ipc_url);
             do
             {
-                CServerSocket *sk = server->doBind(it->c_str());
+                int32_t udp_port = FDB_INET_PORT_INVALID;
+                if (it->has_udp_port())
+                {
+                    udp_port = it->udp_port();
+                }
+                CServerSocket *sk = server->doBind(tcp_ipc_url.c_str(), udp_port);
                 if (sk)
                 {
                     CFdbSocketInfo info;
-                    CFdbSocketAddr addr;
                     std::string url;
-                    auto char_url = it->c_str();
+                    auto char_url = tcp_ipc_url.c_str();
                     sk->getSocketInfo(info);
-                    CBaseSocketFactory::parseUrl(it->c_str(), addr);
-                    if (info.mAddress->mType == FDB_SOCKET_TCP)
+                    if (it->address_type() == FDB_SOCKET_TCP)
                     {
-                        if (addr.mPort == info.mAddress->mPort)
+                        if (it->tcp_port() == info.mAddress->mPort)
                         {
-                            addr_status->bind_address(*it);
+                            addr_status->bind_address(tcp_ipc_url);
                         }
                         else
                         {
-                            if (addr.mPort)
+                            if (it->tcp_port())
                             {
                                 LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
-                                        msg->session(), svc_name, addr.mPort, info.mAddress->mPort);
+                                        msg->session(), svc_name, it->tcp_port(), info.mAddress->mPort);
                             }
-                            CBaseSocketFactory::buildUrl(url, addr.mAddr.c_str(), info.mAddress->mPort);
+                            CBaseSocketFactory::buildUrl(url, it->tcp_ipc_address().c_str(), info.mAddress->mPort);
                             addr_status->bind_address(url);
                             char_url = url.c_str();
                         }
                     }
                     else
                     {
-                        addr_status->bind_address(*it);
+                        addr_status->bind_address(tcp_ipc_url);
                     }
 
                     LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",

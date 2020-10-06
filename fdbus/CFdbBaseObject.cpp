@@ -39,9 +39,9 @@ enum EFdbCallback
 
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
     : mEndpoint(0)
+    , mFlag(0)
     , mWorker(worker)
     , mObjId(FDB_INVALID_ID)
-    , mFlag(0)
     , mRole(role)
     , mSid(FDB_INVALID_ID)
 {
@@ -120,7 +120,8 @@ bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
 
 bool CFdbBaseObject::send(FdbSessionId_t receiver
                           , FdbMsgCode_t code
-                          , IFdbMsgBuilder &data)
+                          , IFdbMsgBuilder &data
+                          , bool fast)
 {
     auto msg = new CBaseMessage(code, this, receiver);
     if (!msg->serialize(data, this))
@@ -128,18 +129,20 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
         delete msg;
         return false;
     }
+    msg->preferUDP(fast);
     return msg->send();
 }
 
-bool CFdbBaseObject::send(FdbMsgCode_t code, IFdbMsgBuilder &data)
+bool CFdbBaseObject::send(FdbMsgCode_t code, IFdbMsgBuilder &data, bool fast)
 {
-    return send(FDB_INVALID_ID, code, data);
+    return send(FDB_INVALID_ID, code, data, fast);
 }
 
 bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , FdbMsgCode_t code
                          , const void *buffer
                          , int32_t size
+                         , bool fast
                          , const char *log_data)
 {
     auto msg = new CBaseMessage(code, this, receiver);
@@ -149,15 +152,17 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
         delete msg;
         return false;
     }
+    msg->preferUDP(fast);
     return msg->send();
 }
 
 bool CFdbBaseObject::send(FdbMsgCode_t code
                          , const void *buffer
                          , int32_t size
+                         , bool fast
                          , const char *log_data)
 {
-    return send(FDB_INVALID_ID, code, buffer, size, log_data);
+    return send(FDB_INVALID_ID, code, buffer, size, fast, log_data);
 }
 
 bool CFdbBaseObject::get(FdbMsgCode_t code, const char *topic, int32_t timeout)
@@ -218,6 +223,7 @@ bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
     {
         return false;
     }
+    msg.preferUDP(true);
     auto session = mEndpoint->preferredPeer();
     if (session)
     {
@@ -228,7 +234,8 @@ bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
 
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , IFdbMsgBuilder &data
-                               , const char *filter)
+                               , const char *filter
+                               , bool fast)
 {
     auto msg = new CFdbMessage(code, this, filter);
     if (!msg->serialize(data, this))
@@ -236,6 +243,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
         delete msg;
         return false;
     }
+    msg->preferUDP(fast);
     return msg->broadcast();
 }
 
@@ -243,6 +251,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const void *buffer
                               , int32_t size
                               , const char *filter
+                              , bool fast
                               , const char *log_data)
 {
     auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
@@ -252,6 +261,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
         delete msg;
         return false;
     }
+    msg->preferUDP(fast);
     return msg->broadcast();
 }
 
@@ -264,12 +274,13 @@ void CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data,
         return;
     }
     msg.enableLog(false);
+    msg.preferUDP(true);
 
     broadcast(&msg);
 }
 
 void CFdbBaseObject::broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
-                                      const char *filter, bool force_update)
+                                      const char *filter, bool force_update, bool fast)
 {
     CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
     if (!msg.serialize(data, size, this))
@@ -277,6 +288,7 @@ void CFdbBaseObject::broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, in
         return;
     }
     msg.forceUpdate(force_update);
+    msg.preferUDP(fast);
 
     broadcast(&msg);
 }
@@ -472,13 +484,9 @@ bool CFdbBaseObject::migrateOnOnlineToWorker(FdbSessionId_t sid, bool is_first, 
 
 void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
 {
-    if (isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT))
+    if (isPrimary())
     {
-        // send session info from client to primary object of server
-        NFdbBase::FdbSessionInfo sinfo;
-        sinfo.set_sender_name(mName.c_str());
-        CFdbParcelableBuilder builder(sinfo);
-        sendSideband(FDB_SIDEBAND_SESSION_INFO, builder);
+        mEndpoint->updateSessionInfo(session);
     }
 
     if (!migrateOnOnlineToWorker(session->sid(), is_first))
@@ -1080,7 +1088,10 @@ void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
 {
     if ((sub_item.mType == FDB_SUB_TYPE_NORMAL) || msg->manualUpdate())
     {
-        session->sendMessage(msg);
+        if (!msg->preferUDP() || !session->sendUDPMessage(msg))
+        {
+            session->sendMessage(msg);
+        }
     }
 }
 
@@ -1824,7 +1835,6 @@ public:
 void CFdbBaseObject::callPrepareDestroy(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
 {
     enableMigrate(false);
-    autoRemove(false);
 }
 
 void CFdbBaseObject::prepareDestroy()

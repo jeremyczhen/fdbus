@@ -52,62 +52,62 @@ public:
         return FDB_NAME_SERVER_NAME;
     }
 
-    static const char *getNameServerIpcPath()
+    static const char *getNameServerIPCPath()
     {
         return NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ns";
     }
 
-    static const char *getNameServerIpcUrl()
+    static const char *getNameServerIPCUrl()
     {
         return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ns";
     }
 
-    static const char *getHostServerIpcPath()
+    static const char *getHostServerIPCPath()
     {
         return NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-hs";
     }
 
-    static const char *getHostServerIpcUrl()
+    static const char *getHostServerIPCUrl()
     {
         return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-hs";
     }
 
-    static const char *getNameServerTcpPort()
+    static const char *getNameServerTCPPort()
     {
         return "60001";
     }
 
-    static int32_t getIntNameServerTcpPort()
+    static int32_t getIntNameServerTCPPort()
     {
         return 60001;
     }
 
-    static const char *getHostServerTcpPort()
+    static const char *getHostServerTCPPort()
     {
         return "60000";
     }
 
-    static int32_t getIntHostServerTcpPort()
+    static int32_t getIntHostServerTCPPort()
     {
         return 60000;
     }
 
-    static const char *getIpcPathBase()
+    static const char *getIPCPathBase()
     {
         return NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ipc";
     }
 
-    static const char *getIpcUrlBase()
+    static const char *getIPCUrlBase()
     {
         return FDB_URL_IPC NS_CFG_UDS_ADDRESS_PREFIX FDB_CFG_SOCKET_PATH "/" "fdb-ipc";
     }
 
-    static int32_t getTcpPortMin()
+    static int32_t getTCPPortMin()
     {
         return 60002;
     }
 
-    static int32_t getTcpPortMax()
+    static int32_t getTCPPortMax()
     {
         return 65000;
     }

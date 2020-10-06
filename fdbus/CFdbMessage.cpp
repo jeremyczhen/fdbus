@@ -108,7 +108,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
 CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
                          , CFdbMsgPrefix &prefix
                          , uint8_t *buffer
-                         , CFdbSession *session
+                         , FdbSessionId_t sid
                         )
     : mType(FDB_MT_REPLY)
     , mCode(head.code())
@@ -116,7 +116,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mPayloadSize(head.payload_size())
     , mHeadSize(prefix.mHeadLength)
     , mOffset(0)
-    , mSid(session->sid())
+    , mSid(sid)
     , mOid(head.object_id())
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
@@ -427,7 +427,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , const char *filter)
 {
     auto msg = new CFdbMessage(code, this, filter);
-    msg->mFlag |= mFlag & MSG_FLAG_ENABLE_LOG;
+    msg->mFlag |= (mFlag & MSG_FLAG_ENABLE_LOG) | MSG_FLAG_INITIAL_RESPONSE;
     if (!msg->serialize(data))
     {
         delete msg;
@@ -444,6 +444,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , const char *log_data)
 {
     auto msg = new CFdbMessage(code, this, filter);
+    msg->mFlag |= (mFlag & MSG_FLAG_ENABLE_LOG) | MSG_FLAG_INITIAL_RESPONSE;
     if (!msg->serialize(buffer, size))
     {
         delete msg;
@@ -508,7 +509,7 @@ bool CFdbMessage::update(CBaseJob::Ptr &msg_ref
     return msg ? msg->subscribe(msg_ref, FDB_MSG_TX_SYNC, FDB_CODE_UPDATE, timeout) : false;
 }
 
-bool CFdbMessage::buildHeader(CFdbSession *session)
+bool CFdbMessage::buildHeader()
 {
     if (mFlag & MSG_FLAG_HEAD_OK)
     {
@@ -522,7 +523,7 @@ bool CFdbMessage::buildHeader(CFdbSession *session)
     msg_hdr.set_object_id(mOid);
     msg_hdr.set_payload_size(mPayloadSize);
 
-    encodeDebugInfo(msg_hdr, session);
+    encodeDebugInfo(msg_hdr);
 
     auto filter = mFilter.c_str();
     if (filter[0] != '\0')
@@ -665,8 +666,10 @@ void CFdbMessage::doRequest(Ptr &ref)
     {
         if (mFlag & MSG_FLAG_NOREPLY_EXPECTED)
         {
-            success = session->sendMessage(this);
-            reason = "error when sending message!";
+            if (!(mFlag & MSG_FLAG_UDP) || !session->sendUDPMessage(this))
+            {
+                success = session->sendMessage(this);
+            }
         }
         else
         {
@@ -740,7 +743,6 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     }
     else
     {
-        mFlag |= MSG_FLAG_INITIAL_RESPONSE; // mark as initial response
         auto session = CFdbContext::getInstance()->getSession(mSid);
         if (session)
         {
@@ -918,7 +920,7 @@ bool CFdbMessage::decodeStatus(int32_t &error_code, std::string &description)
     return ret;
 }
 
-void CFdbMessage::update(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix)
+void CFdbMessage::update(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix)
 {
     mFlag = (mFlag & ~MSG_GLOBAL_FLAG_MASK) | (head.flag() & MSG_GLOBAL_FLAG_MASK);
     //mCode = head.code();
@@ -990,7 +992,7 @@ void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
     }
 }
 
-void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session)
+void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
 {
 #if defined(CONFIG_FDB_MESSAGE_METADATA)
     switch (msg_hdr.type())
@@ -1012,7 +1014,7 @@ void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSess
 #endif
 }
 
-void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session)
+void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
 {
 #if defined(CONFIG_FDB_MESSAGE_METADATA)
     switch (msg_hdr.type())

@@ -23,25 +23,25 @@
 #include "CSocketImp.h"
 
 class CFdbSession;
+class CBaseEndpoint;
+class CFdbUDPSession;
+class CFdbMessage;
 struct CFdbSocketInfo
 {
     CFdbSocketAddr const *mAddress;
 };
 
-class CBaseEndpoint;
 class CFdbSessionContainer
 {
 public:
-    CFdbSessionContainer(FdbSocketId_t skid, CBaseEndpoint *owner);
+    CFdbSessionContainer(FdbSocketId_t skid, CBaseEndpoint *owner, CBaseSocket *tcp_socket);
     virtual ~CFdbSessionContainer();
     FdbSocketId_t skid()
     {
         return mSkid;
     }
 
-    virtual void getSocketInfo(CFdbSocketInfo &info)
-    {
-    }
+    bool getSocketInfo(CFdbSocketInfo &info);
 
     CBaseEndpoint *owner()
     {
@@ -53,13 +53,24 @@ public:
     {
         mEnableSessionDestroyHook = enable;
     }
+
+    bool bindUDPSocket(int32_t udp_port);
+    bool sendUDPmessage(CFdbMessage *msg, const CFdbSocketAddr &dest_addr);
+    bool getUDPSocketInfo(CFdbSocketInfo &info);
+
+    int32_t getUDPPort();
+    CFdbSession *connected(const CFdbSocketAddr &addr);
+    CFdbSession *bound(const CFdbSocketAddr &addr);
 protected:
     FdbSocketId_t mSkid;
     virtual void onSessionDeleted(CFdbSession *session) {}
     CBaseEndpoint *mOwner;
+    CBaseSocket *mSocket;
 private:
-    bool mEnableSessionDestroyHook;
     typedef std::list<CFdbSession *> ConnectedSessionTable_t;
+    bool mEnableSessionDestroyHook;
+    CBaseSocket *mUDPSocket;
+    CFdbUDPSession *mUDPSession;
 
     ConnectedSessionTable_t mConnectedSessionTable;
 
@@ -67,9 +78,11 @@ private:
     void removeSession(CFdbSession *session);
     void callSessionDestroyHook(CFdbSession *session);
 
-    friend class CBaseEndpoint;
     friend class CFdbSession;
+    friend class CBaseEndpoint;
+    friend class CFdbUDPSession;
     friend class CBaseServer;
+    friend class CBaseClient;
 };
 
 #endif

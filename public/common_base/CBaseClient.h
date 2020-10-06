@@ -39,14 +39,13 @@ public:
                   , const char *host_name);
     ~CClientSocket();
     CFdbSession *connect();
-    void getSocketInfo(CFdbSocketInfo &info);
     void setSocket(CClientSocketImp *skt)
     {
         mSocket = skt;
     }
     CClientSocketImp *getSocket() const
     {
-        return mSocket;
+        return fdb_dynamic_cast_if_available<CClientSocketImp *>(mSocket);
     }
 
     const std::string &connectedHost() const
@@ -63,7 +62,6 @@ public:
 protected:
     void onSessionDeleted(CFdbSession *session);
 private:
-    CClientSocketImp *mSocket;
     std::string mConnectedHost;
 };
 
@@ -111,7 +109,8 @@ public:
     bool publish(FdbMsgCode_t code
                  , IFdbMsgBuilder &data
                  , const char *topic = 0
-                 , bool force_update = false);
+                 , bool force_update = false
+                 , bool fast = false);
 
     /*
      * publish[2]
@@ -123,15 +122,17 @@ public:
                 , int32_t size = 0
                 , const char *topic = 0
                 , bool force_update = false
+                , bool fast = false
                 , const char *log_data = 0);
 
     void prepareDestroy();
 
     /* Warning!!! Internal use only!!! */
-    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
-                        int32_t size, const char *log_data, bool force_update);
+    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
+                        const char *log_data, bool force_update, bool fast);
 protected:
-    CClientSocket *doConnect(const char *url, const char *host_name = 0);
+    CClientSocket *doConnect(const char *url, const char *host_name = 0, 
+                             int32_t udp_port = FDB_INET_PORT_INVALID);
     void doDisconnect(FdbSessionId_t sid = FDB_INVALID_ID);
     /*
      * Check whether connection is allowed for the host.
@@ -139,7 +140,7 @@ protected:
      */
     virtual bool connectionEnabled(const NFdbBase::FdbMsgAddressList &addr_list)
     {
-        return connected() ? false : true;
+        return true;
     }
 
 private:

@@ -47,11 +47,8 @@ class CFdbBaseObject
 {
 public:
 #define FDB_OBJ_ENABLED_MIGRATE         (1 << 0)
-#define FDB_OBJ_AUTO_REMOVE             (1 << 1)
-#define FDB_OBJ_RECONNECT_ENABLED       (1 << 2)
-#define FDB_OBJ_REGISTERED              (1 << 3)
-#define FDB_OBJ_RECONNECT_ACTIVATED     (1 << 4)
-#define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 5)
+#define FDB_OBJ_REGISTERED              (1 << 1)
+#define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 2)
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -196,29 +193,36 @@ public:
      * send protocol buffer to receiver. No reply is expected; just one-shot
      * @iparam receiver: the receiver to get the message
      * @iparam code: message code
-     * @imaram data: message in protocol buffer format
+     * @iparam data: message in protocol buffer format
+     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
+     *              and fallback to TCP/UDS if fail
      */
     bool send(FdbSessionId_t receiver
               , FdbMsgCode_t code
-              , IFdbMsgBuilder &data);
+              , IFdbMsgBuilder &data
+              , bool fast = false);
               
     /*
      * send[2]
      * Similiar to send[1] without parameter 'receiver'. The method is called
      * from CBaseClient to send message to the connected server.
      */
-    bool send(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool send(FdbMsgCode_t code, IFdbMsgBuilder &data, bool fast = false);
 
     /*
      * send[3]
      * Similiar to send[1] but raw data is sent.
      * @iparam buffer: buffer holding raw data
      * @iparam size: size of buffer
+     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
+     *              and fallback to TCP/UDS if fail
+     * @iparam log_data: text collected by log service to show the message
      */
     bool send(FdbSessionId_t receiver
               , FdbMsgCode_t code
               , const void *buffer = 0
               , int32_t size = 0
+              , bool fast = false
               , const char *log_data = 0);
     /*
      * send[4]
@@ -229,6 +233,7 @@ public:
     bool send(FdbMsgCode_t code
               , const void *buffer = 0
               , int32_t size = 0
+              , bool fast = false
               , const char *log_data = 0);
 
     /*
@@ -260,21 +265,29 @@ public:
      * optional filter.
      * @iparam code: code of the message to be broadcasted
      * @iparam data: message of protocol buffer
+     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
+     *              and fallback to TCP/UDS if fail
      * @iparam filter: the filter associated with the broadcasting
      */
     bool broadcast(FdbMsgCode_t code
                    , IFdbMsgBuilder &data
-                   , const char *filter = 0);
+                   , const char *filter = 0
+                   , bool fast = false);
     /*
      * broadcast[3]
      * Similiar to broadcast[1] except that raw data is broadcasted.
      * @iparam buffer: buffer holding raw data
      * @iparam size: size of buffer
+     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
+     *              and fallback to TCP/UDS if fail
+     * @iparam filter: the filter associated with the broadcasting
+     * @iparam log_data: text collected by log service to show the message
      */
     bool broadcast(FdbMsgCode_t code
                    , const void *buffer = 0
                    , int32_t size = 0
                    , const char *filter = 0
+                   , bool fast = false
                    , const char *log_data = 0);
     /*
      * Build subscribe list before calling subscribe().
@@ -565,57 +578,6 @@ public:
         }
     }
 
-    void autoRemove(bool enb)
-    {
-        if (enb)
-        {
-            mFlag |= FDB_OBJ_AUTO_REMOVE;
-        }
-        else
-        {
-            mFlag &= ~FDB_OBJ_AUTO_REMOVE;
-        }
-    }
-
-    bool autoRemove() const
-    {
-        return !!(mFlag & FDB_OBJ_AUTO_REMOVE);
-    }
-    
-    void enableReconnect(bool active)
-    {
-        if (active)
-        {
-            mFlag |= FDB_OBJ_RECONNECT_ENABLED;
-        }
-        else
-        {
-            mFlag &= ~FDB_OBJ_RECONNECT_ENABLED;
-        }
-    }
-
-    bool reconnectEnabled() const
-    {
-        return !!(mFlag & FDB_OBJ_RECONNECT_ENABLED);
-    }
-
-    void activateReconnect(bool active)
-    {
-        if (active)
-        {
-            mFlag |= FDB_OBJ_RECONNECT_ACTIVATED;
-        }
-        else
-        {
-            mFlag &= ~FDB_OBJ_RECONNECT_ACTIVATED;
-        }
-    }
-
-    bool reconnectActivated() const
-    {
-        return !!(mFlag & FDB_OBJ_RECONNECT_ACTIVATED);
-    }
-
     void enableEventCache(bool active)
     {
         if (active)
@@ -693,6 +655,8 @@ public:
 protected:
     std::string mName;
     CBaseEndpoint *mEndpoint; // Which endpoint the object belongs to
+    uint32_t mFlag;
+
     /*
      * Implemented by server: called when client subscribe a message
      *      IMPORTANT: in the callback, current value must sent to the
@@ -824,7 +788,8 @@ protected:
 
     // Warning: only used by FDBus internally!!!!!!!
     void broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter);
-    void broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter, bool force_update);
+    void broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
+                          const char *filter, bool force_update, bool fast);
 private:
     struct CSubscribeItem
     {
@@ -853,7 +818,6 @@ private:
     SubscribeTable_t mEventSubscribeTable;
     SubscribeTable_t mGroupSubscribeTable;
     FdbObjectId_t mObjId;
-    uint32_t mFlag;
     EFdbEndpointRole mRole;
     FdbSessionId_t mSid;
     EventCacheTable_t mEventCache;
@@ -958,6 +922,7 @@ private:
     friend class CBaseClient;
     friend class CBaseServer;
     friend class CFdbSession;
+    friend class CFdbUDPSession;
     friend class CFdbMessage;
     friend class CBaseEndpoint;
     friend class CLogProducer;

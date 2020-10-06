@@ -511,12 +511,7 @@ public:
     @param port - IP port number on which the socket will listen for incoming datagrams.
         This is useful for server-side sockets, for client-side sockets use UDPSocket::Open().
     */
-    void Open(u16 port);
-    
-    
-    inline void Open(){
-        this->Open(0);
-    };
+    void Open(const IPAddress& ip);
     
     //returns number of bytes sent, should be less or equal to size.
     uint Send(const byte* buf, u16 size, IPAddress destinationIP);

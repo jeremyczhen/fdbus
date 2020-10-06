@@ -504,6 +504,10 @@ private:
 class FdbSessionInfo : public IFdbParcelable
 {
 public:
+    FdbSessionInfo()
+        : mOptions(0)
+    {
+    }
     const std::string &sender_name() const
     {
         return mSenderName;
@@ -512,16 +516,42 @@ public:
     {
         mSenderName = name;
     }
+    int32_t udp_port() const
+    {
+        return mUDPPort;
+    }
+    void set_udp_port(int32_t port)
+    {
+        mUDPPort = port;
+        mOptions |= mMaskHasUDPPort;
+    }
+    bool has_udp_port() const
+    {
+        return !!(mOptions & mMaskHasUDPPort);
+    }
     void serialize(CFdbSimpleSerializer &serializer) const
     {
-        serializer << mSenderName;
+        serializer << mSenderName
+                   << mOptions;
+        if (mOptions & mMaskHasUDPPort)
+        {
+            serializer << mUDPPort;
+        }
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
-        deserializer >> mSenderName;
+        deserializer >> mSenderName
+                     >> mOptions;
+        if (mOptions & mMaskHasUDPPort)
+        {
+            deserializer >> mUDPPort;
+        }
     }
 private:
     std::string mSenderName;
+    int32_t mUDPPort;
+    uint8_t mOptions;
+        static const uint8_t mMaskHasUDPPort = 1 << 0;
 };
 }
 

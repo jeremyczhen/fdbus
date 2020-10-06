@@ -29,17 +29,19 @@ public:
     static CClientSocketImp *createClientSocket(const char *url);
     static CServerSocketImp *createServerSocket(CFdbSocketAddr &addr);
     static CServerSocketImp *createServerSocket(const char *url);
+    static CUDPSocketImp *createUDPSocket(CFdbSocketAddr &addr);
+    static CUDPSocketImp *createUDPSocket(const char *url);
     static bool parseUrl(const char *url, CFdbSocketAddr &addr);
     static bool getIpAddress(tIpAddressTbl &addr_tbl);
     static bool getIpAddress(std::string &address, const char *if_name = 0);
     static void buildUrl(std::string &url, const char *ip_addr, const char *port);
     static void buildUrl(std::string &url, const char *ip_addr, int32_t port);
-    static void buildUrl(std::string &url, uint32_t uds_id);
+    static void buildUrl(std::string &url, uint32_t uds_id, const char *ipc_path = 0);
     static void buildUrl(std::string &url, const char *svc_name);
-    static void updatePort(CFdbSocketAddr &addr, int32_t new_port);
+
 private:
-    static int32_t buildTcpAddress(const char *host_addr, CFdbSocketAddr &addr);
-    static int32_t buildIpcAddress(const char *addr_str, CFdbSocketAddr &addr);
+    static int32_t buildINetAddress(const char *host_addr, CFdbSocketAddr &addr);
+    static int32_t buildIPCAddress(const char *addr_str, CFdbSocketAddr &addr);
     static int32_t buildSvcAddress(const char *host_name, CFdbSocketAddr &addr);
 };
 

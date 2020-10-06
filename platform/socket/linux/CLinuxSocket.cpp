@@ -15,8 +15,9 @@
  */
 
 #include "CLinuxSocket.h"
+#include <common_base/CBaseSocketFactory.h>
 
-CLinuxSocket::CLinuxSocket(sckt::TCPSocket *imp)
+CTCPTransportSocket::CTCPTransportSocket(sckt::TCPSocket *imp, EFdbSocketType type)
     : mSocketImp(imp)
 {
     mCred.pid = imp->pid;
@@ -24,11 +25,15 @@ CLinuxSocket::CLinuxSocket(sckt::TCPSocket *imp)
     mCred.uid = imp->uid;
     mConn.mPeerIp = imp->peer_ip;
     mConn.mPeerPort = imp->peer_port;
-    mConn.mSelfIp = imp->self_ip;
-    mConn.mSelfPort = imp->self_port;
+
+    // For TCP socket, address of CTCPTransportSocket is the different from CLinuxServerSocket
+    // So you SHOULD get address either from session only!!!
+    mConn.mSelfAddress.mType = type;
+    mConn.mSelfAddress.mAddr = imp->self_ip;
+    mConn.mSelfAddress.mPort = imp->self_port;
 }
 
-CLinuxSocket::~CLinuxSocket()
+CTCPTransportSocket::~CTCPTransportSocket()
 {
     if (mSocketImp)
     {
@@ -36,7 +41,7 @@ CLinuxSocket::~CLinuxSocket()
     }
 }
 
-int32_t CLinuxSocket::send(const uint8_t *data, int32_t size)
+int32_t CTCPTransportSocket::send(const uint8_t *data, int32_t size)
 {
     int32_t ret = -1;
     if (mSocketImp)
@@ -53,7 +58,7 @@ int32_t CLinuxSocket::send(const uint8_t *data, int32_t size)
     return ret;
 }
 
-int32_t CLinuxSocket::recv(uint8_t *data, int32_t size)
+int32_t CTCPTransportSocket::recv(uint8_t *data, int32_t size)
 {
     int32_t ret = -1;
     if (mSocketImp)
@@ -70,23 +75,13 @@ int32_t CLinuxSocket::recv(uint8_t *data, int32_t size)
     return ret;
 }
 
-int CLinuxSocket::getFd()
+int CTCPTransportSocket::getFd()
 {
     if (mSocketImp)
     {
         return mSocketImp->getNativeSocket();
     }
     return -1;
-}
-
-CFdbSocketCredentials const &CLinuxSocket::getPeerCredentials()
-{
-    return mCred;
-}
-
-CFdbSocketConnInfo const &CLinuxSocket::getConnectionInfo()
-{
-    return mConn;
 }
 
 CLinuxClientSocket::CLinuxClientSocket(CFdbSocketAddr &addr)
@@ -104,26 +99,39 @@ CSocketImp *CLinuxClientSocket::connect()
     try
     {
         sckt::TCPSocket *sckt_imp = 0;
-        if (mAddress.mType == FDB_SOCKET_TCP)
+        if (mConn.mSelfAddress.mType == FDB_SOCKET_TCP)
         {
-            if (mAddress.mAddr.empty())
+            if (mConn.mSelfAddress.mAddr.empty())
             {
-                mAddress.mAddr = "127.0.0.1";
+                mConn.mSelfAddress.mAddr = "127.0.0.1";
             }
-            sckt::IPAddress address(mAddress.mAddr.c_str(), (sckt::u16)mAddress.mPort);
+            sckt::IPAddress address(mConn.mSelfAddress.mAddr.c_str(), (sckt::u16)mConn.mSelfAddress.mPort);
             sckt_imp = new sckt::TCPSocket(address);
         }
 #ifndef __WIN32__
-        else if (mAddress.mType == FDB_SOCKET_IPC)
+        else if (mConn.mSelfAddress.mType == FDB_SOCKET_IPC)
         {
-            sckt::IPAddress address(mAddress.mAddr.c_str());
+            sckt::IPAddress address(mConn.mSelfAddress.mAddr.c_str());
             sckt_imp = new sckt::TCPSocket(address);
         }
 #endif
 
         if (sckt_imp)
         {
-            ret = new CLinuxSocket(sckt_imp);
+            ret = new CTCPTransportSocket(sckt_imp, mConn.mSelfAddress.mType);
+            CFdbSocketConnInfo &conn_info = const_cast<CFdbSocketConnInfo &>(ret->getConnectionInfo());
+            if (mConn.mSelfAddress.mType == FDB_SOCKET_IPC)
+            {
+                // For IPC socket, address of CTCPTransportSocket is the same as CLinuxServerSocket
+                // So you can get address either from container or session
+                conn_info.mSelfAddress = mConn.mSelfAddress;
+            }
+            else
+            {
+                CBaseSocketFactory::buildUrl(conn_info.mSelfAddress.mUrl,
+                                             conn_info.mSelfAddress.mAddr.c_str(),
+                                             conn_info.mSelfAddress.mPort);
+            }
         }
     }
     catch (...)
@@ -157,16 +165,16 @@ bool CLinuxServerSocket::bind()
         }
         else
         {
-            if (mAddress.mType == FDB_SOCKET_TCP)
+            if (mConn.mSelfAddress.mType == FDB_SOCKET_TCP)
             {
-                sckt::IPAddress address(mAddress.mAddr.c_str(), (sckt::u16)mAddress.mPort);
+                sckt::IPAddress address(mConn.mSelfAddress.mAddr.c_str(), (sckt::u16)mConn.mSelfAddress.mPort);
                 mServerSocketImp = new sckt::TCPServerSocket(address);
-                mAddress.mPort = mServerSocketImp->self_port; // in case port number is allocated dynamically...
+                mConn.mSelfAddress.mPort = mServerSocketImp->self_port; // in case port number is allocated dynamically...
             }
 #ifndef __WIN32__
-            else if (mAddress.mType == FDB_SOCKET_IPC)
+            else if (mConn.mSelfAddress.mType == FDB_SOCKET_IPC)
             {
-                sckt::IPAddress address(mAddress.mAddr.c_str());
+                sckt::IPAddress address(mConn.mSelfAddress.mAddr.c_str());
                 mServerSocketImp = new sckt::TCPServerSocket(address);
             }
 #endif
@@ -195,7 +203,20 @@ CSocketImp *CLinuxServerSocket::accept()
         {
             sock_imp = new sckt::TCPSocket();
             mServerSocketImp->Accept(*sock_imp);
-            ret = new CLinuxSocket(sock_imp);
+            ret = new CTCPTransportSocket(sock_imp, mConn.mSelfAddress.mType);
+            CFdbSocketConnInfo &conn_info = const_cast<CFdbSocketConnInfo &>(ret->getConnectionInfo());
+            if (mConn.mSelfAddress.mType == FDB_SOCKET_IPC)
+            {
+                // For IPC socket, address of CTCPTransportSocket is the same as CLinuxServerSocket
+                // So you can get address either from container or session
+                conn_info.mSelfAddress = mConn.mSelfAddress;
+            }
+            else
+            {
+                CBaseSocketFactory::buildUrl(conn_info.mSelfAddress.mUrl,
+                                             conn_info.mSelfAddress.mAddr.c_str(),
+                                             conn_info.mSelfAddress.mPort);
+            }
         }
     }
     catch (...)
@@ -230,3 +251,101 @@ bool getLinuxIpAddress(std::map<std::string, std::string> &addr_tbl)
     }
     return true;
 }
+
+CUDPTransportSocket::CUDPTransportSocket(sckt::UDPSocket *imp)
+    : mSocketImp(imp)
+{
+    mConn.mSelfAddress.mType = FDB_SOCKET_UDP;
+}
+
+CUDPTransportSocket::~CUDPTransportSocket()
+{
+    if (mSocketImp)
+    {
+        delete mSocketImp;
+    }
+}
+
+int32_t CUDPTransportSocket::send(const uint8_t *data, int32_t size, const CFdbSocketAddr &dest_addr)
+{
+    int32_t ret = -1;
+    if (mSocketImp)
+    {
+        try
+        {
+            sckt::IPAddress address(dest_addr.mAddr.c_str(), (sckt::u16)dest_addr.mPort);
+            ret = mSocketImp->Send(data, size, address);
+        }
+        catch(...)
+        {
+            ret = -1;
+        }
+    }
+    return ret;
+}
+
+int32_t CUDPTransportSocket::recv(uint8_t *data, int32_t size)
+{
+    int32_t ret = -1;
+    if (mSocketImp)
+    {
+        try
+        {
+            sckt::IPAddress sender_ip;
+            ret = mSocketImp->Recv(data, size, sender_ip);
+        }
+        catch(...)
+        {
+            ret = -1;
+        }
+    }
+    return ret;
+}
+
+int CUDPTransportSocket::getFd()
+{
+    if (mSocketImp)
+    {
+        return mSocketImp->getNativeSocket();
+    }
+    return -1;
+}
+
+CLinuxUDPSocket::CLinuxUDPSocket(CFdbSocketAddr &addr)
+    : CUDPSocketImp(addr)
+{
+}
+
+CSocketImp *CLinuxUDPSocket::bind()
+{
+    CSocketImp *ret = 0;
+    try
+    {
+        sckt::UDPSocket *sckt_imp = 0;
+        if (mConn.mSelfAddress.mType == FDB_SOCKET_UDP)
+        {
+            if (mConn.mSelfAddress.mAddr.empty())
+            {
+                mConn.mSelfAddress.mAddr = "127.0.0.1";
+            }
+            sckt::IPAddress address(mConn.mSelfAddress.mAddr.c_str(), (sckt::u16)mConn.mSelfAddress.mPort);
+            sckt_imp = new sckt::UDPSocket();
+            sckt_imp->Open(address);
+        }
+
+        if (sckt_imp)
+        {
+            ret = new CUDPTransportSocket(sckt_imp);
+            CFdbSocketConnInfo &conn_info = const_cast<CFdbSocketConnInfo &>(ret->getConnectionInfo());
+            // For UDP socket, address of CUDPTransportSocket is the same as CLinuxUDPSocket
+            // So you can get address either from container or session
+            conn_info.mSelfAddress = mConn.mSelfAddress;
+        }
+    }
+    catch (...)
+    {
+        ret = 0;
+    }
+    return ret;
+}
+

@@ -101,7 +101,7 @@ void CHostServer::onRegisterHostReq(CBaseJob::Ptr &msg_ref)
     const char *ns_url;
     if (host_addr.ns_url().empty())
     {
-        CBaseSocketFactory::buildUrl(str_ns_url, ip_addr, CNsConfig::getNameServerTcpPort());
+        CBaseSocketFactory::buildUrl(str_ns_url, ip_addr, CNsConfig::getNameServerTCPPort());
         ns_url = str_ns_url.c_str();
     }
     else

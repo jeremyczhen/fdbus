@@ -35,31 +35,31 @@ FdbServerType IAddressAllocator::getSvcType(const char *svc_name)
     }
 }
 
-CIpcAddressAllocator::CIpcAddressAllocator()
+CIPCAddressAllocator::CIPCAddressAllocator()
     : mSocketId(0)
 {
 }
 
-void CIpcAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc_type)
+void CIPCAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc_type)
 {
     if (svc_type == FDB_SVC_NAME_SERVER)
     {
-        sckt_addr.mAddr = CNsConfig::getNameServerIpcPath();
-        sckt_addr.mUrl = CNsConfig::getNameServerIpcUrl();
+        sckt_addr.mAddr = CNsConfig::getNameServerIPCPath();
+        sckt_addr.mUrl = CNsConfig::getNameServerIPCUrl();
     }
     else if (svc_type == FDB_SVC_HOST_SERVER)
     {
-        sckt_addr.mAddr = CNsConfig::getHostServerIpcPath();
-        sckt_addr.mUrl = CNsConfig::getHostServerIpcUrl();
+        sckt_addr.mAddr = CNsConfig::getHostServerIPCPath();
+        sckt_addr.mUrl = CNsConfig::getHostServerIPCUrl();
     }
     else
     {
         uint32_t id = mSocketId++;
         char id_string[64];
         sprintf(id_string, "%u", id);
-        sckt_addr.mAddr = CNsConfig::getIpcPathBase();
+        sckt_addr.mAddr = CNsConfig::getIPCPathBase();
         sckt_addr.mAddr += id_string;
-        sckt_addr.mUrl = CNsConfig::getIpcUrlBase();
+        sckt_addr.mUrl = CNsConfig::getIPCUrlBase();
         sckt_addr.mUrl += id_string;
     }
 
@@ -67,28 +67,28 @@ void CIpcAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc
     sckt_addr.mType = FDB_SOCKET_IPC;
 }
 
-void CIpcAddressAllocator::reset()
+void CIPCAddressAllocator::reset()
 {
     mSocketId = 0;
 }
 
-CTcpAddressAllocator::CTcpAddressAllocator()
-    : mMinPort(CNsConfig::getTcpPortMin())
-    , mMaxPort(CNsConfig::getTcpPortMax())
+CTCPAddressAllocator::CTCPAddressAllocator()
+    : mMinPort(CNsConfig::getTCPPortMin())
+    , mMaxPort(CNsConfig::getTCPPortMax())
     , mPort(mMinPort)
 {
 }
 
-void CTcpAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc_type)
+void CTCPAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc_type)
 {
-    int32_t port = -1;
+    int32_t port;
     if (svc_type == FDB_SVC_NAME_SERVER)
     {
-        port = CNsConfig::getIntNameServerTcpPort();
+        port = CNsConfig::getIntNameServerTCPPort();
     }
     else if (svc_type == FDB_SVC_HOST_SERVER)
     {
-        port = CNsConfig::getIntHostServerTcpPort();
+        port = CNsConfig::getIntHostServerTCPPort();
     }
     else
     {
@@ -103,11 +103,6 @@ void CTcpAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc
 #endif
     }
 
-    if (port == -1)
-    {
-        return;
-    }
-
     char port_string[64];
     sprintf(port_string, "%u", port);
     
@@ -118,15 +113,33 @@ void CTcpAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc
     sckt_addr.mUrl = sckt_addr.mUrl + mInterfaceIp + ":" + port_string;
 }
 
-void CTcpAddressAllocator::reset()
+void CTCPAddressAllocator::reset()
 {
     mPort = mMinPort;
 }
 
-void CTcpAddressAllocator::setInterfaceIp(const char *ip_addr)
+void CTCPAddressAllocator::setInterfaceIp(const char *ip_addr)
 {
     if (mInterfaceIp.empty())
     {
         mInterfaceIp = ip_addr;
     }
 }
+CUDPPortAllocator::CUDPPortAllocator()
+    : mMinPort(CNsConfig::getTCPPortMin())
+    , mMaxPort(CNsConfig::getTCPPortMax())
+    , mPort(mMinPort)
+{
+}
+
+int32_t CUDPPortAllocator::allocate()
+{
+    int32_t port= mPort++;
+
+    if (mPort > mMaxPort)
+    {
+        mPort = mMinPort;
+    }
+    return port;
+}
+

@@ -86,11 +86,13 @@ protected:
                     }
                     std::cout << "    [" << service_addr.service_name() << "]" << std::endl;
                     auto &addr_list = service_addr.address_list();
-                    for (auto addr_it = addr_list.pool().begin();
-                            addr_it != addr_list.pool().end(); ++addr_it)
+                    for (auto addr_it = addr_list.vpool().begin();
+                            addr_it != addr_list.vpool().end(); ++addr_it)
 
                     {
-                        std::cout << "        > " << *addr_it << std::endl;
+                        std::cout << "        > " << addr_it->tcp_ipc_url()
+                                  << " udp://" << (addr_it->has_udp_port() ? addr_it->udp_port() : FDB_INET_PORT_INVALID)
+                                  << std::endl;
                     }
                 }
             }
@@ -131,11 +133,12 @@ protected:
                     std::cout << "[" << msg_addr_list.service_name()
                               << "]@" << msg_addr_list.host_name() << location
                               << " - Online" << std::endl;
-                    const CFdbParcelableArray<std::string> &addr_list = msg_addr_list.address_list();
-                    for (CFdbParcelableArray<std::string>::tPool::const_iterator it = addr_list.pool().begin();
-                            it != addr_list.pool().end(); ++it)
+                    auto &addr_list = msg_addr_list.address_list();
+                    for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
                     {
-                        std::cout << "    > " << *it << std::endl;
+                        std::cout << "    > " << it->tcp_ipc_url()
+                                  << " udp://" << (it->has_udp_port() ? it->udp_port() : FDB_INET_PORT_INVALID)
+                                  << std::endl;
                     }
                 }
                 

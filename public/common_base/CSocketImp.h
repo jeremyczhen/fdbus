@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include <string>
+#include "common_defs.h"
 
 enum EFdbSocketType
 {
@@ -48,18 +49,68 @@ struct CFdbSocketConnInfo
 {
     std::string mPeerIp;
     int32_t mPeerPort;
-    std::string mSelfIp;
-    int32_t mSelfPort;
+    CFdbSocketAddr mSelfAddress;
 };
 
-class CSocketImp
+class CBaseSocket
 {
 public:
-    CSocketImp()
+    CBaseSocket()
+    {
+        mCred.pid = UINT32_MAX;
+        mCred.gid = UINT32_MAX;
+        mCred.uid = UINT32_MAX;
+        mConn.mPeerPort = FDB_INET_PORT_INVALID;
+        mConn.mSelfAddress.mType = FDB_SOCKET_MAX;
+        mConn.mSelfAddress.mPort = FDB_INET_PORT_INVALID;
+    }
+
+    CBaseSocket(CFdbSocketAddr &addr)
+    {
+        mCred.pid = UINT32_MAX;
+        mCred.gid = UINT32_MAX;
+        mCred.uid = UINT32_MAX;
+        mConn.mPeerPort = FDB_SOCKET_MAX;
+        mConn.mSelfAddress = addr;
+    }
+
+    virtual ~CBaseSocket()
     {
     }
 
-    virtual ~CSocketImp()
+    const CFdbSocketCredentials &getPeerCredentials()
+    {
+        return mCred;
+    }
+    const CFdbSocketConnInfo &getConnectionInfo()
+    {
+        return mConn;
+    }
+    const CFdbSocketAddr &getAddress()
+    {
+        return mConn.mSelfAddress;
+    }
+
+    virtual int getFd()
+    {
+        return -1;
+    }
+
+protected:
+    CFdbSocketCredentials mCred;
+    CFdbSocketConnInfo mConn;
+};
+
+class CSocketImp : public CBaseSocket
+{
+public:
+    CSocketImp()
+        : CBaseSocket()
+    {
+    }
+
+    CSocketImp(CFdbSocketAddr &addr)
+        : CBaseSocket(addr)
     {
     }
 
@@ -68,57 +119,46 @@ public:
         return -1;
     }
 
+    virtual int32_t send(const uint8_t *data, int32_t size, const CFdbSocketAddr &dest_addr)
+    {
+        return -1;
+    }
+
     virtual int32_t recv(uint8_t *data, int32_t size)
     {
         return -1;
     }
-
-    virtual int getFd()
-    {
-        return -1;
-    }
-
-    virtual CFdbSocketCredentials const &getPeerCredentials() = 0;
-    virtual CFdbSocketConnInfo const &getConnectionInfo() = 0;
 };
 
-class CClientSocketImp
+class CClientSocketImp : public CBaseSocket
 {
 public:
-    CClientSocketImp(CFdbSocketAddr &addr)
+    CClientSocketImp()
+        : CBaseSocket()
     {
-        mAddress = addr;
     }
 
-    virtual ~CClientSocketImp()
+    CClientSocketImp(CFdbSocketAddr &addr)
+        : CBaseSocket(addr)
     {
     }
+
     virtual CSocketImp *connect()
     {
         return 0;
     }
-    virtual int getFd()
-    {
-        return -1;
-    }
-
-    CFdbSocketAddr const &getAddress()
-    {
-        return mAddress;
-    }
-protected:
-    CFdbSocketAddr mAddress;
 };
 
-class CServerSocketImp
+class CServerSocketImp : public CBaseSocket
 {
 public:
-    CServerSocketImp(CFdbSocketAddr &addr)
+    CServerSocketImp()
+        : CBaseSocket()
     {
-        mAddress = addr;
     }
 
-    virtual ~CServerSocketImp()
+    CServerSocketImp(CFdbSocketAddr &addr)
+        : CBaseSocket(addr)
     {
     }
 
@@ -131,16 +171,25 @@ public:
     {
         return 0;
     }
-
-    virtual int getFd()
-    {
-        return -1;
-    }
-    CFdbSocketAddr const &getAddress()
-    {
-        return mAddress;
-    }
-protected:
-    CFdbSocketAddr mAddress;
 };
+
+class CUDPSocketImp : public CBaseSocket
+{
+public:
+    CUDPSocketImp()
+        : CBaseSocket()
+    {
+    }
+
+    CUDPSocketImp(CFdbSocketAddr &addr)
+        : CBaseSocket(addr)
+    {
+    }
+
+    virtual CSocketImp *bind()
+    {
+        return 0;
+    }
+};
+
 #endif

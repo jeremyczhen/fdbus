@@ -61,7 +61,12 @@ typedef uint8_t FdbEventGroup_t;
 
 #define FDB_LOCAL_HOST "127.0.0.1"
 
+#define FDB_INET_PORT_INVALID   -1
+#define FDB_INET_PORT_NOBIND    0
+
 #define FDB_SECURITY_LEVEL_NONE 0
+
+#define FDB_UDP_PORT            60000
 
 #ifdef __cplusplus
 template <typename T>

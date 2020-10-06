@@ -23,7 +23,12 @@
 
 CClientSocketImp *CBaseSocketFactory::createClientSocket(CFdbSocketAddr &addr)
 {
-    return new CLinuxClientSocket(addr);
+    if ((addr.mType == FDB_SOCKET_TCP) || (addr.mType == FDB_SOCKET_IPC))
+    {
+        return new CLinuxClientSocket(addr);
+    }
+
+    return 0;
 }
 
 CClientSocketImp *CBaseSocketFactory::createClientSocket(const char *url)
@@ -39,7 +44,12 @@ CClientSocketImp *CBaseSocketFactory::createClientSocket(const char *url)
 
 CServerSocketImp *CBaseSocketFactory::createServerSocket(CFdbSocketAddr &addr)
 {
-    return new CLinuxServerSocket(addr);
+    if ((addr.mType == FDB_SOCKET_TCP) || (addr.mType == FDB_SOCKET_IPC))
+    {
+        return new CLinuxServerSocket(addr);
+    }
+
+    return 0;
 }
 
 CServerSocketImp *CBaseSocketFactory::createServerSocket(const char *url)
@@ -51,6 +61,27 @@ CServerSocketImp *CBaseSocketFactory::createServerSocket(const char *url)
     }
 
     return createServerSocket(addr);
+}
+
+CUDPSocketImp *CBaseSocketFactory::createUDPSocket(CFdbSocketAddr &addr)
+{
+    if (addr.mType == FDB_SOCKET_UDP)
+    {
+        return new CLinuxUDPSocket(addr);
+    }
+
+    return 0;
+}
+
+CUDPSocketImp *CBaseSocketFactory::createUDPSocket(const char *url)
+{
+    CFdbSocketAddr addr;
+    if (!parseUrl(url, addr))
+    {
+        return 0;
+    }
+
+    return createUDPSocket(addr);
 }
 
 bool CBaseSocketFactory::parseUrl(const char *url, CFdbSocketAddr &addr)
@@ -77,7 +108,15 @@ bool CBaseSocketFactory::parseUrl(const char *url, CFdbSocketAddr &addr)
     if (protocol == FDB_URL_TCP_IND)
     {
         addr.mType = FDB_SOCKET_TCP;
-        if (buildTcpAddress(addr_str.c_str(), addr))
+        if (buildINetAddress(addr_str.c_str(), addr))
+        {
+            return false;
+        }
+    }
+    else if (protocol == FDB_URL_UDP_IND)
+    {
+        addr.mType = FDB_SOCKET_UDP;
+        if (buildINetAddress(addr_str.c_str(), addr))
         {
             return false;
         }
@@ -85,7 +124,7 @@ bool CBaseSocketFactory::parseUrl(const char *url, CFdbSocketAddr &addr)
     else if (protocol == FDB_URL_IPC_IND)
     {
         addr.mType = FDB_SOCKET_IPC;
-        if (buildIpcAddress(addr_str.c_str(), addr))
+        if (buildIPCAddress(addr_str.c_str(), addr))
         {
             return false;
         }
@@ -106,7 +145,7 @@ bool CBaseSocketFactory::parseUrl(const char *url, CFdbSocketAddr &addr)
     return true;
 }
 
-int32_t CBaseSocketFactory::buildTcpAddress(const char *host_addr, CFdbSocketAddr &addr)
+int32_t CBaseSocketFactory::buildINetAddress(const char *host_addr, CFdbSocketAddr &addr)
 {
     const char *delimiter = strrchr (host_addr, ':');
     if (!delimiter)
@@ -144,7 +183,7 @@ int32_t CBaseSocketFactory::buildTcpAddress(const char *host_addr, CFdbSocketAdd
     return 0;
 }
 
-int32_t CBaseSocketFactory::buildIpcAddress(const char *addr_str, CFdbSocketAddr &addr)
+int32_t CBaseSocketFactory::buildIPCAddress(const char *addr_str, CFdbSocketAddr &addr)
 {
     addr.mAddr = addr_str;
     addr.mPort = 0;
@@ -214,13 +253,21 @@ void CBaseSocketFactory::buildUrl(std::string &url, const char *ip_addr, int32_t
     buildUrl(url, ip_addr, port_string);
 }
 
-void CBaseSocketFactory::buildUrl(std::string &url, uint32_t uds_id)
+void CBaseSocketFactory::buildUrl(std::string &url, uint32_t uds_id, const char *ipc_path)
 {
-    char uds_id_string[64];
-    sprintf(uds_id_string, "%u", uds_id);
-
-    url = CNsConfig::getIpcUrlBase();
-    url += uds_id_string;
+    if (ipc_path)
+    {
+        url = FDB_URL_IPC;
+        url += ipc_path;
+    }
+    else
+    {
+        char uds_id_string[64];
+        sprintf(uds_id_string, "%u", uds_id);
+        
+        url = CNsConfig::getIPCUrlBase();
+        url += uds_id_string;
+    }
 }
 
 void CBaseSocketFactory::buildUrl(std::string &url, const char *svc_name)
@@ -229,11 +276,3 @@ void CBaseSocketFactory::buildUrl(std::string &url, const char *svc_name)
     url = url + ":" + svc_name;
 }
 
-void CBaseSocketFactory::updatePort(CFdbSocketAddr &addr, int32_t new_port)
-{
-    if (new_port != addr.mPort)
-    {
-        buildUrl(addr.mUrl, addr.mAddr.c_str(), new_port);
-        addr.mPort = new_port;
-    }
-}

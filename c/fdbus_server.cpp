@@ -204,6 +204,7 @@ fdb_bool_t fdb_server_broadcast(fdb_server_t *handle,
                                  msg_data,
                                  data_size,
                                  topic,
+                                 false,
                                  log_data);
 }
 

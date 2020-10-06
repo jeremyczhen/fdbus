@@ -31,6 +31,7 @@ namespace NFdbBase {
     class FdbMsgServiceTable;
     class FdbMsgAddressList;
     class FdbMsgServiceInfo;
+    class FdbMsgAddressItem;
 }
 class CFdbMessage;
 class CHostProxy;
@@ -45,6 +46,7 @@ private:
         {
             mStatus = ADDR_FREE;
             reconnect_cnt = 0;
+            mUDPPort = FDB_INET_PORT_INVALID;
         }
         enum eAddressStatus
         {
@@ -54,6 +56,8 @@ private:
         };
         eAddressStatus mStatus;
         CFdbSocketAddr mAddress;
+        // Actually it doesn't make sense to have UDP port for server
+        int32_t mUDPPort;
         int32_t reconnect_cnt;
     };
 
@@ -63,7 +67,7 @@ public:
     bool online(const char *hs_url = 0, const char *hs_name = 0,
                 char **interface_ips = 0, uint32_t num_interface_ips = 0,
                 char **interface_names = 0, uint32_t num_interface_names = 0);
-    const std::string getNsTcpUrl(const char *ip_addr = 0);
+    const std::string getNsTCPUrl(const char *ip_addr = 0);
     void populateServerTable(CFdbSession *session, NFdbBase::FdbMsgServiceTable &svc_tbl, bool is_local);
 
     void notifyRemoteNameServerDrop(const char *host_name);
@@ -81,7 +85,8 @@ private:
         CFdbToken::tTokenList mTokens;
     };
     typedef std::map<std::string, CSvcRegistryEntry> tRegistryTbl;
-    typedef std::map<std::string, CTcpAddressAllocator> tTcpAllocatorTbl;
+    typedef std::map<std::string, CTCPAddressAllocator> tTCPAllocatorTbl;
+    typedef std::map<std::string, CUDPPortAllocator> tUDPAllocatorTbl;
     typedef std::vector<CFdbSocketAddr> tSocketAddrTbl;
     typedef std::set<std::string> tInterfaceTbl;
 
@@ -90,18 +95,19 @@ private:
     CFdbSubscribeHandle<CNameServer> mSubscribeHdl;
 
 #ifdef __WIN32__
-    CTcpAddressAllocator mLocalAllocator; // local host address(lo) allocator
+    CTCPAddressAllocator mLocalAllocator; // local host address(lo) allocator
 #else
     CIpcAddressAllocator mIpcAllocator; // UDS address allocator
 #endif
-    tTcpAllocatorTbl mTcpAllocators; // TCP (other than lo for windows) address allocator
+    tTCPAllocatorTbl mTCPAllocators; // TCP (other than lo for windows) address allocator
+    tUDPAllocatorTbl mUDPAllocators; // UDP port allocator
     CHostProxy *mHostProxy;
     CServerSecurityConfig mServerSecruity;
     tInterfaceTbl mIpInterfaces;
     tInterfaceTbl mNameInterfaces;
 
-    void populateAddrList(const tAddressDescTbl &addr_tbl,
-                          NFdbBase::FdbMsgAddressList &list, EFdbSocketType type);
+    void populateAddrList(const tAddressDescTbl &addr_tbl, NFdbBase::FdbMsgAddressList &list,
+                          EFdbSocketType type);
 
     void onAllocServiceAddressReq(CBaseJob::Ptr &msg_ref);
     void onRegisterServiceReq(CBaseJob::Ptr &msg_ref);
@@ -115,11 +121,11 @@ private:
     void onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
-    void createTcpAllocator();
+    void createTCPAllocator();
     bool allocateAddress(IAddressAllocator &allocator, FdbServerType svc_type, CFdbSocketAddr &sckt_addr);
-    void allocateTcpAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
-    void allocateTcpAddress(FdbServerType svc_type, tSocketAddrTbl &sckt_addr_tbl);
-    void allocateIpcAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
+    void allocateTCPAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
+    void allocateTCPAddress(FdbServerType svc_type, tSocketAddrTbl &sckt_addr_tbl);
+    void allocateIPCAddress(const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
     void allocateAddress(EFdbSocketType sckt_type, const std::string &svc_name, tSocketAddrTbl &sckt_addr_tbl);
 
     EFdbSocketType getSocketType(FdbSessionId_t sid);
@@ -142,7 +148,7 @@ private:
     void broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessage *msg, FdbMsgCode_t msg_code);
     bool bindNsAddress(tAddressDescTbl &addr_tbl);
     bool reconnectToAddress(CFdbAddressDesc *addr_desc, const char *svc_name);
-    void buildSpecificTcpAddress(CFdbSession *session, int32_t port, std::string &out_url);
+    void buildSpecificTCPAddress(CFdbSession *session, int32_t port, std::string &out_url);
     void populateTokens(const CFdbToken::tTokenList &tokens,
                         NFdbBase::FdbMsgAddressList &list);
 
@@ -173,6 +179,12 @@ private:
 
     void dumpTokens(CFdbToken::tTokenList &tokens,
                     NFdbBase::FdbMsgAddressList &list);
+
+                    
+    void prepareAddress(const CFdbAddressDesc &addr_desc, NFdbBase::FdbMsgAddressItem *item);
+    bool allocateUDPPort(const char *ip_address, int32_t &port);
+    void allocateUDPPortForClients(NFdbBase::FdbMsgAddressList &addr_list);
+    CFdbAddressDesc *findUDPPort(const char *ip_address, int32_t port);
 
     friend class CInterNameProxy;
 };

@@ -325,7 +325,7 @@ void CHostProxy::hostOnline(FdbMsgCode_t code)
     NFdbBase::FdbMsgHostAddress host_addr;
     host_addr.set_ip_address(host_ip);
     host_addr.set_host_name(hostName());
-    host_addr.set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
+    host_addr.set_ns_url(mNameServer->getNsTCPUrl(host_ip.c_str()));
     CFdbParcelableBuilder builder(host_addr);
     invoke(code, builder);
 }
@@ -490,6 +490,6 @@ void CHostProxy::getHostTbl(NFdbBase::FdbMsgHostAddressList &host_tbl)
 
     addr->set_ip_address(host_ip);
     addr->set_host_name(mHostName);
-    addr->set_ns_url(mNameServer->getNsTcpUrl(host_ip.c_str()));
+    addr->set_ns_url(mNameServer->getNsTCPUrl(host_ip.c_str()));
 }
 

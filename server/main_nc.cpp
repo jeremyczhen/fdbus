@@ -72,7 +72,7 @@ protected:
     {
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
         broadcastNoQueue(msg->code(), msg->getPayloadBuffer(), msg->getPayloadSize(),
-                         msg->topic().c_str(), msg->isForceUpdate());
+                         msg->topic().c_str(), msg->isForceUpdate(), msg->preferUDP());
 
         auto session = FDB_CONTEXT->getSession(msg->session());
         for (auto it = mPeerTbl.begin(); it != mPeerTbl.end(); ++it)
@@ -85,7 +85,8 @@ protected:
                                       , msg->getPayloadBuffer()
                                       , msg->getPayloadSize()
                                       , 0
-                                      , msg->isForceUpdate());
+                                      , msg->isForceUpdate()
+                                      , msg->preferUDP());
             }
         }
     }

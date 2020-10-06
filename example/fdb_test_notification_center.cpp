@@ -79,7 +79,7 @@ public:
             NFdbExample::SongId data;
             data.set_id(1234);
             CFdbProtoMsgBuilder builder(data);
-            publish(REQ_RAWDATA + event_id_start, builder, "topic 1", true);
+            publish(REQ_RAWDATA + event_id_start, builder, "topic 1", true, true);
             }
             
             {

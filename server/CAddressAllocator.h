@@ -36,10 +36,10 @@ public:
     static FdbServerType getSvcType(const char *svc_name);
 };
 
-class CIpcAddressAllocator : public IAddressAllocator
+class CIPCAddressAllocator : public IAddressAllocator
 {
 public:
-    CIpcAddressAllocator();
+    CIPCAddressAllocator();
     void allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc_type);
     void reset();
 
@@ -47,10 +47,10 @@ private:
     uint32_t mSocketId;
 };
 
-class CTcpAddressAllocator : public IAddressAllocator
+class CTCPAddressAllocator : public IAddressAllocator
 {
 public:
-    CTcpAddressAllocator();
+    CTCPAddressAllocator();
     void allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc_type);
     void reset();
     void setInterfaceIp(const char *ip_addr);
@@ -60,6 +60,18 @@ private:
     int32_t mMaxPort;
     int32_t mPort;
     std::string mInterfaceIp;
+};
+
+class CUDPPortAllocator
+{
+public:
+    CUDPPortAllocator();
+    int32_t allocate();
+    void reset();
+private:
+    int32_t mMinPort;
+    int32_t mMaxPort;
+    int32_t mPort;
 };
 
 #endif

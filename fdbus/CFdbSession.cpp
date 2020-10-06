@@ -19,6 +19,7 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CLogProducer.h>
+#include <common_base/CSocketImp.h>
 #include <utils/Log.h>
 #include <common_base/CFdbIfMessageHeader.h>
 
@@ -35,6 +36,8 @@ CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CS
     , mSecurityLevel(FDB_SECURITY_LEVEL_NONE)
     , mRecursiveDepth(0)
 {
+    mUDPAddr.mPort = FDB_INET_PORT_INVALID;
+    mUDPAddr.mType = FDB_SOCKET_UDP;
 }
 
 CFdbSession::~CFdbSession()
@@ -110,7 +113,7 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
 
 bool CFdbSession::sendMessage(CFdbMessage *msg)
 {
-    if (!msg->buildHeader(this))
+    if (!msg->buildHeader())
     {
         return false;
     }
@@ -155,6 +158,11 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
     }
 }
 
+bool CFdbSession::sendUDPMessage(CFdbMessage *msg)
+{
+    return mContainer->sendUDPmessage(msg, mUDPAddr);
+}
+
 bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
 {
     int32_t retries = FDB_RECV_RETRIES;
@@ -184,7 +192,7 @@ void CFdbSession::onInput(bool &io_error)
         return;
     }
 
-    CFdbMessage::CFdbMsgPrefix prefix(hdr_buf);
+    CFdbMsgPrefix prefix(hdr_buf);
 
     int32_t data_size = prefix.mTotalLength - CFdbMessage::mPrefixSize;
     if (data_size < 0)
@@ -278,16 +286,16 @@ void CFdbSession::onHup()
 }
 
 void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
-                            CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
+                            CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, this);
+    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
     checkLogEnabled(msg);
     if (object)
     {
-        msg->decodeDebugInfo(head, this);
+        msg->decodeDebugInfo(head);
         if (head.type() == FDB_MT_SIDEBAND_REQUEST)
         {
             object->onSidebandInvoke(msg_ref);
@@ -317,7 +325,7 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
 }
 
 void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
-                             CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
+                             CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
     bool found;
     PendingMsgTable_t::EntryContainer_t::iterator it;
@@ -340,7 +348,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
         if (object)
         {
             msg->update(head, prefix);
-            msg->decodeDebugInfo(head, this);
+            msg->decodeDebugInfo(head);
             msg->replaceBuffer(buffer, head.payload_size(), prefix.mHeadLength);
             if (!msg->sync())
             {
@@ -394,24 +402,24 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
 }
 
 void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
-                              CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer)
+                              CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, this);
+    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
     auto object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
     if (object)
     {
-        msg->decodeDebugInfo(head, this);
+        msg->decodeDebugInfo(head);
         object->doBroadcast(msg_ref);
     }
 }
 
 void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
-                                 CFdbMessage::CFdbMsgPrefix &prefix,
+                                 CFdbMsgPrefix &prefix,
                                  uint8_t *buffer, bool subscribe)
 {
     auto object_id = head.object_id();
-    auto msg = new CFdbMessage(head, prefix, buffer, this);
+    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
     
@@ -423,7 +431,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
         // sender name and receiver name
         msg->type(FDB_MT_BROADCAST);
         checkLogEnabled(msg);
-        msg->decodeDebugInfo(head, this);
+        msg->decodeDebugInfo(head);
         const CFdbMsgSubscribeItem *sub_item;
         int32_t ret;
         bool unsubscribe_object = true;
@@ -507,10 +515,10 @@ _reply_status:
 }
 
 void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head,
-                           CFdbMessage::CFdbMsgPrefix &prefix,
+                           CFdbMsgPrefix &prefix,
                            uint8_t *buffer)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, this);
+    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
@@ -559,7 +567,7 @@ void CFdbSession::terminateMessage(FdbMsgSn_t msg_sn, int32_t status, const char
 
 void CFdbSession::getSessionInfo(CFdbSessionInfo &info)
 {
-        container()->getSocketInfo(info.mSocketInfo);
+        container()->getSocketInfo(info.mContainerSocket);
         info.mCred = &mSocket->getPeerCredentials();
         info.mConn = &mSocket->getConnectionInfo();
 }
@@ -587,11 +595,11 @@ bool CFdbSession::hostIp(std::string &host_ip)
 {
     CFdbSessionInfo sinfo;
     getSessionInfo(sinfo);
-    if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
+    if (sinfo.mContainerSocket.mAddress->mType == FDB_SOCKET_IPC)
     {
         return false;
     }
-    host_ip = sinfo.mConn->mSelfIp;
+    host_ip = sinfo.mConn->mSelfAddress.mAddr;
     return true;
 }
 
@@ -599,7 +607,7 @@ bool CFdbSession::peerIp(std::string &host_ip)
 {
     CFdbSessionInfo sinfo;
     getSessionInfo(sinfo);
-    if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
+    if (sinfo.mContainerSocket.mAddress->mType == FDB_SOCKET_IPC)
     {
         return false;
     }
@@ -619,3 +627,55 @@ void CFdbSession::checkLogEnabled(CFdbMessage *msg)
         }
     }
 }
+
+bool CFdbSession::connected(const CFdbSocketAddr &addr)
+{
+    bool already_connected = false;
+    const CFdbSocketAddr &session_addr = mSocket->getAddress();
+    const CFdbSocketConnInfo &conn_info = mSocket->getConnectionInfo();
+    if (session_addr.mType == addr.mType)
+    {
+        if (session_addr.mType == FDB_SOCKET_IPC)
+        {
+            if (session_addr.mAddr == addr.mAddr)
+            {
+                already_connected = true;
+            }
+        }
+        else
+        {
+            if ((conn_info.mPeerIp == addr.mAddr) &&
+                (conn_info.mPeerPort == addr.mPort))
+            {
+                already_connected = true;
+            }
+        }
+    }
+    return already_connected;
+}
+
+bool CFdbSession::bound(const CFdbSocketAddr &addr)
+{
+    bool already_connected = false;
+    const CFdbSocketAddr &session_addr = mSocket->getAddress();
+    if (session_addr.mType == addr.mType)
+    {
+        if (session_addr.mType == FDB_SOCKET_IPC)
+        {
+            if (session_addr.mAddr == addr.mAddr)
+            {
+                already_connected = true;
+            }
+        }
+        else
+        {
+            if ((session_addr.mAddr == addr.mAddr) &&
+                (session_addr.mPort == addr.mPort))
+            {
+                already_connected = true;
+            }
+        }
+    }
+    return already_connected;
+}
+

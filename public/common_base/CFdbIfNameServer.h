@@ -54,6 +54,117 @@ enum FdbHsMsgCode
     NTF_HEART_BEAT = 6,
 };
 
+class FdbMsgAddressItem : public IFdbParcelable
+{
+public:
+    FdbMsgAddressItem()
+        : mOptions(0)
+    {
+    }
+    std::string &tcp_ipc_address()
+    {
+        return mTCPIPCAddress;
+    }
+    void set_tcp_ipc_address(const char *addr)
+    {
+        mTCPIPCUrl = addr;
+    }
+    void set_tcp_ipc_address(const std::string &addr)
+    {
+        mTCPIPCUrl = addr;
+    }
+    int32_t tcp_port() const
+    {
+        return mTCPPort;
+    }
+    void set_tcp_port(int32_t port)
+    {
+        mTCPPort = port;
+    }
+    EFdbSocketType address_type()
+    {
+        return mType;
+    }
+    void set_address_type(EFdbSocketType type)
+    {
+        mType = type;
+    }
+    std::string &tcp_ipc_url()
+    {
+        return mTCPIPCUrl;
+    }
+    void set_tcp_ipc_url(const char *url)
+    {
+        mTCPIPCUrl = url;
+    }
+    void set_tcp_ipc_url(const std::string &url)
+    {
+        mTCPIPCUrl = url;
+    }
+    int32_t udp_port() const
+    {
+        return mUDPPort;
+    }
+    void set_udp_port(int32_t port)
+    {
+        mUDPPort = port;
+        mOptions |= mMaskHasUDPPort;
+    }
+    bool has_udp_port() const
+    {
+        return !!(mOptions & mMaskHasUDPPort);
+    }
+    void fromSocketAddress(const CFdbSocketAddr &sckt_addr)
+    {
+        mTCPIPCAddress = sckt_addr.mAddr;
+        mTCPPort = sckt_addr.mPort;
+        mType = sckt_addr.mType;
+        mTCPIPCUrl = sckt_addr.mUrl;
+    }
+    void toSocketAddress(CFdbSocketAddr &sckt_addr)
+    {
+        sckt_addr.mAddr = mTCPIPCAddress;
+        sckt_addr.mPort = mTCPPort;
+        sckt_addr.mType = mType;
+        sckt_addr.mUrl = mTCPIPCUrl;
+    }
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mTCPIPCAddress
+                   << mTCPPort
+                   << (uint8_t)mType
+                   << mTCPIPCUrl
+                   << mOptions;
+        if (mOptions & mMaskHasUDPPort)
+        {
+            serializer << mUDPPort;
+        }
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        uint8_t type;
+        deserializer >> mTCPIPCAddress
+                     >> mTCPPort
+                     >> type
+                     >> mTCPIPCUrl
+                     >> mOptions;
+        mType = (EFdbSocketType)type;
+        if (mOptions & mMaskHasUDPPort)
+        {
+            deserializer >> mUDPPort;
+        }
+    }
+private:
+    std::string mTCPIPCAddress;
+    int32_t mTCPPort;
+    EFdbSocketType mType;
+
+    std::string mTCPIPCUrl;
+    int32_t mUDPPort;
+    uint8_t mOptions;
+        static const uint8_t mMaskHasUDPPort = 1 << 0;
+};
+
 class FdbMsgAddressList : public IFdbParcelable
 {
 public:
@@ -92,17 +203,13 @@ public:
     {
         mIsLocal = local;
     }
-    CFdbParcelableArray<std::string> &address_list()
+    CFdbParcelableArray<FdbMsgAddressItem> &address_list()
     {
         return mAddressList;
     }
-    void add_address_list(const std::string &address)
+    FdbMsgAddressItem *add_address_list()
     {
-        mAddressList.Add(address);
-    }
-    void add_address_list(const char *address)
-    {
-        mAddressList.Add(address);
+        return mAddressList.Add();
     }
     NFdbBase::FdbMsgTokens &token_list()
     {
@@ -142,7 +249,7 @@ private:
     std::string mServiceName;
     std::string mHostName;
     bool mIsLocal;
-    CFdbParcelableArray<std::string> mAddressList;
+    CFdbParcelableArray<FdbMsgAddressItem> mAddressList;
     FdbMsgTokens mTokenList;
     uint8_t mOptions;
         static const uint8_t mMaskTokenList = 1 << 0;
@@ -520,22 +627,33 @@ public:
     {
         mSecurityLevel = sec_level;
     }
+    int32_t udp_port() const
+    {
+        return mUDPPort;
+    }
+    void set_udp_port(int32_t port)
+    {
+        mUDPPort = port;
+    }
     void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mPeerName
                    << mPeerAddress
-                   << mSecurityLevel;
+                   << mSecurityLevel
+                   << mUDPPort;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         deserializer >> mPeerName
                      >> mPeerAddress
-                     >> mSecurityLevel;
+                     >> mSecurityLevel
+                     >> mUDPPort;
     }
 private:
     std::string mPeerName;
     std::string mPeerAddress;
     int32_t mSecurityLevel;
+    int32_t mUDPPort;
 };
 
 class FdbMsgClientTable : public IFdbParcelable

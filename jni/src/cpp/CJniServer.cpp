@@ -271,7 +271,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1broadcast
         len_arr = env->GetArrayLength(pb_data);
     }
 
-    bool ret = server->broadcast(msg_code, c_array, len_arr, c_filter, c_log_data);
+    bool ret = server->broadcast(msg_code, c_array, len_arr, c_filter, false, c_log_data);
 
     if (c_log_data)
     {

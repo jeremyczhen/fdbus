@@ -22,21 +22,17 @@
 
 bool getLinuxIpAddress(std::map<std::string, std::string> &addr_tbl);
 
-class CLinuxSocket : public CSocketImp
+class CTCPTransportSocket : public CSocketImp
 {
 public:
-    CLinuxSocket(sckt::TCPSocket *imp);
-    ~CLinuxSocket();
+    CTCPTransportSocket(sckt::TCPSocket *imp, EFdbSocketType type);
+    ~CTCPTransportSocket();
     int32_t send(const uint8_t *data, int32_t size);
     int32_t recv(uint8_t *data, int32_t size);
     int getFd();
-    CFdbSocketCredentials const &getPeerCredentials();
-    CFdbSocketConnInfo const &getConnectionInfo();
 private:
     //sckt::Socket *mSocketImp;
     sckt::TCPSocket *mSocketImp;
-    CFdbSocketCredentials mCred;
-    CFdbSocketConnInfo mConn;
 };
 
 class CLinuxClientSocket : public CClientSocketImp
@@ -57,6 +53,26 @@ public:
     int getFd();
 private:
     sckt::TCPServerSocket *mServerSocketImp;
+};
+
+class CUDPTransportSocket : public CSocketImp
+{
+public:
+    CUDPTransportSocket(sckt::UDPSocket *imp);
+    ~CUDPTransportSocket();
+    int32_t send(const uint8_t *data, int32_t size, const CFdbSocketAddr &dest_addr);
+    int32_t recv(uint8_t *data, int32_t size);
+    int getFd();
+private:
+    sckt::UDPSocket *mSocketImp;
+};
+
+class CLinuxUDPSocket : public CUDPSocketImp
+{
+public:
+    CLinuxUDPSocket(CFdbSocketAddr &addr);
+    CLinuxUDPSocket();
+    CSocketImp *bind();
 };
 
 #endif

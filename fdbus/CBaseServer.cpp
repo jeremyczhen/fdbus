@@ -26,19 +26,18 @@ CServerSocket::CServerSocket(CBaseServer *owner
                              , FdbSocketId_t skid
                              , CServerSocketImp *socket)
     : CBaseFdWatch(-1, POLLIN)
-    , CFdbSessionContainer(skid, owner)
-    , mSocket(socket)
+    , CFdbSessionContainer(skid, owner, socket)
 {
 }
 
 CServerSocket::~CServerSocket()
 {
-    unbind();
 }
 
 void CServerSocket::onInput(bool &io_error)
 {
-    auto sock_imp = mSocket->accept();
+    auto socket = fdb_dynamic_cast_if_available<CServerSocketImp *>(mSocket);
+    auto sock_imp = socket->accept();
     if (sock_imp)
     {
         auto session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
@@ -53,27 +52,14 @@ void CServerSocket::onInput(bool &io_error)
 
 bool CServerSocket::bind(CBaseWorker *worker)
 {
-    if (mSocket->bind())
+    auto socket = fdb_dynamic_cast_if_available<CServerSocketImp *>(mSocket);
+    if (socket->bind())
     {
-        descriptor(mSocket->getFd());
+        descriptor(socket->getFd());
         attach(worker);
         return true;
     }
     return false;
-}
-
-void CServerSocket::unbind()
-{
-    if (mSocket)
-    {
-        delete mSocket;
-        mSocket = 0;
-    }
-}
-
-void CServerSocket::getSocketInfo(CFdbSocketInfo &info)
-{
-    info.mAddress = &mSocket->getAddress();
 }
 
 CBaseServer::CBaseServer(const char *name, CBaseWorker *worker)
@@ -140,7 +126,7 @@ void CBaseServer::cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBas
 }
 
 
-CServerSocket *CBaseServer::doBind(const char *url)
+CServerSocket *CBaseServer::doBind(const char *url, int32_t udp_port)
 {
     CFdbSocketAddr addr;
     EFdbSocketType skt_type;
@@ -169,10 +155,10 @@ CServerSocket *CBaseServer::doBind(const char *url)
         return 0;
     }
 
-    auto session_container = getSocketByUrl(url);
-    if (session_container) /* If the address is already bound, do nothing */
+    auto session = bound(addr);
+    if (session) /* If the address is already bound, do nothing */
     {
-        return fdb_dynamic_cast_if_available<CServerSocket *>(session_container);
+        return fdb_dynamic_cast_if_available<CServerSocket *>(session->container());
     }
 
     auto server_imp = CBaseSocketFactory::createServerSocket(addr);
@@ -181,6 +167,8 @@ CServerSocket *CBaseServer::doBind(const char *url)
         FdbSocketId_t skid = allocateEntityId();
         auto sk = new CServerSocket(this, skid, server_imp);
         addSocket(sk);
+        sk->bindUDPSocket(udp_port);
+
         if (sk->bind(CFdbContext::getInstance()))
         {
             return sk;
@@ -235,11 +223,6 @@ void CBaseServer::unbind(FdbSocketId_t skid)
 void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    auto session = FDB_CONTEXT->getSession(msg->session());
-    if (!session)
-    {
-        return;
-    }
     switch (msg->code())
     {
         case FDB_SIDEBAND_AUTH:
@@ -249,6 +232,12 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             if (!msg->deserialize(parser))
             {
                 msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
+                return;
+            }
+
+            auto session = FDB_CONTEXT->getSession(msg->session());
+            if (!session)
+            {
                 return;
             }
             
@@ -266,18 +255,6 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             session->token(token);
             LOG_I("CBaseServer: security is set: session: %d, level: %d.\n",
                     msg->session(), security_level);
-        }
-        break;
-        case FDB_SIDEBAND_SESSION_INFO:
-        {
-            NFdbBase::FdbSessionInfo sinfo;
-            CFdbParcelableParser parser(sinfo);
-            if (!msg->deserialize(parser))
-            {
-                msg->status(msg_ref, NFdbBase::FDB_ST_MSG_DECODE_FAIL);
-                return;
-            }
-            session->senderName(sinfo.sender_name().c_str());
         }
         break;
         case FDB_SIDEBAND_QUERY_CLIENT:
@@ -301,9 +278,9 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                         auto cinfo = clt_tbl.add_client_tbl();
                         cinfo->set_peer_name(session->senderName().c_str());
                         std::string addr;
-                        if (sinfo.mSocketInfo.mAddress->mType == FDB_SOCKET_IPC)
+                        if (sinfo.mContainerSocket.mAddress->mType == FDB_SOCKET_IPC)
                         {
-                            addr = sinfo.mSocketInfo.mAddress->mAddr.c_str();
+                            addr = sinfo.mContainerSocket.mAddress->mAddr.c_str();
                         }
                         else
                         {
@@ -312,6 +289,9 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                         }
                         cinfo->set_peer_address(addr.c_str());
                         cinfo->set_security_level(session->securityLevel());
+
+                        const CFdbSocketAddr &udp_addr = session->getPeerUDPAddress();
+                        cinfo->set_udp_port(udp_addr.mPort);
                     }
                 }
             }

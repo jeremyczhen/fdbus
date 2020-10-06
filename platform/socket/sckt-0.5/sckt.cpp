@@ -700,7 +700,7 @@ sckt::uint TCPSocket::Recv(sckt::byte* buf, uint maxSize){
     return uint(len);
 };
 
-void UDPSocket::Open(u16 port){
+void UDPSocket::Open(const IPAddress& ip){
     if(this->IsValid())
         throw sckt::Exc("UDPSocket::Open(): the socket is already opened");
     
@@ -709,12 +709,12 @@ void UDPSocket::Open(u16 port){
 	throw sckt::Exc("UDPSocket::Open(): ::socket() failed");
     
     /* Bind locally, if appropriate */
-    if(port != 0){
+    if(ip.port > 0){
         struct sockaddr_in sockAddr;
         memset(&sockAddr, 0, sizeof(sockAddr));
         sockAddr.sin_family = AF_INET;
-        sockAddr.sin_addr.s_addr = INADDR_ANY;
-        sockAddr.sin_port = htons(port);
+        sockAddr.sin_addr.s_addr = ip.host ? ip.host : INADDR_ANY;
+        sockAddr.sin_port = htons(ip.port);
         
         // Bind the socket for listening
         if(bind(CastToSocket(this->socket), reinterpret_cast<struct sockaddr*>(&sockAddr), sizeof(sockAddr)) == M_SOCKET_ERROR){

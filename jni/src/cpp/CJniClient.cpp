@@ -448,6 +448,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
     jboolean ret = client->send((FdbMsgCode_t)code,
                         (const void *)c_array,
                         len_arr,
+                        false,
                         c_log_data);
     if (c_array)
     {
@@ -619,6 +620,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1publish
                                    len_arr,
                                    c_topic,
                                    always_update,
+                                   false,
                                    c_log_data);
     if (c_array)
     {

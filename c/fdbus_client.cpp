@@ -344,7 +344,7 @@ fdb_bool_t fdb_client_send(fdb_client_t *handle,
     
     auto fdb_client = (CCClient *)handle->native_handle;
     
-    return fdb_client->send(msg_code, msg_data, data_size, log_data);
+    return fdb_client->send(msg_code, msg_data, data_size, false, log_data);
 }
 
 fdb_bool_t fdb_client_subscribe(fdb_client_t *handle,
@@ -414,7 +414,7 @@ fdb_bool_t fdb_client_publish(fdb_client_t *handle,
     
     auto fdb_client = (CCClient *)handle->native_handle;
     
-    return fdb_client->publish(event, event_data, data_size, topic, always_update, log_data);
+    return fdb_client->publish(event, event_data, data_size, topic, always_update, false, log_data);
 }
 
 fdb_bool_t fdb_client_get_event_async(fdb_client_t *handle,

@@ -96,6 +96,54 @@ struct CFdbMsgMetadata
     uint64_t mReceiveTime;     // the time when message is received by client
 };
 
+struct CFdbMsgPrefix
+{
+    CFdbMsgPrefix()
+        : mTotalLength(0)
+        , mHeadLength(0)
+    {
+    }
+
+    CFdbMsgPrefix(uint32_t payload_length, uint32_t head_length)
+        : mTotalLength(payload_length)
+        , mHeadLength(head_length)
+    {
+    }
+
+    void deserialize(const uint8_t *buffer)
+    {
+        mTotalLength = buffer[0] << 0;
+        mTotalLength |= buffer[1] << 8;
+        mTotalLength |= buffer[2] << 16;
+        mTotalLength |= buffer[3] << 24;
+
+        mHeadLength = buffer[4] << 0;
+        mHeadLength |= buffer[5] << 8;
+        mHeadLength |= buffer[6] << 16;
+        mHeadLength |= buffer[7] << 24;
+    }
+
+    CFdbMsgPrefix(const uint8_t *buffer)
+    {
+        deserialize(buffer);
+    }
+
+    void serialize(uint8_t *buffer)
+    {
+        buffer[0] = (uint8_t)((mTotalLength >> 0) & 0xff);
+        buffer[1] = (uint8_t)((mTotalLength >> 8) & 0xff);
+        buffer[2] = (uint8_t)((mTotalLength >> 16) & 0xff);
+        buffer[3] = (uint8_t)((mTotalLength >> 24) & 0xff);
+
+        buffer[4] = (uint8_t)((mHeadLength >> 0) & 0xff);
+        buffer[5] = (uint8_t)((mHeadLength >> 8) & 0xff);
+        buffer[6] = (uint8_t)((mHeadLength >> 16) & 0xff);
+        buffer[7] = (uint8_t)((mHeadLength >> 24) & 0xff);
+    }
+    uint32_t mTotalLength;
+    uint32_t mHeadLength;
+};
+
 #define FDB_BEGIN_FOREACH_SIGNAL_WITH_RETURN(_msg, _sub_item, _error)     do { \
     CFdbMsgSubscribeList _subscribe_msg; \
     CFdbParcelableParser _parser(_subscribe_msg); \
@@ -162,56 +210,8 @@ private:
 #define MSG_FLAG_REPLIED            (1 << (MSG_LOCAL_FLAG_SHIFT + 2))
 #define MSG_FLAG_ENABLE_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 3))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
+#define MSG_FLAG_UDP                (1 << (MSG_LOCAL_FLAG_SHIFT + 5))
 #define MSG_FLAG_MANUAL_UPDATE      (1 << (MSG_LOCAL_FLAG_SHIFT + 6))
-    
-    struct CFdbMsgPrefix
-    {
-        CFdbMsgPrefix()
-            : mTotalLength(0)
-            , mHeadLength(0)
-        {
-        }
-
-        CFdbMsgPrefix(uint32_t payload_length, uint32_t head_length)
-            : mTotalLength(payload_length)
-            , mHeadLength(head_length)
-        {
-        }
-
-        void deserialize(const uint8_t *buffer)
-        {
-            mTotalLength = buffer[0] << 0;
-            mTotalLength |= buffer[1] << 8;
-            mTotalLength |= buffer[2] << 16;
-            mTotalLength |= buffer[3] << 24;
-
-            mHeadLength = buffer[4] << 0;
-            mHeadLength |= buffer[5] << 8;
-            mHeadLength |= buffer[6] << 16;
-            mHeadLength |= buffer[7] << 24;
-        }
-
-        CFdbMsgPrefix(const uint8_t *buffer)
-        {
-            deserialize(buffer);
-        }
-
-        void serialize(uint8_t *buffer)
-        {
-            buffer[0] = (uint8_t)((mTotalLength >> 0) & 0xff);
-            buffer[1] = (uint8_t)((mTotalLength >> 8) & 0xff);
-            buffer[2] = (uint8_t)((mTotalLength >> 16) & 0xff);
-            buffer[3] = (uint8_t)((mTotalLength >> 24) & 0xff);
-
-            buffer[4] = (uint8_t)((mHeadLength >> 0) & 0xff);
-            buffer[5] = (uint8_t)((mHeadLength >> 8) & 0xff);
-            buffer[6] = (uint8_t)((mHeadLength >> 16) & 0xff);
-            buffer[7] = (uint8_t)((mHeadLength >> 24) & 0xff);
-        }
-        uint32_t mTotalLength;
-        uint32_t mHeadLength;
-    };
-
     static const int32_t mPrefixSize = sizeof(CFdbMsgPrefix);
     static const int32_t mMaxHeadSize = 128;
 
@@ -445,6 +445,23 @@ public:
         return !!(mFlag & MSG_FLAG_FORCE_UPDATE);
     }
 
+    void preferUDP(bool active)
+    {
+        if (active)
+        {
+            mFlag |= MSG_FLAG_UDP;
+        }
+        else
+        {
+            mFlag &= ~MSG_FLAG_UDP;
+        }
+    }
+
+    bool preferUDP() const
+    {
+        return !!(mFlag & MSG_FLAG_UDP);
+    }
+
     /*
      * Retrieve metadata associated with the message.
      * @oparam metadata: retrieved metadata
@@ -498,7 +515,7 @@ private:
     CFdbMessage(NFdbBase::CFdbMessageHeader &head
                 , CFdbMsgPrefix &prefix
                 , uint8_t *buffer
-                , CFdbSession *session);
+                , FdbSessionId_t sid);
 
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
@@ -603,7 +620,7 @@ private:
                        , int32_t timeout = 0);
 
     void run(CBaseWorker *worker, Ptr &ref);
-    bool buildHeader(CFdbSession *session);
+    bool buildHeader();
     bool serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object = 0);
     bool serialize(const void *buffer, int32_t size, const CFdbBaseObject *object = 0);
 
@@ -684,8 +701,8 @@ private:
     bool sendSideband();
     static bool replySideband(CBaseJob::Ptr &msg_ref, IFdbMsgBuilder &data);
     static bool replySideband(CBaseJob::Ptr &msg_ref, const void *buffer = 0, int32_t size = 0);
-    void encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
-    void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr, CFdbSession *session);
+    void encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr);
+    void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr);
 
     static bool replyNoQueue(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
     void setRemoteCall(CFdbBaseObject *object, long flag)
@@ -721,6 +738,7 @@ private:
     long mMigrateFlag;
 
     friend class CFdbSession;
+    friend class CFdbUDPSession;
     friend class CFdbBaseObject;
     friend class CBaseServer;
     friend class CBaseClient;

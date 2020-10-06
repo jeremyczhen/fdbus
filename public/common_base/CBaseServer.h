@@ -33,12 +33,8 @@ public:
                   , CServerSocketImp *socket);
     ~CServerSocket();
     bool bind(CBaseWorker *worker);
-    void unbind();
-    void getSocketInfo(CFdbSocketInfo &info);
 protected:
     void onInput(bool &io_error);
-private:
-    CServerSocketImp *mSocket;
 };
 
 class CBaseServer : public CBaseEndpoint
@@ -86,7 +82,7 @@ protected:
 private:
     CApiSecurityConfig mApiSecurity;
     void cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
-    CServerSocket *doBind(const char *url);
+    CServerSocket *doBind(const char *url, int32_t udp_port = FDB_INET_PORT_INVALID);
 
     void cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     void doUnbind(FdbSocketId_t skid = FDB_INVALID_ID);

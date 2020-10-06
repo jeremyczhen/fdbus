@@ -20,19 +20,23 @@
 #include <string>
 #include "CBaseFdWatch.h"
 #include "common_defs.h"
-#include "CFdbMessage.h"
+//#include "CFdbMessage.h"
+#include "CBaseJob.h"
 #include "CEntityContainer.h"
-#include "CSocketImp.h"
 #include "CFdbSessionContainer.h"
 
 struct CFdbSessionInfo
 {
-    CFdbSocketInfo mSocketInfo;
+    CFdbSocketInfo mContainerSocket;
     CFdbSocketCredentials const *mCred;
     CFdbSocketConnInfo const *mConn;
 };
 
 class CFdbSessionContainer;
+class CSocketImp;
+class CFdbMessage;
+struct CFdbMsgPrefix;
+
 namespace NFdbBase {
     class CFdbMessageHeader;
 }
@@ -45,6 +49,7 @@ public:
     bool sendMessage(const uint8_t *buffer, int32_t size);
     bool sendMessage(CBaseJob::Ptr &ref);
     bool sendMessage(CFdbMessage *msg);
+    bool sendUDPMessage(CFdbMessage *msg);
     FdbSessionId_t sid() const
     {
         return mSid;
@@ -75,16 +80,21 @@ public:
     {
         mSenderName = name;
     }
+    const CFdbSocketAddr &getPeerUDPAddress() const
+    {
+        return mUDPAddr;
+    }
     bool hostIp(std::string &host_ip);
     bool peerIp(std::string &host_ip);
-
-    bool receiveData(uint8_t *buf, int32_t size);
 
     const std::string &getEndpointName() const;
     void terminateMessage(CBaseJob::Ptr &job, int32_t status, const char *reason);
     void terminateMessage(FdbMsgSn_t msg, int32_t status, const char *reason = 0);
     void getSessionInfo(CFdbSessionInfo &info);
     CFdbMessage *peepPendingMessage(FdbMsgSn_t sn);
+
+    bool connected(const CFdbSocketAddr &addr);
+    bool bound(const CFdbSocketAddr &addr);
 protected:
     void onInput(bool &io_error);
     void onError();
@@ -92,12 +102,13 @@ protected:
 private:
     typedef CEntityContainer<FdbMsgSn_t, CBaseJob::Ptr> PendingMsgTable_t;
 
-    void doRequest(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doResponse(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
-    void doUpdate(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doRequest(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doResponse(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
+    void doUpdate(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
     void checkLogEnabled(CFdbMessage *msg);
+    bool receiveData(uint8_t *buf, int32_t size);
 
     PendingMsgTable_t mPendingMsgTable;
     FdbSessionId_t mSid;
@@ -107,6 +118,7 @@ private:
     std::string mToken;
     std::string mSenderName;
     int32_t mRecursiveDepth;
+    CFdbSocketAddr mUDPAddr;
 };
 
 #endif

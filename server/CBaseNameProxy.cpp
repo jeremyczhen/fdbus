@@ -42,20 +42,21 @@ void CBaseNameProxy::replaceSourceUrl(NFdbBase::FdbMsgAddressList &msg_addr_list
 {
     std::string peer_ip;
     peerIp(peer_ip, session);
+    if (peer_ip.empty())
+    {
+        return;
+    }
     auto &addr_list = msg_addr_list.address_list();
     for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
     {
         CFdbSocketAddr addr;
-        if (CBaseSocketFactory::parseUrl(it->c_str(), addr))
+        if ((it->address_type() == FDB_SOCKET_IPC) || (it->tcp_ipc_address() == FDB_LOCAL_HOST))
         {
-            if ((addr.mType == FDB_SOCKET_IPC) || (addr.mAddr == FDB_LOCAL_HOST))
-            {
-                continue;
-            }
-            if ((addr.mAddr == FDB_IP_ALL_INTERFACE) && !peer_ip.empty())
-            {
-                CBaseSocketFactory::buildUrl(*it, peer_ip.c_str(), addr.mPort);
-            }
+            continue;
+        }
+        if (it->tcp_ipc_address() == FDB_IP_ALL_INTERFACE)
+        {
+            it->set_tcp_ipc_address(peer_ip);
         }
     }
 }

@@ -40,7 +40,6 @@ public:
     void addAddressListener(const char *svc_name);
     void removeAddressListener(const char *svc_name);
     void registerService(const char *svc_name);
-    void registerService(const char *svc_name, std::vector<std::string> &addr_tbl);
     void unregisterService(const char *svc_name);
     bool connectToNameServer();
     std::string &hostName()
@@ -94,7 +93,7 @@ private:
 
     void onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer);
     
-    void processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
+    void processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list);
     void processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
 };
 
