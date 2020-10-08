@@ -20,6 +20,7 @@
 #include "common_defs.h"
 #include "CBaseClient.h"
 #include "CFdbIfNameServer.h"
+#include "CBaseJob.h"
 
 class CBaseNameProxy : public CBaseClient
 {
@@ -27,7 +28,8 @@ public:
     CBaseNameProxy();
 
     virtual bool connectToNameServer() {return false;}
-    virtual void addServiceListener(const char *svc_name, FdbSessionId_t subscriber) {}
+    virtual void addServiceListener(const char *svc_name) {}
+    virtual void addServiceListener(const char *svc_name, CBaseJob::Ptr &msg_ref) {}
     virtual void removeServiceListener(const char *svc_name) {}
     virtual void addServiceMonitorListener(const char *svc_name, FdbSessionId_t subscriber) {}
     virtual void removeServiceMonitorListener(const char *svc_name) {}

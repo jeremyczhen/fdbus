@@ -72,7 +72,7 @@ void CIntraNameProxy::CConnectTimer::fire()
     enableOneShot(CNsConfig::getNsReconnectInterval());
 }
 
-void CIntraNameProxy::addServiceListener(const char *svc_name, FdbSessionId_t subscriber)
+void CIntraNameProxy::addServiceListener(const char *svc_name)
 {
     if (connected())
     {
@@ -133,21 +133,12 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
     auto svc_name = msg_addr_list.service_name().c_str();
     const std::string &host_name = msg_addr_list.host_name();
     std::vector<CBaseEndpoint *> endpoints;
+    std::vector<CBaseEndpoint *> failures;
     bool is_offline = msg_addr_list.address_list().empty();
+    int32_t success_count = 0;
+    int32_t failure_count = 0;
     
     FDB_CONTEXT->findEndpoint(svc_name, endpoints, false);
-    if (!msg->isInitialResponse())
-    {   // if client starts before server, once server appears, only one event is
-        // received by client process. If more than one client connects to the same
-        // server in the same process, shall ask name server to allocate UDP port
-        // for each client. A calling to addServiceListener() will lead to a
-        // broadcast of server address with isInitialResponse() being true. Only
-        // UDP port will be valid and TCP address will be discussed in subsequent broadcast.
-        for (uint32_t i = 1; i < endpoints.size(); ++i)
-        {
-            addServiceListener(svc_name, FDB_INVALID_ID);
-        }
-    }
     for (auto ep_it = endpoints.begin(); ep_it != endpoints.end(); ++ep_it)
     {
         auto client = fdb_dynamic_cast_if_available<CBaseClient *>(*ep_it);
@@ -184,6 +175,7 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
 
                 client->local(msg_addr_list.is_local());
 
+                // for client, size of addr_list is always 1, which is ensured by name server
                 replaceSourceUrl(msg_addr_list, FDB_CONTEXT->getSession(msg->session()));
                 auto &addr_list = msg_addr_list.address_list();
                 for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
@@ -194,21 +186,68 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                         udp_port = it->udp_port();
                     }
 
-                    if (!client->doConnect(it->tcp_ipc_url().c_str(), host_name.c_str(), udp_port))
+                    auto session_container = client->doConnect(it->tcp_ipc_url().c_str(),
+                                                               host_name.c_str(), udp_port);
+                    if (session_container)
                     {
-                        LOG_E("CIntraNameProxy: Session %d: Fail to connect to %s!\n",
-                                msg->session(), it->tcp_ipc_url().c_str());
-                        //TODO: do something for me!
-                    }
-                    else
-                    {
+                        if ((it->address_type() != FDB_SOCKET_IPC) && (udp_port > FDB_INET_PORT_NOBIND))
+                        {
+                            CFdbSocketInfo socket_info;
+                            if (!session_container->getUDPSocketInfo(socket_info) ||
+                                (!FDB_VALID_PORT(socket_info.mAddress->mPort)))
+                            {
+                                failure_count++;
+                            }
+                            else
+                            {
+                                success_count++;
+                            }
+                        }
                         LOG_E("CIntraNameProxy: Session %d, Server: %s, address %s is connected.\n",
                                 msg->session(), svc_name, it->tcp_ipc_url().c_str());
                         // only connect to the first url of the same server.
                         break;
                     }
+                    else
+                    {
+                        LOG_E("CIntraNameProxy: Session %d: Fail to connect to %s!\n",
+                                msg->session(), it->tcp_ipc_url().c_str());
+                        //TODO: do something for me!
+                    }
                 }
             }
+        }
+    }
+    if (!is_offline && failure_count)
+    {
+        // msg->isInitialResponse() true: client starts after server; UDP port will be
+        //                                allocated for each client
+        //                          false: client starts before server; only one UDP port
+        //                                is allocated. Subsequent allocation shall be
+        //                                triggered manually
+        // if client starts before server, once server appears, only one event is
+        // received by client process. If more than one client connects to the same
+        // server in the same process, shall ask name server to allocate UDP port
+        // for each client. A calling to addServiceListener() will lead to a
+        // broadcast of server address with isInitialResponse() being true. Only
+        // UDP port will be valid and TCP address will be discussed in subsequent broadcast.
+        int32_t nr_request = 0;
+        if (!msg->isInitialResponse())
+        {   // client starts before server and at least one fails to bind UDP: In this case
+            // we should send requests of the same number as failures in the hope that we
+            // can get enough response with new UDP port ID
+            nr_request = failure_count;
+        }
+        else if (!(msg->isInitialResponse() && success_count))
+        {   // client starts after server and none success to bind UDP: in this case only
+            // one request is needed since there are several other requesting on-going
+            nr_request = 1;
+        }
+        for (int32_t i = 0; i < nr_request; ++i)
+        {
+            LOG_E("CIntraNameProxy: Session %d, Server: %s: requesting next UDP...\n",
+                    msg->session(), svc_name);
+            addServiceListener(svc_name);
         }
     }
 }

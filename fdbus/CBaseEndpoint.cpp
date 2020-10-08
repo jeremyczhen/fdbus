@@ -562,7 +562,7 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
     }
     else
     {
-        name_proxy->addServiceListener(mNsName.c_str(), FDB_INVALID_ID);
+        name_proxy->addServiceListener(mNsName.c_str());
     }
     return true;
 }
@@ -623,7 +623,7 @@ void CBaseEndpoint::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             {
                 udp_port = sinfo.udp_port();
             }
-            if ((udp_port != FDB_INET_PORT_INVALID) && session->peerIp(peer_ip))
+            if (FDB_VALID_PORT(udp_port) && session->peerIp(peer_ip))
             {
                 CFdbSocketAddr &udp_addr = const_cast<CFdbSocketAddr &>(session->getPeerUDPAddress());
                 udp_addr.mAddr = peer_ip;
@@ -651,12 +651,24 @@ void CBaseEndpoint::updateSessionInfo(CFdbSession *session)
     int32_t udp_port = FDB_INET_PORT_INVALID;
     if (sinfo_connected.mContainerSocket.mAddress->mType == FDB_SOCKET_TCP)
     {
-        udp_port = session->container()->getUDPPort();
-    }
+        if (role() == FDB_OBJECT_ROLE_CLIENT)
+        {
+            // for client, self IP address is unknown until session is connected.
+            // for server, UDP is created upon binding because IP address of UDP
+            //  is the same as that of TCP socket
+            session->container()->bindUDPSocket(sinfo_connected.mConn->mSelfAddress.mAddr.c_str());
+        }
 
+        CFdbSocketInfo socket_info;
+        if (session->container()->getUDPSocketInfo(socket_info) &&
+            FDB_VALID_PORT(socket_info.mAddress->mPort))
+        {
+            udp_port = socket_info.mAddress->mPort;
+        }
+    }
     NFdbBase::FdbSessionInfo sinfo_sent;
     sinfo_sent.set_sender_name(mName.c_str());
-    if (udp_port != FDB_INET_PORT_INVALID)
+    if (FDB_VALID_PORT(udp_port))
     {
         sinfo_sent.set_udp_port(udp_port);
     }

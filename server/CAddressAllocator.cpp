@@ -93,7 +93,7 @@ void CTCPAddressAllocator::allocate(CFdbSocketAddr &sckt_addr, FdbServerType svc
     else
     {
 #ifdef CFG_ALLOC_PORT_BY_SYSTEM
-        port = FDB_SYSTEM_PORT;
+        port = FDB_INET_PORT_AUTO;
 #else
         port = mPort++;
         if (mPort > mMaxPort)
@@ -134,12 +134,16 @@ CUDPPortAllocator::CUDPPortAllocator()
 
 int32_t CUDPPortAllocator::allocate()
 {
-    int32_t port= mPort++;
-
+    int32_t port;
+#ifdef CFG_ALLOC_PORT_BY_USER
+    port = mPort++;
     if (mPort > mMaxPort)
     {
         mPort = mMinPort;
     }
+#else
+    port = FDB_INET_PORT_AUTO;
+#endif
     return port;
 }
 

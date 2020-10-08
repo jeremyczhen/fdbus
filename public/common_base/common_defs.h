@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 
-#define FDB_VERSION_MAJOR 4
-#define FDB_VERSION_MINOR 3
+#define FDB_VERSION_MAJOR 5
+#define FDB_VERSION_MINOR 0
 #define FDB_VERSION_BUILD 0
 
 #define FDB_INVALID_ID (~0)
@@ -50,7 +50,6 @@ typedef uint8_t FdbEventGroup_t;
 #define FDB_URL_UDP FDB_URL_UDP_IND "://"
 
 #define FDB_IP_ALL_INTERFACE "0"
-#define FDB_SYSTEM_PORT 0
 
 #define FDB_OBJECT_MAIN 0
 #define FDB_OBJECT_SN_SHIFT 16
@@ -61,8 +60,10 @@ typedef uint8_t FdbEventGroup_t;
 
 #define FDB_LOCAL_HOST "127.0.0.1"
 
-#define FDB_INET_PORT_INVALID   -1
-#define FDB_INET_PORT_NOBIND    0
+#define FDB_INET_PORT_INVALID   -2
+#define FDB_INET_PORT_NOBIND    -1
+#define FDB_INET_PORT_AUTO      0
+#define FDB_VALID_PORT(_port)   ((_port) > FDB_INET_PORT_AUTO)
 
 #define FDB_SECURITY_LEVEL_NONE 0
 

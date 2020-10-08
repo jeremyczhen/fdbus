@@ -27,21 +27,21 @@
 class CServiceSubscribeMsg : public CFdbMessage
 {
 public:
-    CServiceSubscribeMsg(FdbSessionId_t subscriber)
+    CServiceSubscribeMsg(CBaseJob::Ptr &msg_ref)
         : CFdbMessage()
-        , mSubscriber(subscriber)
+        , mMsgRef(msg_ref)
     {
     }
-    FdbSessionId_t getSubscriber() const
+    CBaseJob::Ptr &getMsgRef()
     {
-        return mSubscriber;
+        return mMsgRef;
     }
     FdbMessageType_t getTypeId()
     {
         return FDB_MSG_TYPE_SUBSCRIBE;
     }
 private:
-    FdbSessionId_t mSubscriber;
+    CBaseJob::Ptr mMsgRef;
 };
 
 CQueryServiceMsg::CQueryServiceMsg(tPendingReqTbl *pending_tbl,
@@ -107,11 +107,19 @@ bool CInterNameProxy::connectToNameServer()
     return true;
 }
 
-void CInterNameProxy::addServiceListener(const char *svc_name, FdbSessionId_t subscriber)
+void CInterNameProxy::addServiceListener(const char *svc_name)
 {
     if (connected())
     {
-        subscribeListener(NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE, svc_name, subscriber);
+        CBaseNameProxy::subscribeListener(NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE, svc_name);
+    }
+}
+
+void CInterNameProxy::addServiceListener(const char *svc_name, CBaseJob::Ptr &msg_ref)
+{
+    if (connected())
+    {
+        subscribeListener(NFdbBase::NTF_SERVICE_ONLINE_INTER_MACHINE, svc_name, msg_ref);
     }
 }
 
@@ -123,11 +131,19 @@ void CInterNameProxy::removeServiceListener(const char *svc_name)
     }
 } 
 
-void CInterNameProxy::addServiceMonitorListener(const char *svc_name, FdbSessionId_t subscriber)
+void CInterNameProxy::addServiceMonitorListener(const char *svc_name)
 {
     if (connected())
     {
-        subscribeListener(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, svc_name, subscriber);
+        CBaseNameProxy::subscribeListener(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, svc_name);
+    }
+}
+
+void CInterNameProxy::addServiceMonitorListener(const char *svc_name, CBaseJob::Ptr &msg_ref)
+{
+    if (connected())
+    {
+        subscribeListener(NFdbBase::NTF_SERVICE_ONLINE_MONITOR_INTER_MACHINE, svc_name, msg_ref);
     }
 }
 
@@ -187,28 +203,26 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 msg_addr_list.address_list().vpool().clear();
                 for (auto it = pool.begin(); it != pool.end(); ++it)
                 {
-                    CFdbSocketAddr addr;
-                    if (CBaseSocketFactory::parseUrl(it->tcp_ipc_url().c_str(), addr))
+                    if ((it->address_type() == FDB_SOCKET_IPC) || (it->tcp_ipc_address() == FDB_LOCAL_HOST))
                     {
-                        if ((addr.mType == FDB_SOCKET_IPC) || (addr.mAddr == FDB_LOCAL_HOST))
-                        {
-                            continue;
-                        }
-                        if (addr.mAddr == peer_ip)
-                        {
-                            best_candidate = &(*it);
-                            break;
-                        }
-                        if ((addr.mAddr == FDB_IP_ALL_INTERFACE) && !peer_ip.empty())
-                        {
-                            best_candidate = &(*it);
-                            it->set_tcp_ipc_address(peer_ip);
-                            continue;
-                        }
-                        if (!fallback_candidate)
-                        {
-                            fallback_candidate = &(*it);
-                        }
+                        continue;
+                    }
+                    if (it->tcp_ipc_address() == peer_ip)
+                    {
+                        best_candidate = &(*it);
+                        break;
+                    }
+                    if ((it->tcp_ipc_address() == FDB_IP_ALL_INTERFACE) && !peer_ip.empty())
+                    {
+                        best_candidate = &(*it);
+                        it->set_tcp_ipc_address(peer_ip);
+                        CBaseSocketFactory::buildUrl(it->tcp_ipc_url(), it->tcp_ipc_address().c_str(),
+                                                     it->tcp_port());
+                        continue;
+                    }
+                    if (!fallback_candidate)
+                    {
+                        fallback_candidate = &(*it);
                     }
                 }
                 if (best_candidate)
@@ -228,18 +242,14 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 }
             }
 
-            FdbSessionId_t subscriber = FDB_INVALID_ID;
+            CFdbMessage *initial_sub_msg = 0;
             if (session)
             {
                 auto out_going_msg = session->peepPendingMessage(msg->sn());
                 if (out_going_msg && (out_going_msg->getTypeId() == FDB_MSG_TYPE_SUBSCRIBE))
                 {
-                    CServiceSubscribeMsg *svc_sub_msg =
-                                    fdb_dynamic_cast_if_available<CServiceSubscribeMsg *>(out_going_msg);
-                    if (svc_sub_msg)
-                    {
-                        subscriber = svc_sub_msg->getSubscriber();
-                    }
+                    auto second_sub_msg = fdb_dynamic_cast_if_available<CServiceSubscribeMsg *>(out_going_msg);
+                    initial_sub_msg = castToMessage<CFdbMessage *>(second_sub_msg->getMsgRef());
                 }
             }
             
@@ -247,18 +257,11 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             {
                 CFdbToken::tTokenList tokens;
                 name_server->dumpTokens(tokens, msg_addr_list);
-                bool broadcast_to_all = true;
-                if (fdbValidFdbId(subscriber))
+                if (initial_sub_msg)
                 {
-                    auto session = FDB_CONTEXT->getSession(subscriber);
-                    if (session)
-                    {
-                        // send token matching security level to the client
-                        name_server->broadcastSvcAddrLocal(tokens, msg_addr_list, session);
-                        broadcast_to_all = false;
-                    }
+                    name_server->broadcastSvcAddrLocal(tokens, msg_addr_list, initial_sub_msg);
                 }
-                if (broadcast_to_all)
+                else
                 {
                     name_server->broadcastSvcAddrLocal(tokens, msg_addr_list);
                 }
@@ -269,8 +272,14 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 msg_addr_list.token_list().clear_tokens();
                 msg_addr_list.token_list().set_crypto_algorithm(NFdbBase::CRYPTO_NONE);
                 CFdbParcelableBuilder builder(msg_addr_list);
-                name_server->broadcast(subscriber, FDB_OBJECT_MAIN, code,
-                                builder, msg_addr_list.service_name().c_str());
+                if (initial_sub_msg)
+                {
+                    initial_sub_msg->broadcast(code, builder, svc_name);
+                }
+                else
+                {
+                    name_server->broadcast(code, builder, svc_name);
+                }
             }
         }
         break;
@@ -331,18 +340,11 @@ void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
 
 void CInterNameProxy::subscribeListener(NFdbBase::FdbNsMsgCode code
                                       , const char *svc_name
-                                      , FdbSessionId_t subscriber)
+                                      , CBaseJob::Ptr &msg_ref)
 {
-    if (fdbValidFdbId(subscriber))
-    {
-        CFdbMsgSubscribeList subscribe_list;
-        addNotifyItem(subscribe_list, code, svc_name);
-        auto msg = new CServiceSubscribeMsg(subscriber);
-        subscribe(subscribe_list, msg);
-    }
-    else
-    {
-        CBaseNameProxy::subscribeListener(code, svc_name);
-    }
+    CFdbMsgSubscribeList subscribe_list;
+    addNotifyItem(subscribe_list, code, svc_name);
+    auto msg = new CServiceSubscribeMsg(msg_ref);
+    subscribe(subscribe_list, msg);
 }
 

@@ -36,7 +36,8 @@ public:
     CClientSocket(CBaseClient *owner
                   , FdbSocketId_t skid
                   , CClientSocketImp *socket
-                  , const char *host_name);
+                  , const char *host_name
+                  , int32_t udp_port);
     ~CClientSocket();
     CFdbSession *connect();
     void setSocket(CClientSocketImp *skt)

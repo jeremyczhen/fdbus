@@ -678,7 +678,7 @@ private:
         return !!(mFlag & MSG_FLAG_SYNC_REPLY);
     }
 
-    void update(NFdbBase::CFdbMessageHeader &head, CFdbMessage::CFdbMsgPrefix &prefix);
+    void update(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix);
     CFdbSession *getSession();
 
     void setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid = FDB_INVALID_ID);

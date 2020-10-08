@@ -50,7 +50,7 @@ void CHostServer::onSubscribe(CBaseJob::Ptr &msg_ref)
     const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
-        mSubscribeHdl.processMessage(this, msg, sub_item, sub_item->msg_code());
+        mSubscribeHdl.processMessage(this, msg_ref, sub_item, sub_item->msg_code());
     }
     FDB_END_FOREACH_SIGNAL()
 }
@@ -265,8 +265,9 @@ void CHostServer::onHeartbeatOk(CBaseJob::Ptr &msg_ref)
     }
 }
 
-void CHostServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
+void CHostServer::onHostOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item)
 {
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList addr_list;
     auto session = FDB_CONTEXT->getSession(msg->session());
     for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)

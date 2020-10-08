@@ -167,7 +167,7 @@ CServerSocket *CBaseServer::doBind(const char *url, int32_t udp_port)
         FdbSocketId_t skid = allocateEntityId();
         auto sk = new CServerSocket(this, skid, server_imp);
         addSocket(sk);
-        sk->bindUDPSocket(udp_port);
+        sk->bindUDPSocket(0, udp_port);
 
         if (sk->bind(CFdbContext::getInstance()))
         {

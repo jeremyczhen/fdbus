@@ -268,14 +268,14 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
                     for (auto filter_it = registered_service_tbl.begin();
                                 filter_it != registered_service_tbl.end(); ++filter_it)
                     {
-                        proxy->addServiceListener(filter_it->c_str(), FDB_INVALID_ID);
+                        proxy->addServiceListener(filter_it->c_str());
                         LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
                               filter_it->c_str(), ip_address.c_str());
                     }
                     for (auto filter_it = monitored_service_tbl.begin();
                                 filter_it != monitored_service_tbl.end(); ++filter_it)
                     {
-                        proxy->addServiceMonitorListener(filter_it->c_str(), FDB_INVALID_ID);
+                        proxy->addServiceMonitorListener(filter_it->c_str());
                         LOG_I("CHostProxy: registry of %s is forwarded due to host %s online.\n",
                               filter_it->c_str(), ip_address.c_str());
                     }
@@ -342,7 +342,7 @@ void CHostProxy::hostOffline()
 
 void CHostProxy::forwardServiceListener(FdbMsgCode_t msg_code
                                       , const char *service_name
-                                      , FdbSessionId_t subscriber)
+                                      , CBaseJob::Ptr &msg_ref)
 {
     std::string host_ip(FDB_IP_ALL_INTERFACE);
     for (auto it = mNameProxyTbl.begin(); it != mNameProxyTbl.end(); ++it)
@@ -354,11 +354,11 @@ void CHostProxy::forwardServiceListener(FdbMsgCode_t msg_code
         auto ns_proxy = it->second;
         if (msg_code == NFdbBase::NTF_SERVICE_ONLINE_MONITOR)
         {
-            ns_proxy->addServiceMonitorListener(service_name, subscriber);
+            ns_proxy->addServiceMonitorListener(service_name, msg_ref);
         }
         else
         {
-            ns_proxy->addServiceListener(service_name, subscriber);
+            ns_proxy->addServiceListener(service_name, msg_ref);
         }
     }
 }

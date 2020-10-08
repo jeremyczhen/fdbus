@@ -67,11 +67,11 @@ public:
     }
     void set_tcp_ipc_address(const char *addr)
     {
-        mTCPIPCUrl = addr;
+        mTCPIPCAddress = addr;
     }
     void set_tcp_ipc_address(const std::string &addr)
     {
-        mTCPIPCUrl = addr;
+        mTCPIPCAddress = addr;
     }
     int32_t tcp_port() const
     {

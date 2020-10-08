@@ -123,7 +123,7 @@ const char *CLogProducer::getReceiverName(EFdbMessageType type,
             }
             else
             {
-                receiver = sender_name;
+                receiver = sender_name ? sender_name : "__UNKNOWN__";
             }
         break;
     }

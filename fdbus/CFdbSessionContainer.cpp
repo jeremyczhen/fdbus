@@ -23,14 +23,15 @@
 #include <utils/Log.h>
 #include <algorithm>
 
-CFdbSessionContainer::CFdbSessionContainer(FdbSocketId_t skid
-        , CBaseEndpoint *owner, CBaseSocket *tcp_socket)
+CFdbSessionContainer::CFdbSessionContainer(FdbSocketId_t skid , CBaseEndpoint *owner,
+                                           CBaseSocket *tcp_socket, int32_t udp_port)
     : mSkid(skid)
     , mOwner(owner)
     , mSocket(tcp_socket)
     , mEnableSessionDestroyHook(true)
     , mUDPSocket(0)
     , mUDPSession(0)
+    , mPendingUDPPort(udp_port)
 {
 }
 
@@ -104,8 +105,12 @@ bool CFdbSessionContainer::getSocketInfo(CFdbSocketInfo &info)
     return true;
 }
 
-bool CFdbSessionContainer::bindUDPSocket(int32_t udp_port)
+bool CFdbSessionContainer::bindUDPSocket(const char *ip_address, int32_t udp_port)
 {
+    if (udp_port == FDB_INET_PORT_INVALID)
+    {
+        udp_port = mPendingUDPPort;
+    }
     if (!mSocket || (udp_port == FDB_INET_PORT_INVALID))
     {
         return false;
@@ -133,7 +138,14 @@ bool CFdbSessionContainer::bindUDPSocket(int32_t udp_port)
     }
 
     CFdbSocketAddr udp_addr;
-    udp_addr.mAddr = tcp_addr.mAddr;
+    if (ip_address)
+    {
+        udp_addr.mAddr = ip_address;
+    }
+    else
+    {
+        udp_addr.mAddr = tcp_addr.mAddr;
+    }
     udp_addr.mType = FDB_SOCKET_UDP;
     udp_addr.mPort = udp_port;
     auto udp_socket = CBaseSocketFactory::createUDPSocket(udp_addr);
@@ -145,6 +157,11 @@ bool CFdbSessionContainer::bindUDPSocket(int32_t udp_port)
             mUDPSocket = udp_socket;
             mUDPSession = new CFdbUDPSession(this, socket_imp);
             mUDPSession->attach(CFdbContext::getInstance());
+
+            const CFdbSocketAddr &newly_addr = socket_imp->getAddress();
+            mPendingUDPPort = newly_addr.mPort;
+            LOG_I("CFdbSessionContainer: bind to UDP: ip: %s, port: %d\n",
+                    udp_addr.mAddr.c_str(), newly_addr.mPort);
             return true;
         }
         else
@@ -162,22 +179,12 @@ bool CFdbSessionContainer::sendUDPmessage(CFdbMessage *msg, const CFdbSocketAddr
     return mUDPSession ? mUDPSession->sendMessage(msg, dest_addr) : false;
 }
 
-int32_t CFdbSessionContainer::getUDPPort()
-{
-    if (mUDPSocket)
-    {
-        const CFdbSocketAddr &addr = mUDPSocket->getAddress();
-        return addr.mPort;
-    }
-    return FDB_INET_PORT_INVALID;
-}
-
 bool CFdbSessionContainer::getUDPSocketInfo(CFdbSocketInfo &info)
 {
-    if (mUDPSocket)
+    if (mUDPSession && mUDPSession->getSocket())
     {
         // can get from session as well
-        info.mAddress = &mUDPSocket->getAddress();
+        info.mAddress = &mUDPSession->getSocket()->getAddress();
         return true;
     }
     return false;

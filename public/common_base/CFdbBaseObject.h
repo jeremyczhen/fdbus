@@ -960,7 +960,7 @@ template<typename T>
 class CFdbSubscribeHandle
 {
 private:
-    typedef void (T::*tCallbackFn)(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
+    typedef void (T::*tCallbackFn)(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
     typedef std::map<FdbMsgCode_t, tCallbackFn> tCallbackTbl;
 
 public:
@@ -969,14 +969,14 @@ public:
         mCallbackTbl[code] = callback;
     }
 
-    bool processMessage(T *instance, CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item, FdbMsgCode_t code)
+    bool processMessage(T *instance, CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item, FdbMsgCode_t code)
     {
         typename tCallbackTbl::iterator it = mCallbackTbl.find(code);
         if (it == mCallbackTbl.end())
         {
             return false;
         }
-        (instance->*(it->second))(msg, sub_item);
+        (instance->*(it->second))(msg_ref, sub_item);
         return true;
     }
 private:

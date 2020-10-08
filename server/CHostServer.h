@@ -61,7 +61,7 @@ private:
     void onHeartbeatOk(CBaseJob::Ptr &msg_ref);
     void onHostReady(CBaseJob::Ptr &msg_ref);
 
-    void onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
+    void onHostOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
 
     void broadcastSingleHost(FdbSessionId_t sid, bool online, CHostInfo &info);
 

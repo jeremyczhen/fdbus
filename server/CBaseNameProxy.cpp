@@ -57,6 +57,7 @@ void CBaseNameProxy::replaceSourceUrl(NFdbBase::FdbMsgAddressList &msg_addr_list
         if (it->tcp_ipc_address() == FDB_IP_ALL_INTERFACE)
         {
             it->set_tcp_ipc_address(peer_ip);
+            CBaseSocketFactory::buildUrl(it->tcp_ipc_url(), it->tcp_ipc_address().c_str(), it->tcp_port());
         }
     }
 }

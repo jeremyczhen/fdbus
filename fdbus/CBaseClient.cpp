@@ -27,8 +27,9 @@
 CClientSocket::CClientSocket(CBaseClient *owner
                              , FdbSocketId_t skid
                              , CClientSocketImp *socket
-                             , const char *host_name)
-    : CFdbSessionContainer(skid, owner, socket)
+                             , const char *host_name
+                             , int32_t udp_port)
+    : CFdbSessionContainer(skid, owner, socket, udp_port)
     , mConnectedHost(host_name ? host_name : "")
 {
 }
@@ -202,13 +203,13 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name, in
     auto session = connected(addr);
     if (session)
     {
-        if ((skt_type != FDB_SOCKET_IPC) && (udp_port > FDB_INET_PORT_NOBIND))
+        if ((skt_type != FDB_SOCKET_IPC) && (udp_port >= FDB_INET_PORT_AUTO))
         {
             CFdbSocketInfo socket_info;
             if (!session->container()->getUDPSocketInfo(socket_info) ||
-                (socket_info.mAddress->mPort <= FDB_INET_PORT_NOBIND))
+                !FDB_VALID_PORT(socket_info.mAddress->mPort))
             {
-                session->container()->bindUDPSocket(udp_port);
+                session->container()->pendingUDPPort(udp_port);
                 updateSessionInfo(session);
             }
         }
@@ -224,10 +225,9 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name, in
     if (client_imp)
     {
         FdbSocketId_t skid = allocateEntityId();
-        auto sk = new CClientSocket(this, skid, client_imp, host_name);
+        auto sk = new CClientSocket(this, skid, client_imp, host_name, udp_port);
         addSocket(sk);
 
-        sk->bindUDPSocket(udp_port);
         auto session = sk->connect();
         if (session)
         {

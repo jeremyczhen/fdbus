@@ -39,15 +39,10 @@ public:
     bool sendMessage(const uint8_t *buffer, int32_t size, const CFdbSocketAddr &dest_addr);
     bool sendMessage(CFdbMessage *msg, const CFdbSocketAddr &dest_addr);
 
-    const std::string &senderName() const
+    CSocketImp *getSocket()
     {
-        return mSenderName;
+        return mSocket;
     }
-    void senderName(const char *name)
-    {
-        mSenderName = name;
-    }
-
 protected:
     void onInput(bool &io_error);
     void onError();
@@ -56,7 +51,6 @@ protected:
 private:
     CFdbSessionContainer *mContainer;
     CSocketImp *mSocket;
-    std::string mSenderName;
 
     int32_t receiveData(uint8_t *buf, int32_t size);
     void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);

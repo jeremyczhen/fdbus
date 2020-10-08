@@ -709,7 +709,7 @@ void UDPSocket::Open(const IPAddress& ip){
 	throw sckt::Exc("UDPSocket::Open(): ::socket() failed");
     
     /* Bind locally, if appropriate */
-    if(ip.port > 0){
+    if(ip.port >= 0){
         struct sockaddr_in sockAddr;
         memset(&sockAddr, 0, sizeof(sockAddr));
         sockAddr.sin_family = AF_INET;
@@ -729,6 +729,14 @@ void UDPSocket::Open(const IPAddress& ip){
         setsockopt(CastToSocket(this->socket), SOL_SOCKET, SO_BROADCAST, (char*)&yes, sizeof(yes));
     }
 #endif
+    if(ip.port >= 0){
+        struct sockaddr_in sock_addr;
+        socklen_t len = sizeof(sock_addr);
+        if (getsockname(CastToSocket(socket), (struct sockaddr*)&sock_addr, &len) != -1)
+        {
+            self_port = ntohs(sock_addr.sin_port);
+        }
+    }
     
     this->isReady = false;
 };

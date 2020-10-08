@@ -340,6 +340,10 @@ CSocketImp *CLinuxUDPSocket::bind()
             // For UDP socket, address of CUDPTransportSocket is the same as CLinuxUDPSocket
             // So you can get address either from container or session
             conn_info.mSelfAddress = mConn.mSelfAddress;
+            if (sckt_imp->self_port > 0)
+            {   // port number might be allocated by system
+                conn_info.mSelfAddress.mPort = sckt_imp->self_port;
+            }
         }
     }
     catch (...)

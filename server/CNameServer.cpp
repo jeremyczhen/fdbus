@@ -72,7 +72,7 @@ void CNameServer::onSubscribe(CBaseJob::Ptr &msg_ref)
     const CFdbMsgSubscribeItem *sub_item;
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
-        mSubscribeHdl.processMessage(this, msg, sub_item, sub_item->msg_code());
+        mSubscribeHdl.processMessage(this, msg_ref, sub_item, sub_item->msg_code());
     }
     FDB_END_FOREACH_SIGNAL()
 }
@@ -878,8 +878,9 @@ void CNameServer::broadServiceAddress(tRegistryTbl::iterator &reg_it, CFdbMessag
     }
 }
 
-void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
+void CNameServer::onServiceOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item)
 {
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     auto msg_code = sub_item->msg_code();
     auto svc_name = sub_item->has_filter() ? sub_item->filter().c_str() : "";
     bool service_specified = svc_name[0] != '\0';
@@ -908,20 +909,22 @@ void CNameServer::onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeIte
     }
     else if (name() != svc_name)
     {
-        mHostProxy->forwardServiceListener(msg_code, svc_name, msg->session());
+        mHostProxy->forwardServiceListener(msg_code, svc_name, msg_ref);
     }
 }
 
-void CNameServer::onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
+void CNameServer::onHostOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item)
 {
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList host_tbl;
     mHostProxy->getHostTbl(host_tbl);
     CFdbParcelableBuilder builder(host_tbl);
     msg->broadcast(sub_item->msg_code(), builder);
 }
 
-void CNameServer::onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item)
+void CNameServer::onHostInfoReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item)
 {
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostInfo msg_host_info;
     msg_host_info.set_name(mHostProxy->hostName());
     CFdbParcelableBuilder builder(msg_host_info);
@@ -971,7 +974,14 @@ CNameServer::CFdbAddressDesc *CNameServer::findUDPPort(const char *ip_address, i
 
 bool CNameServer::allocateUDPPort(const char *ip_address, int32_t &port)
 {
+    // Actually we don't know which interface is used by client to connect with
+    // server. So we have to use a global allocator to allocate UDP port for
+    // all interface.
+#if 0
     auto &allocator = mUDPAllocators[ip_address];
+#else
+    auto &allocator = mUDPAllocators[FDB_IP_ALL_INTERFACE];
+#endif
     
     int32_t retries =  (int32_t)mRegistryTbl.size() + 8; // 8 is just come to me...
     while (--retries > 0)
@@ -1010,18 +1020,18 @@ bool CNameServer::allocateAddress(IAddressAllocator &allocator, FdbServerType sv
     while (--retries > 0)
     {
         allocator.allocate(sckt_addr, svc_type);
+        if ((sckt_addr.mType == FDB_SOCKET_TCP) && (sckt_addr.mPort == FDB_INET_PORT_AUTO))
+        {
+            return true;
+        }
         if (!findAddress(sckt_addr.mType, sckt_addr.mUrl.c_str()))
         {
             return true;
         }
         if (svc_type != FDB_SVC_USER)
         {
-            LOG_E("NameServer: address %s conflict!\n", sckt_addr.mUrl.c_str());
+            LOG_W("NameServer: address %s is already registered.\n", sckt_addr.mUrl.c_str());
             return false;
-        }
-        if ((sckt_addr.mType == FDB_SOCKET_TCP) && (sckt_addr.mPort == FDB_SYSTEM_PORT))
-        {
-            return true;
         }
     }
 

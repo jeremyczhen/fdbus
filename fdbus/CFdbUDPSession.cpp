@@ -20,7 +20,7 @@
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CSocketImp.h>
-#include <common_base/CFdbmessage.h>
+#include <common_base/CFdbMessage.h>
 #include <utils/Log.h>
 #include <common_base/CFdbIfMessageHeader.h>
 
@@ -63,7 +63,7 @@ bool CFdbUDPSession::sendMessage(CFdbMessage *msg, const CFdbSocketAddr &dest_ad
             auto logger = CFdbContext::getInstance()->getLogger();
             if (logger)
             {
-                logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
+                logger->logMessage(msg, 0, mContainer->owner());
             }
         }
         return true;

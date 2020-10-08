@@ -139,7 +139,7 @@ public:
     std::string ipc_path;
 #endif
     
-    inline IPAddress();
+    IPAddress();
     
     /**
     @brief Create IP address specifying exact ip address and port number.
@@ -495,7 +495,9 @@ public:
 
 class M_DECLSPEC UDPSocket : public Socket{
 public:
-    UDPSocket(){};
+    UDPSocket()
+        : self_port(0)
+    {};
     
     ~UDPSocket(){
         this->Close();
@@ -518,6 +520,8 @@ public:
     
     //returns number of bytes received, 0 if connection was gracefully closed (???).
     uint Recv(byte* buf, u16 maxSize, IPAddress &out_SenderIP);
+
+    u16 self_port;
 };
 
 

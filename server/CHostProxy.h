@@ -39,7 +39,7 @@ public:
 
     void forwardServiceListener(FdbMsgCode_t msg_code
                               , const char *service_name
-                              , FdbSessionId_t subscriber);
+                              , CBaseJob::Ptr &msg_ref);
     void recallServiceListener(FdbMsgCode_t msg_code, const char *service_name);
     CNameServer *nameServer()
     {

@@ -52,9 +52,11 @@ public:
                     const std::string &ns_url,
                     const std::string &host_name);
     ~CInterNameProxy();
-    void addServiceListener(const char *svc_name, FdbSessionId_t subscriber);
+    void addServiceListener(const char *svc_name);
+    void addServiceListener(const char *svc_name, CBaseJob::Ptr &msg_ref);
     void removeServiceListener(const char *svc_name);
-    void addServiceMonitorListener(const char *svc_name, FdbSessionId_t subscriber);
+    void addServiceMonitorListener(const char *svc_name);
+    void addServiceMonitorListener(const char *svc_name, CBaseJob::Ptr &msg_ref);
     void removeServiceMonitorListener(const char *svc_name);
     const std::string &getHostIp() const
     {
@@ -77,7 +79,7 @@ protected:
     CHostProxy *mHostProxy;
     void subscribeListener(NFdbBase::FdbNsMsgCode code
                          , const char *svc_name
-                         , FdbSessionId_t subscriber);
+                         , CBaseJob::Ptr &msg_ref);
 private:
     std::string mIpAddress;
     std::string mNsUrl;

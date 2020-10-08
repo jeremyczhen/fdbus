@@ -34,7 +34,8 @@ struct CFdbSocketInfo
 class CFdbSessionContainer
 {
 public:
-    CFdbSessionContainer(FdbSocketId_t skid, CBaseEndpoint *owner, CBaseSocket *tcp_socket);
+    CFdbSessionContainer(FdbSocketId_t skid, CBaseEndpoint *owner, CBaseSocket *tcp_socket,
+                         int32_t udp_port = FDB_INET_PORT_INVALID);
     virtual ~CFdbSessionContainer();
     FdbSocketId_t skid()
     {
@@ -54,13 +55,17 @@ public:
         mEnableSessionDestroyHook = enable;
     }
 
-    bool bindUDPSocket(int32_t udp_port);
+    bool bindUDPSocket(const char *ip_address = 0, int32_t udp_port = FDB_INET_PORT_INVALID);
     bool sendUDPmessage(CFdbMessage *msg, const CFdbSocketAddr &dest_addr);
     bool getUDPSocketInfo(CFdbSocketInfo &info);
 
-    int32_t getUDPPort();
     CFdbSession *connected(const CFdbSocketAddr &addr);
     CFdbSession *bound(const CFdbSocketAddr &addr);
+
+    void pendingUDPPort(int32_t udp_port)
+    {
+        mPendingUDPPort = udp_port;
+    }
 protected:
     FdbSocketId_t mSkid;
     virtual void onSessionDeleted(CFdbSession *session) {}
@@ -71,6 +76,7 @@ private:
     bool mEnableSessionDestroyHook;
     CBaseSocket *mUDPSocket;
     CFdbUDPSession *mUDPSession;
+    int32_t mPendingUDPPort;
 
     ConnectedSessionTable_t mConnectedSessionTable;
 

@@ -95,6 +95,10 @@ public:
 
     bool connected(const CFdbSocketAddr &addr);
     bool bound(const CFdbSocketAddr &addr);
+    CSocketImp *getSocket()
+    {
+        return mSocket;
+    }
 protected:
     void onInput(bool &io_error);
     void onError();

@@ -97,7 +97,7 @@ private:
 #ifdef __WIN32__
     CTCPAddressAllocator mLocalAllocator; // local host address(lo) allocator
 #else
-    CIpcAddressAllocator mIpcAllocator; // UDS address allocator
+    CIPCAddressAllocator mIPCAllocator; // UDS address allocator
 #endif
     tTCPAllocatorTbl mTCPAllocators; // TCP (other than lo for windows) address allocator
     tUDPAllocatorTbl mUDPAllocators; // UDP port allocator
@@ -116,9 +116,9 @@ private:
     void onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref);
     void onQueryHostReq(CBaseJob::Ptr &msg_ref);
     
-    void onServiceOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
-    void onHostOnlineReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
-    void onHostInfoReg(CFdbMessage *msg, const CFdbMsgSubscribeItem *sub_item);
+    void onServiceOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
+    void onHostOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
+    void onHostInfoReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
     void createTCPAllocator();
