@@ -646,8 +646,15 @@ public:
                       , const void *buffer = 0
                       , int32_t size = 0
                       , int32_t timeout = 0);
+
     bool sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool sendSideband(FdbMsgCode_t code
+                    , const void *buffer = 0
+                    , int32_t size = 0);
+
+    bool sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendSideband(FdbSessionId_t receiver
+                    , FdbMsgCode_t code
                     , const void *buffer = 0
                     , int32_t size = 0);
 
@@ -776,15 +783,6 @@ protected:
     virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
     {}
-
-    virtual bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session)
-    {
-        return true;
-    }
-    virtual bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session)
-    {
-        return true;
-    }
 
     // Warning: only used by FDBus internally!!!!!!!
     void broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter);

@@ -131,6 +131,17 @@ public:
     /* Warning!!! Internal use only!!! */
     bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
                         const char *log_data, bool force_update, bool fast);
+
+    const std::string *token() const
+    {
+        // for client, actually only one token is available
+        auto it = mTokens.begin();
+        if (it != mTokens.end())
+        {
+            return &(*it);
+        }
+        return 0;
+    }
 protected:
     CClientSocket *doConnect(const char *url, const char *host_name = 0, 
                              int32_t udp_port = FDB_INET_PORT_INVALID);

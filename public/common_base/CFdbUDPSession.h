@@ -54,6 +54,7 @@ private:
 
     int32_t receiveData(uint8_t *buf, int32_t size);
     void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doRequest(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
 };
 
 #endif

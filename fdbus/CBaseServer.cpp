@@ -305,18 +305,6 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
     }
 }
 
-bool CBaseServer::onMessageAuthentication(CFdbMessage *msg, CFdbSession *session)
-{
-    auto security_level = mApiSecurity.getMessageSecLevel(msg->code());
-    return session->securityLevel() >= security_level;
-}
-
-bool CBaseServer::onEventAuthentication(CFdbMessage *msg, CFdbSession *session)
-{
-    auto security_level = mApiSecurity.getEventSecLevel(msg->code());
-    return session->securityLevel() >= security_level;
-}
-
 bool CBaseServer::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
                                  int32_t size, CFdbSession *session)
 {

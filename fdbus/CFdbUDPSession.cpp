@@ -130,6 +130,9 @@ void CFdbUDPSession::onInput(bool &io_error)
         case FDB_MT_BROADCAST:
             doBroadcast(head, prefix, whole_buf);
         break;
+        case FDB_MT_REQUEST:
+            doRequest(head, prefix, whole_buf);
+        break;
         default:
             LOG_E("CFdbUDPSession: Message %d: Unknown type!\n", (int32_t)head.serial_number());
             delete[] whole_buf;
@@ -159,4 +162,30 @@ void CFdbUDPSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
     }
 }
 
+void CFdbUDPSession::doRequest(NFdbBase::CFdbMessageHeader &head,
+                               CFdbMsgPrefix &prefix, uint8_t *buffer)
+{
+    auto msg = new CFdbMessage(head, prefix, buffer, FDB_INVALID_ID);
+    auto object = mContainer->owner()->getObject(msg, true);
+    CBaseJob::Ptr msg_ref(msg);
 
+    if (object)
+    {
+        msg->decodeDebugInfo(head);
+        {
+            bool allowed = msg->isEventGet() ? mContainer->owner()->onEventAuthentication(msg) :
+                                               mContainer->owner()->onMessageAuthentication(msg);
+            if (allowed)
+            {
+                msg->preferUDP(true);
+                object->doInvoke(msg_ref);
+            }
+            else
+            {
+            }
+        }
+    }
+    else
+    {
+    }
+}

@@ -205,7 +205,7 @@ void CApiSecurityConfig::importSecLevel(const char *svc_name)
     }
 }
 
-int32_t CApiSecurityConfig::getSecLevel(FdbMsgCode_t msg_code, CApiSecLevelTbl &tbl)
+int32_t CApiSecurityConfig::getSecLevel(FdbMsgCode_t msg_code, const CApiSecLevelTbl &tbl) const
 {
     for (tApiSecRangeTbl::const_iterator it = tbl.mApiSecRangeTbl.begin();
             it != tbl.mApiSecRangeTbl.end(); ++it)
@@ -219,12 +219,12 @@ int32_t CApiSecurityConfig::getSecLevel(FdbMsgCode_t msg_code, CApiSecLevelTbl &
     return tbl.mDefaultLevel;
 }
 
-int32_t CApiSecurityConfig::getMessageSecLevel(FdbMsgCode_t msg_code)
+int32_t CApiSecurityConfig::getMessageSecLevel(FdbMsgCode_t msg_code) const
 {
     return getSecLevel(msg_code, mMessageSecLevelTbl);
 }
 
-int32_t CApiSecurityConfig::getEventSecLevel(FdbMsgCode_t msg_code)
+int32_t CApiSecurityConfig::getEventSecLevel(FdbMsgCode_t msg_code) const
 {
     return getSecLevel(msg_code, mEventSecLevelTbl);
 }

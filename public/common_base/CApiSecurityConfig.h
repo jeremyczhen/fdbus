@@ -25,8 +25,8 @@ class CApiSecurityConfig
 {
 public:
     void importSecLevel(const char *svc_name);
-    int32_t getMessageSecLevel(FdbMsgCode_t msg_code);
-    int32_t getEventSecLevel(FdbMsgCode_t msg_code);
+    int32_t getMessageSecLevel(FdbMsgCode_t msg_code) const;
+    int32_t getEventSecLevel(FdbMsgCode_t msg_code) const;
 private:
     struct CSecLevelRange
     {
@@ -47,7 +47,7 @@ private:
     CApiSecLevelTbl mMessageSecLevelTbl;
     CApiSecLevelTbl mEventSecLevelTbl;
 
-    int32_t getSecLevel(FdbMsgCode_t msg_code, CApiSecLevelTbl &tbl);
+    int32_t getSecLevel(FdbMsgCode_t msg_code, const CApiSecLevelTbl &tbl) const;
     void parseSecurityConfig(const char *json_str, std::string &err_msg);
     void parseApiConfig(const void *json_handle, CApiSecLevelTbl &cfg, std::string &err_msg);
 };

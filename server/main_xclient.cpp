@@ -3,9 +3,12 @@
 #include <stdio.h>
 #include <iostream>
 #include <common_base/fdbus.h>
+#include <mutex>
+#include <list>
 
 #define XCLT_TEST_SINGLE_DIRECTION 0
 #define XCLT_TEST_BI_DIRECTION     1
+#define XCLT_INIT_SKIP_COUNT       16
 
 class CXTestJob : public CBaseJob
 {
@@ -24,10 +27,13 @@ static CBaseWorker* fdb_statistic_worker;
 static bool fdb_stop_job = false;
 
 static uint32_t fdb_burst_size = 16;
-static bool fdb_bi_direction = true;
+static bool fdb_udp_test = false;
 static uint32_t fdb_block_size = 1024;
 static uint32_t fdb_delay = 0;
 static bool fdb_sync_invoke = false;
+static std::mutex fdb_ts_mutex;
+static std::list<CNanoTimer> fdb_timestamps;
+static int32_t fdb_init_skip_count = XCLT_INIT_SKIP_COUNT;
 
 class CStatisticTimer : public CMethodLoopTimer<CXClient>
 {
@@ -67,7 +73,7 @@ public:
         uint64_t inst_data_rate = mIntervalBytesSent / interval_s;
         uint64_t avg_trans_rate = mTotalRequest / total_s;
         uint64_t inst_trans_rate = mIntervalRequest / interval_s;
-        uint64_t pending_req = fdb_bi_direction ? ((mTotalRequest < mTotalReply) ? 0 : (mTotalRequest - mTotalReply)) : 0;
+        uint64_t pending_req = (mTotalRequest < mTotalReply) ? 0 : (mTotalRequest - mTotalReply);
         uint64_t avg_delay = mTotalReply ? mTotalDelay / mTotalReply : 0;
         
         printf("%12u B/s %12u B/s %8u Req/s %8u Req/s %8u %6u %10u us %10u us\n",
@@ -78,21 +84,29 @@ public:
     }
     void sendData()
     {
-        send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size);
+        send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
         incrementSend(fdb_block_size);
+        if (fdb_init_skip_count)
+        {
+            return;
+        }
+        CNanoTimer timer;
+        timer.start();
+        std::lock_guard<std::mutex> _l(fdb_ts_mutex);
+        fdb_timestamps.push_back(timer);
     }
     void invokeMethod()
     {
-	if (fdb_sync_invoke)
-	{
+        if (fdb_sync_invoke)
+        {
             CBaseJob::Ptr ref(new CBaseMessage(XCLT_TEST_BI_DIRECTION));
             invoke(ref);
-	    handleReply(ref);
-	}
-	else
-	{
+            handleReply(ref);
+        }
+        else
+        {
             invoke(XCLT_TEST_BI_DIRECTION, mBuffer, fdb_block_size);
-	}
+        }
         incrementSend(fdb_block_size);
     }
 protected:
@@ -103,15 +117,49 @@ protected:
         mTimer->enable();
         fdb_stop_job = false;
         fdb_worker_A->sendAsync(new CXTestJob());
+        CFdbMsgSubscribeList sub_list;
+        addNotifyItem(sub_list, XCLT_TEST_SINGLE_DIRECTION);
+        subscribe(sub_list);
     }
     void onOffline(FdbSessionId_t sid, bool is_last)
     {
-         mTimer->disable();
-         fdb_stop_job = true;
+        mTimer->disable();
+        fdb_stop_job = true;
+        fdb_init_skip_count = XCLT_INIT_SKIP_COUNT;
+        std::lock_guard<std::mutex> _l(fdb_ts_mutex);
+        fdb_timestamps.clear();
     }
     void onReply(CBaseJob::Ptr &msg_ref)
     {
-	handleReply(msg_ref);
+        handleReply(msg_ref);
+    }
+    void onBroadcast(CBaseJob::Ptr &msg_ref)
+    {
+        if (fdb_init_skip_count)
+        {
+            fdb_init_skip_count--;
+        }
+        auto msg = castToMessage<CFdbMessage *>(msg_ref);
+        switch (msg->code())
+        {
+            case XCLT_TEST_SINGLE_DIRECTION:
+            {
+                if (fdb_timestamps.empty())
+                {
+                    break;
+                }
+                CNanoTimer timer;
+                incrementReceive(msg->getPayloadSize());
+                {
+                std::lock_guard<std::mutex> _l(fdb_ts_mutex);
+                timer = fdb_timestamps.front();
+                fdb_timestamps.pop_front();
+                }
+                incrementReceive(msg->getPayloadSize());
+                getdownDelay(timer.snapshotMicroseconds());
+            }
+            break;
+        }
     }
 private:
     CNanoTimer mTotalNanoTimer;
@@ -163,6 +211,10 @@ private:
 
     void incrementSend(uint32_t size)
     {
+        if (fdb_init_skip_count)
+        {
+            return;
+        }
         mTotalBytesSent += size;
         mIntervalBytesSent += size;
         mTotalRequest++;
@@ -171,6 +223,10 @@ private:
 
     void incrementReceive(uint32_t size)
     {
+        if (fdb_init_skip_count)
+        {
+            return;
+        }
         mTotalBytesReceived += size;
         mIntervalBytesReceived += size;
         mTotalReply++;
@@ -179,6 +235,10 @@ private:
 
     void getdownDelay(uint64_t delay)
     {
+        if (fdb_init_skip_count)
+        {
+            return;
+        }
         if (delay > mMaxDelay)
         {
             mMaxDelay = delay;
@@ -193,6 +253,10 @@ private:
 
     void handleReply(CBaseJob::Ptr &msg_ref)
     {
+        if (fdb_init_skip_count)
+        {
+            fdb_init_skip_count--;
+        }
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
         CFdbMsgMetadata md;
         msg->metadata(md);
@@ -244,13 +308,13 @@ void CXTestJob::run(CBaseWorker *worker, Ptr &ref)
     }
     for (uint32_t i = 0; i < fdb_burst_size; ++i)
     {
-        if (fdb_bi_direction)
+        if (fdb_udp_test)
         {
-            fdb_xtest_client->invokeMethod();
+            fdb_xtest_client->sendData();
         }
         else
         {
-            fdb_xtest_client->sendData();
+            fdb_xtest_client->invokeMethod();
         }
     }
     if (fdb_delay)
@@ -292,7 +356,7 @@ int main(int argc, char **argv)
 #endif
     int32_t help = 0;
     uint32_t burst_size = 16;
-    int32_t uni_direction = 0;
+    int32_t udp_test = 0;
     uint32_t block_size = 1024;
     uint32_t delay = 0;
     int32_t sync_invoke = 0;
@@ -300,23 +364,23 @@ int main(int argc, char **argv)
         { FDB_OPTION_INTEGER, "block_size", 'b', &block_size},
         { FDB_OPTION_INTEGER, "burst_size", 's', &burst_size},
         { FDB_OPTION_INTEGER, "delay", 'd', &delay},
-        { FDB_OPTION_BOOLEAN, "uni_direction", 'u', &uni_direction},
+        { FDB_OPTION_BOOLEAN, "udp_test", 'u', &udp_test},
         { FDB_OPTION_BOOLEAN, "sync", 'y', &sync_invoke},
         { FDB_OPTION_BOOLEAN, "help", 'h', &help}
     };
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
 
     fdb_burst_size = burst_size;
-    fdb_bi_direction = !uni_direction;
+    fdb_udp_test = !!udp_test;
     fdb_block_size = block_size;
     fdb_delay = delay;
     fdb_sync_invoke = !!sync_invoke;
 
     std::cout << "block size: " << fdb_block_size
               << ", burst size: " << fdb_burst_size
-              << ", bi-direction: " << fdb_bi_direction
+              << ", UDP test: " << (fdb_udp_test ? "true" : "false")
               << ", delay: " << fdb_delay
-              << ", sync: " << fdb_sync_invoke
+              << ", sync: " << (fdb_sync_invoke ? "true" : "false")
               << std::endl;
 
     if (help)
@@ -328,7 +392,7 @@ int main(int argc, char **argv)
         std::cout << "    -b block size: specify size of date sent for each request" << std::endl;
         std::cout << "    -s burst size: specify how many requests are sent in batch for a burst" << std::endl;
         std::cout << "    -d delay: specify delay between two bursts in micro second" << std::endl;
-        std::cout << "    -u: if not specified, dual-way (request-reply) are tested; otherwise only test one way (request)" << std::endl;
+        std::cout << "    -u: if set, UDP is tested; otherwise TCP/UDS will be tested" << std::endl;
         std::cout << "    -y: " << std::endl;
         exit(0);
     }

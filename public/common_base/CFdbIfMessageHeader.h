@@ -131,6 +131,19 @@ public:
         mReplyTime = reply_time;
         mOptions |= mMaskReplyTime;
     }
+    bool has_token() const
+    {
+        return !!(mOptions & mMaskToken);
+    }
+    const std::string &token() const
+    {
+        return mToken;
+    }
+    void set_token(const char *token)
+    {
+        mToken.assign(token);
+        mOptions |= mMaskToken;
+    }
 
     void serialize(CFdbSimpleSerializer &serializer) const
     {
@@ -152,6 +165,10 @@ public:
         if (mOptions & mMaskReplyTime)
         {
             serializer << mReplyTime;
+        }
+        if (mOptions & mMaskToken)
+        {
+            serializer << mToken;
         }
     }
 
@@ -178,6 +195,10 @@ public:
         {
             deserializer >> mReplyTime;
         }
+        if (mOptions & mMaskToken)
+        {
+            deserializer >> mToken;
+        }
     }
     
 private:
@@ -190,10 +211,12 @@ private:
     std::string mFilter;
     uint64_t mSendArriveTime;
     uint64_t mReplyTime;
+    std::string mToken;
     uint8_t mOptions;
         static const uint8_t mMaskHeadFilter = 1 << 1;
         static const uint8_t mMaskSenderArriveTime = 1 << 2;
         static const uint8_t mMaskReplyTime = 1 << 3;
+        static const uint8_t mMaskToken = 1 << 4;
     
 };
 

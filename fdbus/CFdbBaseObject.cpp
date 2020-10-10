@@ -123,13 +123,12 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                           , IFdbMsgBuilder &data
                           , bool fast)
 {
-    auto msg = new CBaseMessage(code, this, receiver);
+    auto msg = new CBaseMessage(code, this, receiver, fast);
     if (!msg->serialize(data, this))
     {
         delete msg;
         return false;
     }
-    msg->preferUDP(fast);
     return msg->send();
 }
 
@@ -145,14 +144,13 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , bool fast
                          , const char *log_data)
 {
-    auto msg = new CBaseMessage(code, this, receiver);
+    auto msg = new CBaseMessage(code, this, receiver, fast);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
     }
-    msg->preferUDP(fast);
     return msg->send();
 }
 
@@ -217,13 +215,12 @@ bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 
 bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    CBaseMessage msg(code, this);
+    CBaseMessage msg(code, this, FDB_INVALID_ID, true);
     msg.expectReply(false);
     if (!msg.serialize(data))
     {
         return false;
     }
-    msg.preferUDP(true);
     auto session = mEndpoint->preferredPeer();
     if (session)
     {
@@ -237,13 +234,12 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , const char *filter
                                , bool fast)
 {
-    auto msg = new CFdbMessage(code, this, filter);
+    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, fast);
     if (!msg->serialize(data, this))
     {
         delete msg;
         return false;
     }
-    msg->preferUDP(fast);
     return msg->broadcast();
 }
 
@@ -254,27 +250,25 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , bool fast
                               , const char *log_data)
 {
-    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
+    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, fast);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
     }
-    msg->preferUDP(fast);
     return msg->broadcast();
 }
 
 void CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
                                          const char *filter)
 {
-    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
+    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, true);
     if (!msg.serialize(data, size, this))
     {
         return;
     }
     msg.enableLog(false);
-    msg.preferUDP(true);
 
     broadcast(&msg);
 }
@@ -282,13 +276,12 @@ void CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data,
 void CFdbBaseObject::broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
                                       const char *filter, bool force_update, bool fast)
 {
-    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
+    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, fast);
     if (!msg.serialize(data, size, this))
     {
         return;
     }
     msg.forceUpdate(force_update);
-    msg.preferUDP(fast);
 
     broadcast(&msg);
 }
@@ -1646,10 +1639,27 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
     return msg->invokeSideband(timeout);
 }
 
+bool CFdbBaseObject::sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code, IFdbMsgBuilder &data)
+{
+    auto msg = new CBaseMessage(code, this, receiver);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    return msg->sendSideband();
+}
+
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
-    if (!msg->serialize(data, this))
+    return sendSideband(FDB_INVALID_ID, code, data);
+}
+
+bool CFdbBaseObject::sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code,
+                                  const void *buffer, int32_t size)
+{
+    auto msg = new CBaseMessage(code, this, receiver);
+    if (!msg->serialize(buffer, size, this))
     {
         delete msg;
         return false;
@@ -1659,13 +1669,7 @@ bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
 
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, const void *buffer, int32_t size)
 {
-    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
-    if (!msg->serialize(buffer, size, this))
-    {
-        delete msg;
-        return false;
-    }
-    return msg->sendSideband();
+    return sendSideband(FDB_INVALID_ID, code, buffer, size);
 }
 
 CFdbBaseObject::CEventData::CEventData()

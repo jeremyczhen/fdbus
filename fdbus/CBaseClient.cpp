@@ -346,7 +346,7 @@ bool CBaseClient::hostConnected(const char *host_name)
 bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *topic,
                           bool force_update, bool fast)
 {
-    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, fast);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -357,14 +357,13 @@ bool CBaseClient::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *t
         msg->topic(topic);
     }
     msg->forceUpdate(force_update);
-    msg->preferUDP(fast);
     return msg->send();
 }
 
 bool CBaseClient::publish(FdbMsgCode_t code, const void *buffer, int32_t size, const char *topic,
                           bool force_update, bool fast, const char *log_data)
 {
-    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, fast);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -376,14 +375,13 @@ bool CBaseClient::publish(FdbMsgCode_t code, const void *buffer, int32_t size, c
         msg->topic(topic);
     }
     msg->forceUpdate(force_update);
-    msg->preferUDP(fast);
     return msg->send();
 }
 
 bool CBaseClient::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
                                  const char *log_data, bool force_update, bool fast)
 {
-    CBaseMessage msg(code, this);
+    CBaseMessage msg(code, this, FDB_INVALID_ID, fast);
     msg.expectReply(false);
     msg.forceUpdate(force_update);
     msg.setLogData(log_data);
@@ -392,7 +390,6 @@ bool CBaseClient::publishNoQueue(FdbMsgCode_t code, const char *topic, const voi
         return false;
     }
     msg.topic(topic);
-    msg.preferUDP(fast);
 
     auto session = preferredPeer();
     if (session)

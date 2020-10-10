@@ -305,8 +305,8 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
         }
         else
         {
-            bool allowed = msg->isEventGet() ? object->onEventAuthentication(msg, this) :
-                                               object->onMessageAuthentication(msg, this);
+            bool allowed = msg->isEventGet() ? mContainer->owner()->onEventAuthentication(msg, this) :
+                                               mContainer->owner()->onMessageAuthentication(msg, this);
             if (allowed)
             {
                 object->doInvoke(msg_ref);
@@ -447,7 +447,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
             if (subscribe)
             {
                 // if fail on authentication, unable to 
-                if (object->onEventAuthentication(msg, this))
+                if (mContainer->owner()->onEventAuthentication(msg, this))
                 {
                     CFdbSubscribeType type = FDB_SUB_TYPE_NORMAL;
                     if (sub_item->has_type())

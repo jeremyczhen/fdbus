@@ -20,6 +20,7 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CIntraNameProxy.h>
 #include <common_base/CFdbIfMessageHeader.h>
+#include <common_base/CApiSecurityConfig.h>
 #include <utils/Log.h>
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
@@ -673,7 +674,14 @@ void CBaseEndpoint::updateSessionInfo(CFdbSession *session)
         sinfo_sent.set_udp_port(udp_port);
     }
     CFdbParcelableBuilder builder(sinfo_sent);
-    sendSideband(FDB_SIDEBAND_SESSION_INFO, builder);
+    if (role() == FDB_OBJECT_ROLE_CLIENT)
+    {
+        sendSideband(FDB_SIDEBAND_SESSION_INFO, builder);
+    }
+    else
+    {
+        sendSideband(session->sid(), FDB_SIDEBAND_SESSION_INFO, builder);
+    }
 }
 
 CFdbSession *CBaseEndpoint::connected(const CFdbSocketAddr &addr)
@@ -704,5 +712,49 @@ CFdbSession *CBaseEndpoint::bound(const CFdbSocketAddr &addr)
         }
     }
     return 0;
+}
+
+bool CBaseEndpoint::onMessageAuthentication(CFdbMessage *msg, CFdbSession *session)
+{
+    const CApiSecurityConfig *sec_cfg = getApiSecurityConfig();
+    if (sec_cfg)
+    {
+        auto required_security_level = sec_cfg->getMessageSecLevel(msg->code());
+        return session->securityLevel() >= required_security_level;
+    }
+    return true;
+}
+bool CBaseEndpoint::onEventAuthentication(CFdbMessage *msg, CFdbSession *session)
+{
+    const CApiSecurityConfig *sec_cfg = getApiSecurityConfig();
+    if (sec_cfg)
+    {
+        auto required_security_level = sec_cfg->getEventSecLevel(msg->code());
+        return session->securityLevel() >= required_security_level;
+    }
+    return true;
+}
+
+bool CBaseEndpoint::onMessageAuthentication(CFdbMessage *msg)
+{
+    const CApiSecurityConfig *sec_cfg = getApiSecurityConfig();
+    if (sec_cfg && !msg->token().empty())
+    {
+        auto required_security_level = sec_cfg->getMessageSecLevel(msg->code());
+        auto client_sec_level = checkSecurityLevel(msg->token().c_str());
+        return client_sec_level >= required_security_level;
+    }
+    return true;
+}
+bool CBaseEndpoint::onEventAuthentication(CFdbMessage *msg)
+{
+    const CApiSecurityConfig *sec_cfg = getApiSecurityConfig();
+    if (sec_cfg && !msg->token().empty())
+    {
+        auto required_security_level = sec_cfg->getEventSecLevel(msg->code());
+        auto client_sec_level = checkSecurityLevel(msg->token().c_str());
+        return client_sec_level >= required_security_level;
+    }
+    return true;
 }
 

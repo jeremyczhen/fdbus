@@ -66,7 +66,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
 {
 }
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, bool prefer_udp)
     : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
@@ -80,6 +80,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mMigrateFlag(0)
 {
     setDestination(obj, alt_receiver);
+    if (prefer_udp)
+    {
+        mFlag |= MSG_FLAG_UDP;
+        setToken(obj);
+    }
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
@@ -134,7 +139,8 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
                          , CFdbBaseObject *obj
                          , const char *filter
                          , FdbSessionId_t alt_sid
-                         , FdbObjectId_t alt_oid)
+                         , FdbObjectId_t alt_oid
+                         , bool prefer_udp)
     : mType(FDB_MT_BROADCAST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
@@ -148,6 +154,12 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mMigrateFlag(0)
 {
     setDestination(obj, FDB_INVALID_ID);
+    if (prefer_udp)
+    {
+        mFlag |= MSG_FLAG_UDP;
+        setToken(obj);
+    }
+
     if (filter)
     {
         mFilter = filter;
@@ -199,6 +211,20 @@ void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid)
         mFlag |= MSG_FLAG_ENDPOINT;
     }
     mOid = obj->objId();
+}
+
+void CFdbMessage::setToken(CFdbBaseObject *obj)
+{
+    auto ep = obj->endpoint();
+    if (ep->role() == FDB_OBJECT_ROLE_CLIENT)
+    {
+        auto client = fdb_dynamic_cast_if_available<CBaseClient *>(ep);
+        auto token = client->token();
+        if (token)
+        {
+            mToken = *token;
+        }
+    }
 }
 
 void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
@@ -522,6 +548,10 @@ bool CFdbMessage::buildHeader()
     msg_hdr.set_flag(mFlag & MSG_GLOBAL_FLAG_MASK);
     msg_hdr.set_object_id(mOid);
     msg_hdr.set_payload_size(mPayloadSize);
+    if (!mToken.empty())
+    {
+        msg_hdr.set_token(mToken.c_str());
+    }
 
     encodeDebugInfo(msg_hdr);
 

@@ -79,6 +79,7 @@ protected:
             break;
             case XCLT_TEST_SINGLE_DIRECTION:
                 incrementReceived(msg->getPayloadSize());
+                broadcast(XCLT_TEST_SINGLE_DIRECTION, msg->getPayloadBuffer(), msg->getPayloadSize(), "", true);
             break;
         }
     }

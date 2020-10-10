@@ -31,6 +31,7 @@ class CFdbSessionContainer;
 class CFdbMessage;
 struct CFdbSocketAddr;
 class CFdbSession;
+class CApiSecurityConfig;
 
 class CBaseEndpoint : public CEntityContainer<FdbSocketId_t, CFdbSessionContainer *>
                     , public CFdbBaseObject
@@ -142,6 +143,7 @@ public:
 
 protected:
     std::string mNsName;
+    CFdbToken::tTokenList mTokens;
 
     void deleteSocket(FdbSocketId_t skid = FDB_INVALID_ID);
     void addSocket(CFdbSessionContainer *container);
@@ -155,13 +157,18 @@ protected:
     bool releaseServiceAddress();
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
 
+    virtual bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session);
+    virtual bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session);
+
+    virtual bool onMessageAuthentication(CFdbMessage *msg);
+    virtual bool onEventAuthentication(CFdbMessage *msg);
+
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
     tObjectContainer mObjectContainer;
 
     uint32_t mSessionCnt;
     FdbObjectId_t mSnAllocator;
-    CFdbToken::tTokenList mTokens;
     FdbEndpointId_t mEpid;
     
     CFdbSession *preferredPeer();
@@ -185,6 +192,10 @@ private:
     void updateSessionInfo(CFdbSession *session);
     CFdbSession *connected(const CFdbSocketAddr &addr);
     CFdbSession *bound(const CFdbSocketAddr &addr);
+    virtual const CApiSecurityConfig *getApiSecurityConfig()
+    {
+        return 0;
+    }
 
     friend class CFdbSession;
     friend class CFdbUDPSession;

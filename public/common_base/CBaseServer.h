@@ -73,19 +73,21 @@ public:
 
 protected:
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
-    bool onMessageAuthentication(CFdbMessage *msg, CFdbSession *session);
-    bool onEventAuthentication(CFdbMessage *msg, CFdbSession *session);
-
     bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
                         int32_t size, CFdbSession *session);
     void publishCachedEvents(CFdbSession *session);
 private:
     CApiSecurityConfig mApiSecurity;
+
     void cbBind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     CServerSocket *doBind(const char *url, int32_t udp_port = FDB_INET_PORT_INVALID);
 
     void cbUnbind(CBaseWorker *worker, CMethodJob<CBaseServer> *job, CBaseJob::Ptr &ref);
     void doUnbind(FdbSocketId_t skid = FDB_INVALID_ID);
+    const CApiSecurityConfig *getApiSecurityConfig()
+    {
+        return &mApiSecurity;
+    }
     
     friend class CFdbContext;
     friend class CServerSocket;

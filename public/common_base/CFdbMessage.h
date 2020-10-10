@@ -213,7 +213,7 @@ private:
 #define MSG_FLAG_UDP                (1 << (MSG_LOCAL_FLAG_SHIFT + 5))
 #define MSG_FLAG_MANUAL_UPDATE      (1 << (MSG_LOCAL_FLAG_SHIFT + 6))
     static const int32_t mPrefixSize = sizeof(CFdbMsgPrefix);
-    static const int32_t mMaxHeadSize = 128;
+    static const int32_t mMaxHeadSize = 256;
 
 public:
     CFdbMessage(FdbMsgCode_t code = FDB_INVALID_ID);
@@ -506,6 +506,16 @@ public:
         return FDB_MSG_TYPE_SYSTEM;
     }
 
+    const std::string &token() const
+    {
+        return mToken;
+    }
+
+    void token(const char *tk)
+    {
+        mToken = tk;
+    }
+
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
@@ -519,7 +529,8 @@ private:
 
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
-              , FdbSessionId_t alt_receiver = FDB_INVALID_ID);
+              , FdbSessionId_t alt_receiver = FDB_INVALID_ID
+              , bool perfer_udp = false);
 
     CFdbMessage(FdbMsgCode_t code
               , CFdbMessage *msg
@@ -529,7 +540,8 @@ private:
                 , CFdbBaseObject *obj
                 , const char *filter
                 , FdbSessionId_t alt_sid = FDB_INVALID_ID
-                , FdbObjectId_t alt_oid = FDB_INVALID_ID);
+                , FdbObjectId_t alt_oid = FDB_INVALID_ID
+                , bool perfer_udp = false);
 
     bool invoke(int32_t timeout = 0);
     static bool invoke(CBaseJob::Ptr &msg_ref
@@ -682,6 +694,7 @@ private:
     CFdbSession *getSession();
 
     void setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid = FDB_INVALID_ID);
+    void setToken(CFdbBaseObject *obj);
 
     void objectId(FdbObjectId_t object_id)
     {
@@ -736,6 +749,7 @@ private:
 
     CFdbBaseObject *mMigrateObject;
     long mMigrateFlag;
+    std::string mToken;
 
     friend class CFdbSession;
     friend class CFdbUDPSession;
