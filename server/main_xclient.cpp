@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2015   Jeremy Chen jeremy_cz@yahoo.com
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -19,6 +35,18 @@ protected:
     void run(CBaseWorker* worker, Ptr& ref);
 };
 
+class CUDPSenderTimer : public CNanoTimer
+{
+public:
+    CUDPSenderTimer()
+        : mSn(0)
+    {}
+    CUDPSenderTimer(uint32_t sn)
+        : mSn(sn)
+    {}
+    uint32_t mSn;
+};
+
 class CXClient;
 static CXClient *fdb_xtest_client;
 static CBaseWorker *fdb_worker_A;
@@ -32,7 +60,7 @@ static uint32_t fdb_block_size = 1024;
 static uint32_t fdb_delay = 0;
 static bool fdb_sync_invoke = false;
 static std::mutex fdb_ts_mutex;
-static std::list<CNanoTimer> fdb_timestamps;
+static std::list<CUDPSenderTimer> fdb_timestamps;
 static int32_t fdb_init_skip_count = XCLT_INIT_SKIP_COUNT;
 
 class CStatisticTimer : public CMethodLoopTimer<CXClient>
@@ -60,8 +88,8 @@ public:
         static bool title_printed = false;
         if (!title_printed)
         {
-            printf("%12s       %12s     %8s     %8s %8s %6s %10s  %10s\n",
-                   "Avg Data Rate", "Inst Data Rate", "Avg Trans", "Inst Trans", "Pending Req", "Failure", "Avg Delay", "Max Delay");
+            printf("  |%12s| |%12s|    |%8s|   |%8s||%8s||%6s/%-6s||%10s||%10s|\n",
+                   "Avg Data Rate", "Inst Data Rate", "Avg Trans", "Inst Trans", "Pending", "Total", "Failure", "Avg Delay", "Max Delay");
             title_printed = true;
         }
         uint64_t interval_s = mIntervalNanoTimer.snapshotSeconds();
@@ -69,31 +97,53 @@ public:
         if (interval_s <= 0) interval_s = 1;
         if (total_s <= 0) total_s = 1;
 
-        uint64_t avg_data_rate = mTotalBytesSent / total_s;
-        uint64_t inst_data_rate = mIntervalBytesSent / interval_s;
+        uint64_t avg_data_rate = mTotalBytesReceived / total_s;
+        uint64_t inst_data_rate = mIntervalBytesReceived / interval_s;
         uint64_t avg_trans_rate = mTotalRequest / total_s;
         uint64_t inst_trans_rate = mIntervalRequest / interval_s;
-        uint64_t pending_req = (mTotalRequest < mTotalReply) ? 0 : (mTotalRequest - mTotalReply);
+        uint64_t pending_req = 0;
+        if (fdb_udp_test)
+        {
+            pending_req = (uint64_t)fdb_timestamps.size();
+        }
+        else if (mTotalRequest > mTotalReply)
+        {
+            pending_req = mTotalRequest - mTotalReply;
+        }
         uint64_t avg_delay = mTotalReply ? mTotalDelay / mTotalReply : 0;
         
-        printf("%12u B/s %12u B/s %8u Req/s %8u Req/s %8u %6u %10u us %10u us\n",
+        printf("%12u B/s %12u B/s %8u Req/s %8u Req/s %8u %12u/%-4u %8u us %8u us\n",
                 (uint32_t)avg_data_rate, (uint32_t)inst_data_rate, (uint32_t)avg_trans_rate,
-                (uint32_t)inst_trans_rate, (uint32_t)pending_req, (uint32_t)mFailureCount,
-                (uint32_t)avg_delay, (uint32_t)mMaxDelay);
+                (uint32_t)inst_trans_rate, (uint32_t)pending_req, (uint32_t)mTotalRequest,
+                (uint32_t)mFailureCount, (uint32_t)avg_delay, (uint32_t)mMaxDelay);
         resetInterval();
     }
     void sendData()
     {
-        send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
-        incrementSend(fdb_block_size);
+        static uint32_t sn = 0;
+
         if (fdb_init_skip_count)
         {
+            send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
             return;
         }
-        CNanoTimer timer;
+
+        CUDPSenderTimer timer(sn);
         timer.start();
+        // shoud be pushed to list before sending!!!
+        {
         std::lock_guard<std::mutex> _l(fdb_ts_mutex);
         fdb_timestamps.push_back(timer);
+        }
+
+        uint8_t *ptr = (uint8_t *)mBuffer;
+        *(ptr++) = (uint8_t)((sn >> 0) & 0xff);
+        *(ptr++) = (uint8_t)((sn >> 8) & 0xff);
+        *(ptr++) = (uint8_t)((sn >> 16) & 0xff);
+        *(ptr++) = (uint8_t)((sn >> 24) & 0xff);
+        send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
+        incrementSend(fdb_block_size);
+        sn++;
     }
     void invokeMethod()
     {
@@ -125,9 +175,6 @@ protected:
     {
         mTimer->disable();
         fdb_stop_job = true;
-        fdb_init_skip_count = XCLT_INIT_SKIP_COUNT;
-        std::lock_guard<std::mutex> _l(fdb_ts_mutex);
-        fdb_timestamps.clear();
     }
     void onReply(CBaseJob::Ptr &msg_ref)
     {
@@ -138,25 +185,53 @@ protected:
         if (fdb_init_skip_count)
         {
             fdb_init_skip_count--;
+            return;
         }
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         switch (msg->code())
         {
             case XCLT_TEST_SINGLE_DIRECTION:
             {
-                if (fdb_timestamps.empty())
-                {
-                    break;
-                }
-                CNanoTimer timer;
-                incrementReceive(msg->getPayloadSize());
+                uint8_t *ptr = (uint8_t *)(msg->getPayloadBuffer());
+                uint32_t sn = 0;
+                sn |= (uint32_t)(*(ptr + 0) << 0);
+                sn |= (uint32_t)(*(ptr + 1) << 8);
+                sn |= (uint32_t)(*(ptr + 2) << 16);
+                sn |= (uint32_t)(*(ptr + 3) << 24);
+
+                CUDPSenderTimer timer;
+                bool found = false;
                 {
                 std::lock_guard<std::mutex> _l(fdb_ts_mutex);
-                timer = fdb_timestamps.front();
-                fdb_timestamps.pop_front();
+                for (auto it = fdb_timestamps.begin(); it != fdb_timestamps.end();)
+                {
+                    if (it->mSn < sn)
+                    {
+                        mFailureCount++;
+                        ++it;
+                        fdb_timestamps.pop_front();
+                    }
+                    else if (it->mSn == sn)
+                    {
+                        timer = fdb_timestamps.front();
+                        fdb_timestamps.pop_front();
+                        found = true;
+                        break;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
                 }
                 incrementReceive(msg->getPayloadSize());
-                getdownDelay(timer.snapshotMicroseconds());
+                if (found)
+                {
+                    getdownDelay(timer.snapshotMicroseconds());
+                }
+                else
+                {
+                }
             }
             break;
         }
@@ -181,7 +256,7 @@ private:
 
     uint8_t *mBuffer;
     uint64_t mFailureCount;
-    
+
     CStatisticTimer *mTimer;
 
     void resetTotal()
@@ -197,6 +272,10 @@ private:
         mMaxDelay = 0;
         mMinDelay = (uint64_t)~0;
         mTotalDelay = 0;
+
+        fdb_init_skip_count = XCLT_INIT_SKIP_COUNT;
+        std::lock_guard<std::mutex> _l(fdb_ts_mutex);
+        fdb_timestamps.clear();
     }
 
     void resetInterval()
@@ -256,6 +335,7 @@ private:
         if (fdb_init_skip_count)
         {
             fdb_init_skip_count--;
+            return;
         }
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
         CFdbMsgMetadata md;
@@ -332,7 +412,9 @@ void CXTestJob::run(CBaseWorker *worker, Ptr &ref)
         peer_worker = fdb_worker_A;
     }
 
+    // trigger another thread to send immediately meanwhile
     peer_worker->sendAsync(new CXTestJob());
+    // wait until message sent above is really consumed
     FDB_CONTEXT->flush();
 }
 

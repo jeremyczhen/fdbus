@@ -46,8 +46,12 @@ CFdbUDPSession::~CFdbUDPSession()
 
 bool CFdbUDPSession::sendMessage(const uint8_t *buffer, int32_t size, const CFdbSocketAddr &dest_addr)
 {
-    auto sent = mSocket->send(buffer, size, dest_addr);
-    return sent == size;
+    if (FDB_VALID_PORT(dest_addr.mPort) && !dest_addr.mAddr.empty())
+    {
+        auto sent = mSocket->send(buffer, size, dest_addr);
+        return sent == size;
+    }
+    return false;
 }
 
 bool CFdbUDPSession::sendMessage(CFdbMessage *msg, const CFdbSocketAddr &dest_addr)
