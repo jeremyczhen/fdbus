@@ -51,7 +51,7 @@ class CXClient;
 static CXClient *fdb_xtest_client;
 static CBaseWorker *fdb_worker_A;
 static CBaseWorker *fdb_worker_B;
-static CBaseWorker* fdb_statistic_worker;
+static CBaseWorker *fdb_statistic_worker;
 static bool fdb_stop_job = false;
 
 static uint32_t fdb_burst_size = 16;
@@ -82,6 +82,7 @@ public:
         mBuffer = (uint8_t *)malloc(fdb_block_size);
         memset(mBuffer, 0, fdb_block_size);
         resetTotal();
+        enableUDP(true);
     }
     void doStatistic(CMethodLoopTimer<CXClient> *timer)
     {
@@ -136,28 +137,28 @@ public:
         fdb_timestamps.push_back(timer);
         }
 
+        incrementSend(fdb_block_size);
         uint8_t *ptr = (uint8_t *)mBuffer;
         *(ptr++) = (uint8_t)((sn >> 0) & 0xff);
         *(ptr++) = (uint8_t)((sn >> 8) & 0xff);
         *(ptr++) = (uint8_t)((sn >> 16) & 0xff);
         *(ptr++) = (uint8_t)((sn >> 24) & 0xff);
         send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
-        incrementSend(fdb_block_size);
         sn++;
     }
     void invokeMethod()
     {
+        incrementSend(fdb_block_size);
         if (fdb_sync_invoke)
         {
             CBaseJob::Ptr ref(new CBaseMessage(XCLT_TEST_BI_DIRECTION));
-            invoke(ref);
+            invoke(ref, mBuffer, fdb_block_size);
             handleReply(ref);
         }
         else
         {
             invoke(XCLT_TEST_BI_DIRECTION, mBuffer, fdb_block_size);
         }
-        incrementSend(fdb_block_size);
     }
 protected:
     /* called when connected to the server */
@@ -340,8 +341,6 @@ private:
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
         CFdbMsgMetadata md;
         msg->metadata(md);
-        uint64_t c2s, s2r, r2c, total;
-        msg->parseTimestamp(md, c2s, s2r, r2c, total);
         switch (msg->code())
         {
             case XCLT_TEST_BI_DIRECTION:
@@ -367,7 +366,7 @@ private:
                     return;
                 }
                 incrementReceive(msg->getPayloadSize());
-                getdownDelay(total);
+                getdownDelay((md.mReceiveTime - md.mSendTime) / 1000);
             }
             break;
             default:
@@ -475,7 +474,7 @@ int main(int argc, char **argv)
         std::cout << "    -s burst size: specify how many requests are sent in batch for a burst" << std::endl;
         std::cout << "    -d delay: specify delay between two bursts in micro second" << std::endl;
         std::cout << "    -u: if set, UDP is tested; otherwise TCP/UDS will be tested" << std::endl;
-        std::cout << "    -y: " << std::endl;
+        std::cout << "    -y: if set, TCP test with synchronous API; otherwise asynchronous API will be called" << std::endl;
         exit(0);
     }
 

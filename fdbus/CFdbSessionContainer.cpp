@@ -107,6 +107,10 @@ bool CFdbSessionContainer::getSocketInfo(CFdbSocketInfo &info)
 
 bool CFdbSessionContainer::bindUDPSocket(const char *ip_address, int32_t udp_port)
 {
+    if (!mOwner->UDPEnabled())
+    {
+        return false;
+    }
     if (udp_port == FDB_INET_PORT_INVALID)
     {
         udp_port = mPendingUDPPort;

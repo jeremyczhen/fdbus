@@ -23,7 +23,7 @@
 #define XCLT_TEST_BI_DIRECTION     1
 
 class CXServer;
-static CBaseWorker* fdb_statistic_worker;
+static CBaseWorker *fdb_statistic_worker;
 
 class CStatisticTimer : public CMethodLoopTimer<CXServer>
 {
@@ -39,6 +39,7 @@ public:
     {
         mTimer = new CStatisticTimer(this);
         mTimer->attach(fdb_statistic_worker, false);
+        enableUDP(true);
     }
     void doStatistic(CMethodLoopTimer<CXServer> *timer)
     {

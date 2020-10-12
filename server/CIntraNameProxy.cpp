@@ -190,7 +190,8 @@ void CIntraNameProxy::processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddr
                                                                host_name.c_str(), udp_port);
                     if (session_container)
                     {
-                        if ((it->address_type() != FDB_SOCKET_IPC) && (udp_port > FDB_INET_PORT_NOBIND))
+                        if (client->UDPEnabled() && (it->address_type() != FDB_SOCKET_IPC)
+                            && (udp_port > FDB_INET_PORT_NOBIND))
                         {
                             CFdbSocketInfo socket_info;
                             if (!session_container->getUDPSocketInfo(socket_info) ||
