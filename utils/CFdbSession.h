@@ -18,12 +18,12 @@
 #define _CFDBSESSION_
 
 #include <string>
-#include "CBaseFdWatch.h"
-#include "common_defs.h"
+#include <common_base/CBaseFdWatch.h>
+#include <common_base/common_defs.h>
 //#include "CFdbMessage.h"
-#include "CBaseJob.h"
-#include "CEntityContainer.h"
-#include "CFdbSessionContainer.h"
+#include <common_base/CBaseJob.h>
+#include <common_base/CEntityContainer.h>
+#include <common_base/CFdbSessionContainer.h>
 
 struct CFdbSessionInfo
 {

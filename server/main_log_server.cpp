@@ -25,7 +25,7 @@
 #include <vector>
 #include <iostream>
 #include "CLogPrinter.h"
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;

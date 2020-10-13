@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CFdbSessionContainer.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CSocketImp.h>
 #include <utils/Log.h>
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 
 #define FDB_SEND_RETRIES (1024 * 10)
 #define FDB_RECV_RETRIES 256

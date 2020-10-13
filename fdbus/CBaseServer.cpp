@@ -16,10 +16,10 @@
 
 #include <common_base/CBaseServer.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <common_base/CFdbIfMessageHeader.h>
-#include <common_base/CFdbIfNameServer.h>
+#include <utils/CFdbIfMessageHeader.h>
+#include <server/CFdbIfNameServer.h>
 #include <utils/Log.h>
 
 CServerSocket::CServerSocket(CBaseServer *owner

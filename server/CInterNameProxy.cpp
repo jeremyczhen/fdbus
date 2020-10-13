@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include <common_base/CInterNameProxy.h>
+#include "CInterNameProxy.h"
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbMessage.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CBaseSocketFactory.h>
 #include "CHostProxy.h"
 #include "CNameServer.h"

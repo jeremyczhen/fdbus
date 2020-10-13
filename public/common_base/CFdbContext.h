@@ -22,7 +22,6 @@
 #include "CEntityContainer.h"
 #include "CBaseWorker.h"
 #include "CMethodJob.h"
-#include "CFdbSessionContainer.h"
 
 #define FDB_CONTEXT CFdbContext::getInstance()
 
@@ -31,6 +30,8 @@ class CBaseServer;
 class CFdbSession;
 class CIntraNameProxy;
 class CLogProducer;
+class CFdbSessionContainer;
+class CBaseEndpoint;
 
 class CFdbContext : public CBaseWorker
 {

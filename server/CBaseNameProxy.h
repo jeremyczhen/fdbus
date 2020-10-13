@@ -17,10 +17,10 @@
 #ifndef _CBASENAMEPROXY_H_
 #define _CBASENAMEPROXY_H_
 
-#include "common_defs.h"
-#include "CBaseClient.h"
+#include <common_base/common_defs.h>
+#include <common_base/CBaseClient.h>
 #include "CFdbIfNameServer.h"
-#include "CBaseJob.h"
+#include <common_base/CBaseJob.h>
 
 class CBaseNameProxy : public CBaseClient
 {

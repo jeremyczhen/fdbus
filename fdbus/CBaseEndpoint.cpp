@@ -16,11 +16,11 @@
 
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
-#include <common_base/CIntraNameProxy.h>
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 #include <common_base/CApiSecurityConfig.h>
+#include <server/CIntraNameProxy.h>
 #include <utils/Log.h>
 
 CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)

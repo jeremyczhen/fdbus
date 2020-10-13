@@ -20,7 +20,7 @@
 #include <string>
 #include <common_base/CFdbSimpleMsgBuilder.h>
 #include "CFdbIfMsgTokens.h"
-#include "common_defs.h"
+#include <common_base/common_defs.h>
 
 namespace NFdbBase {
 enum FdbMessageLoggerCode

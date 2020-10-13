@@ -16,13 +16,13 @@
 
 #include <vector>
 #include "CHostProxy.h"
-#include <common_base/CInterNameProxy.h>
+#include "CInterNameProxy.h"
 #include <common_base/CFdbContext.h>
 #include "CNameServer.h"
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 #include <utils/Log.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <algorithm>
 
 #define FDB_HOST_NAME_MAX 1024

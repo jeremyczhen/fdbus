@@ -18,7 +18,7 @@
 #define __CFDINTERFACENAMESERVER_H__
 
 #include <common_base/CFdbSimpleSerializer.h>
-#include "CFdbIfMsgTokens.h"
+#include <utils/CFdbIfMsgTokens.h>
 
 namespace NFdbBase {
 enum FdbNsMsgCode
@@ -274,20 +274,28 @@ public:
     {
         mBindAddr = addr;
     }
-
+    int32_t udp_port() const
+    {
+        return mUDPPort;
+    }
+    void set_udp_port(int32_t port)
+    {
+        mUDPPort = port;
+    }
 protected:
     void serialize(CFdbSimpleSerializer &serializer) const
     {
-        serializer << mRequestAddr << mBindAddr;
+        serializer << mRequestAddr << mBindAddr << mUDPPort;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
-        deserializer >> mRequestAddr >> mBindAddr;
+        deserializer >> mRequestAddr >> mBindAddr >> mUDPPort;
     }
 
 private:
     std::string mRequestAddr;
     std::string mBindAddr;
+    int32_t mUDPPort;
 };
 
 class FdbMsgAddrBindResults : public IFdbParcelable 

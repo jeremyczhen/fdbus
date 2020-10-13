@@ -18,7 +18,7 @@
 #include <string>
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include <common_base/CFdbIfNameServer.h>
+#include "CFdbIfNameServer.h"
 #include <iostream>
 #include <stdlib.h>
 #include <common_base/fdb_option_parser.h>
@@ -112,11 +112,21 @@ private:
             {
                 continue;
             }
-            std::cout << "    " <<  client_info.peer_name() << "@"
-                                << client_info.peer_address()
-                                << ", security: " << client_info.security_level()
-                                << ", udp: " << client_info.udp_port()
-                                << std::endl;
+            if (FDB_VALID_PORT(client_info.udp_port()))
+            {
+                std::cout << "    " <<  client_info.peer_name() << "@"
+                                    << client_info.peer_address()
+                                    << ", security: " << client_info.security_level()
+                                    << ", udp: " << client_info.udp_port()
+                                    << std::endl;
+            }
+            else
+            {
+                std::cout << "    " <<  client_info.peer_name() << "@"
+                                    << client_info.peer_address()
+                                    << ", security: " << client_info.security_level()
+                                    << std::endl;
+            }
         }
     }
 

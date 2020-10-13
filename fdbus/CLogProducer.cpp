@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CBaseThread.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CIntraNameProxy.h>
+#include <server/CIntraNameProxy.h>
 #include <common_base/CFdbRawMsgBuilder.h>
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 #include <common_base/fdb_log_trace.h>
 #include <stdio.h>
 #include <stdarg.h>

@@ -19,7 +19,7 @@
 #include <string>
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include <common_base/CFdbIfNameServer.h>
+#include "CFdbIfNameServer.h"
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>

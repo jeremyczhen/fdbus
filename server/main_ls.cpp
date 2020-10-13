@@ -16,7 +16,7 @@
 
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include <common_base/CFdbIfNameServer.h>
+#include <server/CFdbIfNameServer.h>
 #include <iostream>
 #include <stdlib.h>
 #include <common_base/fdb_option_parser.h>
@@ -90,9 +90,17 @@ protected:
                             addr_it != addr_list.vpool().end(); ++addr_it)
 
                     {
-                        std::cout << "        > " << addr_it->tcp_ipc_url()
-                                  << " udp://" << (addr_it->has_udp_port() ? addr_it->udp_port() : FDB_INET_PORT_INVALID)
-                                  << std::endl;
+                        if (addr_it->has_udp_port() && FDB_VALID_PORT(addr_it->udp_port()))
+                        {
+                            std::cout << "        > " << addr_it->tcp_ipc_url()
+                                      << " udp://" << addr_it->udp_port()
+                                      << std::endl;
+                        }
+                        else
+                        {
+                            std::cout << "        > " << addr_it->tcp_ipc_url()
+                                      << std::endl;
+                        }
                     }
                 }
             }

@@ -18,10 +18,10 @@
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseWorker.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbIfMessageHeader.h>
-#include <common_base/CFdbIfNameServer.h>
+#include <utils/CFdbIfMessageHeader.h>
+#include <server/CFdbIfNameServer.h>
 #include <utils/Log.h>
 #include <string.h>
 

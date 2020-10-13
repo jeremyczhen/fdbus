@@ -674,6 +674,7 @@ int main(int argc, char **argv)
             url += server_name;
             server_name += "_server";
             auto server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr);
+            server->enableUDP(true);
 
 #ifdef OBJ_FROM_SERVER_TO_CLIENT
             for (int j = 0; j < 5; ++j)
@@ -702,6 +703,7 @@ int main(int argc, char **argv)
             url += server_name;
             server_name += "_client";
             client = new CMyClient<CBaseClient>(server_name.c_str(), worker_ptr);
+            client->enableUDP(true);
             
 #ifndef OBJ_FROM_SERVER_TO_CLIENT
             for (int j = 0; j < 5; ++j)

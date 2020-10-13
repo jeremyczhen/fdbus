@@ -18,8 +18,8 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <common_base/CFdbUDPSession.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbUDPSession.h>
+#include <utils/CFdbSession.h>
 #include <utils/Log.h>
 #include <algorithm>
 

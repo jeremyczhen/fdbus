@@ -20,11 +20,11 @@
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CNanoTimer.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CFdbBaseObject.h>
 #include <utils/Log.h>
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 
 #define FDB_MSG_TX_SYNC         (1 << 0)
 #define FDB_MSG_TX_NO_REPLY     (1 << 1)

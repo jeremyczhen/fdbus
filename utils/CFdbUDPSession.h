@@ -18,8 +18,8 @@
 #define __CFDBUDPSESSION_H__
 
 #include <string>
-#include "common_defs.h"
-#include "CBaseFdWatch.h"
+#include <common_base/common_defs.h>
+#include <common_base/CBaseFdWatch.h>
 
 class CFdbSessionContainer;
 class CSocketImp;

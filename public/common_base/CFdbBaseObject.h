@@ -590,7 +590,7 @@ public:
         }
     }
 
-    bool enableEventCache() const
+    bool eventCacheEnabled() const
     {
         return !!(mFlag & FDB_OBJ_ENABLE_EVENT_CACHE);
     }

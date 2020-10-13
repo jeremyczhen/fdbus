@@ -15,8 +15,8 @@
  */
 
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbSession.h>
-#include <common_base/CIntraNameProxy.h>
+#include <utils/CFdbSession.h>
+#include <server/CIntraNameProxy.h>
 #include <common_base/CLogProducer.h>
 #include <utils/Log.h>
 #include <iostream>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <common_base/CFdbUDPSession.h>
+#include <utils/CFdbUDPSession.h>
 #include <common_base/CFdbSessionContainer.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseEndpoint.h>
@@ -22,7 +22,7 @@
 #include <common_base/CSocketImp.h>
 #include <common_base/CFdbMessage.h>
 #include <utils/Log.h>
-#include <common_base/CFdbIfMessageHeader.h>
+#include <utils/CFdbIfMessageHeader.h>
 
 #define FDB_UDP_RECEIVE_BUFFER_SIZE     (64 * 1024 - 1)
 

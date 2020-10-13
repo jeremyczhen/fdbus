@@ -19,9 +19,9 @@
 
 #include <vector>
 #include <string>
-#include "CMethodLoopTimer.h"
+#include <common_base/CMethodLoopTimer.h>
+#include <common_base/CNotificationCenter.h>
 #include "CBaseNameProxy.h"
-#include "CNotificationCenter.h"
 
 class CIntraNameProxy : public CBaseNameProxy
 {

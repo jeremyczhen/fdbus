@@ -16,7 +16,7 @@
 
 #include <common_base/CFdbContext.h>
 #include <common_base/CBaseClient.h>
-#include <common_base/CFdbIfNameServer.h>
+#include "CFdbIfNameServer.h"
 #include <iostream>
 #include <stdlib.h>
 #include <common_base/fdb_option_parser.h>

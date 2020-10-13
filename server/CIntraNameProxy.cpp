@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <common_base/CIntraNameProxy.h>
+#include "CIntraNameProxy.h"
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <common_base/CFdbSession.h>
+#include <utils/CFdbSession.h>
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>
 
@@ -342,6 +342,7 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                 CServerSocket *sk = server->doBind(tcp_ipc_url.c_str(), udp_port);
                 if (sk)
                 {
+                    int32_t bound_port = FDB_INET_PORT_INVALID;
                     CFdbSocketInfo info;
                     std::string url;
                     auto char_url = tcp_ipc_url.c_str();
@@ -363,14 +364,23 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                             addr_status->bind_address(url);
                             char_url = url.c_str();
                         }
+                        if (server->UDPEnabled())
+                        {
+                            CFdbSocketInfo socket_info;
+                            if (sk->getUDPSocketInfo(socket_info) && FDB_VALID_PORT(socket_info.mAddress->mPort))
+                            {
+                                bound_port = socket_info.mAddress->mPort;
+                            }
+                        }
                     }
                     else
                     {
                         addr_status->bind_address(tcp_ipc_url);
                     }
+                    addr_status->set_udp_port(bound_port);
 
-                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
-                            msg->session(), svc_name, char_url);
+                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s UDP %d is bound.\n",
+                            msg->session(), svc_name, char_url, bound_port);
                     break;
                 }
                 else

@@ -20,7 +20,7 @@
 #include <map>
 #include <common_base/CBaseClient.h>
 #include <common_base/CMethodLoopTimer.h>
-#include <common_base/CFdbIfNameServer.h>
+#include "CFdbIfNameServer.h"
 #include <utils/CNsConfig.h>
 
 class CInterNameProxy;

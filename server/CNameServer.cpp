@@ -19,9 +19,9 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <common_base/CFdbSession.h>
-#include <common_base/CFdbIfMessageHeader.h>
-#include <common_base/CFdbIfNameServer.h>
+#include <utils/CFdbSession.h>
+#include <utils/CFdbIfMessageHeader.h>
+#include "CFdbIfNameServer.h"
 #include <security/CFdbusSecurityConfig.h>
 #include "CHostProxy.h"
 #include <utils/CNsConfig.h>
@@ -472,6 +472,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
                 }
                 else {
                     desc->mStatus = CFdbAddressDesc::ADDR_BOUND;
+                    desc->mUDPPort = msg_it->udp_port();
                     if ((addr_in_tbl.mType != FDB_SOCKET_IPC) && 
                             msg_it->bind_address().compare(addr_in_tbl.mUrl))
                     {
@@ -1211,6 +1212,15 @@ bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)
         if (sk)
         {
             it->mStatus = CFdbAddressDesc::ADDR_BOUND;
+            CFdbSocketInfo socket_info;
+            if (sk->getUDPSocketInfo(socket_info) && FDB_VALID_PORT(socket_info.mAddress->mPort))
+            {
+                it->mUDPPort = socket_info.mAddress->mPort;
+            }
+            else
+            {
+                it->mUDPPort = FDB_INET_PORT_INVALID;
+            }
         }
         else
         {

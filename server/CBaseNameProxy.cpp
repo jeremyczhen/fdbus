@@ -15,7 +15,7 @@
  */
 
 #include <vector>
-#include <common_base/CBaseNameProxy.h>
+#include "CBaseNameProxy.h"
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <utils/CNsConfig.h>

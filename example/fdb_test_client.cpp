@@ -472,6 +472,7 @@ int main(int argc, char **argv)
         auto client = new CMediaClient(server_name.c_str(), worker_ptr);
         
         client->enableReconnect(true);
+        client->enableUDP(true);
         client->connect(url.c_str());
     }
 
