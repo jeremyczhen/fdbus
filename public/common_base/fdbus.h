@@ -56,5 +56,6 @@
 #include "IFdbMsgBuilder.h"
 #include "fdb_log_trace.h"
 #include "CFdbSimpleSerializer.h"
+#include "CFdbSession.h"
 
 #endif

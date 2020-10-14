@@ -17,7 +17,6 @@
 #ifndef _CBASEJOB_H_
 #define _CBASEJOB_H_
 
-#include <cstdint>
 #include <memory>
 #include <mutex>
 #include "CBaseSemaphore.h"

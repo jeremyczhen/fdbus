@@ -17,7 +17,7 @@
 #ifndef _CSYSFDWATCH_H_
 #define _CSYSFDWATCH_H_
 
-#include <cstdint>
+#include "common_defs.h"
 
 class CFdEventLoop;
 class CSysFdWatch

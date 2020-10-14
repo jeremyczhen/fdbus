@@ -24,7 +24,6 @@
 #include "CFdbBaseObject.h"
 #include "CMethodJob.h"
 #include "CFdbToken.h"
-#include "CFdbSimpleSerializer.h"
 
 class CBaseWorker;
 class CFdbSessionContainer;

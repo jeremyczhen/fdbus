@@ -19,10 +19,10 @@
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <utils/CFdbSession.h>
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>
 
+class CFdbSession;
 CIntraNameProxy::CIntraNameProxy()
     : mConnectTimer(this)
     , mNotificationCenter(this)

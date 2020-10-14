@@ -16,7 +16,7 @@
 
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbContext.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
 #include <utils/CFdbIfMessageHeader.h>
 #include <common_base/CApiSecurityConfig.h>
@@ -185,10 +185,7 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
             for (auto session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
             {
                 auto session = *session_it;
-                CFdbSessionInfo info;
-                session->getSessionInfo(info);
-
-                if (!obj->authentication(info))
+                if (!obj->authentication(session))
                 {
                     continue;
                 }
@@ -293,9 +290,7 @@ CFdbBaseObject *CBaseEndpoint::getObject(CFdbMessage *msg, bool server_only)
 
 bool CBaseEndpoint::addConnectedSession(CFdbSessionContainer *socket, CFdbSession *session)
 {
-    CFdbSessionInfo info;
-    session->getSessionInfo(info);
-    if (!authentication(info))
+    if (!authentication(session))
     {
         return false;
     }
@@ -313,7 +308,7 @@ bool CBaseEndpoint::addConnectedSession(CFdbSessionContainer *socket, CFdbSessio
         for (auto it = object_tbl.begin(); it != object_tbl.end(); ++it)
         {
             auto object = it->second;
-            if (!object->authentication(info))
+            if (!object->authentication(session))
             {
                 continue;
             }

@@ -60,7 +60,7 @@ class CMediaClient;
  *  |<--------r2c-------------|
  *  total = c2s + s2r + r2c 
  */
-void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata &metadata)
+void printMetadata(FdbObjectId_t obj_id, const CFdbMsgMetadata *metadata)
 {
     uint64_t time_c2s;
     uint64_t time_s2r;
@@ -109,9 +109,7 @@ public:
         /* we return from invoke(); must get reply from server. Check it. */
         auto msg = castToMessage<CBaseMessage *>(ref);
         /* print performance statistics */
-        CFdbMsgMetadata md;
-        msg->metadata(md);
-        printMetadata(objId(), md);
+        printMetadata(objId(), msg->metadata());
 
         if (msg->isStatus())
         {
@@ -308,9 +306,7 @@ protected:
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
         FDB_LOG_I("response is receieved. sn: %d\n", msg->sn());
         /* print performance statistics */
-        CFdbMsgMetadata md;
-        msg->metadata(md);
-        printMetadata(objId(), md);
+        printMetadata(objId(), msg->metadata());
 
         switch (msg->code())
         {

@@ -19,7 +19,7 @@
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <utils/CFdbUDPSession.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 #include <utils/Log.h>
 #include <algorithm>
 

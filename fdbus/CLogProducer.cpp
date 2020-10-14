@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <utils/CFdbSession.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CBaseThread.h>

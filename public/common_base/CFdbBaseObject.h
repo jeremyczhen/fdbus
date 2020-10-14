@@ -753,7 +753,7 @@ protected:
         return mObjId == FDB_OBJECT_MAIN;
     }
 
-    virtual bool authentication(CFdbSessionInfo const &session_info)
+    virtual bool authentication(CFdbSession *session)
     {
         return true;
     }

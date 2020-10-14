@@ -21,7 +21,7 @@
 #include <common_base/CBaseClient.h>
 #include <common_base/fdb_option_parser.h>
 #include <common_base/CFdbContext.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 
 class CNotificationCenter;
 class CNotificationCenterProxy : public CBaseClient

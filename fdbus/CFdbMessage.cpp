@@ -17,10 +17,9 @@
 #include <string.h>
 #include <stdarg.h>
 #include <common_base/CFdbMessage.h>
-#include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CNanoTimer.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CFdbBaseObject.h>
 #include <utils/Log.h>
@@ -64,6 +63,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, bool prefer_udp)
@@ -85,6 +89,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
         mFlag |= MSG_FLAG_UDP;
         setToken(obj);
     }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
@@ -108,6 +117,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     }
     mFlag |= msg->mFlag & (MSG_FLAG_MANUAL_UPDATE | MSG_FLAG_ENABLE_LOG);
 
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
@@ -133,6 +147,11 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     {
         mFilter = head.broadcast_filter().c_str();
     }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 };
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code
@@ -179,6 +198,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     {
         mOid = alt_oid;
     }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::~CFdbMessage()
@@ -189,6 +213,11 @@ CFdbMessage::~CFdbMessage()
         mTimer = 0;
     }
     releaseBuffer();
+    if (mTimeStamp)
+    {
+        delete mTimeStamp;
+        mTimeStamp = 0;
+    }
     //LOG_I("Message %d is destroyed!\n", (int32_t)mSn);
 }
 
@@ -886,54 +915,59 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
     }
 }
 
-void CFdbMessage::parseTimestamp(const CFdbMsgMetadata &metadata
+void CFdbMessage::parseTimestamp(const CFdbMsgMetadata *metadata
                                , uint64_t &client_to_server
                                , uint64_t &server_to_reply
                                , uint64_t &reply_to_client
                                , uint64_t &total)
 {
+    if (!metadata)
+    {
+        client_to_server = server_to_reply = reply_to_client = total = 0;
+        return;
+    }
     CNanoTimer timer;
-    if (!metadata.mSendTime || !metadata.mArriveTime)
+    if (!metadata->mSendTime || !metadata->mArriveTime)
     {
         client_to_server = 0;
     }
     else
     {
-        timer.start(metadata.mSendTime);
-        client_to_server = timer.snapshotMicroseconds(metadata.mArriveTime);
+        timer.start(metadata->mSendTime);
+        client_to_server = timer.snapshotMicroseconds(metadata->mArriveTime);
     }
 
-    if (!metadata.mArriveTime || !metadata.mReplyTime)
+    if (!metadata->mArriveTime || !metadata->mReplyTime)
     {
         server_to_reply = 0;
     }
     else
     {
         timer.reset();
-        timer.start(metadata.mArriveTime);
-        server_to_reply = timer.snapshotMicroseconds(metadata.mReplyTime);
+        timer.start(metadata->mArriveTime);
+        server_to_reply = timer.snapshotMicroseconds(metadata->mReplyTime);
     }
 
-    if (!metadata.mReplyTime || !metadata.mReceiveTime)
+    if (!metadata->mReplyTime || !metadata->mReceiveTime)
     {
         reply_to_client = 0;
     }
     else
     {
         timer.reset();
-        timer.start(metadata.mReplyTime);
-        reply_to_client = timer.snapshotMicroseconds(metadata.mReceiveTime);
+        timer.start(metadata->mReplyTime);
+        reply_to_client = timer.snapshotMicroseconds(metadata->mReceiveTime);
     }
 
-    if (!metadata.mSendTime || !metadata.mReceiveTime)
+    if (!metadata->mSendTime || !metadata->mReceiveTime)
     {
         total = 0;
     }
     else
     {
         timer.reset();
-        timer.start(metadata.mSendTime);
-        total = timer.snapshotMicroseconds(metadata.mReceiveTime);
+        timer.start(metadata->mSendTime);
+        total = timer.snapshotMicroseconds(metadata->mReceiveTime);
     }
 }
 
@@ -1024,71 +1058,66 @@ void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
 
 void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
 {
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    if (!mTimeStamp)
+    {
+        return;
+    }
+
     switch (msg_hdr.type())
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
-            msg_hdr.set_send_or_arrive_time(mArriveTime);
+            msg_hdr.set_send_or_arrive_time(mTimeStamp->mArriveTime);
             msg_hdr.set_reply_time(CNanoTimer::getNanoSecTimer());
             break;
         case FDB_MT_REQUEST:
         case FDB_MT_SUBSCRIBE_REQ:
         case FDB_MT_BROADCAST:
-            mSendTime = CNanoTimer::getNanoSecTimer();
-            msg_hdr.set_send_or_arrive_time(mSendTime);
+            mTimeStamp->mSendTime = CNanoTimer::getNanoSecTimer();
+            msg_hdr.set_send_or_arrive_time(mTimeStamp->mSendTime);
             break;
         default:
             break;
     }
-#endif
 }
 
 void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
 {
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    if (!mTimeStamp)
+    {
+        return;
+    }
     switch (msg_hdr.type())
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
             if (msg_hdr.has_send_or_arrive_time())
             {
-                mArriveTime = msg_hdr.send_or_arrive_time();
+                mTimeStamp->mArriveTime = msg_hdr.send_or_arrive_time();
             }
             if (msg_hdr.has_reply_time())
             {
-                mReplyTime = msg_hdr.reply_time();
+                mTimeStamp->mReplyTime = msg_hdr.reply_time();
             }
-            mReceiveTime = CNanoTimer::getNanoSecTimer();
+            mTimeStamp->mReceiveTime = CNanoTimer::getNanoSecTimer();
             break;
         case FDB_MT_REQUEST:
         case FDB_MT_SUBSCRIBE_REQ:
         case FDB_MT_BROADCAST:
-            mArriveTime = CNanoTimer::getNanoSecTimer();
+            mTimeStamp->mArriveTime = CNanoTimer::getNanoSecTimer();
             if (msg_hdr.has_send_or_arrive_time())
             {
-                mSendTime = msg_hdr.send_or_arrive_time();
+                mTimeStamp->mSendTime = msg_hdr.send_or_arrive_time();
             }
             break;
         default:
             break;
     }
-#endif
 }
 
-void CFdbMessage::metadata(CFdbMsgMetadata &metadata)
+const CFdbMsgMetadata *CFdbMessage::metadata() const
 {
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-    metadata.mSendTime = mSendTime;
-    metadata.mArriveTime = mArriveTime;
-    metadata.mReplyTime = mReplyTime;
-    metadata.mReceiveTime = mReceiveTime;
-#else
-    metadata.mSendTime = 0;
-    metadata.mArriveTime = 0;
-    metadata.mReplyTime = 0;
-    metadata.mReceiveTime = 0;
-#endif
+    return mTimeStamp;
 }
 
 bool CFdbMessage::invokeSideband(int32_t timeout)

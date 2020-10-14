@@ -18,7 +18,7 @@
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseWorker.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 #include <common_base/CFdbContext.h>
 #include <utils/CFdbIfMessageHeader.h>
 #include <server/CFdbIfNameServer.h>
@@ -561,14 +561,14 @@ bool CFdbBaseObject::migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker
 const CFdbBaseObject::CEventData *CFdbBaseObject::getCachedEventData(FdbMsgCode_t msg_code,
                                                                      const char *filter)
 {
-    auto it_events = mEventCache.find(msg_code);
-    if (it_events != mEventCache.end())
+    auto it_filters = mEventCache.find(msg_code);
+    if (it_filters != mEventCache.end())
     {
-        auto &events = it_events->second;
-        auto it_event = events.find(filter);
-        if (it_event != events.end())
+        auto &filters = it_filters->second;
+        auto it_filter = filters.find(filter);
+        if (it_filter != filters.end())
         {
-            auto &data = it_event->second;
+            auto &data = it_filter->second;
             return &data;
         }
     }
@@ -588,19 +588,41 @@ void CFdbBaseObject::broadcastCached(CBaseJob::Ptr &msg_ref)
     FDB_BEGIN_FOREACH_SIGNAL(msg, sub_item)
     {
         FdbMsgCode_t msg_code = sub_item->msg_code();
-        const char *filter = "";
+        const char *topic = "";
         if (sub_item->has_filter())
         {
-            filter = sub_item->filter().c_str();
+            topic = sub_item->filter().c_str();
         }
-        auto cached_data = getCachedEventData(msg_code, filter);
-        if (cached_data)
+        if (topic[0] == '\0')
         {
-            CFdbMessage broadcast_msg(msg_code, msg, filter);
-            if (broadcast_msg.serialize(cached_data->mBuffer, cached_data->mSize, this))
+            auto it_filters = mEventCache.find(msg_code);
+            if (it_filters != mEventCache.end())
             {
-                broadcast_msg.forceUpdate(true);
-                broadcast(&broadcast_msg, session);
+                auto &filters = it_filters->second;
+                for (auto it_data = filters.begin(); it_data != filters.end(); ++it_data)
+                {
+                    auto &cached_topic = it_data->first;
+                    auto &cached_data = it_data->second;
+                    CFdbMessage broadcast_msg(msg_code, msg, cached_topic.c_str());
+                    if (broadcast_msg.serialize(cached_data.mBuffer, cached_data.mSize, this))
+                    {
+                        broadcast_msg.forceUpdate(true);
+                        broadcast(&broadcast_msg, session);
+                    }
+                }
+            }
+        }
+        else
+        {
+            auto cached_data = getCachedEventData(msg_code, topic);
+            if (cached_data)
+            {
+                CFdbMessage broadcast_msg(msg_code, msg, topic);
+                if (broadcast_msg.serialize(cached_data->mBuffer, cached_data->mSize, this))
+                {
+                    broadcast_msg.forceUpdate(true);
+                    broadcast(&broadcast_msg, session);
+                }
             }
         }
     }
@@ -805,7 +827,7 @@ bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
 }
 
 bool CFdbBaseObject::subscribeSync(CFdbMsgSubscribeList &msg_list
-                              , int32_t timeout)
+                                  , int32_t timeout)
 {
     auto msg = new CBaseMessage(FDB_INVALID_ID, this);
     msg->type(FDB_MT_SUBSCRIBE_REQ);
@@ -1108,24 +1130,21 @@ void CFdbBaseObject::broadcast(SubscribeTable_t &subscribe_table,
                 msg->updateObjectId(object_id); // send to the specific object.
                 auto &subitems = it_subitems->second;
                 auto it_subitem = subitems.find(filter);
-                if (it_subitem == subitems.end())
-                {
-                    /*
-                     * If filter doesn't match, check who registers filter "".
-                     * It represents any filter.
-                     */
-                    if (filter[0] != '\0')
-                    {
-                        auto it_subitem = subitems.find("");
-                        if (it_subitem != subitems.end())
-                        {
-                            broadcastOneMsg(session, msg, it_subitem->second);
-                        }
-                    }
-                }
-                else
+                if (it_subitem != subitems.end())
                 {
                     broadcastOneMsg(session, msg, it_subitem->second);
+                }
+                /*
+                 * If filter doesn't match, check who registers filter "".
+                 * It represents any filter.
+                 */
+                if (filter[0] != '\0')
+                {
+                    auto it_subitem = subitems.find("");
+                    if (it_subitem != subitems.end())
+                    {
+                        broadcastOneMsg(session, msg, it_subitem->second);
+                    }
                 }
             }
         }
@@ -1177,26 +1196,19 @@ bool CFdbBaseObject::broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *m
                 auto filter = msg->topic().c_str();
                 auto &subitems = it_subitems->second;
                 auto it_subitem = subitems.find(filter);
-                if (it_subitem == subitems.end())
-                {
-                    /*
-                     * If filter doesn't match, check who registers filter "".
-                     * It represents any filter.
-                     */
-                    if (filter[0] != '\0')
-                    {
-                        auto it_subitem = subitems.find("");
-                        if (it_subitem != subitems.end())
-                        {
-                            broadcastOneMsg(session, msg, it_subitem->second);
-                            sent = true;
-                        }
-                    }
-                }
-                else
+                if (it_subitem != subitems.end())
                 {
                     broadcastOneMsg(session, msg, it_subitem->second);
                     sent = true;
+                }
+                else if (filter[0] != '\0')
+                {
+                    auto it_subitem = subitems.find("");
+                    if (it_subitem != subitems.end())
+                    {
+                        broadcastOneMsg(session, msg, it_subitem->second);
+                        sent = true;
+                    }
                 }
             }
         }
@@ -1748,11 +1760,11 @@ void CFdbBaseObject::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
         case FDB_SIDEBAND_QUERY_EVT_CACHE:
         {
             NFdbBase::FdbMsgEventCache msg_cache;
-            for (auto it_events = mEventCache.begin(); it_events != mEventCache.end(); ++it_events)
+            for (auto it_filters = mEventCache.begin(); it_filters != mEventCache.end(); ++it_filters)
             {
-                auto event_code = it_events->first;
-                auto &events = it_events->second;
-                for (auto it_data = events.begin(); it_data != events.end(); ++it_data)
+                auto event_code = it_filters->first;
+                auto &filters = it_filters->second;
+                for (auto it_data = filters.begin(); it_data != filters.end(); ++it_data)
                 {
                     auto &filter = it_data->first;
                     auto &data = it_data->second;

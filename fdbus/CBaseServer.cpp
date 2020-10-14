@@ -16,7 +16,7 @@
 
 #include <common_base/CBaseServer.h>
 #include <common_base/CFdbContext.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 #include <common_base/CBaseSocketFactory.h>
 #include <utils/CFdbIfMessageHeader.h>
 #include <server/CFdbIfNameServer.h>

@@ -18,7 +18,7 @@
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbMessage.h>
 #include <common_base/CBaseSocketFactory.h>
-#include <utils/CFdbSession.h>
+#include <common_base/CFdbSession.h>
 #include <security/CFdbusSecurityConfig.h>
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>

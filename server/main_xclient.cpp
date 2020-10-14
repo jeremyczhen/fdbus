@@ -339,8 +339,7 @@ private:
             return;
         }
         auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        CFdbMsgMetadata md;
-        msg->metadata(md);
+        const CFdbMsgMetadata *md = msg->metadata();
         switch (msg->code())
         {
             case XCLT_TEST_BI_DIRECTION:
@@ -366,7 +365,7 @@ private:
                     return;
                 }
                 incrementReceive(msg->getPayloadSize());
-                getdownDelay((md.mReceiveTime - md.mSendTime) / 1000);
+                getdownDelay((md->mReceiveTime - md->mSendTime) / 1000);
             }
             break;
             default:
