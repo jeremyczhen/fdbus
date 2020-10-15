@@ -60,13 +60,12 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
 #if defined(CONFIG_FDB_MESSAGE_METADATA)
     mTimeStamp = new CFdbMsgMetadata();
-#else
-    mTimeStamp = 0;
 #endif
 }
 
@@ -80,6 +79,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -89,11 +89,10 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
         mFlag |= MSG_FLAG_UDP;
         setToken(obj);
     }
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-    mTimeStamp = new CFdbMsgMetadata();
-#else
-    mTimeStamp = 0;
-#endif
+    if (obj->timeStampEnabled())
+    {
+        mTimeStamp = new CFdbMsgMetadata();
+    }
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
@@ -108,6 +107,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -117,11 +117,10 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     }
     mFlag |= msg->mFlag & (MSG_FLAG_MANUAL_UPDATE | MSG_FLAG_ENABLE_LOG);
 
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-    mTimeStamp = new CFdbMsgMetadata();
-#else
-    mTimeStamp = 0;
-#endif
+    if (msg->mTimeStamp)
+    {
+        mTimeStamp = new CFdbMsgMetadata(msg->mTimeStamp);
+    }
 }
 
 CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
@@ -140,6 +139,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
+    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -147,11 +147,10 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     {
         mFilter = head.broadcast_filter().c_str();
     }
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-    mTimeStamp = new CFdbMsgMetadata();
-#else
-    mTimeStamp = 0;
-#endif
+    if (head.has_reply_time() || head.has_send_or_arrive_time())
+    {
+        mTimeStamp = new CFdbMsgMetadata();
+    }
 };
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code
@@ -169,6 +168,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
+    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -198,11 +198,10 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     {
         mOid = alt_oid;
     }
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-    mTimeStamp = new CFdbMsgMetadata();
-#else
-    mTimeStamp = 0;
-#endif
+    if (obj->timeStampEnabled())
+    {
+        mTimeStamp = new CFdbMsgMetadata();
+    }
 }
 
 CFdbMessage::~CFdbMessage()
@@ -1062,8 +1061,13 @@ void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
     {
         return;
     }
-
-    switch (msg_hdr.type())
+    EFdbMessageType type = msg_hdr.type();
+    if ((type == FDB_MT_BROADCAST) && (mFlag & MSG_FLAG_INITIAL_RESPONSE))
+    {
+        // point-to-point broadcast is equal to reply
+        type = FDB_MT_REPLY;
+    }
+    switch (type)
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
@@ -1087,7 +1091,13 @@ void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
     {
         return;
     }
-    switch (msg_hdr.type())
+    EFdbMessageType type = msg_hdr.type();
+    if ((type == FDB_MT_BROADCAST) && (mFlag & MSG_FLAG_INITIAL_RESPONSE))
+    {
+        // point-to-point broadcast is equal to reply
+        type = FDB_MT_REPLY;
+    }
+    switch (type)
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
@@ -1160,4 +1170,23 @@ bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref, const void *buffer, int3
         return false;
     }
     return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
+}
+
+void CFdbMessage::enableTimeStamp(bool active)
+{
+    if (active)
+    {
+        if (!mTimeStamp)
+        {
+            mTimeStamp = new CFdbMsgMetadata();
+        }
+    }
+    else
+    {
+        if (mTimeStamp)
+        {
+            delete mTimeStamp;
+            mTimeStamp = 0;
+        }
+    }
 }
