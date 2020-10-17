@@ -90,6 +90,13 @@ struct CFdbMsgMetadata
         , mReceiveTime(0)
     {
     }
+    CFdbMsgMetadata(const CFdbMsgMetadata *md)
+        : mSendTime(md->mSendTime)
+        , mArriveTime(md->mArriveTime)
+        , mReplyTime(md->mReplyTime)
+        , mReceiveTime(md->mReceiveTime)
+    {
+    }
     uint64_t mSendTime;     // the time when message is sent from client
     uint64_t mArriveTime;   // the time when message is arrived at server
     uint64_t mReplyTime;    // the time when message is replied by server
@@ -516,6 +523,8 @@ public:
         mToken = tk;
     }
 
+    void enableTimeStamp(bool active);
+
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
@@ -657,7 +666,7 @@ private:
     void doUnsubscribeReq(Ptr &ref);
 
     static void autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
-    void setErrorMsg(EFdbMessageType type, int32_t error_code, const char *description = 0);
+    void setStatusMsg(int32_t error_code, const char *description = 0, EFdbMessageType type = FDB_MT_UNKNOWN);
 
     void sendStatus(CFdbSession *session, int32_t error_code, const char *description = 0);
     void sendAutoReply(CFdbSession *session, int32_t error_code, const char *description = 0);
