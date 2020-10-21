@@ -23,6 +23,7 @@
 #include <common_base/CMethodLoopTimer.h>
 #include <utils/CNsConfig.h>
 #include <security/CHostSecurityConfig.h>
+#include <common_base/CFdbMsgDispatcher.h>
 
 namespace NFdbBase {
     class FdbMsgHostRegisterAck;

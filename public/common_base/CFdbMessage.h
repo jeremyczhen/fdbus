@@ -224,6 +224,10 @@ private:
 
 public:
     CFdbMessage(FdbMsgCode_t code = FDB_INVALID_ID);
+    CFdbMessage(NFdbBase::CFdbMessageHeader &head
+                , CFdbMsgPrefix &prefix
+                , uint8_t *buffer
+                , FdbSessionId_t sid);
     virtual ~CFdbMessage();
 
     /*
@@ -531,11 +535,6 @@ protected:
     virtual void onAsyncError(Ptr &ref, NFdbBase::FdbMsgStatusCode code, const char *reason) {}
 
 private:
-    CFdbMessage(NFdbBase::CFdbMessageHeader &head
-                , CFdbMsgPrefix &prefix
-                , uint8_t *buffer
-                , FdbSessionId_t sid);
-
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
               , FdbSessionId_t alt_receiver = FDB_INVALID_ID
@@ -552,6 +551,14 @@ private:
                 , FdbObjectId_t alt_oid = FDB_INVALID_ID
                 , bool perfer_udp = false);
 
+    
+    virtual CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
+                              , CFdbMsgPrefix &prefix
+                              , uint8_t *buffer
+                              , FdbSessionId_t sid)
+    {
+        return 0;
+    }
     bool invoke(int32_t timeout = 0);
     static bool invoke(CBaseJob::Ptr &msg_ref
                        , int32_t timeout = 0);
@@ -666,7 +673,7 @@ private:
     void doUnsubscribeReq(Ptr &ref);
 
     static void autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
-    void setErrorMsg(EFdbMessageType type, int32_t error_code, const char *description = 0);
+    void setStatusMsg(int32_t error_code, const char *description = 0, EFdbMessageType type = FDB_MT_UNKNOWN);
 
     void sendStatus(CFdbSession *session, int32_t error_code, const char *description = 0);
     void sendAutoReply(CFdbSession *session, int32_t error_code, const char *description = 0);

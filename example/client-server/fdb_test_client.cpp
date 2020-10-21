@@ -18,7 +18,7 @@
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
 #include <common_base/CFdbProtoMsgBuilder.h>
-#include "CFdbIfPerson.h"
+#include "../CFdbIfPerson.h"
 #include <common_base/cJSON/cJSON.h>
 #include <common_base/CFdbCJsonMsgBuilder.h>
 
