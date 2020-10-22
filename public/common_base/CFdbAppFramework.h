@@ -28,7 +28,6 @@ class CFdbAFServer;
 class CFdbAPPFramework
 {
 public:
-    typedef std::function<void(FdbSessionId_t sid, bool first_or_last)> tCallbackFn;
     static CFdbAPPFramework *getInstance()
     {
         if (!mInstance)
@@ -37,20 +36,23 @@ public:
         }
         return mInstance;
     }
-
     CBaseWorker *defaultWorker()
     {
         return &mDefaultWorker;
     }
 
     CFdbAFClient *findAFClient(const char *bus_name);
-    bool registerClient(const char *bus_name, CFdbAFClient *client);
-
     CFdbAFServer *findAFService(const char *bus_name);
-    bool registerService(const char *bus_name, CFdbAFServer *server);
     const std::string &name()
     {
         return mName;
+    }
+    void name(const char *n)
+    {
+        if (n)
+        {
+            mName = n;
+        }
     }
 
 private:
@@ -64,6 +66,9 @@ private:
     CBaseWorker mDefaultWorker;
 
     CFdbAPPFramework();
+    bool registerClient(const char *bus_name, CFdbAFClient *client);
+    bool registerService(const char *bus_name, CFdbAFServer *server);
+friend class CFdbAFComponent;
 };
 
 #endif
