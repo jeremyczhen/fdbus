@@ -142,7 +142,7 @@ enum EFdbusCredType
 
 #define fdbMakeEventCode(_group, _event) ((FdbMsgCode_t)(((((_group) & FDB_EVENT_GROUP_BITS) << FDB_EVENT_GROUP_SHIFT) | \
                                          ((_event) & FDB_EVENT_ID_MASK))))
-#define fdbMakeEventGroup(_group) fdbMakeEventCode(_group, FDB_EVENT_ID_MASK)
+#define fdbmakeEventGroup(_group) fdbMakeEventCode(_group, FDB_EVENT_ID_MASK)
 
 #define fdbIsGroup(_event) (((_event) & FDB_EVENT_ID_MASK) == FDB_EVENT_ID_MASK)
 #define fdbEventGroup(_event) ((FdbEventGroup_t)((((uint32_t)(_event)) >> FDB_EVENT_GROUP_SHIFT) & FDB_EVENT_GROUP_BITS))

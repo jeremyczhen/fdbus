@@ -61,7 +61,7 @@ void CApiSecurityConfig::parseApiConfig(const void *json_handle, CApiSecLevelTbl
                             cJSON *item_group = cJSON_GetObjectItem(sec_level, "group");
                             if (cJSON_IsNumber(item_group))
                             {
-                                auto group = fdbMakeEventGroup(item_group->valueint);
+                                auto group = fdbmakeEventGroup(item_group->valueint);
                                 cfg.mApiSecRangeTbl.push_back({group, group, level});
                                 continue;
                             }

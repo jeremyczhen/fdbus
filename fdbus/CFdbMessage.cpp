@@ -60,12 +60,13 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
 #if defined(CONFIG_FDB_MESSAGE_METADATA)
     mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
 #endif
 }
 
@@ -79,7 +80,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -89,10 +89,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
         mFlag |= MSG_FLAG_UDP;
         setToken(obj);
     }
-    if (obj->timeStampEnabled())
-    {
-        mTimeStamp = new CFdbMsgMetadata();
-    }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
@@ -107,7 +108,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -117,10 +117,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     }
     mFlag |= msg->mFlag & (MSG_FLAG_MANUAL_UPDATE | MSG_FLAG_ENABLE_LOG);
 
-    if (msg->mTimeStamp)
-    {
-        mTimeStamp = new CFdbMsgMetadata(msg->mTimeStamp);
-    }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
@@ -139,7 +140,6 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
-    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -147,10 +147,11 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     {
         mFilter = head.broadcast_filter().c_str();
     }
-    if (head.has_reply_time() || head.has_send_or_arrive_time())
-    {
-        mTimeStamp = new CFdbMsgMetadata();
-    }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 };
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code
@@ -168,7 +169,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
-    , mTimeStamp(0)
     , mMigrateObject(0)
     , mMigrateFlag(0)
 {
@@ -198,10 +198,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     {
         mOid = alt_oid;
     }
-    if (obj->timeStampEnabled())
-    {
-        mTimeStamp = new CFdbMsgMetadata();
-    }
+#if defined(CONFIG_FDB_MESSAGE_METADATA)
+    mTimeStamp = new CFdbMsgMetadata();
+#else
+    mTimeStamp = 0;
+#endif
 }
 
 CFdbMessage::~CFdbMessage()
@@ -308,7 +309,7 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
     if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         mFlag &= ~MSG_FLAG_REPLIED;
-        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        LOG_E("CFdbMessage: Fail to send message job to FDB_CONTEXT!\n");
         return false;
     }
     return true;
@@ -349,7 +350,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         fdb_msg->mFlag &= ~MSG_FLAG_REPLIED;
-        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        LOG_E("CFdbMessage: Fail to send reply job to FDB_CONTEXT!\n");
         return false;
     }
     return true;
@@ -384,10 +385,10 @@ bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char 
     {
         return false;
     }
-    fdb_msg->setStatusMsg(error_code, description, FDB_MT_STATUS);
+    fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
     if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
-        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        LOG_E("CFdbMessage: Fail to send status job to FDB_CONTEXT!\n");
         return false;
     }
     return true;
@@ -444,9 +445,9 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
     }
     if (!ret)
     {
-        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        LOG_E("CFdbMessage: Fail to send job to FDB_CONTEXT!\n");
     }
-    return !!(mFlag & MSG_FLAG_STATUS);
+    return ret;
 }
 
 bool CFdbMessage::invoke(CBaseJob::Ptr &msg_ref
@@ -514,8 +515,8 @@ bool CFdbMessage::broadcast()
    mType = FDB_MT_BROADCAST;
    if (!CFdbContext::getInstance()->sendAsync(this))
    {
-        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
-        return false;
+       LOG_E("CFdbMessage: Fail to send broadcast job to FDB_CONTEXT!\n");
+       return false;
    }
    return true;
 }
@@ -750,7 +751,7 @@ void CFdbMessage::doRequest(Ptr &ref)
     {
         if (mFlag & MSG_FLAG_SYNC_REPLY)
         {
-            setStatusMsg(NFdbBase::FDB_ST_INVALID_ID, reason);
+            setErrorMsg(FDB_MT_UNKNOWN, NFdbBase::FDB_ST_INVALID_ID, reason);
         }
         else
         {
@@ -848,14 +849,14 @@ void CFdbMessage::doUnsubscribeReq(Ptr &ref)
     doRequest(ref);
 }
 
-void CFdbMessage::setStatusMsg(int32_t error_code, const char *description, EFdbMessageType type)
+void CFdbMessage::setErrorMsg(EFdbMessageType type, int32_t error_code, const char *description)
 {
     if (type != FDB_MT_UNKNOWN)
     {
         mType = type;
     }
 
-    if (error_code < FDB_ST_OK)
+    if ((error_code < NFdbBase::FDB_ST_AUTO_REPLY_OK) || (error_code > NFdbBase::FDB_ST_OK))
     {
         mFlag |= MSG_FLAG_ERROR;
     }
@@ -876,7 +877,7 @@ void CFdbMessage::sendStatus(CFdbSession *session, int32_t error_code, const cha
 {
     if (!(mFlag & MSG_FLAG_NOREPLY_EXPECTED))
     {
-        setStatusMsg(error_code, description, FDB_MT_STATUS);
+        setErrorMsg(FDB_MT_STATUS, error_code, description);
         session->sendMessage(this);
     }
 }
@@ -909,7 +910,7 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
             && !(fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED) && msg_ref.unique())
     {
         auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-        fdb_msg->setStatusMsg(error_code, description, FDB_MT_STATUS);
+        fdb_msg->setErrorMsg(FDB_MT_STATUS, error_code, description);
         CFdbContext::getInstance()->sendAsync(msg_ref);
     }
 }
@@ -1061,13 +1062,8 @@ void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
     {
         return;
     }
-    EFdbMessageType type = msg_hdr.type();
-    if ((type == FDB_MT_BROADCAST) && (mFlag & MSG_FLAG_INITIAL_RESPONSE))
-    {
-        // point-to-point broadcast is equal to reply
-        type = FDB_MT_REPLY;
-    }
-    switch (type)
+
+    switch (msg_hdr.type())
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
@@ -1091,13 +1087,7 @@ void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
     {
         return;
     }
-    EFdbMessageType type = msg_hdr.type();
-    if ((type == FDB_MT_BROADCAST) && (mFlag & MSG_FLAG_INITIAL_RESPONSE))
-    {
-        // point-to-point broadcast is equal to reply
-        type = FDB_MT_REPLY;
-    }
-    switch (type)
+    switch (msg_hdr.type())
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
@@ -1170,23 +1160,4 @@ bool CFdbMessage::replySideband(CBaseJob::Ptr &msg_ref, const void *buffer, int3
         return false;
     }
     return fdb_msg->feedback(msg_ref, FDB_MT_SIDEBAND_REPLY);
-}
-
-void CFdbMessage::enableTimeStamp(bool active)
-{
-    if (active)
-    {
-        if (!mTimeStamp)
-        {
-            mTimeStamp = new CFdbMsgMetadata();
-        }
-    }
-    else
-    {
-        if (mTimeStamp)
-        {
-            delete mTimeStamp;
-            mTimeStamp = 0;
-        }
-    }
 }

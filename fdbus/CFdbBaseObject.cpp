@@ -80,7 +80,6 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
         delete msg;
         return false;
     }
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->invoke(timeout);
 }
 
@@ -109,7 +108,6 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
     {
        return false;
     }
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->invoke(msg_ref, timeout);
 }
 
@@ -188,7 +186,6 @@ bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
     }
     msg->topic(topic);
     msg->setEventGet(true);
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->invoke(timeout);
 }
 
@@ -202,7 +199,6 @@ bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t time
     }
     msg->topic(topic);
     msg->setEventGet(true);
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->invoke(msg_ref, timeout);
 }
 
@@ -767,7 +763,6 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
         delete msg;
         return false;
     }
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->invoke(timeout);
 }
 
@@ -791,7 +786,6 @@ bool CFdbBaseObject::invoke(FdbSessionId_t receiver
     {
        return false;
     }
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->invoke(msg_ref, timeout);
 }
 
@@ -829,7 +823,6 @@ bool CFdbBaseObject::subscribe(CFdbMsgSubscribeList &msg_list
         delete msg;
         return false;
     }
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->subscribe(timeout);
 }
 
@@ -888,7 +881,6 @@ bool CFdbBaseObject::update(CFdbMsgTriggerList &msg_list
         delete msg;
         return false;
     }
-    msg->enableTimeStamp(timeStampEnabled());
     return msg->update(timeout);
 }
 
@@ -937,7 +929,7 @@ void CFdbBaseObject::addNotifyGroup(CFdbMsgSubscribeList &msg_list
                                     , FdbEventGroup_t event_group
                                     , const char *filter)
 {
-    addNotifyItem(msg_list, fdbMakeEventGroup(event_group), filter);
+    addNotifyItem(msg_list, fdbmakeEventGroup(event_group), filter);
 }
 
 void CFdbBaseObject::addUpdateItem(CFdbMsgSubscribeList &msg_list
@@ -957,7 +949,7 @@ void CFdbBaseObject::addUpdateGroup(CFdbMsgSubscribeList &msg_list
                                     , FdbEventGroup_t event_group
                                     , const char *filter)
 {
-    addUpdateItem(msg_list, fdbMakeEventGroup(event_group), filter);
+    addUpdateItem(msg_list, fdbmakeEventGroup(event_group), filter);
 }
 
 void CFdbBaseObject::addTriggerItem(CFdbMsgTriggerList &msg_list

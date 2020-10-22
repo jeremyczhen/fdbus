@@ -148,7 +148,8 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
     }
     else
     {
-        msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail when sending message!");
+        msg->setErrorMsg(FDB_MT_UNKNOWN, NFdbBase::FDB_ST_UNABLE_TO_SEND,
+                         "Fail when sending message!");
         if (!msg->sync())
         {
             mContainer->owner()->doReply(ref);
@@ -543,7 +544,7 @@ void CFdbSession::terminateMessage(CBaseJob::Ptr &job, int32_t status, const cha
     auto msg = castToMessage<CFdbMessage *>(job);
     if (msg)
     {
-        msg->setStatusMsg(status, reason);
+        msg->setErrorMsg(FDB_MT_UNKNOWN, status, reason);
         if (!msg->sync())
         {
             mContainer->owner()->doReply(job);

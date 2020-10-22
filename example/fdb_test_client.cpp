@@ -469,7 +469,6 @@ int main(int argc, char **argv)
         
         client->enableReconnect(true);
         client->enableUDP(true);
-        client->enableTimeStamp(true);
         client->connect(url.c_str());
     }
 
