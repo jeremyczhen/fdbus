@@ -22,6 +22,7 @@
 #include <common_base/CMethodLoopTimer.h>
 #include "CFdbIfNameServer.h"
 #include <utils/CNsConfig.h>
+#include <common_base/CFdbMsgDispatcher.h>
 
 class CInterNameProxy;
 class CNameServer;

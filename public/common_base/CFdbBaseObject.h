@@ -49,6 +49,7 @@ public:
 #define FDB_OBJ_ENABLED_MIGRATE         (1 << 0)
 #define FDB_OBJ_REGISTERED              (1 << 1)
 #define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 2)
+#define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -595,6 +596,23 @@ public:
         return !!(mFlag & FDB_OBJ_ENABLE_EVENT_CACHE);
     }
 
+    void enableTimeStamp(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_ENABLE_TIMESTAMP;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_ENABLE_TIMESTAMP;
+        }
+    }
+
+    bool timeStampEnabled()
+    {
+        return !!(mFlag & FDB_OBJ_ENABLE_TIMESTAMP);
+    }
+
     void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)
     {
         mSid = sid;
@@ -924,61 +942,6 @@ private:
     friend class CFdbMessage;
     friend class CBaseEndpoint;
     friend class CLogProducer;
-};
-
-template<typename T>
-class CFdbMessageHandle
-{
-private:
-    typedef void (T::*tCallbackFn)(CBaseJob::Ptr &msg_ref);
-    typedef std::map<FdbMsgCode_t, tCallbackFn> tCallbackTbl;
-
-public:
-    void registerCallback(FdbMsgCode_t code, tCallbackFn callback)
-    {
-        mCallbackTbl[code] = callback;
-    }
-
-    bool processMessage(T *instance, CBaseJob::Ptr &msg_ref)
-    {
-        CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
-        typename tCallbackTbl::iterator it = mCallbackTbl.find(msg->code());
-        if (it == mCallbackTbl.end())
-        {
-            return false;
-        }
-        (instance->*(it->second))(msg_ref);
-        return true;
-    }
-private:
-    tCallbackTbl mCallbackTbl;
-};
-
-template<typename T>
-class CFdbSubscribeHandle
-{
-private:
-    typedef void (T::*tCallbackFn)(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
-    typedef std::map<FdbMsgCode_t, tCallbackFn> tCallbackTbl;
-
-public:
-    void registerCallback(FdbMsgCode_t code, tCallbackFn callback)
-    {
-        mCallbackTbl[code] = callback;
-    }
-
-    bool processMessage(T *instance, CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item, FdbMsgCode_t code)
-    {
-        typename tCallbackTbl::iterator it = mCallbackTbl.find(code);
-        if (it == mCallbackTbl.end())
-        {
-            return false;
-        }
-        (instance->*(it->second))(msg_ref, sub_item);
-        return true;
-    }
-private:
-    tCallbackTbl mCallbackTbl;
 };
 
 #endif

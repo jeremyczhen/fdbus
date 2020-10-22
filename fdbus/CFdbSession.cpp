@@ -148,8 +148,7 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
     }
     else
     {
-        msg->setErrorMsg(FDB_MT_UNKNOWN, NFdbBase::FDB_ST_UNABLE_TO_SEND,
-                         "Fail when sending message!");
+        msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail when sending message!");
         if (!msg->sync())
         {
             mContainer->owner()->doReply(ref);
@@ -404,7 +403,23 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
 void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
                               CFdbMsgPrefix &prefix, uint8_t *buffer)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    CFdbMessage *msg = 0;
+    if (head.flag() & MSG_FLAG_INITIAL_RESPONSE)
+    {
+        bool found;
+        PendingMsgTable_t::EntryContainer_t::iterator it;
+        CBaseJob::Ptr &msg_ref = mPendingMsgTable.retrieveEntry(head.serial_number(), it, found);
+        if (found)
+        {
+            auto outgoing_msg = castToMessage<CFdbMessage *>(msg_ref);
+            msg = outgoing_msg->clone(head, prefix, buffer, mSid);
+        }
+    }
+
+    if (!msg)
+    {
+        msg = new CFdbMessage(head, prefix, buffer, mSid);
+    }
     auto object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
     if (object)
@@ -544,7 +559,7 @@ void CFdbSession::terminateMessage(CBaseJob::Ptr &job, int32_t status, const cha
     auto msg = castToMessage<CFdbMessage *>(job);
     if (msg)
     {
-        msg->setErrorMsg(FDB_MT_UNKNOWN, status, reason);
+        msg->setStatusMsg(status, reason);
         if (!msg->sync())
         {
             mContainer->owner()->doReply(job);

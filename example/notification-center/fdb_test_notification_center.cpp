@@ -18,7 +18,7 @@
 #include <common_base/fdbus.h>
 #include FDB_IDL_EXAMPLE_H
 #include <common_base/CFdbProtoMsgBuilder.h>
-#include "CFdbIfPerson.h"
+#include "../CFdbIfPerson.h"
 #include <common_base/cJSON/cJSON.h>
 #include <common_base/CFdbCJsonMsgBuilder.h>
 #include <iostream>
@@ -99,9 +99,17 @@ public:
             cJSON *data = cJSON_CreateObject();
             cJSON_AddNumberToObject(data, "birthday", 19900101);
             cJSON_AddNumberToObject(data, "id", 1);
-            cJSON_AddStringToObject(data, "name", "Sofia");
-            CFdbCJsonMsgBuilder builder(data);
-            publish(NTF_CJSON_TEST + event_id_start, builder, "topic 3");
+            cJSON_AddStringToObject(data, "name", "Jeremy");
+            CFdbCJsonMsgBuilder builder1(data);
+            publish(NTF_CJSON_TEST + event_id_start, builder1, "topic 3");
+
+            cJSON_AddStringToObject(data, "title", "Manager");
+            CFdbCJsonMsgBuilder builder2(data);
+            publish(NTF_CJSON_TEST + event_id_start, builder2, "topic 4");
+
+            cJSON_AddStringToObject(data, "location", "China");
+            CFdbCJsonMsgBuilder builder3(data);
+            publish(NTF_CJSON_TEST + event_id_start, builder3, "topic 5");
             cJSON_Delete(data);
             }
             publish(REQ_CREATE_MEDIAPLAYER + event_id_start, 0, 0, 0, true);
@@ -136,7 +144,7 @@ protected:
                 CFdbMsgSubscribeList subscribe_list;
                 addNotifyItem(subscribe_list, REQ_RAWDATA + event_id_start, "topic 1");
                 addNotifyItem(subscribe_list, REQ_METADATA + event_id_start, "topic 2");
-                addNotifyItem(subscribe_list, NTF_CJSON_TEST + event_id_start, "topic 3");
+                addNotifyItem(subscribe_list, NTF_CJSON_TEST + event_id_start);
                 /* subscribe them, leading to onSubscribe() to be called at server */
                 subscribeSync(subscribe_list);
             }
@@ -262,7 +270,9 @@ private:
                 cJSON *f = parser.retrieve();
                 int birthday = 0;
                 int id = 0;
-                const char *name = 0;
+                const char *name = "";
+                const char *title = "";
+                const char *location = "";
                 if (cJSON_IsObject(f))
                 {
                     {
@@ -283,9 +293,21 @@ private:
                     {
                         name = item->valuestring;
                     }
+                    }{
+                    cJSON *item = cJSON_GetObjectItem(f, "title");
+                    if (item && cJSON_IsString(item))
+                    {
+                        title = item->valuestring;
                     }
-                    FDB_LOG_I("%s is received: code: %d, topic: %s, birthday: %d, id: %d, name: %s\n",
-                              type, msg->code(), msg->topic().c_str(),  birthday, id, name);
+                    }{
+                    cJSON *item = cJSON_GetObjectItem(f, "location");
+                    if (item && cJSON_IsString(item))
+                    {
+                        location = item->valuestring;
+                    }
+                    }
+                    FDB_LOG_I("%s is received: code: %d, topic: %s, birthday: %d, id: %d, name: %s, title: %s, location: %s\n",
+                              type, msg->code(), msg->topic().c_str(),  birthday, id, name, title, location);
                 }
             }
             else

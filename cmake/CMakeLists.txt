@@ -3,7 +3,6 @@ project(fdbus C CXX)
 
 option(fdbus_ENABLE_LOG "Enable log" ON)
 option(fdbus_LOG_TO_STDOUT "Log to stdout" OFF)
-option(fdbus_ENABLE_MESSAGE_METADATA "Enable metadata of message" ON)
 option(fdbus_SOCKET_ENABLE_PEERCRED "Enable peercred of socket" ON)
 option(fdbus_ALLOC_PORT_BY_SYSTEM "Allocate port number by system rather than by name server" OFF)
 option(fdbus_SECURITY "Enable security of FDBus" OFF)
@@ -11,7 +10,7 @@ option(fdbus_ANDROID "build Android version" OFF)
 option(fdbus_PIPE_AS_EVENTFD "Do not use event FD" OFF)
 option(fdbus_BUILD_JNI "Build jni" OFF)
 option(fdbus_LINK_SOCKET_LIB "specify -lsocket to link" OFF)
-option(fdbus_LINK_PTHREAD_LIB "specify -lsocket to link" ON)
+option(fdbus_LINK_PTHREAD_LIB "specify -lpthread to link" ON)
 option(fdbus_BUILD_CLIB "build library for C" ON)
 option(fdbus_FORCE_NO_RTTI "forced to build without rtti" ON)
 option(fdbus_UDS_ABSTRACT "using abstract address for UDS" OFF)
@@ -34,10 +33,6 @@ endif()
 
 if (fdbus_LOG_TO_STDOUT)
     add_definitions("-DCONFIG_LOG_TO_STDOUT")
-endif()
-
-if (fdbus_ENABLE_MESSAGE_METADATA)
-    add_definitions("-DCONFIG_FDB_MESSAGE_METADATA")
 endif()
 
 if (fdbus_SOCKET_ENABLE_PEERCRED)
@@ -92,6 +87,8 @@ endif()
 file(GLOB_RECURSE SOCKET_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/socket/*.cpp")
 file(GLOB UTILS_SOURCES "${PACKAGE_SOURCE_ROOT}/utils/*.cpp")
 file(GLOB WORKER_SOURCES "${PACKAGE_SOURCE_ROOT}/worker/*.cpp")
+file(GLOB APPFW_SOURCES "${PACKAGE_SOURCE_ROOT}/appfw/*.cpp")
+
 file(GLOB PUBLIC_HEADERS "${PACKAGE_SOURCE_ROOT}/common_base/*.h")
 
 set(SECURITY_SOURCES
@@ -140,6 +137,7 @@ add_library(common_base ${LIB_BUILD_TYPE}
                           ${SOCKET_SOURCES}
                           ${UTILS_SOURCES}
                           ${WORKER_SOURCES}
+                          ${APPFW_SOURCES}
                           ${OTHER_SOURCES}
                           ${SECURITY_SOURCES}
 )
@@ -160,7 +158,6 @@ endif()
 
 print_variable(fdbus_ENABLE_LOG)
 print_variable(fdbus_LOG_TO_STDOUT)
-print_variable(fdbus_ENABLE_MESSAGE_METADATA)
 print_variable(fdbus_SOCKET_ENABLE_PEERCRED)
 print_variable(fdbus_ALLOC_PORT_BY_SYSTEM)
 print_variable(fdbus_SECURITY)

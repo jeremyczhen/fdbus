@@ -25,6 +25,7 @@
 #include <common_base/CBaseServer.h>
 #include <common_base/CSocketImp.h>
 #include <security/CServerSecurityConfig.h>
+#include <common_base/CFdbMsgDispatcher.h>
 #include "CAddressAllocator.h"
 
 namespace NFdbBase {
