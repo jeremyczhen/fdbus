@@ -25,6 +25,8 @@
 #include <utils/Log.h>
 #include <utils/CFdbIfMessageHeader.h>
 
+using namespace std::placeholders;
+
 #define FDB_MSG_TX_SYNC         (1 << 0)
 #define FDB_MSG_TX_NO_REPLY     (1 << 1)
 #define FDB_MAX_STATUS_SIZE     1024
@@ -61,12 +63,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
-    , mMigrateObject(0)
-    , mMigrateFlag(0)
 {
-#if defined(CONFIG_FDB_MESSAGE_METADATA)
-    mTimeStamp = new CFdbMsgMetadata();
-#endif
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, bool prefer_udp)
@@ -80,8 +77,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
-    , mMigrateObject(0)
-    , mMigrateFlag(0)
 {
     setDestination(obj, alt_receiver);
     if (prefer_udp)
@@ -108,8 +103,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
-    , mMigrateObject(0)
-    , mMigrateFlag(0)
 {
     if (filter)
     {
@@ -140,8 +133,6 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
     , mTimeStamp(0)
-    , mMigrateObject(0)
-    , mMigrateFlag(0)
 {
     if (head.has_broadcast_filter())
     {
@@ -169,8 +160,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
-    , mMigrateObject(0)
-    , mMigrateFlag(0)
 {
     setDestination(obj, FDB_INVALID_ID);
     if (prefer_udp)
@@ -257,16 +246,14 @@ void CFdbMessage::setToken(CFdbBaseObject *obj)
 
 void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
 {
-    if (mMigrateObject)
+    if (mCallable.mFunc)
     {
-        // process callback migrated from context thread to worker therad
-        auto object = mMigrateObject;
-        auto flag = mMigrateFlag;
-        mMigrateObject = 0;
-        mMigrateFlag = 0;
-        object->remoteCallback(ref, flag);
-        return;
+        mCallable.mFunc(ref);
     }
+}
+
+void CFdbMessage::dispatchMsg(Ptr &ref)
+{
     // process request from other threads to context thread
     switch (mType)
     {
@@ -305,6 +292,7 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
 {
     mType = type;
     mFlag |= MSG_FLAG_REPLIED;
+    setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
     if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         mFlag &= ~MSG_FLAG_REPLIED;
@@ -346,6 +334,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     
     fdb_msg->mType = FDB_MT_REPLY;
     fdb_msg->mFlag |= MSG_FLAG_REPLIED;
+    fdb_msg->setCallable(std::bind(&CFdbMessage::dispatchMsg, fdb_msg, _1));
     if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         fdb_msg->mFlag &= ~MSG_FLAG_REPLIED;
@@ -385,6 +374,7 @@ bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char 
         return false;
     }
     fdb_msg->setStatusMsg(error_code, description, FDB_MT_STATUS);
+    fdb_msg->setCallable(std::bind(&CFdbMessage::dispatchMsg, fdb_msg, _1));
     if (!CFdbContext::getInstance()->sendAsync(msg_ref))
     {
         fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
@@ -432,6 +422,8 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
             mTimer = new CMessageTimer(timeout);
         }
     }
+
+    setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
 
     bool ret;
     if (sync)
@@ -512,6 +504,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
 bool CFdbMessage::broadcast()
 {
    mType = FDB_MT_BROADCAST;
+   setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
    if (!CFdbContext::getInstance()->sendAsync(this))
    {
         setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
@@ -910,6 +903,7 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
     {
         auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
         fdb_msg->setStatusMsg(error_code, description, FDB_MT_STATUS);
+        fdb_msg->setCallable(std::bind(&CFdbMessage::dispatchMsg, fdb_msg, _1));
         CFdbContext::getInstance()->sendAsync(msg_ref);
     }
 }

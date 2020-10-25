@@ -18,6 +18,7 @@
 #define _CFDBMESSAGE_H_
 
 #include <string>
+#include <functional>
 #include "common_defs.h"
 #include "CBaseJob.h"
 #include "CBaseLoopTimer.h"
@@ -223,6 +224,36 @@ private:
     static const int32_t mMaxHeadSize = 256;
 
 public:
+    typedef std::function<void(CBaseJob::Ptr &)> tCallableFn;
+    struct Callable
+    {
+        tCallableFn mFunc;
+        union UserData
+        {
+            int64_t mPlaceHolder;
+        } mUserData;
+        Callable()
+            : mFunc(0)
+        {}
+    };
+    template <typename T = int32_t> bool setCallable(tCallableFn fn, const T *user_data = 0)
+    {
+        bool ret = true;
+        mCallable.mFunc = fn;
+        if (user_data)
+        {
+            if (sizeof(T) <= sizeof(mCallable.mUserData))
+            {
+                *((T*)(&mCallable.mUserData)) = *user_data;
+            }
+            else
+            {
+                ret = false;
+            }
+        }
+        return ret;
+    }
+
     CFdbMessage(FdbMsgCode_t code = FDB_INVALID_ID);
     CFdbMessage(NFdbBase::CFdbMessageHeader &head
                 , CFdbMsgPrefix &prefix
@@ -529,6 +560,11 @@ public:
 
     void enableTimeStamp(bool active);
 
+    Callable &getCallable()
+    {
+        return mCallable;
+    }
+
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
@@ -734,11 +770,7 @@ private:
     void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr);
 
     static bool replyNoQueue(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
-    void setRemoteCall(CFdbBaseObject *object, long flag)
-    {
-        mMigrateObject = object;
-        mMigrateFlag = flag;
-    }
+    void dispatchMsg(Ptr &ref);
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -760,9 +792,8 @@ private:
 
     CFdbMsgMetadata *mTimeStamp;
 
-    CFdbBaseObject *mMigrateObject;
-    long mMigrateFlag;
     std::string mToken;
+    Callable mCallable;
 
     friend class CFdbSession;
     friend class CFdbUDPSession;

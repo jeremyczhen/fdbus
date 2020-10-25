@@ -60,7 +60,7 @@ static uint32_t fdb_block_size = 1024;
 static uint32_t fdb_delay = 0;
 static bool fdb_sync_invoke = false;
 static std::mutex fdb_ts_mutex;
-static std::list<CUDPSenderTimer> fdb_timestamps;
+static std::list<CUDPSenderTimer *> fdb_timestamps;
 static int32_t fdb_init_skip_count = XCLT_INIT_SKIP_COUNT;
 
 class CStatisticTimer : public CMethodLoopTimer<CXClient>
@@ -83,6 +83,7 @@ public:
         memset(mBuffer, 0, fdb_block_size);
         resetTotal();
         enableUDP(true);
+        enableTimeStamp(true);
     }
     void doStatistic(CMethodLoopTimer<CXClient> *timer)
     {
@@ -129,8 +130,8 @@ public:
             return;
         }
 
-        CUDPSenderTimer timer(sn);
-        timer.start();
+        auto timer = new CUDPSenderTimer(sn);
+        timer->start();
         // shoud be pushed to list before sending!!!
         {
         std::lock_guard<std::mutex> _l(fdb_ts_mutex);
@@ -200,23 +201,22 @@ protected:
                 sn |= (uint32_t)(*(ptr + 2) << 16);
                 sn |= (uint32_t)(*(ptr + 3) << 24);
 
-                CUDPSenderTimer timer;
-                bool found = false;
+                CUDPSenderTimer *timer = 0;
                 {
                 std::lock_guard<std::mutex> _l(fdb_ts_mutex);
                 for (auto it = fdb_timestamps.begin(); it != fdb_timestamps.end();)
                 {
-                    if (it->mSn < sn)
+                    if ((*it)->mSn < sn)
                     {
                         mFailureCount++;
                         ++it;
+                        delete fdb_timestamps.front();
                         fdb_timestamps.pop_front();
                     }
-                    else if (it->mSn == sn)
+                    else if ((*it)->mSn == sn)
                     {
                         timer = fdb_timestamps.front();
                         fdb_timestamps.pop_front();
-                        found = true;
                         break;
                     }
                     else
@@ -226,9 +226,10 @@ protected:
                 }
                 }
                 incrementReceive(msg->getPayloadSize());
-                if (found)
+                if (timer)
                 {
-                    getdownDelay(timer.snapshotMicroseconds());
+                    getdownDelay(timer->snapshotMicroseconds());
+                    delete timer;
                 }
                 else
                 {

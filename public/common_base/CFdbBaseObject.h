@@ -919,7 +919,12 @@ private:
         return mEndpoint;
     }
     const CEventData *getCachedEventData(FdbMsgCode_t msg_code, const char *filter);
-    void remoteCallback(CBaseJob::Ptr &msg_ref, long flag);
+    void callInvoke(CBaseJob::Ptr &msg_ref);
+    void callBroadcast(CBaseJob::Ptr &msg_ref);
+    void callStatus(CBaseJob::Ptr &msg_ref);
+    void callSubscribe(CBaseJob::Ptr &msg_ref);
+    void callReply(CBaseJob::Ptr &msg_ref);
+    void callGetEvent(CBaseJob::Ptr &msg_ref);
 
     friend class COnSubscribeJob;
     friend class COnBroadcastJob;

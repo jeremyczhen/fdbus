@@ -25,17 +25,7 @@
 #include <utils/Log.h>
 #include <string.h>
 
-enum EFdbCallback
-{
-    FDB_CALLBACK_ON_BROADCAST = 1,
-    FDB_CALLBACK_ON_GET_EVENT,
-    FDB_CALLBACK_ON_INVOKE,
-    FDB_CALLBACK_ON_ONLINE,
-    FDB_CALLBACK_ON_OFFLINE,
-    FDB_CALLBACK_ON_REPLY,
-    FDB_CALLBACK_ON_STATUS,
-    FDB_CALLBACK_ON_SUBSCRIBE,
-};
+using namespace std::placeholders;
 
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
     : mEndpoint(0)
@@ -309,6 +299,12 @@ bool CFdbBaseObject::unsubscribe()
     return unsubscribe(msg_list);
 }
 
+void CFdbBaseObject::callSubscribe(CBaseJob::Ptr &msg_ref)
+{
+    onSubscribe(msg_ref);
+    CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
+}
+
 bool CFdbBaseObject::migrateOnSubscribeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
 {
     if (!worker)
@@ -320,7 +316,7 @@ bool CFdbBaseObject::migrateOnSubscribeToWorker(CBaseJob::Ptr &msg_ref, CBaseWor
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setRemoteCall(this, FDB_CALLBACK_ON_SUBSCRIBE);
+            msg->setCallable(std::bind(&CFdbBaseObject::callSubscribe, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
                 LOG_E("CFdbBaseObject: Unable to migrate onsubscribe to worker!\n");
@@ -329,6 +325,11 @@ bool CFdbBaseObject::migrateOnSubscribeToWorker(CBaseJob::Ptr &msg_ref, CBaseWor
         return true;
     }
     return false;
+}
+
+void CFdbBaseObject::callBroadcast(CBaseJob::Ptr &msg_ref)
+{
+    onBroadcast(msg_ref);
 }
 
 bool CFdbBaseObject::migrateOnBroadcastToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
@@ -342,7 +343,7 @@ bool CFdbBaseObject::migrateOnBroadcastToWorker(CBaseJob::Ptr &msg_ref, CBaseWor
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setRemoteCall(this, FDB_CALLBACK_ON_BROADCAST);
+            msg->setCallable(std::bind(&CFdbBaseObject::callBroadcast, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
                 LOG_E("CFdbBaseObject: Unable to migrate onbroadcast to worker!\n");
@@ -351,6 +352,12 @@ bool CFdbBaseObject::migrateOnBroadcastToWorker(CBaseJob::Ptr &msg_ref, CBaseWor
         return true;
     }
     return false;
+}
+
+void CFdbBaseObject::callInvoke(CBaseJob::Ptr &msg_ref)
+{
+    onInvoke(msg_ref);
+    CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
 }
 
 bool CFdbBaseObject::migrateOnInvokeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
@@ -364,7 +371,7 @@ bool CFdbBaseObject::migrateOnInvokeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setRemoteCall(this, FDB_CALLBACK_ON_INVOKE);
+            msg->setCallable(std::bind(&CFdbBaseObject::callInvoke, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
                 LOG_E("CFdbBaseObject: Unable to migrate oninvoke to worker!\n");
@@ -496,6 +503,11 @@ void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
     }
 }
 
+void CFdbBaseObject::callReply(CBaseJob::Ptr &msg_ref)
+{
+    onReply(msg_ref);
+}
+
 bool CFdbBaseObject::migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
 {
     if (!worker)
@@ -507,7 +519,7 @@ bool CFdbBaseObject::migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker 
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setRemoteCall(this, FDB_CALLBACK_ON_REPLY);
+            msg->setCallable(std::bind(&CFdbBaseObject::callReply, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
                 LOG_E("CFdbBaseObject: Unable to migrate onreply to worker!\n");
@@ -516,6 +528,11 @@ bool CFdbBaseObject::migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker 
         return true;
     }
     return false;
+}
+
+void CFdbBaseObject::callGetEvent(CBaseJob::Ptr &msg_ref)
+{
+    onGetEvent(msg_ref);
 }
 
 bool CFdbBaseObject::migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
@@ -529,7 +546,7 @@ bool CFdbBaseObject::migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setRemoteCall(this, FDB_CALLBACK_ON_GET_EVENT);
+            msg->setCallable(std::bind(&CFdbBaseObject::callGetEvent, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
                 LOG_E("CFdbBaseObject: Unable to migrate onreply to worker!\n");
@@ -538,6 +555,19 @@ bool CFdbBaseObject::migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker
         return true;
     }
     return false;
+}
+
+void CFdbBaseObject::callStatus(CBaseJob::Ptr &msg_ref)
+{
+    auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    int32_t error_code;
+    std::string description;
+    if (!fdb_msg->decodeStatus(error_code, description))
+    {
+        return;
+    }
+
+    onStatus(msg_ref, error_code, description.c_str());
 }
 
 bool CFdbBaseObject::migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
@@ -551,7 +581,7 @@ bool CFdbBaseObject::migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setRemoteCall(this, FDB_CALLBACK_ON_STATUS);
+            msg->setCallable(std::bind(&CFdbBaseObject::callStatus, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
                 LOG_E("CFdbBaseObject: Unable to migrate onstatus to worker!\n");
@@ -645,8 +675,7 @@ void CFdbBaseObject::doSubscribe(CBaseJob::Ptr &msg_ref)
 
     if (!migrateOnSubscribeToWorker(msg_ref))
     {
-        onSubscribe(msg_ref);
-        CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
+        callSubscribe(msg_ref);
     }
 }
 
@@ -654,7 +683,7 @@ void CFdbBaseObject::doBroadcast(CBaseJob::Ptr &msg_ref)
 {
     if (!migrateOnBroadcastToWorker(msg_ref))
     {
-        onBroadcast(msg_ref);
+        callBroadcast(msg_ref);
     }
 }
 
@@ -691,8 +720,7 @@ void CFdbBaseObject::doInvoke(CBaseJob::Ptr &msg_ref)
 
     if (!migrateOnInvokeToWorker(msg_ref))
     {
-        onInvoke(msg_ref);
-        CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
+        callInvoke(msg_ref);
     }
 }
 
@@ -700,7 +728,7 @@ void CFdbBaseObject::doReply(CBaseJob::Ptr &msg_ref)
 {
     if (!migrateOnReplyToWorker(msg_ref))
     {
-        onReply(msg_ref);
+        callReply(msg_ref);
     }
 }
 
@@ -708,7 +736,7 @@ void CFdbBaseObject::doGetEvent(CBaseJob::Ptr &msg_ref)
 {
     if (!migrateGetEventToWorker(msg_ref))
     {
-        onGetEvent(msg_ref);
+        callGetEvent(msg_ref);
     }
 }
 
@@ -716,15 +744,7 @@ void CFdbBaseObject::doStatus(CBaseJob::Ptr &msg_ref)
 {
     if (!migrateOnStatusToWorker(msg_ref))
     {
-        auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-        int32_t error_code;
-        std::string description;
-        if (!fdb_msg->decodeStatus(error_code, description))
-        {
-            return;
-        }
-
-        onStatus(msg_ref, error_code, description.c_str());
+        callStatus(msg_ref);
     }
 }
 
@@ -1784,62 +1804,6 @@ void CFdbBaseObject::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             }
             CFdbParcelableBuilder builder(msg_cache);
             msg->replySideband(msg_ref, builder);
-        }
-        break;
-        default:
-        break;
-    }
-}
-
-void CFdbBaseObject::remoteCallback(CBaseJob::Ptr &msg_ref, long flag)
-{
-    switch (flag)
-    {
-        case FDB_CALLBACK_ON_BROADCAST:
-        {
-            onBroadcast(msg_ref);
-        }
-        break;
-        case FDB_CALLBACK_ON_GET_EVENT:
-        {
-            onGetEvent(msg_ref);
-        }
-        break;
-        case FDB_CALLBACK_ON_INVOKE:
-        {
-            onInvoke(msg_ref);
-            CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
-        }
-        break;
-        case FDB_CALLBACK_ON_ONLINE:
-        {
-        }
-        break;
-        case FDB_CALLBACK_ON_OFFLINE:
-        {
-        }
-        break;
-        case FDB_CALLBACK_ON_REPLY:
-        {
-            onReply(msg_ref);
-        }
-        break;
-        case FDB_CALLBACK_ON_STATUS:
-        {
-            auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
-            int32_t error_code;
-            std::string description;
-            if (!fdb_msg->decodeStatus(error_code, description))
-            {
-                return;
-            }
-            onStatus(msg_ref, error_code, description.c_str());
-        }
-        break;
-        case FDB_CALLBACK_ON_SUBSCRIBE:
-        {
-            onSubscribe(msg_ref);
-            CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
         }
         break;
         default:
