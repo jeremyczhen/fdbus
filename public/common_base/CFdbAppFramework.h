@@ -22,8 +22,8 @@
 #include <functional>
 #include "CBaseWorker.h"
 
-class CFdbAFClient;
-class CFdbAFServer;
+class CBaseClient;
+class CBaseServer;
 
 class CFdbAPPFramework
 {
@@ -41,8 +41,8 @@ public:
         return &mDefaultWorker;
     }
 
-    CFdbAFClient *findAFClient(const char *bus_name);
-    CFdbAFServer *findAFService(const char *bus_name);
+    CBaseClient *findClient(const char *bus_name);
+    CBaseServer *findService(const char *bus_name);
     const std::string &name()
     {
         return mName;
@@ -56,8 +56,8 @@ public:
     }
 
 private:
-    typedef std::map<std::string, CFdbAFClient *> tAFClientTbl;
-    typedef std::map<std::string, CFdbAFServer *> tAFServerTbl;
+    typedef std::map<std::string, CBaseClient *> tAFClientTbl;
+    typedef std::map<std::string, CBaseServer *> tAFServerTbl;
     std::string mName;
 
     static CFdbAPPFramework *mInstance;
@@ -66,8 +66,8 @@ private:
     CBaseWorker mDefaultWorker;
 
     CFdbAPPFramework();
-    bool registerClient(const char *bus_name, CFdbAFClient *client);
-    bool registerService(const char *bus_name, CFdbAFServer *server);
+    bool registerClient(const char *bus_name, CBaseClient *client);
+    bool registerService(const char *bus_name, CBaseServer *server);
 friend class CFdbAFComponent;
 };
 

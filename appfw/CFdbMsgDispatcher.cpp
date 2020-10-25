@@ -36,7 +36,7 @@ bool CFdbMsgDispatcher::registerCallback(const CMsgHandleTbl &msg_tbl)
     return ret;
 }
 
-bool CFdbMsgDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbAFServer *server)
+bool CFdbMsgDispatcher::processMessage(CBaseJob::Ptr &msg_ref)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     tRegistryTbl::iterator it = mRegistryTbl.find(msg->code());
@@ -44,7 +44,7 @@ bool CFdbMsgDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbAFServer *ser
     {
         return false;
     }
-    (it->second)(msg_ref, server);
+    (it->second)(msg_ref);
     return true;
 }
 
@@ -75,8 +75,7 @@ void CFdbEventDispatcher::registerCallback(const CEvtHandleTbl &evt_tbl,
     }
 }
 
-bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbAFClient *client,
-                                         const tRegistryHandleTbl *registered_evt_tbl)
+bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, const tRegistryHandleTbl *registered_evt_tbl)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     auto it_topics = mRegistryTbl.find(msg->code());
@@ -95,7 +94,7 @@ bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbAFClient *c
                     auto it_reg_id = std::find(registered_evt_tbl->begin(), registered_evt_tbl->end(), reg_id);
                     if (it_reg_id != registered_evt_tbl->end())
                     {
-                        (it_callback->second)(msg_ref, client);
+                        (it_callback->second)(msg_ref);
                     }
                 }
             }
@@ -103,7 +102,7 @@ bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbAFClient *c
             {
                 for (auto it_callback = callbacks.begin(); it_callback != callbacks.end(); ++it_callback)
                 {
-                    (it_callback->second)(msg_ref, client);
+                    (it_callback->second)(msg_ref);
                 }
             }
         }

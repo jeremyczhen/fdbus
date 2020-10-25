@@ -23,9 +23,6 @@
 #include "CBaseJob.h"
 #include "CFdbMessage.h"
 
-class CFdbAFClient;
-class CFdbAFServer;
-
 class CFdbMsgSubscribeItem;
 template<typename T>
 class CFdbMessageHandle
@@ -86,7 +83,7 @@ private:
 class CFdbMsgDispatcher
 {
 public:
-    typedef std::function<void(CBaseJob::Ptr &, CFdbAFServer *)> tMsgCallbackFn;
+    typedef std::function<void(CBaseJob::Ptr &)> tMsgCallbackFn;
     typedef std::map<FdbMsgCode_t, tMsgCallbackFn> tRegistryTbl;
     struct CMsgHandleItem
     {
@@ -110,7 +107,7 @@ public:
     bool registerCallback(const CMsgHandleTbl &msg_tbl);
     bool unregisterCallback(FdbMsgCode_t code)
     {return true;}
-    bool processMessage(CBaseJob::Ptr &msg_ref, CFdbAFServer *server);
+    bool processMessage(CBaseJob::Ptr &msg_ref);
 private:
     tRegistryTbl mRegistryTbl;
 };
@@ -119,7 +116,7 @@ class CFdbEventDispatcher
 {
 public:
     typedef uint32_t tRegEntryId;
-    typedef std::function<void(CBaseJob::Ptr &, CFdbAFClient *)> tEvtCallbackFn;
+    typedef std::function<void(CBaseJob::Ptr &)> tEvtCallbackFn;
     typedef std::map<tRegEntryId, tEvtCallbackFn> tEvtCallbackList;
     typedef std::map<std::string, tEvtCallbackList> tTopicList;
     typedef std::map<FdbMsgCode_t, tTopicList> tRegistryTbl;
@@ -150,7 +147,7 @@ public:
     void registerCallback(const CEvtHandleTbl &evt_tbl, tRegistryHandleTbl *registered_evt_tbl);
     bool unregisterCallback(tRegEntryId id)
     {return true;}
-    bool processMessage(CBaseJob::Ptr &msg_ref, CFdbAFClient *client,
+    bool processMessage(CBaseJob::Ptr &msg_ref,
                         const tRegistryHandleTbl *registered_evt_tbl = 0);
     void dumpEvents(tEvtHandleTbl &event_table);
 

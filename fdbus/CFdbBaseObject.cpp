@@ -34,6 +34,7 @@ CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpoi
     , mObjId(FDB_INVALID_ID)
     , mRole(role)
     , mSid(FDB_INVALID_ID)
+    , mRegIdAllocator(0)
 {
     if (name)
     {
@@ -1841,5 +1842,163 @@ void CFdbBaseObject::prepareDestroy()
         // Make sure no pending remote callback is queued
         mWorker->flush();
     }
+}
+
+#define FDB_MSG_TYPE_AFC_SUBSCRIBE (FDB_MSG_TYPE_SYSTEM + 1)
+#define FDB_MSG_TYPE_AFC_INVOKE (FDB_MSG_TYPE_SYSTEM + 2)
+
+class CAFCSubscribeMsg : public CFdbMessage
+{
+public:
+    CAFCSubscribeMsg(CFdbEventDispatcher::tRegistryHandleTbl *reg_handle)
+        : CFdbMessage()
+    {
+        if (reg_handle)
+        {
+            mRegHandle = *reg_handle;
+        }
+    }
+    CAFCSubscribeMsg(NFdbBase::CFdbMessageHeader &head
+                      , CFdbMsgPrefix &prefix
+                      , uint8_t *buffer
+                      , FdbSessionId_t sid
+                      , CFdbEventDispatcher::tRegistryHandleTbl &reg_handle)
+        : CFdbMessage(head, prefix, buffer, sid)
+        , mRegHandle(reg_handle)
+    {
+    }
+    FdbMessageType_t getTypeId()
+    {
+        return FDB_MSG_TYPE_AFC_SUBSCRIBE;
+    }
+
+    CFdbEventDispatcher::tRegistryHandleTbl mRegHandle;
+protected:
+    CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
+                      , CFdbMsgPrefix &prefix
+                      , uint8_t *buffer
+                      , FdbSessionId_t sid)
+    {
+        return new CAFCSubscribeMsg(head, prefix, buffer, sid, mRegHandle);
+    }
+};
+
+class CAFCInvokeMsg : public CFdbMessage
+{
+public:
+    CAFCInvokeMsg(FdbMsgCode_t code, CFdbBaseObject::tInvokeCallbackFn &reply_callback)
+        : CFdbMessage(code)
+        , mReplyCallback(reply_callback)
+    {
+    }
+    FdbMessageType_t getTypeId()
+    {
+        return FDB_MSG_TYPE_AFC_INVOKE;
+    }
+    CFdbBaseObject::tInvokeCallbackFn mReplyCallback;
+};
+
+CFdbBaseObject::tRegEntryId CFdbBaseObject::registerConnNotification(tConnCallbackFn callback)
+{
+    CFdbBaseObject::tRegEntryId id = mRegIdAllocator++;
+    mConnCallbackTbl[id] =callback;
+    if (mEndpoint->connected())
+    {
+        callback(this, FDB_INVALID_ID, true);
+    }
+    return id;
+}
+
+bool CFdbBaseObject::subscribeEvents(const CFdbEventDispatcher::tEvtHandleTbl &events,
+                                     CFdbEventDispatcher::tRegistryHandleTbl *reg_handle)
+{
+    CFdbMsgSubscribeList subscribe_list;
+    for (auto it = events.begin(); it != events.end(); ++it)
+    {
+        addNotifyItem(subscribe_list, it->mCode, it->mTopic.c_str());
+    }
+    return subscribe(subscribe_list, new CAFCSubscribeMsg(reg_handle));
+}
+
+bool CFdbBaseObject::registerEventHandle(const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
+                                         CFdbEventDispatcher::tRegistryHandleTbl *reg_handle)
+{
+    CFdbEventDispatcher::tRegistryHandleTbl handle_tbl;
+    mEvtDispather.registerCallback(evt_tbl, &handle_tbl);
+    if (reg_handle)
+    {
+        reg_handle->insert(reg_handle->end(), handle_tbl.begin(), handle_tbl.end());
+    }
+
+    if (mEndpoint->connected())
+    {
+        subscribeEvents(evt_tbl.getEvtHandleTbl(), &handle_tbl);
+    }
+    return true;
+}
+
+bool CFdbBaseObject::registerMsgHandle(const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl)
+{
+    return mMsgDispather.registerCallback(msg_tbl);
+}
+
+void CFdbBaseObject::onBroadcast(CBaseJob::Ptr &msg_ref)
+{
+    const CFdbEventDispatcher::tRegistryHandleTbl *registered_evt_tbl = 0;
+    auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+    if (msg->isInitialResponse() && (msg->getTypeId() == FDB_MSG_TYPE_AFC_SUBSCRIBE))
+    {
+        auto afc_msg = castToMessage<CAFCSubscribeMsg *>(msg_ref);
+        registered_evt_tbl = &afc_msg->mRegHandle;
+    }
+    mEvtDispather.processMessage(msg_ref, registered_evt_tbl);
+}
+
+void CFdbBaseObject::onReply(CBaseJob::Ptr &msg_ref)
+{
+    auto *msg = castToMessage<CBaseMessage *>(msg_ref);
+    if (msg->getTypeId() == FDB_MSG_TYPE_AFC_INVOKE)
+    {
+        auto afc_msg = castToMessage<CAFCInvokeMsg *>(msg_ref);
+        afc_msg->mReplyCallback(msg_ref);
+    }
+}
+
+void CFdbBaseObject::onOnline(FdbSessionId_t sid, bool is_first)
+{
+    CFdbEventDispatcher::tEvtHandleTbl events;
+    mEvtDispather.dumpEvents(events);
+    subscribeEvents(events, 0);
+
+    for (auto it = mConnCallbackTbl.begin(); it != mConnCallbackTbl.end(); ++it)
+    {
+        (it->second)(this, sid, true);
+    }
+}
+void CFdbBaseObject::onOffline(FdbSessionId_t sid, bool is_last)
+{
+    for (auto it = mConnCallbackTbl.begin(); it != mConnCallbackTbl.end(); ++it)
+    {
+        (it->second)(this, sid, false);
+    }
+}
+void CFdbBaseObject::onInvoke(CBaseJob::Ptr &msg_ref)
+{
+    mMsgDispather.processMessage(msg_ref);
+}
+
+bool CFdbBaseObject::invoke(FdbMsgCode_t code, IFdbMsgBuilder &data
+                           , CFdbBaseObject::tInvokeCallbackFn callback, int32_t timeout)
+{
+    auto invoke_msg = new CAFCInvokeMsg(code, callback);
+    return CFdbBaseObject::invoke(invoke_msg, data, timeout);
+}
+
+bool CFdbBaseObject::invoke(FdbMsgCode_t code, CFdbBaseObject::tInvokeCallbackFn callback
+                           , const void *buffer, int32_t size, int32_t timeout, const char *log_info)
+{
+    auto invoke_msg = new CAFCInvokeMsg(code, callback);
+    invoke_msg->setLogData(log_info);
+    return CFdbBaseObject::invoke(invoke_msg, buffer, size, timeout);
 }
 

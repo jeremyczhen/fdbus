@@ -17,6 +17,8 @@
 #include <common_base/CFdbAFComponent.h>
 #include <common_base/CMethodJob.h>
 #include <common_base/CFdbAppFramework.h>
+#include <common_base/CBaseClient.h>
+#include <common_base/CBaseServer.h>
 
 CFdbAFComponent::CFdbAFComponent(const char *name)
 {
@@ -32,8 +34,8 @@ public:
     CQueryServiceJob(CFdbAFComponent *comp,
                      const char *bus_name,
                      const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
-                     CFdbAFClient::tConnCallbackFn &connect_callback,
-                     CFdbAFClient *&client)
+                     CFdbBaseObject::tConnCallbackFn &connect_callback,
+                     CBaseClient *&client)
         : CMethodJob<CFdbAFComponent>(comp, &CFdbAFComponent::callQueryService, JOB_FORCE_RUN)
         , mBusName(bus_name)
         , mEvtTbl(evt_tbl)
@@ -43,18 +45,18 @@ public:
     }
     const char *mBusName;
     const CFdbEventDispatcher::CEvtHandleTbl &mEvtTbl;
-    CFdbAFClient::tConnCallbackFn &mConnCallback;
-    CFdbAFClient *&mClient;
+    CFdbBaseObject::tConnCallbackFn &mConnCallback;
+    CBaseClient *&mClient;
 };
 
 void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref)
 {
     auto the_job = fdb_dynamic_cast_if_available<CQueryServiceJob *>(job);
     auto app_fw = CFdbAPPFramework::getInstance();
-    auto client = app_fw->findAFClient(the_job->mBusName);
+    auto client = app_fw->findClient(the_job->mBusName);
     if (!client)
     {
-        client = new CFdbAFClient(CFdbAPPFramework::getInstance()->name().c_str(), worker);
+        client = new CBaseClient(CFdbAPPFramework::getInstance()->name().c_str(), worker);
         std::string url(FDB_URL_SVC);
         url += the_job->mBusName;
         client->connect(url.c_str());
@@ -62,15 +64,15 @@ void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     }
     auto handle = client->registerConnNotification(the_job->mConnCallback);
     mConnHandleTbl.push_back(handle);
-    client->registerEventHandle(the_job->mEvtTbl, this);
+    client->registerEventHandle(the_job->mEvtTbl, &mEventRegistryTbl);
     the_job->mClient = client;
 }
 
-CFdbAFClient *CFdbAFComponent::queryService(const char *bus_name,
+CBaseClient *CFdbAFComponent::queryService(const char *bus_name,
                                             const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
-                                            CFdbAFClient::tConnCallbackFn connect_callback)
+                                            CFdbBaseObject::tConnCallbackFn connect_callback)
 {
-    CFdbAFClient *client = 0;
+    CBaseClient *client = 0;
     auto job = new CQueryServiceJob(this, bus_name, evt_tbl, connect_callback, client);
     CFdbAPPFramework::getInstance()->defaultWorker()->sendSyncEndeavor(job);
     return client;
@@ -82,8 +84,8 @@ public:
     COfferServiceJob(CFdbAFComponent *comp,
                      const char *bus_name,
                      const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl,
-                     CFdbAFServer::tConnCallbackFn &connect_callback,
-                     CFdbAFServer *&server)
+                     CFdbBaseObject::tConnCallbackFn &connect_callback,
+                     CBaseServer *&server)
         : CMethodJob<CFdbAFComponent>(comp, &CFdbAFComponent::callOfferService, JOB_FORCE_RUN)
         , mBusName(bus_name)
         , mMsgTbl(msg_tbl)
@@ -93,18 +95,18 @@ public:
     }
     const char *mBusName;
     const CFdbMsgDispatcher::CMsgHandleTbl &mMsgTbl;
-    CFdbAFServer::tConnCallbackFn &mConnCallback;
-    CFdbAFServer *&mServer;
+    CFdbBaseObject::tConnCallbackFn &mConnCallback;
+    CBaseServer *&mServer;
 };
 
 void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref)
 {
     auto the_job = fdb_dynamic_cast_if_available<COfferServiceJob *>(job);
     auto app_fw = CFdbAPPFramework::getInstance();
-    auto server = app_fw->findAFService(the_job->mBusName);
+    auto server = app_fw->findService(the_job->mBusName);
     if (!server)
     {
-        server = new CFdbAFServer(CFdbAPPFramework::getInstance()->name().c_str(), worker);
+        server = new CBaseServer(CFdbAPPFramework::getInstance()->name().c_str(), worker);
         std::string url(FDB_URL_SVC);
         url += the_job->mBusName;
         server->bind(url.c_str());
@@ -116,11 +118,11 @@ void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     the_job->mServer = server;
 }
 
-CFdbAFServer *CFdbAFComponent::offerService(const char *bus_name,
+CBaseServer *CFdbAFComponent::offerService(const char *bus_name,
                                             const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl,
-                                            CFdbAFServer::tConnCallbackFn connect_callback)
+                                            CFdbBaseObject::tConnCallbackFn connect_callback)
 {
-    CFdbAFServer *server = 0;
+    CBaseServer *server = 0;
     auto job = new COfferServiceJob(this, bus_name, msg_tbl, connect_callback, server);
     CFdbAPPFramework::getInstance()->defaultWorker()->sendSyncEndeavor(job);
     return server;

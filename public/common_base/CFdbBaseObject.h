@@ -19,6 +19,8 @@
 
 #include <map>
 #include <set>
+#include <functional>
+#include "CFdbMsgDispatcher.h"
 #include "CFdbMessage.h"
 #include "CMethodJob.h"
 #include "CFdbMsgSubscribe.h"
@@ -50,6 +52,12 @@ public:
 #define FDB_OBJ_REGISTERED              (1 << 1)
 #define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 2)
 #define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
+
+    typedef uint32_t tRegEntryId;
+    typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool)> tConnCallbackFn;
+    typedef std::map<tRegEntryId, tConnCallbackFn> tConnCallbackTbl;
+
+    typedef std::function<void(CBaseJob::Ptr &)> tInvokeCallbackFn;
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -188,6 +196,21 @@ public:
                 , const void *buffer = 0
                 , int32_t size = 0
                 , int32_t timeout = 0);
+
+    // APPFW version of async invoke: it is similiar to CFdbBaseObject::invoke[2.1] except
+    // that it accepts a callback which will be triggered when server replies
+    bool invoke(FdbMsgCode_t code
+                , IFdbMsgBuilder &data
+                , tInvokeCallbackFn callback
+                , int32_t timeout = 0);
+    // APPFW version of async invoke: it is similiar to CFdbBaseObject::invoke[6] except
+    // that it accepts a callback which will be triggered when server replies
+    bool invoke(FdbMsgCode_t code
+                , tInvokeCallbackFn callback
+                , const void *buffer = 0
+                , int32_t size = 0
+                , int32_t timeout = 0
+                , const char *log_info = 0);
 
     /*
      * send[1]
@@ -677,6 +700,14 @@ public:
                     , int32_t size = 0);
 
     virtual void prepareDestroy();
+
+    tRegEntryId registerConnNotification(tConnCallbackFn callback);
+    bool registerEventHandle(const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
+                             CFdbEventDispatcher::tRegistryHandleTbl *reg_handle);
+    bool subscribeEvents(const CFdbEventDispatcher::tEvtHandleTbl &events,
+                         CFdbEventDispatcher::tRegistryHandleTbl *reg_handle);
+
+    bool registerMsgHandle(const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl);
 protected:
     std::string mName;
     CBaseEndpoint *mEndpoint; // Which endpoint the object belongs to
@@ -698,14 +729,12 @@ protected:
      * @iparam msg_ref: reference to a message. Using castToMessage()
      *      to convert it to CBaseMessage.
      */
-    virtual void onBroadcast(CBaseJob::Ptr &msg_ref)
-    {}
+    virtual void onBroadcast(CBaseJob::Ptr &msg_ref);
     /*
      * Implemented by either client or server: called at receiver when
      *      the sender call invoke() or send() upon the receiver.
      */
-    virtual void onInvoke(CBaseJob::Ptr &msg_ref)
-    {}
+    virtual void onInvoke(CBaseJob::Ptr &msg_ref);
 
     /*
      * Implemented by either client or server: called when a session
@@ -713,22 +742,19 @@ protected:
      * @iparam sid: id of the session being destroyed
      * @iparam is_last: true when it is the last session to be destroyed
      */
-    virtual void onOffline(FdbSessionId_t sid, bool is_last)
-    {}
+    virtual void onOffline(FdbSessionId_t sid, bool is_last);
     /*
      * Implemented by either client or server: called when a session
      *      is created.
      * @iparam sid: id of the session created
      * @iparam is_first: true when it is the first session to create
      */
-    virtual void onOnline(FdbSessionId_t sid, bool is_first)
-    {}
+    virtual void onOnline(FdbSessionId_t sid, bool is_first);
     /*
      * Implemented by either client or server: called when
      *      CBaseMessage::reply() is called by the sender
      */
-    virtual void onReply(CBaseJob::Ptr &msg_ref)
-    {}
+    virtual void onReply(CBaseJob::Ptr &msg_ref);
     /*
      * Implemented by either client: response to get()
      *      method when event is returned from server
@@ -837,6 +863,12 @@ private:
     EFdbEndpointRole mRole;
     FdbSessionId_t mSid;
     EventCacheTable_t mEventCache;
+
+    CFdbEventDispatcher mEvtDispather;
+    CFdbMsgDispatcher mMsgDispather;
+
+    tConnCallbackTbl mConnCallbackTbl;
+    tRegEntryId mRegIdAllocator;
 
     void subscribe(CFdbSession *session,
                    FdbMsgCode_t msg,

@@ -100,7 +100,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mSid(msg->mSid)
     , mOid(msg->mOid)
     , mBuffer(0)
-    , mFlag(0)
+    , mFlag(MSG_FLAG_INITIAL_RESPONSE)
     , mTimer(0)
     , mTimeStamp(0)
 {

@@ -19,10 +19,12 @@
 
 #include <string>
 #include <vector>
-#include "CFdbAFClient.h"
-#include "CFdbAFServer.h"
 #include "CFdbMsgDispatcher.h"
 #include "CBaseJob.h"
+#include "CFdbBaseObject.h"
+
+class CBaseClient;
+class CBaseServer;
 
 class CFdbAFComponent
 {
@@ -34,18 +36,18 @@ public:
     // @bus_name - FDBus server name to be connected
     // @evt_tbl - list of callbacks called when associated event:topic is received
     // @connect_callback - callback called when server is connected/disconnected
-    CFdbAFClient *queryService(const char *bus_name,
+    CBaseClient *queryService(const char *bus_name,
                                const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
-                               CFdbAFClient::tConnCallbackFn connect_callback);
+                               CFdbBaseObject::tConnCallbackFn connect_callback = 0);
 
     // create FDBus server, bind bus name, and register callbacks
     // If the server is already created (bound), do not create (or bind) again
     // @bus_name - FDBus server name to be bound
     // @msg_tbl - list of callbacks called when associated method is invoked
     // @connect_callback - callback called when client is connected/disconnected
-    CFdbAFServer *offerService(const char *bus_name,
+    CBaseServer *offerService(const char *bus_name,
                                const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl,
-                               CFdbAFServer::tConnCallbackFn connect_callback);
+                               CFdbBaseObject::tConnCallbackFn connect_callback = 0);
 
     CFdbEventDispatcher::tRegistryHandleTbl &getEventRegistryTbl()
     {
@@ -66,7 +68,7 @@ public:
 protected:
     std::string mName;
 private:
-    typedef std::vector<CFdbAFClient::tRegEntryId> tConnHandleTbl;
+    typedef std::vector<CFdbBaseObject::tRegEntryId> tConnHandleTbl;
     CFdbEventDispatcher::tRegistryHandleTbl mEventRegistryTbl;
     tConnHandleTbl mConnHandleTbl;
 

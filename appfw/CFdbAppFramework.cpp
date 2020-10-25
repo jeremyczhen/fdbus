@@ -28,7 +28,7 @@ CFdbAPPFramework::CFdbAPPFramework()
     mName = app_name ? app_name : "anonymous-app";
 }
 
-CFdbAFClient *CFdbAPPFramework::findAFClient(const char *bus_name)
+CBaseClient *CFdbAPPFramework::findClient(const char *bus_name)
 {
     if (!bus_name)
     {
@@ -42,7 +42,7 @@ CFdbAFClient *CFdbAPPFramework::findAFClient(const char *bus_name)
     return it->second;
 }
 
-bool CFdbAPPFramework::registerClient(const char *bus_name, CFdbAFClient *client)
+bool CFdbAPPFramework::registerClient(const char *bus_name, CBaseClient *client)
 {
     if (!bus_name || !client)
     {
@@ -56,7 +56,7 @@ bool CFdbAPPFramework::registerClient(const char *bus_name, CFdbAFClient *client
     return true;
 }
 
-CFdbAFServer *CFdbAPPFramework::findAFService(const char *bus_name)
+CBaseServer *CFdbAPPFramework::findService(const char *bus_name)
 {
     if (!bus_name)
     {
@@ -69,7 +69,7 @@ CFdbAFServer *CFdbAPPFramework::findAFService(const char *bus_name)
     }
     return it->second;
 }
-bool CFdbAPPFramework::registerService(const char *bus_name, CFdbAFServer *server)
+bool CFdbAPPFramework::registerService(const char *bus_name, CBaseServer *server)
 {
     if (!bus_name || !server)
     {
