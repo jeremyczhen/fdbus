@@ -66,11 +66,6 @@ enum EFdbMessageType {
     FDB_MT_MAX = 8
 };
 
-enum CFdbSubscribeType {
-  FDB_SUB_TYPE_NORMAL = 0,
-  FDB_SUB_TYPE_ON_REQUEST = 1
-};
-
 enum EFdbSidebandMessage
 {
     FDB_SIDEBAND_AUTH = 0,
@@ -804,6 +799,7 @@ private:
     friend class CLogPrinter;
     friend class CLogServer;
     friend class CLogClient;
+    friend class CEventSubscribeHandle;
 };
 
 typedef CFdbMessage CBaseMessage;

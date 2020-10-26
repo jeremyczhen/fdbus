@@ -1001,13 +1001,9 @@ void CFdbBaseObject::subscribe(CFdbSession *session,
                                const char *filter,
                                CFdbSubscribeType type)
 {
-    if (!filter)
-    {
-        filter = "";
-    }
-    SubscribeTable_t &subscribe_table = fdbIsGroup(msg) ? mGroupSubscribeTable : mEventSubscribeTable;
-    auto &subitem = subscribe_table[msg][session][obj_id][filter];
-    subitem.mType = type;
+    CEventSubscribeHandle &subscribe_handle = fdbIsGroup(msg) ?
+                                              mGroupSubscribeHandle : mEventSubscribeHandle;
+    subscribe_handle.subscribe(session, msg, obj_id, filter, type);
 }
 
 void CFdbBaseObject::unsubscribe(CFdbSession *session,
@@ -1015,169 +1011,21 @@ void CFdbBaseObject::unsubscribe(CFdbSession *session,
                                  FdbObjectId_t obj_id,
                                  const char *filter)
 {
-    SubscribeTable_t &subscribe_table = fdbIsGroup(msg) ? mGroupSubscribeTable : mEventSubscribeTable;
-    
-    auto it_sessions = subscribe_table.find(msg);
-    if (it_sessions != subscribe_table.end())
-    {
-        auto &sessions = it_sessions->second;
-        auto it_objects = sessions.find(session);
-        if (it_objects != sessions.end())
-        {
-            auto &objects = it_objects->second;
-            auto it_subitems = objects.find(obj_id);
-            if (it_subitems != objects.end())
-            {
-                if (filter)
-                {
-                    auto &subitems = it_subitems->second;
-                    auto it_subitem = subitems.find(filter);
-                    if (it_subitem != subitems.end())
-                    {
-                        subitems.erase(it_subitem);
-                    }
-                    if (subitems.empty())
-                    {
-                        objects.erase(it_subitems);
-                    }
-                }
-                else
-                {
-                    objects.erase(it_subitems);
-                }
-            }
-            if (objects.empty())
-            {
-                sessions.erase(it_objects);
-            }
-        }
-        if (sessions.empty())
-        {
-            subscribe_table.erase(it_sessions);
-        }
-    }
-}
-
-void CFdbBaseObject::unsubscribeSession(SubscribeTable_t &subscribe_table,
-                                        CFdbSession *session)
-{
-    for (auto it_sessions = subscribe_table.begin();
-            it_sessions != subscribe_table.end();)
-    {
-        auto the_it_sessions = it_sessions;
-        ++it_sessions;
-
-        auto &sessions = the_it_sessions->second;
-        auto it_objects = sessions.find(session);
-        if (it_objects != sessions.end())
-        {
-            sessions.erase(it_objects);
-        }
-        if (sessions.empty())
-        {
-            subscribe_table.erase(the_it_sessions);
-        }
-    }
+    CEventSubscribeHandle &subscribe_handle = fdbIsGroup(msg) ?
+                                              mGroupSubscribeHandle : mEventSubscribeHandle;
+    subscribe_handle.unsubscribe(session, msg, obj_id, filter);
 }
 
 void CFdbBaseObject::unsubscribe(CFdbSession *session)
 {
-    unsubscribeSession(mEventSubscribeTable, session);
-    unsubscribeSession(mGroupSubscribeTable, session);
-}
-
-void CFdbBaseObject::unsubscribeObject(SubscribeTable_t &subscribe_table,
-                                       FdbObjectId_t obj_id)
-{
-    for (auto it_sessions = subscribe_table.begin();
-            it_sessions != subscribe_table.end();)
-    {
-        auto the_it_sessions = it_sessions;
-        ++it_sessions;
-
-        auto &sessions = the_it_sessions->second;
-        for (auto it_objects = sessions.begin();
-                it_objects != sessions.end();)
-        {
-            auto the_it_objects = it_objects;
-            ++it_objects;
-
-            auto &objects = the_it_objects->second;
-            auto it_subitems = objects.find(obj_id);
-            if (it_subitems != objects.end())
-            {
-                objects.erase(it_subitems);
-            }
-            if (objects.empty())
-            {
-                sessions.erase(the_it_objects);
-            }
-        }
-        if (sessions.empty())
-        {
-            subscribe_table.erase(the_it_sessions);
-        }
-    }
+    mGroupSubscribeHandle.unsubscribe(session);
+    mEventSubscribeHandle.unsubscribe(session);
 }
 
 void CFdbBaseObject::unsubscribe(FdbObjectId_t obj_id)
 {
-    unsubscribeObject(mEventSubscribeTable, obj_id);
-    unsubscribeObject(mGroupSubscribeTable, obj_id);
-}
-
-void CFdbBaseObject::broadcastOneMsg(CFdbSession *session,
-                                     CFdbMessage *msg,
-                                     CSubscribeItem &sub_item)
-{
-    if ((sub_item.mType == FDB_SUB_TYPE_NORMAL) || msg->manualUpdate())
-    {
-        if (!msg->preferUDP() || !session->sendUDPMessage(msg))
-        {
-            session->sendMessage(msg);
-        }
-    }
-}
-
-void CFdbBaseObject::broadcast(SubscribeTable_t &subscribe_table,
-                               CFdbMessage *msg, FdbMsgCode_t event)
-{
-    auto it_sessions = subscribe_table.find(event);
-    if (it_sessions != subscribe_table.end())
-    {
-        auto filter = msg->topic().c_str();
-        auto &sessions = it_sessions->second;
-        for (auto it_objects = sessions.begin();
-                it_objects != sessions.end(); ++it_objects)
-        {
-            auto session = it_objects->first;
-            auto &objects = it_objects->second;
-            for (auto it_subitems = objects.begin();
-                    it_subitems != objects.end(); ++it_subitems)
-            {
-                auto object_id = it_subitems->first;
-                msg->updateObjectId(object_id); // send to the specific object.
-                auto &subitems = it_subitems->second;
-                auto it_subitem = subitems.find(filter);
-                if (it_subitem != subitems.end())
-                {
-                    broadcastOneMsg(session, msg, it_subitem->second);
-                }
-                /*
-                 * If filter doesn't match, check who registers filter "".
-                 * It represents any filter.
-                 */
-                if (filter[0] != '\0')
-                {
-                    auto it_subitem = subitems.find("");
-                    if (it_subitem != subitems.end())
-                    {
-                        broadcastOneMsg(session, msg, it_subitem->second);
-                    }
-                }
-            }
-        }
-    }
+    mGroupSubscribeHandle.unsubscribe(obj_id);
+    mEventSubscribeHandle.unsubscribe(obj_id);
 }
 
 bool CFdbBaseObject::updateEventCache(CFdbMessage *msg)
@@ -1202,211 +1050,47 @@ void CFdbBaseObject::broadcast(CFdbMessage *msg)
 {
     if (updateEventCache(msg))
     {
-        broadcast(mEventSubscribeTable, msg, msg->code());
-        broadcast(mGroupSubscribeTable, msg, fdbMakeGroup(msg->code()));
+        mEventSubscribeHandle.broadcast(msg, msg->code());
+        mGroupSubscribeHandle.broadcast(msg, fdbMakeGroup(msg->code()));
     }
-}
-
-bool CFdbBaseObject::broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg,
-                               CFdbSession *session, FdbMsgCode_t event)
-{
-    bool sent = false;
-    auto it_sessions = subscribe_table.find(event);
-    if (it_sessions != subscribe_table.end())
-    {
-        auto &sessions = it_sessions->second;
-        auto it_objects = sessions.find(session);
-        if (it_objects != sessions.end())
-        {
-            auto &objects = it_objects->second;
-            auto it_subitems = objects.find(msg->objectId());
-            if (it_subitems != objects.end())
-            {
-                auto filter = msg->topic().c_str();
-                auto &subitems = it_subitems->second;
-                auto it_subitem = subitems.find(filter);
-                if (it_subitem != subitems.end())
-                {
-                    broadcastOneMsg(session, msg, it_subitem->second);
-                    sent = true;
-                }
-                else if (filter[0] != '\0')
-                {
-                    auto it_subitem = subitems.find("");
-                    if (it_subitem != subitems.end())
-                    {
-                        broadcastOneMsg(session, msg, it_subitem->second);
-                        sent = true;
-                    }
-                }
-            }
-        }
-    }
-    return sent;
 }
 
 bool CFdbBaseObject::broadcast(CFdbMessage *msg, CFdbSession *session)
 {
     if (updateEventCache(msg))
     {
-        if (!broadcast(mEventSubscribeTable, msg, session, msg->code()))
+        if (!mEventSubscribeHandle.broadcast(msg, session, msg->code()))
         {
-            return broadcast(mGroupSubscribeTable, msg, session, fdbMakeGroup(msg->code()));
+            return mGroupSubscribeHandle.broadcast(msg, session, fdbMakeGroup(msg->code()));
         }
     }
     return false;
 }
 
-void CFdbBaseObject::getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filter_tbl)
-{
-    for (auto it_objects = sessions.begin(); it_objects != sessions.end(); ++it_objects)
-    {
-        auto &objects = it_objects->second;
-        for (auto it_subitems = objects.begin(); it_subitems != objects.end(); ++it_subitems)
-        {
-            auto &subitems = it_subitems->second;
-            for (auto it_subitem = subitems.begin(); it_subitem != subitems.end(); ++it_subitem)
-            {
-                auto &subitem = it_subitem->second;
-                if (subitem.mType == FDB_SUB_TYPE_NORMAL)
-                {
-                    filter_tbl.insert(it_subitem->first);
-                }
-            }
-        }
-    }
-}
-
-void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table,
-                                       tFdbSubscribeMsgTbl &table)
-{
-    for (auto it_sessions = subscribe_table.begin();
-            it_sessions != subscribe_table.end(); ++it_sessions)
-    {
-        auto &filter_table = table[it_sessions->first];
-        auto &sessions = it_sessions->second;
-        getSubscribeTable(sessions, filter_table);
-    }
-}
-
 void CFdbBaseObject::getSubscribeTable(tFdbSubscribeMsgTbl &table)
 {
-    getSubscribeTable(mEventSubscribeTable, table);
-    getSubscribeTable(mGroupSubscribeTable, table);
-}
-
-void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code,
-                                       tFdbFilterSets &filters)
-{
-    auto it_sessions = subscribe_table.find(code);
-    if (it_sessions != subscribe_table.end())
-    {
-        auto &sessions = it_sessions->second;
-        getSubscribeTable(sessions, filters);
-    }
+    mEventSubscribeHandle.getSubscribeTable(table);
+    mGroupSubscribeHandle.getSubscribeTable(table);
 }
 
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, tFdbFilterSets &filters)
 {
-    getSubscribeTable(mEventSubscribeTable, code, filters);
-    getSubscribeTable(mGroupSubscribeTable, fdbMakeGroup(code), filters);
-}
-
-void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code,
-                                       CFdbSession *session, tFdbFilterSets &filter_tbl)
-{
-    auto it_sessions = subscribe_table.find(code);
-    if (it_sessions != subscribe_table.end())
-    {
-        auto &sessions = it_sessions->second;
-        auto it_objects = sessions.find(session);
-        if (it_objects != sessions.end())
-        {
-            auto &objects = it_objects->second;
-            for (auto it_subitems = objects.begin();
-                    it_subitems != objects.end(); ++it_subitems)
-            {
-                auto &subitems = it_subitems->second;
-                for (auto it_subitem = subitems.begin(); it_subitem != subitems.end(); ++it_subitem)
-                {
-                    auto &subitem = it_subitem->second;
-                    if (subitem.mType == FDB_SUB_TYPE_NORMAL)
-                    {
-                        filter_tbl.insert(it_subitem->first);
-                    }
-                }
-            }
-        }
-    }
+    mEventSubscribeHandle.getSubscribeTable(code, filters);
+    mGroupSubscribeHandle.getSubscribeTable(fdbMakeGroup(code), filters);
 }
 
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, CFdbSession *session,
                                         tFdbFilterSets &filter_tbl)
 {
-    getSubscribeTable(mEventSubscribeTable, code, session, filter_tbl);
-    getSubscribeTable(mGroupSubscribeTable, fdbMakeGroup(code), session, filter_tbl);
-}
-
-void CFdbBaseObject::getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code,
-                                       const char *filter, tSubscribedSessionSets &session_tbl)
-{
-    auto it_sessions = subscribe_table.find(code);
-    if (it_sessions != subscribe_table.end())
-    {
-        if (!filter)
-        {
-            filter = "";
-        }
-        auto &sessions = it_sessions->second;
-        for (auto it_objects = sessions.begin();
-                it_objects != sessions.end(); ++it_objects)
-        {
-            auto session = it_objects->first;
-            auto &objects = it_objects->second;
-            for (auto it_subitems = objects.begin();
-                    it_subitems != objects.end(); ++it_subitems)
-            {
-                auto &subitems = it_subitems->second;
-                auto it_subitem = subitems.find(filter);
-                if (it_subitem == subitems.end())
-                {
-                    /*
-                     * If filter doesn't match, check who registers filter "".
-                     * It represents any filter.
-                     */
-                    if (filter[0] != '\0')
-                    {
-                        auto it_subitem = subitems.find("");
-                        if (it_subitem != subitems.end())
-                        {
-                            auto &subitem = it_subitem->second;
-                            if (subitem.mType == FDB_SUB_TYPE_NORMAL)
-                            {
-                                session_tbl.insert(session);
-                                break;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    auto &subitem = it_subitem->second;
-                    if (subitem.mType == FDB_SUB_TYPE_NORMAL)
-                    {
-                        session_tbl.insert(session);
-                        break;
-                    }
-                }
-            }
-        }
-    }
+    mEventSubscribeHandle.getSubscribeTable(code, session, filter_tbl);
+    mGroupSubscribeHandle.getSubscribeTable(fdbMakeGroup(code), session, filter_tbl);
 }
 
 void CFdbBaseObject::getSubscribeTable(FdbMsgCode_t code, const char *filter,
                                        tSubscribedSessionSets &session_tbl)
 {
-    getSubscribeTable(mEventSubscribeTable, code, filter, session_tbl);
-    getSubscribeTable(mGroupSubscribeTable, fdbMakeGroup(code), filter, session_tbl);
+    mEventSubscribeHandle.getSubscribeTable(code, filter, session_tbl);
+    mGroupSubscribeHandle.getSubscribeTable(fdbMakeGroup(code), filter, session_tbl);
 }
 
 FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId_t obj_id)

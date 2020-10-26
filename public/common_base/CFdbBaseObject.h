@@ -20,8 +20,8 @@
 #include <map>
 #include <set>
 #include <functional>
+#include "CEventSubscribeHandle.h"
 #include "CFdbMsgDispatcher.h"
-#include "CFdbMessage.h"
 #include "CMethodJob.h"
 #include "CFdbMsgSubscribe.h"
 
@@ -38,13 +38,11 @@ class CFdbSession;
 class CBaseEndpoint;
 class IFdbMsgBuilder;
 struct CFdbSessionInfo;
+class CFdbMessage;
 
 typedef CFdbMsgTable CFdbMsgSubscribeList;
 typedef CFdbMsgTable CFdbMsgTriggerList;
 
-typedef std::set<std::string> tFdbFilterSets;
-typedef std::map<FdbMsgCode_t, tFdbFilterSets> tFdbSubscribeMsgTbl;
-typedef std::set<CFdbSession *> tSubscribedSessionSets;
 class CFdbBaseObject
 {
 public:
@@ -833,15 +831,6 @@ protected:
     void broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
                           const char *filter, bool force_update, bool fast);
 private:
-    struct CSubscribeItem
-    {
-        CFdbSubscribeType mType;
-    };
-    typedef std::map<std::string, CSubscribeItem> SubItemTable_t;
-    typedef std::map<FdbObjectId_t, SubItemTable_t> ObjectTable_t;
-    typedef std::map<CFdbSession *, ObjectTable_t> SessionTable_t;
-    typedef std::map<FdbMsgCode_t, SessionTable_t> SubscribeTable_t;
-
     struct CEventData
     {
         uint8_t *mBuffer;
@@ -857,8 +846,8 @@ private:
     typedef std::map<FdbMsgCode_t, CacheDataTable_t> EventCacheTable_t;
 
     CBaseWorker *mWorker;
-    SubscribeTable_t mEventSubscribeTable;
-    SubscribeTable_t mGroupSubscribeTable;
+    CEventSubscribeHandle mEventSubscribeHandle;
+    CEventSubscribeHandle mGroupSubscribeHandle;
     FdbObjectId_t mObjId;
     EFdbEndpointRole mRole;
     FdbSessionId_t mSid;
@@ -880,28 +869,17 @@ private:
                      FdbMsgCode_t msg,
                      FdbObjectId_t obj_id,
                      const char *filter);
-    void unsubscribeSession(SubscribeTable_t &subscribe_table, CFdbSession *session);
     void unsubscribe(CFdbSession *session);
-    void unsubscribeObject(SubscribeTable_t &subscribe_table, FdbObjectId_t obj_id);
     void unsubscribe(FdbObjectId_t obj_id);
 
     bool updateEventCache(CFdbMessage *msg);
     void broadcast(CFdbMessage *msg);
-    void broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg, FdbMsgCode_t event);
-    bool broadcast(SubscribeTable_t &subscribe_table, CFdbMessage *msg, CFdbSession *session, FdbMsgCode_t event);
 
     bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);
 
-    void getSubscribeTable(SessionTable_t &sessions, tFdbFilterSets &filters);
-    void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, CFdbSession *session,
-                           tFdbFilterSets &filter_tbl);
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
-    void getSubscribeTable(SubscribeTable_t &subscribe_table, tFdbSubscribeMsgTbl &table);
-    void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, tFdbFilterSets &filters);
-    void getSubscribeTable(SubscribeTable_t &subscribe_table, FdbMsgCode_t code, const char *filter,
-                            tSubscribedSessionSets &session_tbl);
-    
+
     void callOnOffline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
@@ -941,9 +919,6 @@ private:
     void notifyOnline(CFdbSession *session, bool is_first);
     void notifyOffline(CFdbSession *session, bool is_last);
 
-    void broadcastOneMsg(CFdbSession *session,
-                         CFdbMessage *msg,
-                         CSubscribeItem &sub_item);
     void broadcastCached(CBaseJob::Ptr &msg_ref);
      
     CBaseEndpoint *endpoint() const
