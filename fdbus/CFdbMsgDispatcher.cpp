@@ -36,7 +36,7 @@ bool CFdbMsgDispatcher::registerCallback(const CMsgHandleTbl &msg_tbl)
     return ret;
 }
 
-bool CFdbMsgDispatcher::processMessage(CBaseJob::Ptr &msg_ref)
+bool CFdbMsgDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     tRegistryTbl::iterator it = mRegistryTbl.find(msg->code());
@@ -44,17 +44,19 @@ bool CFdbMsgDispatcher::processMessage(CBaseJob::Ptr &msg_ref)
     {
         return false;
     }
-    (it->second)(msg_ref);
+    (it->second)(msg_ref, obj);
     return true;
 }
 
 bool CFdbMsgDispatcher::CMsgHandleTbl::add(FdbMsgCode_t code,
-                                CFdbMsgDispatcher::tMsgCallbackFn callback)
+                                CFdbMsgDispatcher::tMsgCallbackFn callback,
+                                CBaseWorker *worker)
 {
     mTable.resize(mTable.size() + 1);
     auto &item = mTable.back();
     item.mCode = code;
     item.mCallback = callback;
+    item.mWorker = worker;
     return true;
 }
 
@@ -75,7 +77,8 @@ void CFdbEventDispatcher::registerCallback(const CEvtHandleTbl &evt_tbl,
     }
 }
 
-bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, const tRegistryHandleTbl *registered_evt_tbl)
+bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj,
+                                         const tRegistryHandleTbl *registered_evt_tbl)
 {
     CFdbMessage *msg = castToMessage<CFdbMessage *>(msg_ref);
     auto it_topics = mRegistryTbl.find(msg->code());
@@ -94,7 +97,7 @@ bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, const tRegistry
                     auto it_reg_id = std::find(registered_evt_tbl->begin(), registered_evt_tbl->end(), reg_id);
                     if (it_reg_id != registered_evt_tbl->end())
                     {
-                        (it_callback->second)(msg_ref);
+                        (it_callback->second)(msg_ref, obj);
                     }
                 }
             }
@@ -102,7 +105,7 @@ bool CFdbEventDispatcher::processMessage(CBaseJob::Ptr &msg_ref, const tRegistry
             {
                 for (auto it_callback = callbacks.begin(); it_callback != callbacks.end(); ++it_callback)
                 {
-                    (it_callback->second)(msg_ref);
+                    (it_callback->second)(msg_ref, obj);
                 }
             }
         }
@@ -128,7 +131,8 @@ void CFdbEventDispatcher::dumpEvents(tEvtHandleTbl &event_table)
 }
 
 bool CFdbEventDispatcher::CEvtHandleTbl::add(FdbMsgCode_t code,
-                        CFdbEventDispatcher::tEvtCallbackFn callback, const char *topic)
+                                             CFdbEventDispatcher::tEvtCallbackFn callback,
+                                             CBaseWorker *worker, const char *topic)
 {
 
     mTable.resize(mTable.size() + 1);
@@ -139,5 +143,6 @@ bool CFdbEventDispatcher::CEvtHandleTbl::add(FdbMsgCode_t code,
     {
         item.mTopic = topic;
     }
+    item.mWorker = worker;
     return true;
 }

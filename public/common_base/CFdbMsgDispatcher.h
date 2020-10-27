@@ -24,6 +24,9 @@
 #include "CFdbMessage.h"
 
 class CFdbMsgSubscribeItem;
+class CFdbBaseObject;
+class CBaseWorker;
+
 template<typename T>
 class CFdbMessageHandle
 {
@@ -83,19 +86,20 @@ private:
 class CFdbMsgDispatcher
 {
 public:
-    typedef std::function<void(CBaseJob::Ptr &)> tMsgCallbackFn;
+    typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tMsgCallbackFn;
     typedef std::map<FdbMsgCode_t, tMsgCallbackFn> tRegistryTbl;
     struct CMsgHandleItem
     {
         FdbMsgCode_t mCode;
         tMsgCallbackFn mCallback;
+        CBaseWorker *mWorker;
     };
     typedef std::vector<CMsgHandleItem> tMsgHandleTbl;
 
     class CMsgHandleTbl
     {
     public:
-        bool add(FdbMsgCode_t code, tMsgCallbackFn callback);
+        bool add(FdbMsgCode_t code, tMsgCallbackFn callback, CBaseWorker *worker = 0);
         const tMsgHandleTbl &getMsgHandleTbl() const
         {
             return mTable;
@@ -107,7 +111,7 @@ public:
     bool registerCallback(const CMsgHandleTbl &msg_tbl);
     bool unregisterCallback(FdbMsgCode_t code)
     {return true;}
-    bool processMessage(CBaseJob::Ptr &msg_ref);
+    bool processMessage(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj);
 private:
     tRegistryTbl mRegistryTbl;
 };
@@ -116,7 +120,7 @@ class CFdbEventDispatcher
 {
 public:
     typedef uint32_t tRegEntryId;
-    typedef std::function<void(CBaseJob::Ptr &)> tEvtCallbackFn;
+    typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tEvtCallbackFn;
     typedef std::map<tRegEntryId, tEvtCallbackFn> tEvtCallbackList;
     typedef std::map<std::string, tEvtCallbackList> tTopicList;
     typedef std::map<FdbMsgCode_t, tTopicList> tRegistryTbl;
@@ -126,12 +130,14 @@ public:
         FdbMsgCode_t mCode;
         tEvtCallbackFn mCallback;
         std::string mTopic;
+        CBaseWorker *mWorker;
     };
     typedef std::vector<CEvtHandleItem> tEvtHandleTbl;
     class CEvtHandleTbl
     {
     public:
-        bool add(FdbMsgCode_t code, tEvtCallbackFn callback, const char *topic = "");
+        bool add(FdbMsgCode_t code, tEvtCallbackFn callback,
+                 CBaseWorker *worker = 0, const char *topic = "");
         const tEvtHandleTbl &getEvtHandleTbl() const
         {
             return mTable;
@@ -147,7 +153,7 @@ public:
     void registerCallback(const CEvtHandleTbl &evt_tbl, tRegistryHandleTbl *registered_evt_tbl);
     bool unregisterCallback(tRegEntryId id)
     {return true;}
-    bool processMessage(CBaseJob::Ptr &msg_ref,
+    bool processMessage(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj, 
                         const tRegistryHandleTbl *registered_evt_tbl = 0);
     void dumpEvents(tEvtHandleTbl &event_table);
 

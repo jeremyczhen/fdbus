@@ -1570,9 +1570,11 @@ protected:
 class CAFCInvokeMsg : public CFdbMessage
 {
 public:
-    CAFCInvokeMsg(FdbMsgCode_t code, CFdbBaseObject::tInvokeCallbackFn &reply_callback)
+    CAFCInvokeMsg(FdbMsgCode_t code, CFdbBaseObject::tInvokeCallbackFn &reply_callback,
+                  CBaseWorker *worker = 0)
         : CFdbMessage(code)
         , mReplyCallback(reply_callback)
+        , mWorker(worker)
     {
     }
     FdbMessageType_t getTypeId()
@@ -1580,12 +1582,16 @@ public:
         return FDB_MSG_TYPE_AFC_INVOKE;
     }
     CFdbBaseObject::tInvokeCallbackFn mReplyCallback;
+    CBaseWorker *mWorker;
 };
 
-CFdbBaseObject::tRegEntryId CFdbBaseObject::registerConnNotification(tConnCallbackFn callback)
+CFdbBaseObject::tRegEntryId CFdbBaseObject::registerConnNotification(tConnCallbackFn callback,
+                                                                     CBaseWorker *worker)
 {
     CFdbBaseObject::tRegEntryId id = mRegIdAllocator++;
-    mConnCallbackTbl[id] =callback;
+    auto &item = mConnCallbackTbl[id];
+    item.mCallback = callback;
+    item.mWorker = worker;
     if (mEndpoint->connected())
     {
         callback(this, FDB_INVALID_ID, true);
@@ -1635,7 +1641,7 @@ void CFdbBaseObject::onBroadcast(CBaseJob::Ptr &msg_ref)
         auto afc_msg = castToMessage<CAFCSubscribeMsg *>(msg_ref);
         registered_evt_tbl = &afc_msg->mRegHandle;
     }
-    mEvtDispather.processMessage(msg_ref, registered_evt_tbl);
+    mEvtDispather.processMessage(msg_ref, this, registered_evt_tbl);
 }
 
 void CFdbBaseObject::onReply(CBaseJob::Ptr &msg_ref)
@@ -1644,7 +1650,7 @@ void CFdbBaseObject::onReply(CBaseJob::Ptr &msg_ref)
     if (msg->getTypeId() == FDB_MSG_TYPE_AFC_INVOKE)
     {
         auto afc_msg = castToMessage<CAFCInvokeMsg *>(msg_ref);
-        afc_msg->mReplyCallback(msg_ref);
+        afc_msg->mReplyCallback(msg_ref, this);
     }
 }
 
@@ -1656,32 +1662,34 @@ void CFdbBaseObject::onOnline(FdbSessionId_t sid, bool is_first)
 
     for (auto it = mConnCallbackTbl.begin(); it != mConnCallbackTbl.end(); ++it)
     {
-        (it->second)(this, sid, true);
+        (it->second.mCallback)(this, sid, true);
     }
 }
 void CFdbBaseObject::onOffline(FdbSessionId_t sid, bool is_last)
 {
     for (auto it = mConnCallbackTbl.begin(); it != mConnCallbackTbl.end(); ++it)
     {
-        (it->second)(this, sid, false);
+        (it->second.mCallback)(this, sid, false);
     }
 }
 void CFdbBaseObject::onInvoke(CBaseJob::Ptr &msg_ref)
 {
-    mMsgDispather.processMessage(msg_ref);
+    mMsgDispather.processMessage(msg_ref, this);
 }
 
 bool CFdbBaseObject::invoke(FdbMsgCode_t code, IFdbMsgBuilder &data
-                           , CFdbBaseObject::tInvokeCallbackFn callback, int32_t timeout)
+                           , CFdbBaseObject::tInvokeCallbackFn callback
+                           , CBaseWorker *worker, int32_t timeout)
 {
-    auto invoke_msg = new CAFCInvokeMsg(code, callback);
+    auto invoke_msg = new CAFCInvokeMsg(code, callback, worker);
     return CFdbBaseObject::invoke(invoke_msg, data, timeout);
 }
 
 bool CFdbBaseObject::invoke(FdbMsgCode_t code, CFdbBaseObject::tInvokeCallbackFn callback
-                           , const void *buffer, int32_t size, int32_t timeout, const char *log_info)
+                           , const void *buffer, int32_t size, CBaseWorker *worker
+                           , int32_t timeout, const char *log_info)
 {
-    auto invoke_msg = new CAFCInvokeMsg(code, callback);
+    auto invoke_msg = new CAFCInvokeMsg(code, callback, worker);
     invoke_msg->setLogData(log_info);
     return CFdbBaseObject::invoke(invoke_msg, buffer, size, timeout);
 }

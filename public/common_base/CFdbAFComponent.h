@@ -25,11 +25,12 @@
 
 class CBaseClient;
 class CBaseServer;
+class CBaseWorker;
 
 class CFdbAFComponent
 {
 public:
-    CFdbAFComponent(const char *name = "anonymous");
+    CFdbAFComponent(const char *name = "anonymous", CBaseWorker *worker = 0);
 
     // create FDBus client, connect to server and register callbacks
     // If the client is already created (connected), do not create (or connect) again
@@ -67,6 +68,7 @@ public:
 
 protected:
     std::string mName;
+    CBaseWorker *mWorker;
 private:
     typedef std::vector<CFdbBaseObject::tRegEntryId> tConnHandleTbl;
     CFdbEventDispatcher::tRegistryHandleTbl mEventRegistryTbl;

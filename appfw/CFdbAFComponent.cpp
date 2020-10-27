@@ -20,11 +20,19 @@
 #include <common_base/CBaseClient.h>
 #include <common_base/CBaseServer.h>
 
-CFdbAFComponent::CFdbAFComponent(const char *name)
+CFdbAFComponent::CFdbAFComponent(const char *name, CBaseWorker *worker)
 {
     if (name)
     {
         mName = name;
+    }
+    if (worker)
+    {
+        mWorker = worker;
+    }
+    else
+    {
+        mWorker = CFdbAPPFramework::getInstance()->defaultWorker();
     }
 }
 
@@ -62,7 +70,7 @@ void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFCom
         client->connect(url.c_str());
         app_fw->registerClient(the_job->mBusName, client);
     }
-    auto handle = client->registerConnNotification(the_job->mConnCallback);
+    auto handle = client->registerConnNotification(the_job->mConnCallback, mWorker);
     mConnHandleTbl.push_back(handle);
     client->registerEventHandle(the_job->mEvtTbl, &mEventRegistryTbl);
     the_job->mClient = client;
@@ -107,12 +115,13 @@ void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     if (!server)
     {
         server = new CBaseServer(CFdbAPPFramework::getInstance()->name().c_str(), worker);
+        server->enableEventCache(true);
         std::string url(FDB_URL_SVC);
         url += the_job->mBusName;
         server->bind(url.c_str());
         app_fw->registerService(the_job->mBusName, server);
     }
-    auto handle = server->registerConnNotification(the_job->mConnCallback);
+    auto handle = server->registerConnNotification(the_job->mConnCallback, mWorker);
     mConnHandleTbl.push_back(handle);
     server->registerMsgHandle(the_job->mMsgTbl);
     the_job->mServer = server;

@@ -53,9 +53,14 @@ public:
 
     typedef uint32_t tRegEntryId;
     typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool)> tConnCallbackFn;
-    typedef std::map<tRegEntryId, tConnCallbackFn> tConnCallbackTbl;
+    struct CConnCbRegistryItem
+    {
+        tConnCallbackFn mCallback;
+        CBaseWorker *mWorker;
+    };
+    typedef std::map<tRegEntryId, CConnCbRegistryItem> tConnCallbackTbl;
 
-    typedef std::function<void(CBaseJob::Ptr &)> tInvokeCallbackFn;
+    typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tInvokeCallbackFn;
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -200,13 +205,16 @@ public:
     bool invoke(FdbMsgCode_t code
                 , IFdbMsgBuilder &data
                 , tInvokeCallbackFn callback
+                , CBaseWorker *worker = 0
                 , int32_t timeout = 0);
+
     // APPFW version of async invoke: it is similiar to CFdbBaseObject::invoke[6] except
     // that it accepts a callback which will be triggered when server replies
     bool invoke(FdbMsgCode_t code
                 , tInvokeCallbackFn callback
                 , const void *buffer = 0
                 , int32_t size = 0
+                , CBaseWorker *worker = 0
                 , int32_t timeout = 0
                 , const char *log_info = 0);
 
@@ -699,7 +707,7 @@ public:
 
     virtual void prepareDestroy();
 
-    tRegEntryId registerConnNotification(tConnCallbackFn callback);
+    tRegEntryId registerConnNotification(tConnCallbackFn callback, CBaseWorker *worker);
     bool registerEventHandle(const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
                              CFdbEventDispatcher::tRegistryHandleTbl *reg_handle);
     bool subscribeEvents(const CFdbEventDispatcher::tEvtHandleTbl &events,
