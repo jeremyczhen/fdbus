@@ -23,7 +23,6 @@ CFdbAPPFramework *CFdbAPPFramework::mInstance = 0;
 CFdbAPPFramework::CFdbAPPFramework()
 {
     FDB_CONTEXT->start();
-    mDefaultWorker.start();
     const char *app_name = getenv("FDB_CONFIG_APP_NAME");
     mName = app_name ? app_name : "anonymous-app";
 }
