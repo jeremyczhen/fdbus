@@ -37,14 +37,16 @@ class CBaseWorker;
 class CFdbSession;
 class CBaseEndpoint;
 class IFdbMsgBuilder;
-struct CFdbSessionInfo;
 class CFdbMessage;
+struct CFdbSessionInfo;
 
 typedef CFdbMsgTable CFdbMsgSubscribeList;
 typedef CFdbMsgTable CFdbMsgTriggerList;
 
 class CFdbBaseObject
 {
+private:
+    typedef void (CFdbBaseObject::*tRemoteCallback)(CBaseJob::Ptr &msg_ref);
 public:
 #define FDB_OBJ_ENABLED_MIGRATE         (1 << 0)
 #define FDB_OBJ_REGISTERED              (1 << 1)
@@ -52,7 +54,7 @@ public:
 #define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
 
     typedef uint32_t tRegEntryId;
-    typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool)> tConnCallbackFn;
+    typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool, bool)> tConnCallbackFn;
     struct CConnCbRegistryItem
     {
         tConnCallbackFn mCallback;
@@ -200,7 +202,8 @@ public:
                 , int32_t size = 0
                 , int32_t timeout = 0);
 
-    // APPFW version of async invoke: it is similiar to CFdbBaseObject::invoke[2.1] except
+    // invoke[9]
+    // async invoke with callback: it is similiar to CFdbBaseObject::invoke[2.1] except
     // that it accepts a callback which will be triggered when server replies
     bool invoke(FdbMsgCode_t code
                 , IFdbMsgBuilder &data
@@ -208,7 +211,8 @@ public:
                 , CBaseWorker *worker = 0
                 , int32_t timeout = 0);
 
-    // APPFW version of async invoke: it is similiar to CFdbBaseObject::invoke[6] except
+    // invoke[10]
+    // async invoke with callback: it is similiar to CFdbBaseObject::invoke[6] except
     // that it accepts a callback which will be triggered when server replies
     bool invoke(FdbMsgCode_t code
                 , tInvokeCallbackFn callback
@@ -888,7 +892,6 @@ private:
 
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
 
-    void callOnOffline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
@@ -896,20 +899,11 @@ private:
     void callDisconnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callPrepareDestroy(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
 
-    /*
-     * The following methods migrate onXXX() callbacks to specified worker thread.
-     *      CBaseEndpoint::onXXX() runs at thread CFdbContext if worker is not
-     *      specified for a endpoint. You can manually migrate the callbacks to
-     *      any worker and run within the context of the worker.
-     */
-    bool migrateOnSubscribeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
-    bool migrateOnBroadcastToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
-    bool migrateOnInvokeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
-    bool migrateOnOfflineToWorker(FdbSessionId_t sid, bool is_last, CBaseWorker *worker = 0);
-    bool migrateOnOnlineToWorker(FdbSessionId_t sid, bool is_first, CBaseWorker *worker = 0);
-    bool migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
-    bool migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
-    bool migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker = 0);
+    // migrate onXXX() callbacks to worker thread
+    void migrateToWorker(CBaseJob::Ptr &msg_ref, tRemoteCallback callback, CBaseWorker *worker = 0);
+    void migrateToWorker(FdbSessionId_t sid, bool first_or_last, bool online, CBaseWorker *worker = 0);
+    void migrateToWorker(FdbSessionId_t sid, bool first_or_last, bool online,
+                         tConnCallbackFn &callback, CBaseWorker *worker = 0);
 
     void doSubscribe(CBaseJob::Ptr &msg_ref);
     void doBroadcast(CBaseJob::Ptr &msg_ref);
@@ -934,26 +928,23 @@ private:
         return mEndpoint;
     }
     const CEventData *getCachedEventData(FdbMsgCode_t msg_code, const char *filter);
+
+    void callDispOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
     void callInvoke(CBaseJob::Ptr &msg_ref);
     void callBroadcast(CBaseJob::Ptr &msg_ref);
     void callStatus(CBaseJob::Ptr &msg_ref);
     void callSubscribe(CBaseJob::Ptr &msg_ref);
     void callReply(CBaseJob::Ptr &msg_ref);
     void callGetEvent(CBaseJob::Ptr &msg_ref);
+    void callOnline(FdbSessionId_t sid, bool first_or_last, bool online);
 
-    friend class COnSubscribeJob;
-    friend class COnBroadcastJob;
-    friend class COnInvokeJob;
-    friend class COnOfflineJob;
     friend class COnOnlineJob;
-    friend class COnReplyJob;
-    friend class COnGetEventJob;
-    friend class COnStatusJob;
     friend class CBindObjectJob;
     friend class CConnectObjectJob;
     friend class CUnbindObjectJob;
     friend class CDisconnectObjectJob;
     friend class CPrepareDestroyJob;
+    friend class CDispOnOnlineJob;
 
     friend class CBaseClient;
     friend class CBaseServer;

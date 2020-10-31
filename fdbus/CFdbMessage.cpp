@@ -193,6 +193,23 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     }
 }
 
+CFdbMessage::CFdbMessage(const CFdbMessage *msg)
+{
+    mType = msg->mType;
+    mCode = msg->mCode;
+    mSn = msg->mSn;
+    mPayloadSize = msg->mPayloadSize;
+    mHeadSize = mMaxHeadSize;
+    mOffset = 0;
+    mBuffer = 0;
+    mSid = msg->mSid;
+    mOid = msg->mOid;
+    mFlag = msg->mFlag;
+    mTimer = 0;
+    mTimeStamp = 0;
+    allocCopyRawBuffer(msg->getPayloadBuffer(), mPayloadSize);
+}
+
 CFdbMessage::~CFdbMessage()
 {
     if (mTimer)
@@ -711,7 +728,7 @@ void CFdbMessage::replaceBuffer(uint8_t *buffer, int32_t payload_size,
 void CFdbMessage::doRequest(Ptr &ref)
 {
     bool success = true;
-    const char *reason;
+    const char *reason = "";
     auto session = getSession();
     if (session)
     {
@@ -720,6 +737,10 @@ void CFdbMessage::doRequest(Ptr &ref)
             if (!(mFlag & MSG_FLAG_UDP) || !session->sendUDPMessage(this))
             {
                 success = session->sendMessage(this);
+                if (!success)
+                {
+                    reason = "Fail to send!";
+                }
             }
         }
         else
