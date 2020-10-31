@@ -144,17 +144,9 @@ protected:
                     auto &addr_list = msg_addr_list.address_list();
                     for (auto it = addr_list.vpool().begin(); it != addr_list.vpool().end(); ++it)
                     {
-                        if (it->has_udp_port() && FDB_VALID_PORT(it->udp_port()))
-                        {
-                            std::cout << "    > " << it->tcp_ipc_url()
-                                      << " udp://" << it->udp_port()
-                                      << std::endl;
-                        }
-                        else
-                        {
-                            std::cout << "    > " << it->tcp_ipc_url()
-                                      << std::endl;
-                        }
+                        std::cout << "    > " << it->tcp_ipc_url()
+                                  << " udp://" << (it->has_udp_port() ? it->udp_port() : FDB_INET_PORT_INVALID)
+                                  << std::endl;
                     }
                 }
                 

@@ -89,7 +89,6 @@ private:
     friend class CFdbUDPSession;
     friend class CBaseServer;
     friend class CBaseClient;
-    friend class CFdbBaseObject;
 };
 
 #endif

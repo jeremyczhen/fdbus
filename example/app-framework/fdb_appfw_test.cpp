@@ -64,26 +64,25 @@ class MyComponent;
 class MyTimer : public CBaseLoopTimer
 {
 public:
-    MyTimer(MyComponent &comp, CBaseEndpoint *endpoint);
+    MyTimer(MyComponent &comp);
 protected:
     void run();
 private:
     MyComponent &mComp;
-    CBaseEndpoint *mEndpoint;
 };
 
 // define a component which contains several fdbus clients and servers
 class MyComponent : public CFdbAFComponent
 {
 public:
-    MyComponent(const char *comp_name, CBaseWorker *worker, int32_t method_start)
-        : CFdbAFComponent(comp_name, worker)
-        , mFirstMethodId(method_start)
-    {
-    }
-
-    void init(char **radio_client_name, uint32_t nr_clients,
+    MyComponent(const char *comp_name, int32_t method_start,
+                char **radio_client_name, uint32_t nr_clients,
                 char **radio_server_name, uint32_t nr_servers)
+        : CFdbAFComponent(comp_name)
+        , mRadioClient(0)
+        , mRadioServer(0)
+        , mTimer(*this)
+        , mFirstMethodId(method_start)
     {
         if (radio_client_name && nr_clients)
         {
@@ -99,26 +98,19 @@ public:
                 bindServer(radio_server_name[i]);
             }
         }
+
+        mWorker.start();
+        mTimer.attach(&mWorker, true);
     }
+
 
     void connectClient(const char *name)
     {
         // callback which will be called when server is online/offline
         CFdbBaseObject::tConnCallbackFn cb = std::bind(&MyComponent::onRadioClientOnline,
-                                                       this, _1, _2, _3, _4);
+                                                       this, _1, _2, _3);
         // a list of callbacks that will be called when associated event is broadcasted
         CFdbEventDispatcher::CEvtHandleTbl evt_tbl;
-<<<<<<< HEAD
-        tDispatcherCallbackFn cb1 = std::bind(&MyComponent::onRadioClientBroadcast1,
-                                                            this, _1, _2);
-        tDispatcherCallbackFn cb2 = std::bind(&MyComponent::onRadioClientBroadcast2,
-                                                            this, _1, _2);
-        tDispatcherCallbackFn cb3 = std::bind(&MyComponent::onRadioClientBroadcast3,
-                                                            this, _1, _2);
-        addEvtHandle(evt_tbl, EVT_RADIO_1, cb1, "topic1");
-        addEvtHandle(evt_tbl, EVT_RADIO_2, cb2, "topic1");
-        addEvtHandle(evt_tbl, EVT_RADIO_3, cb3, "topic1");
-=======
         CFdbEventDispatcher::tEvtCallbackFn cb1 = std::bind(&MyComponent::onRadioClientBroadcast1,
                                                             this, _1, _2);
         CFdbEventDispatcher::tEvtCallbackFn cb2 = std::bind(&MyComponent::onRadioClientBroadcast2,
@@ -128,35 +120,19 @@ public:
         evt_tbl.add(EVT_RADIO_1, cb1, "topic1");
         evt_tbl.add(EVT_RADIO_2, cb2, "topic1");
         evt_tbl.add(EVT_RADIO_3, cb3, "topic1");
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
         // connect to FDBus server: if the server is already connected, just register the
         // callbacks; otherwise connecting to the service indicated by 'name' followed by
         // registering the callbacks.
-        auto client = queryService(name, evt_tbl, cb);
-        auto timer = new MyTimer(*this, client);
-        timer->attach(worker() ? worker() : FDB_CONTEXT, true);
+        mRadioClient = queryService(name, evt_tbl, cb);
     }
 
     void bindServer(const char *name)
     {
         // callback when a client is connected
         CFdbBaseObject::tConnCallbackFn cb = std::bind(&MyComponent::onRadioServerOnline,
-                                                      this, _1, _2, _3, _4);
+                                                      this, _1, _2, _3);
         // list of callbacks that will be called when associated method is invoked
         CFdbMsgDispatcher::CMsgHandleTbl msg_tbl;
-<<<<<<< HEAD
-        tDispatcherCallbackFn cb1 = std::bind(&MyComponent::onRadioServerInvoke1,
-                                                          this, _1, _2);
-        tDispatcherCallbackFn cb2 = std::bind(&MyComponent::onRadioServerInvoke2,
-                                                          this, _1, _2);
-        tDispatcherCallbackFn cb3 = std::bind(&MyComponent::onRadioServerInvoke3,
-                                                          this, _1, _2);
-        addMsgHandle(msg_tbl, MSG_RADIO_1 + mFirstMethodId, cb1);
-        addMsgHandle(msg_tbl, MSG_RADIO_2 + mFirstMethodId, cb2);
-        addMsgHandle(msg_tbl, MSG_RADIO_3 + mFirstMethodId, cb3);
-        // lambda is also supported
-        addMsgHandle(msg_tbl, MSG_RADIO_4 + mFirstMethodId, [this](CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
-=======
         CFdbMsgDispatcher::tMsgCallbackFn cb1 = std::bind(&MyComponent::onRadioServerInvoke1,
                                                           this, _1, _2);
         CFdbMsgDispatcher::tMsgCallbackFn cb2 = std::bind(&MyComponent::onRadioServerInvoke2,
@@ -168,22 +144,17 @@ public:
         msg_tbl.add(MSG_RADIO_3 + mFirstMethodId, cb3);
         // lambda is also supported
         msg_tbl.add(MSG_RADIO_4 + mFirstMethodId, [this](CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
             {
                 auto msg = castToMessage<CFdbMessage *>(msg_ref);
                 FDB_LOG_I("component %s, endpoint %s: invoke 4 is received with code %d\n",
-                this->name().c_str(), obj->name().c_str(), msg->code());
+                this->name().c_str(), this->server()->name().c_str(), msg->code());
                 msg->reply(msg_ref);
             });
         // offer the service to FDBus: if the service is already registered at name server,
         // just register the callbacks; otherwise register the service (own the name) at
         // name server followed by registering the callbacks
-        auto server = offerService(name, msg_tbl, cb);
-        auto timer = new MyTimer(*this, server);
-        timer->attach(worker() ? worker() : FDB_CONTEXT, true);
+        mRadioServer = offerService(name, msg_tbl, cb);
     }
-<<<<<<< HEAD
-=======
 
     CBaseClient *client()
     {
@@ -193,44 +164,43 @@ public:
     {
         return mRadioServer;
     }
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     void onRadioClientReply1(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: reply 1 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioClient->name().c_str(), msg->code());
     }
     void onRadioClientReply2(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: reply 2 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioClient->name().c_str(), msg->code());
     }
     void onRadioClientReply3(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: reply 3 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioClient->name().c_str(), msg->code());
     }
     void onRadioServerInvoke1(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: invoke 1 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioServer->name().c_str(), msg->code());
         msg->reply(msg_ref);
     }
     void onRadioServerInvoke2(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: invoke 2 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioServer->name().c_str(), msg->code());
         msg->reply(msg_ref);
     }
     void onRadioServerInvoke3(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: invoke 3 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioServer->name().c_str(), msg->code());
         msg->reply(msg_ref);
     }
     int32_t firstMethodId() const
@@ -238,53 +208,52 @@ public:
         return mFirstMethodId;
     }
 private:
+    CBaseClient *mRadioClient;
+    CBaseServer *mRadioServer;
+    CBaseWorker mWorker;
+    MyTimer mTimer;
     int32_t mFirstMethodId;
 
-    void onRadioClientOnline(CFdbBaseObject *obj, FdbSessionId_t sid, bool online, bool first_or_last)
+    void onRadioClientOnline(CFdbBaseObject *obj, FdbSessionId_t sid, bool online)
     {
-        FDB_LOG_I("component %s, endpoint %s: client online %d %d %d\n",
-                    name().c_str(), obj->name().c_str(), sid, online, first_or_last);
+        FDB_LOG_I("component %s, endpoint %s: client online %d\n",
+                    name().c_str(), obj->name().c_str(), online);
     }
-    void onRadioServerOnline(CFdbBaseObject *obj, FdbSessionId_t sid, bool online, bool first_or_last)
+    void onRadioServerOnline(CFdbBaseObject *obj, FdbSessionId_t sid, bool online)
     {
-        FDB_LOG_I("component %s, endpoint %s: server online %d %d %d\n",
-                    name().c_str(), obj->name().c_str(), sid, online, first_or_last);
+        FDB_LOG_I("component %s, endpoint %s: server online %d %d\n",
+                    name().c_str(), obj->name().c_str(), sid, online);
     }
     void onRadioClientBroadcast1(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: broadcast 1 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioClient->name().c_str(), msg->code());
     }
     void onRadioClientBroadcast2(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: broadcast 2 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioClient->name().c_str(), msg->code());
     }
     void onRadioClientBroadcast3(CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         FDB_LOG_I("component %s, endpoint %s: broadcast 3 is received with code %d\n",
-                    name().c_str(), obj->name().c_str(), msg->code());
+                    name().c_str(), mRadioClient->name().c_str(), msg->code());
     }
 };
 
-MyTimer::MyTimer(MyComponent &comp, CBaseEndpoint *endpoint)
-    : CBaseLoopTimer(100, true)
+MyTimer::MyTimer(MyComponent &comp)
+    : CBaseLoopTimer(1500, true)
     , mComp(comp)
-    , mEndpoint(endpoint)
 {
 }
 
 void MyTimer::run()
 {
-    if (mEndpoint->role() == FDB_OBJECT_ROLE_CLIENT)
+    if (mComp.client() && mComp.client()->connected())
     {
-        if (!mEndpoint->connected())
-        {
-            return;
-        }
         // invoke method call asynchronously: the callback will be called once associated
         // reply is received from server
         CFdbBaseObject::tInvokeCallbackFn cb1 = std::bind(&MyComponent::onRadioClientReply1,
@@ -293,36 +262,25 @@ void MyTimer::run()
                                                         &mComp, _1, _2);
         CFdbBaseObject::tInvokeCallbackFn cb3 = std::bind(&MyComponent::onRadioClientReply3,
                                                         &mComp, _1, _2);
-<<<<<<< HEAD
-        mComp.invoke(mEndpoint, MSG_RADIO_1 + mComp.firstMethodId(), cb1);
-        mComp.invoke(mEndpoint, MSG_RADIO_2 + mComp.firstMethodId(), cb2);
-        mComp.invoke(mEndpoint, MSG_RADIO_3 + mComp.firstMethodId(), cb3);
-        // lambda is also supported.
-        auto *c = &mComp;
-        mComp.invoke(mEndpoint, MSG_RADIO_4 + mComp.firstMethodId(), [c](CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
-=======
         mComp.client()->invoke(MSG_RADIO_1 + mComp.firstMethodId(), cb1);
         mComp.client()->invoke(MSG_RADIO_2 + mComp.firstMethodId(), cb2);
         mComp.client()->invoke(MSG_RADIO_3 + mComp.firstMethodId(), cb3);
         // lambda is also supported.
         auto *c = &mComp;
         mComp.client()->invoke(MSG_RADIO_4 + mComp.firstMethodId(), [c](CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
             {
                 auto msg = castToMessage<CFdbMessage *>(msg_ref);
                 FDB_LOG_I("component %s, endpoint %s: reply 4 is received with code %d\n",
-                            c->name().c_str(), obj->name().c_str(), msg->code());
+                            c->name().c_str(), c->client()->name().c_str(), msg->code());
             });
     }
-    else
+    else if (mComp.server() && mComp.server()->connected())
     {
-        if (!mEndpoint->connected())
         {
-            return;
+            mComp.server()->broadcast(EVT_RADIO_1, 0, 0, "topic1");
+            mComp.server()->broadcast(EVT_RADIO_2, 0, 0, "topic1");
+            mComp.server()->broadcast(EVT_RADIO_3, 0, 0, "topic1");
         }
-        mEndpoint->broadcast(EVT_RADIO_1, 0, 0, "topic1");
-        mEndpoint->broadcast(EVT_RADIO_2, 0, 0, "topic1");
-        mEndpoint->broadcast(EVT_RADIO_3, 0, 0, "topic1");
     }
 }
 
@@ -378,10 +336,7 @@ int main(int argc, char **argv)
     int32_t first_method_id = 0;
     for (uint32_t i = 0; i < nr_components; ++i)
     {
-        auto worker = new CBaseWorker();
-        worker->start();
-        auto comp = new MyComponent(components[i], worker, first_method_id);
-        comp->init(clients, nr_clients, servers, nr_servers);
+        new MyComponent(components[i], first_method_id, clients, nr_clients, servers, nr_servers);
         first_method_id += 128;
     }
 

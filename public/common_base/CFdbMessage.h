@@ -254,7 +254,6 @@ public:
                 , CFdbMsgPrefix &prefix
                 , uint8_t *buffer
                 , FdbSessionId_t sid);
-    CFdbMessage(const CFdbMessage *msg);
     virtual ~CFdbMessage();
 
     /*
@@ -582,6 +581,7 @@ private:
                 , FdbSessionId_t alt_sid = FDB_INVALID_ID
                 , FdbObjectId_t alt_oid = FDB_INVALID_ID
                 , bool perfer_udp = false);
+
     
     virtual CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
                               , CFdbMsgPrefix &prefix

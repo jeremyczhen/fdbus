@@ -36,6 +36,11 @@ public:
         }
         return mInstance;
     }
+    CBaseWorker *defaultWorker()
+    {
+        return &mDefaultWorker;
+    }
+
     CBaseClient *findClient(const char *bus_name);
     CBaseServer *findService(const char *bus_name);
     const std::string &name()
@@ -58,6 +63,7 @@ private:
     static CFdbAPPFramework *mInstance;
     tAFClientTbl mClientTbl;
     tAFServerTbl mServerTbl;
+    CBaseWorker mDefaultWorker;
 
     CFdbAPPFramework();
     bool registerClient(const char *bus_name, CBaseClient *client);

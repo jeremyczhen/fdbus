@@ -22,34 +22,10 @@
 #include <vector>
 #include "CBaseJob.h"
 #include "CFdbMessage.h"
-#include "CBaseWorker.h"
 
 class CFdbMsgSubscribeItem;
 class CFdbBaseObject;
-<<<<<<< HEAD
-
-typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tDispatcherCallbackFn;
-
-inline void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispatcherCallbackFn &fn,
-                               CBaseWorker *worker, CFdbBaseObject *obj)
-{
-    if (!fn)
-    {
-        return;
-    }
-    if (!worker || worker->isSelf())
-    {
-        fn(msg_ref, obj);
-    }
-    else
-    {
-        msg->setCallable(std::bind(fn, std::placeholders::_1, obj));
-        worker->sendAsync(msg_ref);
-    }
-}
-=======
 class CBaseWorker;
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
 
 template<typename T>
 class CFdbMessageHandle
@@ -109,13 +85,6 @@ private:
 
 class CFdbMsgDispatcher
 {
-<<<<<<< HEAD
-private:
-    struct CMsgHandleItem
-    {
-        FdbMsgCode_t mCode;
-        tDispatcherCallbackFn mCallback;
-=======
 public:
     typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tMsgCallbackFn;
     typedef std::map<FdbMsgCode_t, tMsgCallbackFn> tRegistryTbl;
@@ -123,21 +92,14 @@ public:
     {
         FdbMsgCode_t mCode;
         tMsgCallbackFn mCallback;
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
         CBaseWorker *mWorker;
     };
     typedef std::vector<CMsgHandleItem> tMsgHandleTbl;
-public:
-    typedef std::map<FdbMsgCode_t, CMsgHandleItem> tRegistryTbl;
 
     class CMsgHandleTbl
     {
     public:
-<<<<<<< HEAD
-        bool add(FdbMsgCode_t code, tDispatcherCallbackFn callback, CBaseWorker *worker = 0);
-=======
         bool add(FdbMsgCode_t code, tMsgCallbackFn callback, CBaseWorker *worker = 0);
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
         const tMsgHandleTbl &getMsgHandleTbl() const
         {
             return mTable;
@@ -156,9 +118,6 @@ private:
 
 class CFdbEventDispatcher
 {
-<<<<<<< HEAD
-private:
-=======
 public:
     typedef uint32_t tRegEntryId;
     typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tEvtCallbackFn;
@@ -166,30 +125,18 @@ public:
     typedef std::map<std::string, tEvtCallbackList> tTopicList;
     typedef std::map<FdbMsgCode_t, tTopicList> tRegistryTbl;
 
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     struct CEvtHandleItem
     {
         FdbMsgCode_t mCode;
-        tDispatcherCallbackFn mCallback;
+        tEvtCallbackFn mCallback;
         std::string mTopic;
         CBaseWorker *mWorker;
     };
-public:
-    typedef uint32_t tRegEntryId;
-    typedef std::map<tRegEntryId, CEvtHandleItem> tEvtCallbackList;
-    typedef std::map<std::string, tEvtCallbackList> tTopicList;
-    typedef std::map<FdbMsgCode_t, tTopicList> tRegistryTbl;
     typedef std::vector<CEvtHandleItem> tEvtHandleTbl;
-    typedef std::vector<CEvtHandleItem *>tEvtHandlePtrTbl;
-
     class CEvtHandleTbl
     {
     public:
-<<<<<<< HEAD
-        bool add(FdbMsgCode_t code, tDispatcherCallbackFn callback,
-=======
         bool add(FdbMsgCode_t code, tEvtCallbackFn callback,
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
                  CBaseWorker *worker = 0, const char *topic = "");
         const tEvtHandleTbl &getEvtHandleTbl() const
         {

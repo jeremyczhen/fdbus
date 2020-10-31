@@ -187,8 +187,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
 
             // now show forward appear/disappear of the server to local clients
             CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
-            // empty means dropping, so should broadcast anyway
-            if (session && !msg_addr_list.address_list().pool().empty())
+            if (session)
             {
                 // make sure 1) only 1 address is broadcasted;
                 //           2) UDS and FDB_LOCAL_HOST is not broadcasted;
@@ -199,7 +198,6 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
                 NFdbBase::FdbMsgAddressItem *best_candidate = 0;
                 NFdbBase::FdbMsgAddressItem *fallback_candidate = 0;
                 peerIp(peer_ip, session);
-                // copying rather than referring!!!
                 CFdbParcelableArray<NFdbBase::FdbMsgAddressItem>::tPool pool =
                                                 msg_addr_list.address_list().vpool();
                 msg_addr_list.address_list().vpool().clear();

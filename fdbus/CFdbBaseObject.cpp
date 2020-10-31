@@ -300,7 +300,13 @@ bool CFdbBaseObject::unsubscribe()
     return unsubscribe(msg_list);
 }
 
-void CFdbBaseObject::migrateToWorker(CBaseJob::Ptr &msg_ref, tRemoteCallback callback, CBaseWorker *worker)
+void CFdbBaseObject::callSubscribe(CBaseJob::Ptr &msg_ref)
+{
+    onSubscribe(msg_ref);
+    CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
+}
+
+bool CFdbBaseObject::migrateOnSubscribeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
 {
     if (!worker)
     {
@@ -311,43 +317,23 @@ void CFdbBaseObject::migrateToWorker(CBaseJob::Ptr &msg_ref, tRemoteCallback cal
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setCallable(std::bind(callback, this, _1));
+            msg->setCallable(std::bind(&CFdbBaseObject::callSubscribe, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
+                LOG_E("CFdbBaseObject: Unable to migrate onsubscribe to worker!\n");
             }
         }
+        return true;
     }
-    else
-    {
-        (this->*callback)(msg_ref);
-    }
+    return false;
 }
 
-class COnOnlineJob : public CMethodJob<CFdbBaseObject>
+void CFdbBaseObject::callBroadcast(CBaseJob::Ptr &msg_ref)
 {
-public:
-    COnOnlineJob(CFdbBaseObject *object, FdbSessionId_t sid, bool first_or_last, bool online)
-        : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnOnline, JOB_FORCE_RUN)
-        , mSid(sid)
-        , mFirstOrLast(first_or_last)
-        , mOnline(online)
-    {}
-
-    FdbSessionId_t mSid;
-    bool mFirstOrLast;
-    bool mOnline;
-};
-
-void CFdbBaseObject::callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
-{
-    auto the_job = fdb_dynamic_cast_if_available<COnOnlineJob *>(job);
-    if (the_job)
-    {
-        callOnline(the_job->mSid, the_job->mFirstOrLast, the_job->mOnline);
-    }
+    onBroadcast(msg_ref);
 }
 
-void CFdbBaseObject::migrateToWorker(FdbSessionId_t sid, bool first_or_last, bool online, CBaseWorker *worker)
+bool CFdbBaseObject::migrateOnBroadcastToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
 {
     if (!worker)
     {
@@ -357,24 +343,16 @@ void CFdbBaseObject::migrateToWorker(FdbSessionId_t sid, bool first_or_last, boo
     {
         if (enableMigrate())
         {
-            worker->sendAsync(new COnOnlineJob(this, sid, first_or_last, online));
+            auto msg = castToMessage<CBaseMessage *>(msg_ref);
+            msg->setCallable(std::bind(&CFdbBaseObject::callBroadcast, this, _1));
+            if (!worker->sendAsync(msg_ref))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate onbroadcast to worker!\n");
+            }
         }
+        return true;
     }
-    else
-    {
-        callOnline(sid, first_or_last, online);
-    }
-}
-
-void CFdbBaseObject::callSubscribe(CBaseJob::Ptr &msg_ref)
-{
-    onSubscribe(msg_ref);
-    CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
-}
-
-void CFdbBaseObject::callBroadcast(CBaseJob::Ptr &msg_ref)
-{
-    onBroadcast(msg_ref);
+    return false;
 }
 
 void CFdbBaseObject::callInvoke(CBaseJob::Ptr &msg_ref)
@@ -383,24 +361,130 @@ void CFdbBaseObject::callInvoke(CBaseJob::Ptr &msg_ref)
     CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
 }
 
-void CFdbBaseObject::callOnline(FdbSessionId_t sid, bool first_or_last, bool online)
+bool CFdbBaseObject::migrateOnInvokeToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
 {
-    if (online)
+    if (!worker)
     {
-        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
-        {
-            mSid = sid;
-        }
-        onOnline(sid, first_or_last);
+        worker = mWorker;
     }
-    else
+    if (worker)
     {
-        onOffline(sid, first_or_last);
-        if (!isPrimary() && (mSid == sid))
+        if (enableMigrate())
+        {
+            auto msg = castToMessage<CBaseMessage *>(msg_ref);
+            msg->setCallable(std::bind(&CFdbBaseObject::callInvoke, this, _1));
+            if (!worker->sendAsync(msg_ref))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate oninvoke to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+class COnOfflineJob : public CMethodJob<CFdbBaseObject>
+{
+public:
+    COnOfflineJob(CFdbBaseObject *object, FdbSessionId_t sid, bool is_last)
+        : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnOffline, JOB_FORCE_RUN)
+        , mSid(sid)
+        , mIsLast(is_last)
+    {}
+
+    FdbSessionId_t mSid;
+    bool mIsLast;
+};
+
+void CFdbBaseObject::callOnOffline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
+{
+    COnOfflineJob *the_job = fdb_dynamic_cast_if_available<COnOfflineJob *>(job);
+    if (the_job)
+    {
+        onOffline(the_job->mSid, the_job->mIsLast);
+        if (!isPrimary() && (mSid == the_job->mSid))
         {
             mSid = FDB_INVALID_ID;
         }
     }
+}
+
+bool CFdbBaseObject::migrateOnOfflineToWorker(FdbSessionId_t sid, bool is_last, CBaseWorker *worker)
+{
+    if (!worker)
+    {
+        worker = mWorker;
+    }
+    if (worker)
+    {
+        if (enableMigrate())
+        {
+            if (!worker->sendAsync(new COnOfflineJob(this, sid, is_last)))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate onoffline to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+void CFdbBaseObject::notifyOffline(CFdbSession *session, bool is_last)
+{
+    if (!migrateOnOfflineToWorker(session->sid(), is_last))
+    {
+        onOffline(session->sid(), is_last);
+        if (!isPrimary() && (mSid == session->sid()))
+        {
+            mSid = FDB_INVALID_ID;
+        }
+    }
+}
+
+class COnOnlineJob : public CMethodJob<CFdbBaseObject>
+{
+public:
+    COnOnlineJob(CFdbBaseObject *object, FdbSessionId_t sid, bool is_first)
+        : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callOnOnline, JOB_FORCE_RUN)
+        , mSid(sid)
+        , mIsFirst(is_first)
+    {}
+
+    FdbSessionId_t mSid;
+    bool mIsFirst;
+};
+
+void CFdbBaseObject::callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
+{
+    auto the_job = fdb_dynamic_cast_if_available<COnOnlineJob *>(job);
+    if (the_job)
+    {
+        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
+        {
+            mSid = the_job->mSid;
+        }
+        onOnline(the_job->mSid, the_job->mIsFirst);
+    }
+}
+
+bool CFdbBaseObject::migrateOnOnlineToWorker(FdbSessionId_t sid, bool is_first, CBaseWorker *worker)
+{
+    if (!worker)
+    {
+        worker = mWorker;
+    }
+    if (worker)
+    {
+        if (enableMigrate())
+        {
+            if (!worker->sendAsync(new COnOnlineJob(this, sid, is_first)))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate ononline to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
@@ -409,12 +493,15 @@ void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
     {
         mEndpoint->updateSessionInfo(session);
     }
-    migrateToWorker(session->sid(), is_first, true);
-}
 
-void CFdbBaseObject::notifyOffline(CFdbSession *session, bool is_last)
-{
-    migrateToWorker(session->sid(), is_last, false);
+    if (!migrateOnOnlineToWorker(session->sid(), is_first))
+    {
+        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
+        {
+            mSid = session->sid();
+        }
+        onOnline(session->sid(), is_first);
+    }
 }
 
 void CFdbBaseObject::callReply(CBaseJob::Ptr &msg_ref)
@@ -422,9 +509,53 @@ void CFdbBaseObject::callReply(CBaseJob::Ptr &msg_ref)
     onReply(msg_ref);
 }
 
+bool CFdbBaseObject::migrateOnReplyToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
+{
+    if (!worker)
+    {
+        worker = mWorker;
+    }
+    if (worker)
+    {
+        if (enableMigrate())
+        {
+            auto msg = castToMessage<CBaseMessage *>(msg_ref);
+            msg->setCallable(std::bind(&CFdbBaseObject::callReply, this, _1));
+            if (!worker->sendAsync(msg_ref))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate onreply to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 void CFdbBaseObject::callGetEvent(CBaseJob::Ptr &msg_ref)
 {
     onGetEvent(msg_ref);
+}
+
+bool CFdbBaseObject::migrateGetEventToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
+{
+    if (!worker)
+    {
+        worker = mWorker;
+    }
+    if (worker)
+    {
+        if (enableMigrate())
+        {
+            auto msg = castToMessage<CBaseMessage *>(msg_ref);
+            msg->setCallable(std::bind(&CFdbBaseObject::callGetEvent, this, _1));
+            if (!worker->sendAsync(msg_ref))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate onreply to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 void CFdbBaseObject::callStatus(CBaseJob::Ptr &msg_ref)
@@ -438,6 +569,28 @@ void CFdbBaseObject::callStatus(CBaseJob::Ptr &msg_ref)
     }
 
     onStatus(msg_ref, error_code, description.c_str());
+}
+
+bool CFdbBaseObject::migrateOnStatusToWorker(CBaseJob::Ptr &msg_ref, CBaseWorker *worker)
+{
+    if (!worker)
+    {
+        worker = mWorker;
+    }
+    if (worker)
+    {
+        if (enableMigrate())
+        {
+            auto msg = castToMessage<CBaseMessage *>(msg_ref);
+            msg->setCallable(std::bind(&CFdbBaseObject::callStatus, this, _1));
+            if (!worker->sendAsync(msg_ref))
+            {
+                LOG_E("CFdbBaseObject: Unable to migrate onstatus to worker!\n");
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 const CFdbBaseObject::CEventData *CFdbBaseObject::getCachedEventData(FdbMsgCode_t msg_code,
@@ -521,12 +674,18 @@ void CFdbBaseObject::doSubscribe(CBaseJob::Ptr &msg_ref)
         return;
     }
 
-    migrateToWorker(msg_ref, &CFdbBaseObject::callSubscribe);
+    if (!migrateOnSubscribeToWorker(msg_ref))
+    {
+        callSubscribe(msg_ref);
+    }
 }
 
 void CFdbBaseObject::doBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    migrateToWorker(msg_ref, &CFdbBaseObject::callBroadcast);
+    if (!migrateOnBroadcastToWorker(msg_ref))
+    {
+        callBroadcast(msg_ref);
+    }
 }
 
 void CFdbBaseObject::doInvoke(CBaseJob::Ptr &msg_ref)
@@ -560,22 +719,34 @@ void CFdbBaseObject::doInvoke(CBaseJob::Ptr &msg_ref)
         }
     }
 
-    migrateToWorker(msg_ref, &CFdbBaseObject::callInvoke);
+    if (!migrateOnInvokeToWorker(msg_ref))
+    {
+        callInvoke(msg_ref);
+    }
 }
 
 void CFdbBaseObject::doReply(CBaseJob::Ptr &msg_ref)
 {
-    migrateToWorker(msg_ref, &CFdbBaseObject::callReply);
+    if (!migrateOnReplyToWorker(msg_ref))
+    {
+        callReply(msg_ref);
+    }
 }
 
 void CFdbBaseObject::doGetEvent(CBaseJob::Ptr &msg_ref)
 {
-    migrateToWorker(msg_ref, &CFdbBaseObject::callGetEvent);
+    if (!migrateGetEventToWorker(msg_ref))
+    {
+        callGetEvent(msg_ref);
+    }
 }
 
 void CFdbBaseObject::doStatus(CBaseJob::Ptr &msg_ref)
 {
-    migrateToWorker(msg_ref, &CFdbBaseObject::callStatus);
+    if (!migrateOnStatusToWorker(msg_ref))
+    {
+        callStatus(msg_ref);
+    }
 }
 
 bool CFdbBaseObject::invoke(FdbSessionId_t receiver
@@ -1414,94 +1585,16 @@ public:
     CBaseWorker *mWorker;
 };
 
-<<<<<<< HEAD
-class CDispOnOnlineJob : public CMethodJob<CFdbBaseObject>
-{
-public:
-    CDispOnOnlineJob(CFdbBaseObject *object, FdbSessionId_t sid, bool first_or_last, bool online,
-                 CFdbBaseObject::tConnCallbackFn &callback)
-        : CMethodJob<CFdbBaseObject>(object, &CFdbBaseObject::callDispOnOnline, JOB_FORCE_RUN)
-        , mSid(sid)
-        , mFirstOrLast(first_or_last)
-        , mOnline(online)
-        , mCallback(callback)
-    {}
-
-    FdbSessionId_t mSid;
-    bool mFirstOrLast;
-    bool mOnline;
-    CFdbBaseObject::tConnCallbackFn mCallback;
-};
-
-void CFdbBaseObject::callDispOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref)
-{
-    auto the_job = fdb_dynamic_cast_if_available<CDispOnOnlineJob *>(job);
-    if (the_job)
-    {
-        the_job->mCallback(this, the_job->mSid, the_job->mOnline, the_job->mFirstOrLast);
-    }
-}
-
-void CFdbBaseObject::migrateToWorker(FdbSessionId_t sid, bool first_or_last, bool online,
-                                     tConnCallbackFn &callback, CBaseWorker *worker)
-{
-    if (!callback)
-    {
-        return;
-    }
-    if (!worker || worker->isSelf())
-    {
-        callback(this, sid, first_or_last, true);
-    }
-    else
-    {
-        worker->sendAsync(new CDispOnOnlineJob(this, sid, first_or_last, online, callback));
-    }
-}
-
-=======
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
 CFdbBaseObject::tRegEntryId CFdbBaseObject::registerConnNotification(tConnCallbackFn callback,
                                                                      CBaseWorker *worker)
 {
-    if (!callback)
-    {
-        return FDB_INVALID_ID;
-    }
     CFdbBaseObject::tRegEntryId id = mRegIdAllocator++;
     auto &item = mConnCallbackTbl[id];
     item.mCallback = callback;
     item.mWorker = worker;
-<<<<<<< HEAD
-
-    if (!isPrimary())
-    {
-        return id;
-    }
-
-    bool is_first = true;
-    auto &containers = mEndpoint->getContainer();
-    for (auto socket_it = containers.begin(); socket_it != containers.end(); ++socket_it)
-=======
     if (mEndpoint->connected())
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     {
-        auto container = socket_it->second;
-        if (!container->mConnectedSessionTable.empty())
-        {
-            // get a snapshot of the table to avoid modification of the table in callback
-            auto tbl = container->mConnectedSessionTable;
-            for (auto session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
-            {
-                auto session = *session_it;
-                if (!authentication(session))
-                {
-                    continue;
-                }
-                migrateToWorker(session->sid(), is_first, true, callback, worker);
-                is_first = false;
-            }
-        }
+        callback(this, FDB_INVALID_ID, true);
     }
     return id;
 }
@@ -1557,11 +1650,7 @@ void CFdbBaseObject::onReply(CBaseJob::Ptr &msg_ref)
     if (msg->getTypeId() == FDB_MSG_TYPE_AFC_INVOKE)
     {
         auto afc_msg = castToMessage<CAFCInvokeMsg *>(msg_ref);
-<<<<<<< HEAD
-        fdbMigrateCallback(msg_ref, msg, afc_msg->mReplyCallback, afc_msg->mWorker, this);
-=======
         afc_msg->mReplyCallback(msg_ref, this);
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     }
 }
 
@@ -1573,22 +1662,14 @@ void CFdbBaseObject::onOnline(FdbSessionId_t sid, bool is_first)
 
     for (auto it = mConnCallbackTbl.begin(); it != mConnCallbackTbl.end(); ++it)
     {
-<<<<<<< HEAD
-        migrateToWorker(sid, is_first, true, it->second.mCallback, it->second.mWorker);
-=======
         (it->second.mCallback)(this, sid, true);
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     }
 }
 void CFdbBaseObject::onOffline(FdbSessionId_t sid, bool is_last)
 {
     for (auto it = mConnCallbackTbl.begin(); it != mConnCallbackTbl.end(); ++it)
     {
-<<<<<<< HEAD
-        migrateToWorker(sid, is_last, false, it->second.mCallback, it->second.mWorker);
-=======
         (it->second.mCallback)(this, sid, false);
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     }
 }
 void CFdbBaseObject::onInvoke(CBaseJob::Ptr &msg_ref)

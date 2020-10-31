@@ -30,20 +30,13 @@ class CBaseWorker;
 class CFdbAFComponent
 {
 public:
-<<<<<<< HEAD
-    // base class of APP FW component
-    // @name - name of the component for debug purpose
-    // worker - the thread context where callback is executed; if not specified
-    //     callback will be called at FDBus context thread
-=======
->>>>>>> 20359d5abe63437dcfb1b9a4008bd293a0998b63
     CFdbAFComponent(const char *name = "anonymous", CBaseWorker *worker = 0);
 
     // create FDBus client, connect to server and register callbacks
     // If the client is already created (connected), do not create (or connect) again
     // @bus_name - FDBus server name to be connected
-    // @evt_tbl - tabe of handles called when associated event:topic is received
-    // @connect_callback - handle called when server is connected/disconnected
+    // @evt_tbl - list of callbacks called when associated event:topic is received
+    // @connect_callback - callback called when server is connected/disconnected
     CBaseClient *queryService(const char *bus_name,
                                const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
                                CFdbBaseObject::tConnCallbackFn connect_callback = 0);
@@ -51,8 +44,8 @@ public:
     // create FDBus server, bind bus name, and register callbacks
     // If the server is already created (bound), do not create (or bind) again
     // @bus_name - FDBus server name to be bound
-    // @msg_tbl - table of handles called when associated method is invoked
-    // @connect_callback - handle called when client is connected/disconnected
+    // @msg_tbl - list of callbacks called when associated method is invoked
+    // @connect_callback - callback called when client is connected/disconnected
     CBaseServer *offerService(const char *bus_name,
                                const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl,
                                CFdbBaseObject::tConnCallbackFn connect_callback = 0);
@@ -72,43 +65,6 @@ public:
             mName = name;
         }
     }
-
-    CBaseWorker *worker() const
-    {
-        return mWorker;
-    }
-
-    // the method is called by server to register message handle
-    // hdl_table - table of message handle
-    // code - message code
-    // callback  - handle called when invoke() is called by clients
-    bool addMsgHandle(CFdbMsgDispatcher::CMsgHandleTbl &hdl_table, FdbMsgCode_t code,
-                      tDispatcherCallbackFn callback);
-    // the method is called by client to register event handle
-    // hdl_table - table of message handle
-    // code - message code
-    // callback  - handle called when broadcast() is called by server 
-    // topic - topic of the event
-    bool addEvtHandle(CFdbEventDispatcher::CEvtHandleTbl &hdl_table, FdbMsgCode_t code,
-                      tDispatcherCallbackFn callback, const char *topic = 0);
-
-    // This method is wrapper of CFdbBaseObject::invoke[9] but the worker is taken
-    // from mWorker()
-    bool invoke(CFdbBaseObject *obj
-                , FdbMsgCode_t code
-                , IFdbMsgBuilder &data
-                , CFdbBaseObject::tInvokeCallbackFn callback
-                , int32_t timeout = 0);
-
-    // This method is wrapper of CFdbBaseObject::invoke[10] but the worker is taken
-    // from mWorker()
-    bool invoke(CFdbBaseObject *obj
-                , FdbMsgCode_t code
-                , CFdbBaseObject::tInvokeCallbackFn callback
-                , const void *buffer = 0
-                , int32_t size = 0
-                , int32_t timeout = 0
-                , const char *log_info = 0);
 
 protected:
     std::string mName;
