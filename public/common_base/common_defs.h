@@ -65,7 +65,7 @@ typedef uint8_t FdbEventGroup_t;
 #define FDB_INET_PORT_AUTO      0
 #define FDB_VALID_PORT(_port)   ((_port) > FDB_INET_PORT_AUTO)
 
-#define FDB_SECURITY_LEVEL_NONE 0
+#define FDB_SECURITY_LEVEL_NONE -1
 
 #define FDB_UDP_PORT            60000
 

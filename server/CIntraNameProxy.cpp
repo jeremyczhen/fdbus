@@ -318,7 +318,6 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         if (msg_addr_list.has_token_list() && server->importTokens(msg_addr_list.token_list().tokens()))
         {
             server->updateSecurityLevel();
-            LOG_I("CIntraNameProxy: tokens of server %s are updated.\n", server->name().c_str());
         }
 
         int32_t retries = CNsConfig::getAddressBindRetryNr();
@@ -379,8 +378,16 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
                     }
                     addr_status->set_udp_port(bound_port);
 
-                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s UDP %d is bound.\n",
-                            msg->session(), svc_name, char_url, bound_port);
+                    if (FDB_VALID_PORT(bound_port))
+                    {
+                        LOG_I("CIntraNameProxy: session %d: Server: %s, address %s UDP %d is bound.\n",
+                              msg->session(), svc_name, char_url, bound_port);
+                    }
+                    else
+                    {
+                        LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
+                              msg->session(), svc_name, char_url);
+                    }
                     break;
                 }
                 else

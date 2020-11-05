@@ -236,11 +236,11 @@ void CApiSecurityConfig::importSecLevel(const char *svc_name)
 {
 }
 
-int32_t CApiSecurityConfig::getMessageSecLevel(FdbMsgCode_t msg_code)
+int32_t CApiSecurityConfig::getMessageSecLevel(FdbMsgCode_t msg_code) const
 {
     return FDB_SECURITY_LEVEL_NONE;
 }
-int32_t CApiSecurityConfig::getEventSecLevel(FdbMsgCode_t msg_code)
+int32_t CApiSecurityConfig::getEventSecLevel(FdbMsgCode_t msg_code) const
 {
     return FDB_SECURITY_LEVEL_NONE;
 }

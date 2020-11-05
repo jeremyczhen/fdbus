@@ -225,7 +225,8 @@ public:
         tCallableFn mFunc;
         union UserData
         {
-            int64_t mPlaceHolder;
+            int64_t mPlaceHolderForAlignment;
+            char mPlaceHolderForSize[sizeof(int64_t)];
         } mUserData;
         Callable()
             : mFunc(0)

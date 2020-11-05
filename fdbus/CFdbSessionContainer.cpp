@@ -164,8 +164,6 @@ bool CFdbSessionContainer::bindUDPSocket(const char *ip_address, int32_t udp_por
 
             const CFdbSocketAddr &newly_addr = socket_imp->getAddress();
             mPendingUDPPort = newly_addr.mPort;
-            LOG_I("CFdbSessionContainer: bind to UDP: ip: %s, port: %d\n",
-                    udp_addr.mAddr.c_str(), newly_addr.mPort);
             return true;
         }
         else
