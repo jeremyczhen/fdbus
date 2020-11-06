@@ -18,6 +18,9 @@ SRC_FILES = [
     "fdbus/CBaseServer.cpp",
     "fdbus/CFdbContext.cpp",
     "fdbus/CFdbSession.cpp",
+    "fdbus/CFdbMsgDispatcher.cpp",
+    "fdbus/CEventSubscribeHandle.cpp",
+    "fdbus/CFdbUDPSession.cpp",
     "platform/CEventFd_eventfd.cpp",
     "platform/linux/CBaseMutexLock.cpp",
     "platform/linux/CBasePipe.cpp",
@@ -41,6 +44,8 @@ SRC_FILES = [
     "server/CIntraNameProxy.cpp",
     "server/CAddressAllocator.cpp",
     "security/cJSON/cJSON.c",
+    "appfw/CFdbAFComponent.cpp",
+    "appfw/CFdbAppFramework.cpp",
 ]
 
 FDB_PROTO_DIR = "example/idl"
@@ -477,7 +482,7 @@ cc_binary {
         "-DCONFIG_DEBUG_LOG",
     ],
     srcs: [
-        "example/fdb_test_client.cpp",
+        "example/client-server/fdb_test_client.cpp",
         FDB_PROTO_DIR + "/common.base.Example.proto",
     ],
 
@@ -514,7 +519,7 @@ cc_binary {
         "-DCONFIG_DEBUG_LOG",
     ],
     srcs: [
-        "example/fdb_test_server.cpp",
+        "example/client-server/fdb_test_server.cpp",
         FDB_PROTO_DIR + "/common.base.Example.proto",
     ],
 
@@ -605,12 +610,46 @@ cc_binary {
         "-DCONFIG_DEBUG_LOG",
     ],
     srcs: [
-        "example/fdb_test_notification_center.cpp",
+        "example/notification-center/fdb_test_notification_center.cpp",
         FDB_PROTO_DIR + "/common.base.Example.proto",
     ],
 
     shared_libs: [
         "libprotobuf-cpp-full",
+        "libcommon-base",
+        "liblog",
+        "libutils",
+    ],
+
+    proto: {
+        type: "full",
+    },
+
+}
+
+//=====================================================================================
+//                       build app framework (native test)                            |
+//=====================================================================================
+cc_binary {
+    name: "fdbappfwtest",
+    vendor_available: true,
+    cppflags: [
+        "-fexceptions",
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+        "-DFDBUS_PROTO_FULL_FEATURE",
+    ],
+    cflags: [
+        "-Wno-unused-parameter",
+        "-D__LINUX__",
+        "-DCONFIG_DEBUG_LOG",
+    ],
+    srcs: [
+        "example/app-framework/fdb_appfw_test.cpp",
+    ],
+
+    shared_libs: [
         "libcommon-base",
         "liblog",
         "libutils",
