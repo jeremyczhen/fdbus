@@ -748,17 +748,6 @@ public:
                       , int32_t size = 0
                       , int32_t timeout = 0);
 
-    bool sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool sendSideband(FdbMsgCode_t code
-                    , const void *buffer = 0
-                    , int32_t size = 0);
-
-    bool sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool sendSideband(FdbSessionId_t receiver
-                    , FdbMsgCode_t code
-                    , const void *buffer = 0
-                    , int32_t size = 0);
-
     virtual void prepareDestroy();
 
     tRegEntryId registerConnNotification(tConnCallbackFn callback, CBaseWorker *worker);
@@ -996,6 +985,18 @@ private:
     void callReply(CBaseJob::Ptr &msg_ref);
     void callReturnEvent(CBaseJob::Ptr &msg_ref);
     void callOnline(FdbSessionId_t sid, bool first_or_last, bool online);
+
+    bool sendSidebandNoQueue(CFdbMessage &msg, bool expect_reply);
+    bool sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendSideband(FdbMsgCode_t code
+                    , const void *buffer = 0
+                    , int32_t size = 0);
+
+    bool sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendSideband(FdbSessionId_t receiver
+                    , FdbMsgCode_t code
+                    , const void *buffer = 0
+                    , int32_t size = 0);
 
     friend class COnOnlineJob;
     friend class CBindObjectJob;

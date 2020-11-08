@@ -202,7 +202,11 @@ bool CFdbBaseObject::publishNoQueue(FdbMsgCode_t code, const char *topic, const 
     {
         return false;
     }
-    msg.topic(topic);
+    if (topic)
+    {
+        msg.topic(topic);
+    }
+    msg.type(FDB_MT_PUBLISH);
 
     auto session = mEndpoint->preferredPeer();
     if (session)
@@ -225,6 +229,7 @@ bool CFdbBaseObject::publishNoQueue(FdbMsgCode_t code, const char *topic, const 
     {
         return false;
     }
+    msg.type(FDB_MT_PUBLISH);
 
     return session->sendMessage(&msg);
 }
@@ -1281,15 +1286,26 @@ bool CFdbBaseObject::invokeSideband(FdbMsgCode_t code
     return msg->invokeSideband(timeout);
 }
 
+bool CFdbBaseObject::sendSidebandNoQueue(CFdbMessage &msg, bool expect_reply)
+{
+    msg.expectReply(expect_reply);
+    msg.type(FDB_MT_SIDEBAND_REQUEST);
+    auto session = mEndpoint->preferredPeer();
+    if (session)
+    {
+        return session->sendMessage(&msg);
+    }
+    return false;
+}
+
 bool CFdbBaseObject::sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    auto msg = new CBaseMessage(code, this, receiver);
-    if (!msg->serialize(data, this))
+    CFdbMessage msg(code, this, receiver);
+    if (!msg.serialize(data, this))
     {
-        delete msg;
         return false;
     }
-    return msg->sendSideband();
+    return sendSidebandNoQueue(msg, false);
 }
 
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
@@ -1300,13 +1316,12 @@ bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, IFdbMsgBuilder &data)
 bool CFdbBaseObject::sendSideband(FdbSessionId_t receiver, FdbMsgCode_t code,
                                   const void *buffer, int32_t size)
 {
-    auto msg = new CBaseMessage(code, this, receiver);
-    if (!msg->serialize(buffer, size, this))
+    CFdbMessage msg(code, this, receiver);
+    if (!msg.serialize(buffer, size, this))
     {
-        delete msg;
         return false;
     }
-    return msg->sendSideband();
+    return sendSidebandNoQueue(msg, false);
 }
 
 bool CFdbBaseObject::sendSideband(FdbMsgCode_t code, const void *buffer, int32_t size)

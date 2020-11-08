@@ -23,13 +23,18 @@ class CEventRouterProxy : public CBaseClient
 {
 public:
     CEventRouterProxy(const char *peer_name, CFdbEventRouter *router)
-        : mPeerName(peer_name ? peer_name : "")
-        , mRouter(router)
+        : mRouter(router)
+        , mPeerName(peer_name ? peer_name : "")
     {
         enableReconnect(true);
     }
     void connectToPeer()
     {
+        if (!name().empty())
+        {
+            return;
+        }
+
         name(mRouter->endpoint()->nsName().c_str());
         std::string peer_url(FDB_URL_SVC);
         peer_url += mPeerName;
