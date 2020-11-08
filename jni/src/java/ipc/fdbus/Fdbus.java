@@ -37,7 +37,10 @@ public class Fdbus
     public final static int FDB_MT_SIDEBAND_REQUEST = 5;
     public final static int FDB_MT_SIDEBAND_REPLY   = 6;
     public final static int FDB_MT_STATUS           = 7;
-    public final static int FDB_MT_MAX              = 8;
+    public final static int FDB_MT_GET_EVENT        = 8;
+    public final static int FDB_MT_RETURN_EVENT     = 9;
+    public final static int FDB_MT_PUBLISH          = 10;
+    public final static int FDB_MT_MAX              = 10;
 
     // Fdbus Message invoke Status
     public final static int FDB_ST_OK               = 0;

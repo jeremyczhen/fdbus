@@ -14,101 +14,25 @@
  * limitations under the License.
  */
 
-#include <string>
-#include <vector>
 #include <iostream>
-#include <common_base/CBaseServer.h>
-#include <common_base/CBaseClient.h>
 #include <common_base/fdb_option_parser.h>
+#include <common_base/CBaseServer.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbSession.h>
-
-class CNotificationCenter;
-class CNotificationCenterProxy : public CBaseClient
-{
-public:
-    CNotificationCenterProxy(const char *server_name, CNotificationCenter *ns);
-protected:
-    void onOnline(FdbSessionId_t sid, bool is_first);
-private:
-    CNotificationCenter *mNs;
-};
 
 class CNotificationCenter : public CBaseServer
 {
 public:
-    CNotificationCenter(const char *name = FDB_NOTIFICATION_CENTER_NAME)
+    CNotificationCenter(const char *name = FDB_NOTIFICATION_CENTER_NAME, char **peer_array = 0, uint32_t num_peers = 0)
         : CBaseServer(name ? name : FDB_NOTIFICATION_CENTER_NAME)
     {
         enableEventCache(true);
-    }
-    void addPeer(const char *server_name, const char *peer_name)
-    {
-        CBaseClient *peer = new CNotificationCenterProxy(server_name, this);
-        mPeerTbl.push_back(peer);
-
-        std::string peer_url(FDB_URL_SVC);
-        peer_url += peer_name;
-        peer->connect(peer_url.c_str());
-    }
-    ~CNotificationCenter()
-    {
-        for (auto it = mPeerTbl.begin(); it != mPeerTbl.end(); ++it)
+        enableEventRoute(true);
+        for (uint32_t i = 0; i < num_peers; ++i)
         {
-            (*it)->prepareDestroy();
-            delete *it;
+            addPeerRouter(peer_array[i]);
         }
     }
-    void syncEventPool(FdbSessionId_t sid)
-    {
-        auto session = FDB_CONTEXT->getSession(sid);
-        if (session)
-        {
-            publishCachedEvents(session);
-        }
-    }
-protected:
-    void onInvoke(CBaseJob::Ptr &msg_ref)
-    {
-        auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        broadcastNoQueue(msg->code(), msg->getPayloadBuffer(), msg->getPayloadSize(),
-                         msg->topic().c_str(), msg->isForceUpdate(), msg->preferUDP());
-
-        auto session = FDB_CONTEXT->getSession(msg->session());
-        for (auto it = mPeerTbl.begin(); it != mPeerTbl.end(); ++it)
-        {
-            /* avoid back and forth between NCs */
-            if (session->senderName().compare((*it)->nsName()))
-            {
-                (*it)->publishNoQueue(msg->code()
-                                      , msg->topic().c_str()
-                                      , msg->getPayloadBuffer()
-                                      , msg->getPayloadSize()
-                                      , 0
-                                      , msg->isForceUpdate()
-                                      , msg->preferUDP());
-            }
-        }
-    }
-private:
-    typedef std::vector<CBaseClient *> tPeerTbl;
-    tPeerTbl mPeerTbl;
 };
-
-CNotificationCenterProxy::CNotificationCenterProxy(const char *server_name, CNotificationCenter *ns)
-    : CBaseClient(server_name)
-    , mNs(ns)
-{
-    enableReconnect(true);
-}
-
-void CNotificationCenterProxy::onOnline(FdbSessionId_t sid, bool is_first)
-{
-    if (is_first)
-    {
-        mNs->syncEventPool(sid);
-    }
-}
 
 int main(int argc, char **argv)
 {
@@ -152,15 +76,11 @@ int main(int argc, char **argv)
     }
 
     uint32_t num_peers = 0;
-    char **peers_array = peers ? strsplit(peers, ",", &num_peers) : 0;
+    char **peer_array = peers ? strsplit(peers, ",", &num_peers) : 0;
 
     FDB_CONTEXT->init();
     
-    CNotificationCenter nc(server_name);
-    for (uint32_t i = 0; i < num_peers; ++i)
-    {
-        nc.addPeer(server_name, peers_array[i]);
-    }
+    CNotificationCenter nc(server_name, peer_array, num_peers);
     nc.bind();
     FDB_CONTEXT->start(FDB_WORKER_EXE_IN_PLACE);
     return 0;

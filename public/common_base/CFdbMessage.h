@@ -63,7 +63,10 @@ enum EFdbMessageType {
     FDB_MT_SIDEBAND_REQUEST = 5,
     FDB_MT_SIDEBAND_REPLY = 6,
     FDB_MT_STATUS = 7,
-    FDB_MT_MAX = 8
+    FDB_MT_GET_EVENT = 8,
+    FDB_MT_RETURN_EVENT = 9,
+    FDB_MT_PUBLISH = 10,
+    FDB_MT_MAX = 10
 };
 
 enum EFdbSidebandMessage
@@ -205,7 +208,6 @@ private:
 #define MSG_FLAG_ERROR              (1 << 4)
 #define MSG_FLAG_STATUS             (1 << 5)
 #define MSG_FLAG_INITIAL_RESPONSE   (1 << 6)
-#define MSG_FLAG_GET_EVENT          (1 << 7)
 #define MSG_FLAG_FORCE_UPDATE       (1 << 8)
 
 #define MSG_FLAG_HEAD_OK            (1 << (MSG_LOCAL_FLAG_SHIFT + 0))
@@ -474,11 +476,6 @@ public:
         return !!(mFlag & MSG_FLAG_ENABLE_LOG);
     }
 
-    bool isEventGet() const
-    {
-        return !!(mFlag & MSG_FLAG_GET_EVENT);
-    }
-
     bool isForceUpdate() const
     {
         return !!(mFlag & MSG_FLAG_FORCE_UPDATE);
@@ -592,8 +589,9 @@ private:
         return 0;
     }
     bool invoke(int32_t timeout = 0);
-    static bool invoke(CBaseJob::Ptr &msg_ref
-                       , int32_t timeout = 0);
+    static bool invoke(CBaseJob::Ptr &msg_ref, int32_t timeout = 0);
+    bool get(int32_t timeout = 0);
+    static bool get(CBaseJob::Ptr &msg_ref, int32_t timeout);
     void manualUpdate(bool active)
     {
         if (active)
@@ -642,18 +640,6 @@ private:
 
     }
 
-    void setEventGet(bool active)
-    {
-        if (active)
-        {
-            mFlag |= MSG_FLAG_GET_EVENT;
-        }
-        else
-        {
-            mFlag &= ~MSG_FLAG_GET_EVENT;
-        }
-    }
-
     void forceUpdate(bool active)
     {
         if (active)
@@ -667,17 +653,13 @@ private:
     }
 
     bool send();
-
+    bool publish();
     bool broadcast();
-
     bool subscribe(int32_t timeout = 0);
     static bool subscribe(CBaseJob::Ptr &msg_ref, int32_t timeout = 0);
-    
     bool unsubscribe();
-    
     bool update(int32_t timeout = 0);
-    static bool update(CBaseJob::Ptr &msg_ref
-                       , int32_t timeout = 0);
+    static bool update(CBaseJob::Ptr &msg_ref, int32_t timeout = 0);
 
     void run(CBaseWorker *worker, Ptr &ref);
     bool buildHeader();
@@ -765,7 +747,7 @@ private:
     void encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr);
     void decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr);
 
-    static bool replyNoQueue(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
+    static bool replyEventCache(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
     void dispatchMsg(Ptr &ref);
 
     EFdbMessageType mType;

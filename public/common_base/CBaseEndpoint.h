@@ -24,6 +24,7 @@
 #include "CFdbBaseObject.h"
 #include "CMethodJob.h"
 #include "CFdbToken.h"
+#include "CFdbEventRouter.h"
 
 class CBaseWorker;
 class CFdbSessionContainer;
@@ -40,7 +41,7 @@ public:
 #define FDB_EP_RECONNECT_ENABLED        (1 << 9)
 #define FDB_EP_RECONNECT_ACTIVATED      (1 << 10)
 #define FDB_EP_ENABLE_UDP               (1 << 11)
-    CBaseEndpoint(const char *name, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
+    CBaseEndpoint(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     ~CBaseEndpoint();
 
     const std::string &nsName() const
@@ -140,6 +141,11 @@ public:
 
     void prepareDestroy();
 
+    void addPeerRouter(const char *peer_router_name)
+    {
+        mEventRouter.addPeer(peer_router_name);
+    }
+
 protected:
     std::string mNsName;
     CFdbToken::tTokenList mTokens;
@@ -162,6 +168,19 @@ protected:
     virtual bool onMessageAuthentication(CFdbMessage *msg);
     virtual bool onEventAuthentication(CFdbMessage *msg);
 
+    void setNsName(const char *name)
+    {
+        if (name)
+        {
+            mNsName = name;
+            if (mName.empty())
+            {
+                mName = mNsName;
+            }
+        }
+    }
+    void onPublish(CBaseJob :: Ptr &msg_ref);
+
 private:
     typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
     tObjectContainer mObjectContainer;
@@ -169,6 +188,7 @@ private:
     uint32_t mSessionCnt;
     FdbObjectId_t mSnAllocator;
     FdbEndpointId_t mEpid;
+    CFdbEventRouter mEventRouter;
     
     CFdbSession *preferredPeer();
     void checkAutoRemove();
@@ -204,6 +224,7 @@ private:
     friend class CBaseClient;
     friend class CIntraNameProxy;
     friend class CHostProxy;
+    friend class CFdbEventRouter;
     friend class CFdbBaseObject;
     friend class CServerSocket;
     friend class CRegisterJob;

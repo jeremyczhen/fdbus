@@ -28,10 +28,10 @@
 #include <utils/Log.h>
 
 CNameServer::CNameServer()
-    : CBaseServer(CNsConfig::getNameServerName())
+    : CBaseServer()
     , mHostProxy(0)
 {
-    mNsName = CNsConfig::getNameServerName();
+    setNsName(CNsConfig::getNameServerName());
     mServerSecruity.importSecurity();
     role(FDB_OBJECT_ROLE_NS_SERVER);
     

@@ -40,7 +40,7 @@ protected:
 class CBaseServer : public CBaseEndpoint
 {
 public:
-    CBaseServer(const char *name, CBaseWorker *worker = 0);
+    CBaseServer(const char *name = 0, CBaseWorker *worker = 0);
     virtual ~CBaseServer();
 
     /*
@@ -73,9 +73,6 @@ public:
 
 protected:
     void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
-    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
-                        int32_t size, CFdbSession *session);
-    void publishCachedEvents(CFdbSession *session);
 private:
     CApiSecurityConfig mApiSecurity;
 

@@ -156,6 +156,94 @@ bool CFdbBaseObject::send(FdbMsgCode_t code
     return send(FDB_INVALID_ID, code, buffer, size, fast, log_data);
 }
 
+bool CFdbBaseObject::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *topic,
+                             bool force_update, bool fast)
+{
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, fast);
+    if (!msg->serialize(data, this))
+    {
+        delete msg;
+        return false;
+    }
+    if (topic)
+    {
+        msg->topic(topic);
+    }
+    msg->forceUpdate(force_update);
+    return msg->publish();
+}
+ 
+bool CFdbBaseObject::publish(FdbMsgCode_t code, const void *buffer, int32_t size, const char *topic,
+                             bool force_update, bool fast, const char *log_data)
+{
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, fast);
+    msg->setLogData(log_data);
+    if (!msg->serialize(buffer, size, this))
+    {
+        delete msg;
+        return false;
+    }
+    if (topic)
+    {
+        msg->topic(topic);
+    }
+    msg->forceUpdate(force_update);
+    return msg->publish();
+}
+
+bool CFdbBaseObject::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
+                                    const char *log_data, bool force_update, bool fast)
+{
+    CBaseMessage msg(code, this, FDB_INVALID_ID, fast);
+    msg.expectReply(false);
+    msg.forceUpdate(force_update);
+    msg.setLogData(log_data);
+    if (!msg.serialize(buffer, size, this))
+    {
+        return false;
+    }
+    msg.topic(topic);
+
+    auto session = mEndpoint->preferredPeer();
+    if (session)
+    {
+        return session->sendMessage(&msg);
+    }
+    return false;
+}
+
+bool CFdbBaseObject::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
+                                 int32_t size, CFdbSession *session)
+{
+    CBaseMessage msg(code, this);
+    if (topic)
+    {
+        msg.topic(topic);
+    }
+    msg.expectReply(false);
+    if (!msg.serialize(buffer, size, this))
+    {
+        return false;
+    }
+
+    return session->sendMessage(&msg);
+}
+
+void CFdbBaseObject::publishCachedEvents(CFdbSession *session)
+{
+    for (auto it_events = mEventCache.begin(); it_events != mEventCache.end(); ++it_events)
+    {
+        auto event_code = it_events->first;
+        auto &events = it_events->second;
+        for (auto it_data = events.begin(); it_data != events.end(); ++it_data)
+        {
+            auto &filter = it_data->first;
+            auto &data = it_data->second;
+            publishNoQueue(event_code, filter.c_str(), data.mBuffer, data.mSize, session);
+        }
+    }
+}
+
 bool CFdbBaseObject::get(FdbMsgCode_t code, const char *topic, int32_t timeout)
 {
     auto msg = new CBaseMessage(code, this, FDB_INVALID_ID);
@@ -165,8 +253,7 @@ bool CFdbBaseObject::get(FdbMsgCode_t code, const char *topic, int32_t timeout)
         return false;
     }
     msg->topic(topic);
-    msg->setEventGet(true);
-    return msg->invoke(timeout);
+    return msg->get(timeout);
 }
 
 bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
@@ -178,9 +265,8 @@ bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
         return false;
     }
     msg->topic(topic);
-    msg->setEventGet(true);
     msg->enableTimeStamp(timeStampEnabled());
-    return msg->invoke(timeout);
+    return msg->get(timeout);
 }
 
 bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t timeout)
@@ -192,9 +278,8 @@ bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t time
         return false;
     }
     msg->topic(topic);
-    msg->setEventGet(true);
     msg->enableTimeStamp(timeStampEnabled());
-    return msg->invoke(msg_ref, timeout);
+    return msg->get(msg_ref, timeout);
 }
 
 bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
@@ -422,7 +507,7 @@ void CFdbBaseObject::callReply(CBaseJob::Ptr &msg_ref)
     onReply(msg_ref);
 }
 
-void CFdbBaseObject::callGetEvent(CBaseJob::Ptr &msg_ref)
+void CFdbBaseObject::callReturnEvent(CBaseJob::Ptr &msg_ref)
 {
     onGetEvent(msg_ref);
 }
@@ -529,37 +614,30 @@ void CFdbBaseObject::doBroadcast(CBaseJob::Ptr &msg_ref)
     migrateToWorker(msg_ref, &CFdbBaseObject::callBroadcast);
 }
 
-void CFdbBaseObject::doInvoke(CBaseJob::Ptr &msg_ref)
+void CFdbBaseObject::doGetEvent(CBaseJob::Ptr &msg_ref)
 {
+    auto msg = castToMessage<CBaseMessage *>(msg_ref);
     if (mFlag & FDB_OBJ_ENABLE_EVENT_CACHE)
     {
-        /* reply current value for 'get' request */
-        auto msg = castToMessage<CBaseMessage *>(msg_ref);
-        if (msg->isEventGet())
+        auto cached_data = getCachedEventData(msg->code(), msg->topic().c_str());
+        if (cached_data)
         {
-            if (!msg->expectReply())
-            {
-                msg->status(msg_ref, NFdbBase::FDB_ST_BAD_PARAMETER, "Intend to get event but reply is not expected!");
-                return;
-            }
-            /*
-             * We come here because client intends to retrieve current value of event/topic pair.
-             * It acts as a 'get' command.
-             */
-            auto cached_data = getCachedEventData(msg->code(), msg->topic().c_str());
-            if (cached_data)
-            {
-                msg->replyNoQueue(msg_ref, cached_data->mBuffer, cached_data->mSize);
-            }
-            else
-            {
-                msg->statusf(msg_ref, NFdbBase::FDB_ST_NON_EXIST, "Event %d topic %s doesn't exists!",
-                             msg->code(), msg->topic().c_str());
-            }
-            return;
+            msg->replyEventCache(msg_ref, cached_data->mBuffer, cached_data->mSize);
+        }
+        else
+        {
+            msg->statusf(msg_ref, NFdbBase::FDB_ST_NON_EXIST, "Event %d topic %s doesn't exists!",
+                         msg->code(), msg->topic().c_str());
         }
     }
+    else
+    {
+        msg->status(msg_ref, NFdbBase::FDB_ST_NON_EXIST, "Event cache is not enabled!");
+    }
+}
 
+void CFdbBaseObject::doInvoke(CBaseJob::Ptr &msg_ref)
+{
     migrateToWorker(msg_ref, &CFdbBaseObject::callInvoke);
 }
 
@@ -568,14 +646,24 @@ void CFdbBaseObject::doReply(CBaseJob::Ptr &msg_ref)
     migrateToWorker(msg_ref, &CFdbBaseObject::callReply);
 }
 
-void CFdbBaseObject::doGetEvent(CBaseJob::Ptr &msg_ref)
+void CFdbBaseObject::doReturnEvent(CBaseJob::Ptr &msg_ref)
 {
-    migrateToWorker(msg_ref, &CFdbBaseObject::callGetEvent);
+    migrateToWorker(msg_ref, &CFdbBaseObject::callReturnEvent);
 }
 
 void CFdbBaseObject::doStatus(CBaseJob::Ptr &msg_ref)
 {
     migrateToWorker(msg_ref, &CFdbBaseObject::callStatus);
+}
+
+void CFdbBaseObject::doPublish(CBaseJob::Ptr &msg_ref)
+{
+    if (mFlag & FDB_OBJ_ENABLE_EVENT_ROUTE)
+    {
+        onPublish(msg_ref);
+    }
+    // check if auto-reply is required
+    CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to publish request.");
 }
 
 bool CFdbBaseObject::invoke(FdbSessionId_t receiver
@@ -1323,6 +1411,13 @@ void CFdbBaseObject::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
         default:
         break;
     }
+}
+
+void CFdbBaseObject::onPublish(CBaseJob::Ptr &msg_ref)
+{
+    auto msg = castToMessage<CBaseMessage *>(msg_ref);
+    broadcastNoQueue(msg->code(), msg->getPayloadBuffer(), msg->getPayloadSize(),
+                     msg->topic().c_str(), msg->isForceUpdate(), msg->preferUDP());
 }
 
 class CPrepareDestroyJob : public CMethodJob<CFdbBaseObject>

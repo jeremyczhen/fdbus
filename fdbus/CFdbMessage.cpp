@@ -276,10 +276,13 @@ void CFdbMessage::dispatchMsg(Ptr &ref)
     {
         case FDB_MT_REQUEST:
         case FDB_MT_SIDEBAND_REQUEST:
+        case FDB_MT_GET_EVENT:
+        case FDB_MT_PUBLISH:
             doRequest(ref);
             break;
         case FDB_MT_REPLY:
         case FDB_MT_SIDEBAND_REPLY:
+        case FDB_MT_RETURN_EVENT:
             doReply(ref);
             break;
         case FDB_MT_BROADCAST:
@@ -361,7 +364,7 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     return true;
 }
 
-bool CFdbMessage::replyNoQueue(CBaseJob::Ptr &msg_ref, const void *buffer, int32_t size)
+bool CFdbMessage::replyEventCache(CBaseJob::Ptr &msg_ref, const void *buffer, int32_t size)
 {
     auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
@@ -373,7 +376,7 @@ bool CFdbMessage::replyNoQueue(CBaseJob::Ptr &msg_ref, const void *buffer, int32
         return false;
     }
  
-    fdb_msg->mType = FDB_MT_REPLY;
+    fdb_msg->mType = FDB_MT_RETURN_EVENT;
     fdb_msg->mFlag |= MSG_FLAG_REPLIED;
     auto session = fdb_msg->getSession();
     if (session)
@@ -472,8 +475,7 @@ bool CFdbMessage::invoke(int32_t timeout)
     return invoke(msg_ref, 0, timeout);
 }
 
-bool CFdbMessage::invoke(CBaseJob::Ptr &msg_ref
-                         , int32_t timeout)
+bool CFdbMessage::invoke(CBaseJob::Ptr &msg_ref , int32_t timeout)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
     return msg ? msg->invoke(msg_ref, FDB_MSG_TX_SYNC, timeout) : false;
@@ -483,6 +485,30 @@ bool CFdbMessage::send()
 {
     CBaseJob::Ptr msg_ref(this);
     return invoke(msg_ref, FDB_MSG_TX_NO_REPLY, -1);
+}
+
+bool CFdbMessage::publish()
+{
+    mType = FDB_MT_PUBLISH;
+    CBaseJob::Ptr msg_ref(this);
+    return submit(msg_ref, FDB_MSG_TX_NO_REPLY, -1);
+}
+
+bool CFdbMessage::get(CBaseJob::Ptr &msg_ref, int32_t timeout)
+{
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (msg)
+    {
+        msg->mType = FDB_MT_GET_EVENT;
+        return msg->submit(msg_ref, 0, timeout);
+    }
+    return false;
+}
+
+bool CFdbMessage::get(int32_t timeout)
+{
+    CBaseJob::Ptr msg_ref(this);
+    return get(msg_ref, timeout);
 }
 
 bool CFdbMessage::broadcast(FdbMsgCode_t code
@@ -1042,7 +1068,10 @@ const char *CFdbMessage::getMsgTypeName(EFdbMessageType type)
                                     , "Broadcast"
                                     , "SidebandRequest"
                                     , "SidebandReply"
-                                    , "Status"};
+                                    , "Status"
+                                    , "Get"
+                                    , "Return"
+                                    , "Publish"};
     if (type >= FDB_MT_MAX)
     {
         return 0;
@@ -1086,12 +1115,15 @@ void CFdbMessage::encodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
+        case FDB_MT_RETURN_EVENT:
             msg_hdr.set_send_or_arrive_time(mTimeStamp->mArriveTime);
             msg_hdr.set_reply_time(CNanoTimer::getNanoSecTimer());
             break;
         case FDB_MT_REQUEST:
         case FDB_MT_SUBSCRIBE_REQ:
         case FDB_MT_BROADCAST:
+        case FDB_MT_GET_EVENT:
+        case FDB_MT_PUBLISH:
             mTimeStamp->mSendTime = CNanoTimer::getNanoSecTimer();
             msg_hdr.set_send_or_arrive_time(mTimeStamp->mSendTime);
             break;
@@ -1116,6 +1148,7 @@ void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
     {
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
+        case FDB_MT_RETURN_EVENT:
             if (msg_hdr.has_send_or_arrive_time())
             {
                 mTimeStamp->mArriveTime = msg_hdr.send_or_arrive_time();
@@ -1129,6 +1162,8 @@ void CFdbMessage::decodeDebugInfo(NFdbBase::CFdbMessageHeader &msg_hdr)
         case FDB_MT_REQUEST:
         case FDB_MT_SUBSCRIBE_REQ:
         case FDB_MT_BROADCAST:
+        case FDB_MT_GET_EVENT:
+        case FDB_MT_PUBLISH:
             mTimeStamp->mArriveTime = CNanoTimer::getNanoSecTimer();
             if (msg_hdr.has_send_or_arrive_time())
             {

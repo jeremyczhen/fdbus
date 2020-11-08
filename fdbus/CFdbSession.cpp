@@ -238,8 +238,11 @@ void CFdbSession::onInput(bool &io_error)
     {
         case FDB_MT_REQUEST:
         case FDB_MT_SIDEBAND_REQUEST:
+        case FDB_MT_GET_EVENT:
+        case FDB_MT_PUBLISH:
             doRequest(head, prefix, whole_buf);
             break;
+        case FDB_MT_RETURN_EVENT:
         case FDB_MT_REPLY:
         case FDB_MT_SIDEBAND_REPLY:
             doResponse(head, prefix, whole_buf);
@@ -295,26 +298,48 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
     if (object)
     {
         msg->decodeDebugInfo(head);
-        if (head.type() == FDB_MT_SIDEBAND_REQUEST)
+        switch (head.type())
         {
-            object->onSidebandInvoke(msg_ref);
-            // check if auto-reply is required
-            msg->autoReply(this, msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK,
-                           "Automatically reply to request.");
-        }
-        else
-        {
-            bool allowed = msg->isEventGet() ? mContainer->owner()->onEventAuthentication(msg, this) :
-                                               mContainer->owner()->onMessageAuthentication(msg, this);
-            if (allowed)
-            {
-                object->doInvoke(msg_ref);
-            }
-            else
-            {
-                msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
-                                "Authentication failed!");
-            }
+            case FDB_MT_REQUEST:
+                if (mContainer->owner()->onMessageAuthentication(msg, this))
+                {
+                    object->doInvoke(msg_ref);
+                }
+                else
+                {
+                    msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
+                                    "Authentication failed!");
+                }
+            break;
+            case FDB_MT_SIDEBAND_REQUEST:
+                object->onSidebandInvoke(msg_ref);
+                // check if auto-reply is required
+                msg->autoReply(this, msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK,
+                               "Automatically reply to request.");
+            break;
+            case FDB_MT_GET_EVENT:
+                if (mContainer->owner()->onEventAuthentication(msg, this))
+                {
+                    object->doGetEvent(msg_ref);
+                }
+                else
+                {
+                    msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
+                                    "Authentication failed!");
+                }
+            break;
+            case FDB_MT_PUBLISH:
+                if (mContainer->owner()->onEventAuthentication(msg, this))
+                {
+                    object->doPublish(msg_ref);
+                }
+                else
+                {
+                    msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
+                                    "Authentication failed!");
+                }
+            default:
+            break;
         }
     }
     else
@@ -351,42 +376,38 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
             msg->replaceBuffer(buffer, head.payload_size(), prefix.mHeadLength);
             if (!msg->sync())
             {
-                if (head.type() == FDB_MT_REPLY)
+                switch (head.type())
                 {
-                    if (msg->isEventGet())
-                    {
-                        object->doGetEvent(msg_ref);
-                    }
-                    else
-                    {
+                    case FDB_MT_REPLY:
                         object->doReply(msg_ref);
-                    }
-                }
-                else if (head.type() == FDB_MT_SIDEBAND_REPLY)
-                {
-                    object->onSidebandReply(msg_ref);
-                }
-                else if (head.type() == FDB_MT_STATUS)
-                {
-                    if (msg->mType == FDB_MT_REQUEST)
-                    {
-                        if (msg->isEventGet())
-                        {
-                            object->doGetEvent(msg_ref);
-                        }
-                        else
-                        {
-                            object->doReply(msg_ref);
-                        }
-                    }
-                    else if (msg->mType == FDB_MT_SIDEBAND_REQUEST)
-                    {
+                    break;
+                    case FDB_MT_SIDEBAND_REPLY:
                         object->onSidebandReply(msg_ref);
-                    }
-                    else
-                    {
-                        object->doStatus(msg_ref);
-                    }
+                    break;
+                    case FDB_MT_STATUS:
+                        switch (msg->mType)
+                        {
+                            case FDB_MT_REQUEST:
+                                object->doReply(msg_ref);
+                            break;
+                            case FDB_MT_SIDEBAND_REQUEST:
+                                object->onSidebandReply(msg_ref);
+                            break;
+                            case FDB_MT_GET_EVENT:
+                                object->doReturnEvent(msg_ref);
+                            break;
+                            case FDB_MT_STATUS:
+                                object->doStatus(msg_ref);
+                            break;
+                            default:
+                            break;
+                        }
+                    break;
+                    case FDB_MT_RETURN_EVENT:
+                        object->doReturnEvent(msg_ref);
+                    break;
+                    default:
+                    break;
                 }
             }
         }

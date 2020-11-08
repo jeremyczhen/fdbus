@@ -52,6 +52,7 @@ public:
 #define FDB_OBJ_REGISTERED              (1 << 1)
 #define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 2)
 #define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
+#define FDB_OBJ_ENABLE_EVENT_ROUTE      (1 << 4)
 
     typedef uint32_t tRegEntryId;
     typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool, bool)> tConnCallbackFn;
@@ -269,6 +270,30 @@ public:
               , int32_t size = 0
               , bool fast = false
               , const char *log_data = 0);
+
+    /*
+     * publish[1]
+     * Similiar to send()[1] but topic is added.
+     * @topic: topic to be send
+     */
+    bool publish(FdbMsgCode_t code
+                 , IFdbMsgBuilder &data
+                 , const char *topic = 0
+                 , bool force_update = false
+                 , bool fast = false);
+
+    /*
+     * publish[2]
+     * Similiar to send()[4] but topic is added.
+     * @topic: topic to be send
+     */
+    bool publish(FdbMsgCode_t code
+                , const void *buffer = 0
+                , int32_t size = 0
+                , const char *topic = 0
+                , bool force_update = false
+                , bool fast = false
+                , const char *log_data = 0);
 
     /*
      * get[1]
@@ -563,6 +588,14 @@ public:
         return mName;
     }
 
+    void name(const char *name)
+    {
+        if (name)
+        {
+            mName = name;
+        }
+    }
+
     /*
      * Get a list of subscribed messages.
      * Warning: not thread-safe!!! MUST be used within CONTEXT!!!
@@ -644,6 +677,23 @@ public:
     bool timeStampEnabled()
     {
         return !!(mFlag & FDB_OBJ_ENABLE_TIMESTAMP);
+    }
+
+    void enableEventRoute(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_ENABLE_EVENT_ROUTE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_ENABLE_EVENT_ROUTE;
+        }
+    }
+
+    bool eventRouteEnabled()
+    {
+        return !!(mFlag & FDB_OBJ_ENABLE_EVENT_ROUTE);
     }
 
     void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)
@@ -837,11 +887,18 @@ protected:
     virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
     {}
+    virtual void onPublish(CBaseJob::Ptr &msg_ref);
 
     // Warning: only used by FDBus internally!!!!!!!
     void broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter);
     void broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
                           const char *filter, bool force_update, bool fast);
+
+    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
+                        const char *log_data, bool force_update, bool fast);
+    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
+                        int32_t size, CFdbSession *session);
+    void publishCachedEvents(CFdbSession *session);
 private:
     struct CEventData
     {
@@ -908,9 +965,11 @@ private:
     void doSubscribe(CBaseJob::Ptr &msg_ref);
     void doBroadcast(CBaseJob::Ptr &msg_ref);
     void doInvoke(CBaseJob::Ptr &msg_ref);
-    void doReply(CBaseJob::Ptr &msg_ref);
     void doGetEvent(CBaseJob::Ptr &msg_ref);
+    void doReply(CBaseJob::Ptr &msg_ref);
+    void doReturnEvent(CBaseJob::Ptr &msg_ref);
     void doStatus(CBaseJob::Ptr &msg_ref);
+    void doPublish(CBaseJob::Ptr &msg_ref);
 
     FdbObjectId_t addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId_t obj_id);
     void removeFromEndpoint();
@@ -935,7 +994,7 @@ private:
     void callStatus(CBaseJob::Ptr &msg_ref);
     void callSubscribe(CBaseJob::Ptr &msg_ref);
     void callReply(CBaseJob::Ptr &msg_ref);
-    void callGetEvent(CBaseJob::Ptr &msg_ref);
+    void callReturnEvent(CBaseJob::Ptr &msg_ref);
     void callOnline(FdbSessionId_t sid, bool first_or_last, bool online);
 
     friend class COnOnlineJob;
@@ -953,6 +1012,7 @@ private:
     friend class CFdbMessage;
     friend class CBaseEndpoint;
     friend class CLogProducer;
+    friend class CFdbEventRouter;
 };
 
 #endif

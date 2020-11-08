@@ -69,7 +69,7 @@ private:
 class CBaseClient : public CBaseEndpoint
 {
 public:
-    CBaseClient(const char *name, CBaseWorker *worker = 0);
+    CBaseClient(const char *name = 0, CBaseWorker *worker = 0);
     virtual ~CBaseClient();
     /*
      * Connect a client to an address
@@ -102,35 +102,7 @@ public:
 
     bool hostConnected(const char *host_name);
 
-    /*
-     * publish[1]
-     * Similiar to send()[1] but topic is added.
-     * @topic: topic to be send
-     */
-    bool publish(FdbMsgCode_t code
-                 , IFdbMsgBuilder &data
-                 , const char *topic = 0
-                 , bool force_update = false
-                 , bool fast = false);
-
-    /*
-     * publish[2]
-     * Similiar to send()[4] but topic is added.
-     * @topic: topic to be send
-     */
-    bool publish(FdbMsgCode_t code
-                , const void *buffer = 0
-                , int32_t size = 0
-                , const char *topic = 0
-                , bool force_update = false
-                , bool fast = false
-                , const char *log_data = 0);
-
     void prepareDestroy();
-
-    /* Warning!!! Internal use only!!! */
-    bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
-                        const char *log_data, bool force_update, bool fast);
 
     const std::string *token() const
     {

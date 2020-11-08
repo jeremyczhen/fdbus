@@ -177,9 +177,7 @@ void CFdbUDPSession::doRequest(NFdbBase::CFdbMessageHeader &head,
     {
         msg->decodeDebugInfo(head);
         {
-            bool allowed = msg->isEventGet() ? mContainer->owner()->onEventAuthentication(msg) :
-                                               mContainer->owner()->onMessageAuthentication(msg);
-            if (allowed)
+            if (mContainer->owner()->onMessageAuthentication(msg))
             {
                 msg->preferUDP(true);
                 object->doInvoke(msg_ref);

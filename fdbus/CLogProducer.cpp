@@ -113,6 +113,8 @@ const char *CLogProducer::getReceiverName(EFdbMessageType type,
         case FDB_MT_REQUEST:
         case FDB_MT_SUBSCRIBE_REQ:
         case FDB_MT_SIDEBAND_REQUEST:
+        case FDB_MT_GET_EVENT:
+        case FDB_MT_PUBLISH:
             receiver = endpoint->nsName().c_str();
         break;
         default:
@@ -142,6 +144,8 @@ bool CLogProducer::checkLogEnabledByMessageType(EFdbMessageType type)
     {
         case FDB_MT_REQUEST:
         case FDB_MT_SIDEBAND_REQUEST:
+        case FDB_MT_GET_EVENT:
+        case FDB_MT_PUBLISH:
             if (mDisableRequest)
             {
                 match = false;
@@ -150,6 +154,7 @@ bool CLogProducer::checkLogEnabledByMessageType(EFdbMessageType type)
         case FDB_MT_REPLY:
         case FDB_MT_STATUS:
         case FDB_MT_SIDEBAND_REPLY:
+        case FDB_MT_RETURN_EVENT:
             if (mDisableReply)
             {
                 match = false;

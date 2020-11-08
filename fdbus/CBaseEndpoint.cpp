@@ -28,6 +28,7 @@ CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpoint
     , mSessionCnt(0)
     , mSnAllocator(1)
     , mEpid(FDB_INVALID_ID)
+    , mEventRouter(this)
 {
     mObjId = FDB_OBJECT_MAIN;
     mEndpoint = this;
@@ -536,7 +537,7 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
     }
     if (server_name)
     {
-        mNsName = server_name;
+        setNsName(server_name);
     }
     if (mNsName.empty())
     {
@@ -560,6 +561,7 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
     {
         name_proxy->addServiceListener(mNsName.c_str());
     }
+    mEventRouter.connectPeers();
     return true;
 }
 
@@ -751,5 +753,11 @@ bool CBaseEndpoint::onEventAuthentication(CFdbMessage *msg)
         return client_sec_level >= required_security_level;
     }
     return true;
+}
+
+void CBaseEndpoint::onPublish(CBaseJob::Ptr &msg_ref)
+{
+    CFdbBaseObject::onPublish(msg_ref);
+    mEventRouter.routeMessage(msg_ref);
 }
 

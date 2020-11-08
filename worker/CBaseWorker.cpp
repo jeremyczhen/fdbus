@@ -714,7 +714,7 @@ bool CBaseWorker::send(CBaseJob::Ptr &job, bool urgent)
 {
     bool ret;
     
-    if (mExitCode)
+    if (mExitCode || !mEventLoop)
     {
         return false;
     }
