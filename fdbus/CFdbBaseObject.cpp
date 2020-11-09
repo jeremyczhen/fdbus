@@ -300,7 +300,7 @@ bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 
 bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    CBaseMessage msg(code, this, FDB_INVALID_ID, true);
+    CBaseMessage msg(code, this, FDB_INVALID_ID, false);
     msg.expectReply(false);
     if (!msg.serialize(data))
     {
@@ -348,7 +348,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
 void CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
                                          const char *filter)
 {
-    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, true);
+    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, false);
     if (!msg.serialize(data, size, this))
     {
         return;

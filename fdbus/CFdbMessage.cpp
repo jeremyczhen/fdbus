@@ -1072,9 +1072,9 @@ const char *CFdbMessage::getMsgTypeName(EFdbMessageType type)
                                     , "Get"
                                     , "Return"
                                     , "Publish"};
-    if (type >= FDB_MT_MAX)
+    if (type > FDB_MT_MAX)
     {
-        return 0;
+        type = FDB_MT_UNKNOWN;
     }
     return type_name[type];
 }
