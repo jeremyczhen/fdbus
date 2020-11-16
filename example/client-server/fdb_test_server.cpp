@@ -328,6 +328,7 @@ int main(int argc, char **argv)
         url += server_name;
         server_name += "_server";
         auto server = new CMediaServer(server_name.c_str(), worker_ptr);
+        server->enableWatchdog(true);
         server->enableUDP(true);
         server->bind(url.c_str());
     }

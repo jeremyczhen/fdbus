@@ -271,39 +271,24 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
 
 void CFdbMessage::dispatchMsg(Ptr &ref)
 {
-    // process request from other threads to context thread
-    switch (mType)
+    typedef void (CFdbMessage::*tHandleFn)(Ptr &ref);
+    const static tHandleFn mHandle[] =
+        {
+            0,                          //FDB_MT_UNKNOWN = 0
+            &CFdbMessage::doRequest,    //FDB_MT_REQUEST = 1
+            &CFdbMessage::doReply,      //FDB_MT_REPLY = 2,
+            &CFdbMessage::doRequest,    //FDB_MT_SUBSCRIBE_REQ = 3,
+            &CFdbMessage::doBroadcast,  //FDB_MT_BROADCAST = 4,
+            &CFdbMessage::doRequest,    //FDB_MT_SIDEBAND_REQUEST = 5,
+            &CFdbMessage::doReply,      //FDB_MT_SIDEBAND_REPLY = 6,
+            &CFdbMessage::doReply,      //FDB_MT_STATUS = 7,
+            &CFdbMessage::doRequest,    //FDB_MT_GET_EVENT = 8,
+            &CFdbMessage::doReply,      //FDB_MT_RETURN_EVENT = 9,
+            &CFdbMessage::doRequest,    //FDB_MT_PUBLISH = 10
+        };
+    if ((mType > FDB_MT_UNKNOWN) && (mType <= FDB_MT_MAX))
     {
-        case FDB_MT_REQUEST:
-        case FDB_MT_SIDEBAND_REQUEST:
-        case FDB_MT_GET_EVENT:
-        case FDB_MT_PUBLISH:
-            doRequest(ref);
-            break;
-        case FDB_MT_REPLY:
-        case FDB_MT_SIDEBAND_REPLY:
-        case FDB_MT_RETURN_EVENT:
-            doReply(ref);
-            break;
-        case FDB_MT_BROADCAST:
-            doBroadcast(ref);
-            break;
-        case FDB_MT_STATUS:
-            doStatus(ref);
-            break;
-        case FDB_MT_SUBSCRIBE_REQ:
-            if ((mCode == FDB_CODE_SUBSCRIBE) || (mCode == FDB_CODE_UPDATE))
-			{
-                doSubscribeReq(ref);
-            }
-            else if (mCode == FDB_CODE_UNSUBSCRIBE)
-            {
-                doUnsubscribeReq(ref);
-            }
-            break;
-        default:
-            LOG_E("CFdbMessage: Message %d: Unknown type!\n", (int32_t)mSn);
-            break;
+        (this->*mHandle[mType])(ref);
     }
 }
 
@@ -605,6 +590,12 @@ bool CFdbMessage::buildHeader()
     {
         return true;
     }
+    if (!mBuffer)
+    {
+        // if buffer is not allocated, at least should allocate to
+        // accomodate head.
+        serialize(0, 0);
+    }
     NFdbBase::CFdbMessageHeader msg_hdr;
     msg_hdr.set_type(mType);
     msg_hdr.set_serial_number(mSn);
@@ -667,7 +658,6 @@ bool CFdbMessage::allocCopyRawBuffer(const void *src, int32_t payload_size)
     {
         memcpy(buffer +  maxReservedSize(), src, payload_size);
     }
-    releaseBuffer();
     mBuffer = buffer;
     return true;
 }
@@ -689,6 +679,7 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
         return false;
     }
     mPayloadSize = size;
+    releaseBuffer();
     if (allocCopyRawBuffer(0, mPayloadSize))
     {
         if (!data.toBuffer(mBuffer + maxReservedSize(), mPayloadSize))
@@ -725,6 +716,7 @@ bool CFdbMessage::serialize(const void *buffer, int32_t size, const CFdbBaseObje
     
     mFlag |= MSG_FLAG_EXTERNAL_BUFFER;
     mPayloadSize = size;
+    releaseBuffer();
     return allocCopyRawBuffer(buffer, mPayloadSize);
 }
 
@@ -871,21 +863,6 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     {
         onAsyncError(ref, NFdbBase::FDB_ST_INVALID_ID, reason);
     }
-}
-
-void CFdbMessage::doStatus(Ptr &ref)
-{
-    doReply(ref);
-}
-
-void CFdbMessage::doSubscribeReq(Ptr &ref)
-{
-    doRequest(ref);
-}
-
-void CFdbMessage::doUnsubscribeReq(Ptr &ref)
-{
-    doRequest(ref);
 }
 
 void CFdbMessage::setStatusMsg(int32_t error_code, const char *description, EFdbMessageType type)
@@ -1240,3 +1217,37 @@ void CFdbMessage::enableTimeStamp(bool active)
         }
     }
 }
+
+void CFdbMessage::feedDogNoQueue(CBaseJob::Ptr &msg_ref)
+{
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    auto session = msg->getSession();
+    if (session)
+    {
+        msg->mType = FDB_MT_SIDEBAND_REQUEST;
+        msg->mCode = FDB_SIDEBAND_FEED_WATCHDOG;
+        msg->mFlag |= MSG_FLAG_NOREPLY_EXPECTED;
+        msg->serialize(0, 0);
+        session->sendMessage(msg);
+    }
+}
+
+bool CFdbMessage::feedDog(CBaseJob::Ptr &msg_ref)
+{
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    msg->setCallable(std::bind(&CFdbMessage::feedDogNoQueue, _1));
+    return FDB_CONTEXT->sendAsync(msg_ref, true);
+}
+
+bool CFdbMessage::kickDog(CBaseJob::Ptr &msg_ref, CBaseWorker *worker, tCallableFn fn)
+{
+    if (!worker || !fn)
+    {
+        return false;
+    }
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    msg->setCallable(fn);
+    // watchdog message is urgent!
+    return worker->sendAsync(msg_ref, true);
+}
+

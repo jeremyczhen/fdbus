@@ -20,14 +20,17 @@
 #include <string>
 #include <map>
 #include <functional>
+#include "CMethodJob.h"
 #include "CBaseWorker.h"
 
 class CBaseClient;
 class CBaseServer;
+class CBaseEndpoint;
 
 class CFdbAPPFramework
 {
 public:
+    typedef std::function<void(CBaseEndpoint *)> tOnCreateFn;
     static CFdbAPPFramework *getInstance()
     {
         if (!mInstance)
@@ -36,8 +39,6 @@ public:
         }
         return mInstance;
     }
-    CBaseClient *findClient(const char *bus_name);
-    CBaseServer *findService(const char *bus_name);
     const std::string &name()
     {
         return mName;
@@ -49,6 +50,8 @@ public:
             mName = n;
         }
     }
+    CBaseClient *registerClient(const char *bus_name, const char *endpoint_name = 0, tOnCreateFn on_create = 0);
+    CBaseServer *registerServer(const char *bus_name, const char *endpoint_name = 0, tOnCreateFn on_create = 0);
 
 private:
     typedef std::map<std::string, CBaseClient *> tAFClientTbl;
@@ -60,9 +63,14 @@ private:
     tAFServerTbl mServerTbl;
 
     CFdbAPPFramework();
+    CBaseClient *findClient(const char *bus_name);
+    CBaseServer *findService(const char *bus_name);
     bool registerClient(const char *bus_name, CBaseClient *client);
     bool registerService(const char *bus_name, CBaseServer *server);
-friend class CFdbAFComponent;
+ 
+    void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CFdbAPPFramework> *job, CBaseJob::Ptr &ref);
+    friend class CFdbAFComponent;
+    friend class CRegisterEndpointJob;
 };
 
 #endif

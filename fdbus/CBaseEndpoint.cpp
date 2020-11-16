@@ -615,6 +615,7 @@ void CBaseEndpoint::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                 return;
             }
             session->senderName(sinfo.sender_name().c_str());
+            session->pid((CBASE_tProcId)sinfo.pid());
             std::string peer_ip;
             int32_t udp_port = FDB_INET_PORT_INVALID;
             if (sinfo.has_udp_port())
@@ -666,6 +667,7 @@ void CBaseEndpoint::updateSessionInfo(CFdbSession *session)
     }
     NFdbBase::FdbSessionInfo sinfo_sent;
     sinfo_sent.set_sender_name(mName.c_str());
+    sinfo_sent.set_pid((uint32_t)CBaseThread::getPid());
     if (FDB_VALID_PORT(udp_port))
     {
         sinfo_sent.set_udp_port(udp_port);

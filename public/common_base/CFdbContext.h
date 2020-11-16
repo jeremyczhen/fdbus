@@ -18,6 +18,7 @@
 #define _CFDBCONTEXT_H_
 
 #include <vector>
+#include <functional>
 #include "common_defs.h"
 #include "CEntityContainer.h"
 #include "CBaseWorker.h"
@@ -32,6 +33,18 @@ class CIntraNameProxy;
 class CLogProducer;
 class CFdbSessionContainer;
 class CBaseEndpoint;
+
+struct CNsWatchdogItem
+{
+    std::string mClientName;
+    CBASE_tProcId mPid;
+    CNsWatchdogItem(const char *client_name, CBASE_tProcId pid)
+        : mClientName(client_name)
+        , mPid(pid)
+    {}
+};
+typedef std::vector<CNsWatchdogItem> tNsWatchdogList;
+typedef std::function<void(const tNsWatchdogList &)> tNsWatchdogListenerFn;
 
 class CFdbContext : public CBaseWorker
 {
@@ -66,6 +79,7 @@ public:
     void enableNameProxy(bool enable);
     void enableLogger(bool enable);
     CLogProducer *getLogger();
+    void registerNsWatchdogListener(tNsWatchdogListenerFn watchdog_listener);
 
 protected:
     bool asyncReady();

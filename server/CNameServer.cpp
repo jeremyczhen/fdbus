@@ -26,6 +26,7 @@
 #include "CHostProxy.h"
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>
+#include <fdbus/CFdbWatchdog.h>
 
 CNameServer::CNameServer()
     : CBaseServer()
@@ -51,6 +52,8 @@ CNameServer::CNameServer()
     mSubscribeHdl.registerCallback(NFdbBase::NTF_HOST_ONLINE_LOCAL, &CNameServer::onHostOnlineReg);
 
     mSubscribeHdl.registerCallback(NFdbBase::NTF_HOST_INFO, &CNameServer::onHostInfoReg);
+
+    mSubscribeHdl.registerCallback(NFdbBase::NTF_WATCHDOG, &CNameServer::onWatchdogReg);
 
 #ifdef __WIN32__
     mLocalAllocator.setInterfaceIp(FDB_LOCAL_HOST);
@@ -932,6 +935,15 @@ void CNameServer::onHostInfoReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeIt
     msg->broadcast(sub_item->msg_code(), builder);
 }
 
+void CNameServer::onWatchdogReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item)
+{
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    CFdbMsgProcessList process_list;
+    getDroppedProcesses(process_list);
+    CFdbParcelableBuilder builder(process_list);
+    msg->broadcast(sub_item->msg_code(), builder);
+}
+
 CNameServer::CFdbAddressDesc *CNameServer::findAddress(EFdbSocketType type, const char *url)
 {
     for (auto it = mRegistryTbl.begin(); it != mRegistryTbl.end(); ++it)
@@ -1196,6 +1208,18 @@ void CNameServer::onOffline(FdbSessionId_t sid, bool is_last)
             removeService(cur_it);
         }
     }
+}
+
+void CNameServer::onBark(CFdbSession * session)
+{
+    CFdbMsgProcessList process_list;
+
+    auto process = process_list.add_process_list();
+    process->set_client_name(session->senderName().c_str());
+    process->set_pid((uint32_t)(session->pid()));
+
+    CFdbParcelableBuilder builder(process_list);
+    broadcast(NFdbBase::NTF_WATCHDOG, builder);
 }
 
 bool CNameServer::bindNsAddress(tAddressDescTbl &addr_tbl)

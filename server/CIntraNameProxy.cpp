@@ -21,12 +21,14 @@
 #include <common_base/CBaseSocketFactory.h>
 #include <utils/CNsConfig.h>
 #include <utils/Log.h>
+#include <fdbus/CFdbWatchdog.h>
 
 class CFdbSession;
 CIntraNameProxy::CIntraNameProxy()
     : mConnectTimer(this)
     , mNotificationCenter(this)
     , mEnableReconnectToNS(true)
+    , mNsWatchdogListener(0)
 {
     mName  = std::to_string(CBaseThread::getPid());
     mName += "-nsproxy(local)";
@@ -293,6 +295,28 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             mNotificationCenter.notify(name_ready);
         }
         break;
+        case NFdbBase::NTF_WATCHDOG:
+        {
+            if (!mNsWatchdogListener)
+            {
+                return;
+            }
+            CFdbMsgProcessList msg_process_list;
+            CFdbParcelableParser parser(msg_process_list);
+            if (!msg->deserialize(parser))
+            {
+                return;
+            }
+            auto &process_list = msg_process_list.process_list();
+            tNsWatchdogList output_process_list;
+            for (auto it = process_list.vpool().begin(); it != process_list.vpool().end(); ++it)
+            {
+                CNsWatchdogItem item(it->client_name().c_str(), it->pid());
+                output_process_list.push_back(std::move(item));
+            }
+            mNsWatchdogListener(output_process_list);
+        }
+        break;
         default:
         break;
     }
@@ -458,6 +482,10 @@ void CIntraNameProxy::onOnline(FdbSessionId_t sid, bool is_first)
     
     CFdbMsgSubscribeList subscribe_list;
     addNotifyItem(subscribe_list, NFdbBase::NTF_HOST_INFO);
+    if (mNsWatchdogListener)
+    {
+        addNotifyItem(subscribe_list, NFdbBase::NTF_WATCHDOG);
+    }
     subscribe(subscribe_list);
     
     FDB_CONTEXT->reconnectOnNsConnected();
@@ -475,5 +503,46 @@ void CIntraNameProxy::registerHostNameReadyNotify(CBaseNotification<CHostNameRea
 {
     CBaseNotification<CHostNameReady>::Ptr ntf(notification);
     mNotificationCenter.subscribe(ntf);
+}
+
+class CRegisterWatchdogJob : public CBaseJob
+{
+public:
+    CRegisterWatchdogJob(tNsWatchdogListenerFn &watchdog_listener)
+        : CBaseJob(JOB_FORCE_RUN)
+        , mWatchdogListener(watchdog_listener)
+    {
+
+    }
+protected:
+    void run(CBaseWorker *worker, Ptr &ref)
+    {
+        auto proxy = FDB_CONTEXT->getNameProxy();
+        if (proxy)
+        {
+            proxy->doRegisterNsWatchdogListener(mWatchdogListener);
+        }
+    }
+private:
+    tNsWatchdogListenerFn mWatchdogListener;
+};
+
+void CIntraNameProxy::doRegisterNsWatchdogListener(tNsWatchdogListenerFn &watchdog_listener)
+{
+    mNsWatchdogListener = watchdog_listener;
+    if (connected())
+    {
+        CFdbMsgSubscribeList subscribe_list;
+        addNotifyItem(subscribe_list, NFdbBase::NTF_WATCHDOG);
+        subscribe(subscribe_list);
+    }
+}
+
+void CIntraNameProxy::registerNsWatchdogListener(tNsWatchdogListenerFn &watchdog_listener)
+{
+    if (watchdog_listener)
+    {
+        FDB_CONTEXT->sendAsync(new CRegisterWatchdogJob(watchdog_listener));
+    }
 }
 

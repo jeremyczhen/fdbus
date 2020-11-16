@@ -77,6 +77,7 @@ protected:
     void onSubscribe(CBaseJob::Ptr &msg_ref);
     void onInvoke(CBaseJob::Ptr &msg_ref);
     void onOffline(FdbSessionId_t sid, bool is_last);
+    void onBark(CFdbSession * session);
 private:
     typedef std::list<CFdbAddressDesc> tAddressDescTbl;
     struct CSvcRegistryEntry
@@ -120,6 +121,7 @@ private:
     void onServiceOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
     void onHostOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
     void onHostInfoReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
+    void onWatchdogReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribeItem *sub_item);
 
     CFdbAddressDesc *findAddress(EFdbSocketType type, const char *url);
     void createTCPAllocator();

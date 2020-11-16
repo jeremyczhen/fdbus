@@ -300,6 +300,14 @@ protected:
         }
     }
 
+    void onKickDog(CBaseJob::Ptr &msg_ref)
+    {
+        CFdbMessage::kickDog(msg_ref, worker(), [](CBaseJob::Ptr &msg_ref)
+            {
+                CFdbMessage::feedDog(msg_ref);
+            });
+    }
+
     /* called when client call asynchronous version of invoke() and reply() is called at server */
     void onReply(CBaseJob::Ptr &msg_ref)
     {
@@ -454,6 +462,14 @@ int main(int argc, char **argv)
 #endif
     /* start fdbus context thread */
     FDB_CONTEXT->start();
+    FDB_CONTEXT->registerNsWatchdogListener([](const tNsWatchdogList &dropped_list)
+        {
+            FDB_LOG_F("size: %d\n", dropped_list.size());
+            for (auto it = dropped_list.begin(); it != dropped_list.end(); ++it)
+            {
+                FDB_LOG_F("Error!!! Endpoint drops - name: %s, pid: %d\n", it->mClientName.c_str(), it->mPid);
+            }
+        });
     CBaseWorker *worker_ptr = &main_worker;
     /* start worker thread */
     worker_ptr->start();

@@ -80,6 +80,14 @@ public:
     {
         mSenderName = name;
     }
+    CBASE_tProcId pid() const
+    {
+        return mPid;
+    }
+    void pid(CBASE_tProcId pid)
+    {
+        mPid = pid;
+    }
     const CFdbSocketAddr &getPeerUDPAddress() const
     {
         return mUDPAddr;
@@ -123,6 +131,7 @@ private:
     std::string mSenderName;
     int32_t mRecursiveDepth;
     CFdbSocketAddr mUDPAddr;
+    CBASE_tProcId mPid;
 };
 
 #endif

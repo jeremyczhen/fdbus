@@ -55,10 +55,7 @@ void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     auto client = app_fw->findClient(the_job->mBusName);
     if (!client)
     {
-        client = new CBaseClient(CFdbAPPFramework::getInstance()->name().c_str());
-        std::string url(FDB_URL_SVC);
-        url += the_job->mBusName;
-        client->connect(url.c_str());
+        client = new CBaseClient(mName.c_str());
         app_fw->registerClient(the_job->mBusName, client);
     }
     auto handle = client->registerConnNotification(the_job->mConnCallback, mWorker);
@@ -71,6 +68,10 @@ CBaseClient *CFdbAFComponent::queryService(const char *bus_name,
                                             const CFdbEventDispatcher::CEvtHandleTbl &evt_tbl,
                                             CFdbBaseObject::tConnCallbackFn connect_callback)
 {
+    if (!bus_name)
+    {
+        return 0;
+    }
     CBaseClient *client = 0;
     auto job = new CQueryServiceJob(this, bus_name, evt_tbl, connect_callback, client);
     FDB_CONTEXT->sendSyncEndeavor(job);
@@ -131,11 +132,8 @@ void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     auto server = app_fw->findService(the_job->mBusName);
     if (!server)
     {
-        server = new CBaseServer(CFdbAPPFramework::getInstance()->name().c_str());
+        server = new CBaseServer(mName.c_str());
         server->enableEventCache(true);
-        std::string url(FDB_URL_SVC);
-        url += the_job->mBusName;
-        server->bind(url.c_str());
         app_fw->registerService(the_job->mBusName, server);
     }
     auto handle = server->registerConnNotification(the_job->mConnCallback, mWorker);
@@ -148,6 +146,10 @@ CBaseServer *CFdbAFComponent::offerService(const char *bus_name,
                                             const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl,
                                             CFdbBaseObject::tConnCallbackFn connect_callback)
 {
+    if (!bus_name)
+    {
+        return 0;
+    }
     CBaseServer *server = 0;
     auto job = new COfferServiceJob(this, bus_name, msg_tbl, connect_callback, server);
     FDB_CONTEXT->sendSyncEndeavor(job);

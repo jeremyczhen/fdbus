@@ -39,6 +39,8 @@ class CBaseEndpoint;
 class IFdbMsgBuilder;
 class CFdbMessage;
 struct CFdbSessionInfo;
+class CFdbWatchdog;
+class CFdbMsgProcessList;
 
 typedef CFdbMsgTable CFdbMsgSubscribeList;
 typedef CFdbMsgTable CFdbMsgTriggerList;
@@ -53,6 +55,7 @@ public:
 #define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 2)
 #define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
 #define FDB_OBJ_ENABLE_EVENT_ROUTE      (1 << 4)
+#define FDB_OBJ_ENABLE_WATCHDOG         (1 << 5)
 
     typedef uint32_t tRegEntryId;
     typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool, bool)> tConnCallbackFn;
@@ -691,6 +694,18 @@ public:
         }
     }
 
+    void enableWatchdog(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_ENABLE_WATCHDOG;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_ENABLE_WATCHDOG;
+        }
+    }
+
     bool eventRouteEnabled()
     {
         return !!(mFlag & FDB_OBJ_ENABLE_EVENT_ROUTE);
@@ -757,6 +772,10 @@ public:
                          CFdbEventDispatcher::tRegistryHandleTbl *reg_handle);
 
     bool registerMsgHandle(const CFdbMsgDispatcher::CMsgHandleTbl &msg_tbl);
+
+    void startWatchdog(int32_t interval = 0, int32_t max_retries = 0);
+    void stopWatchdog();
+    void removeWatchdog();
 protected:
     std::string mName;
     CBaseEndpoint *mEndpoint; // Which endpoint the object belongs to
@@ -836,6 +855,9 @@ protected:
 	virtual void onCreateObject(CBaseEndpoint *endpoint, CFdbMessage *msg)
     {}
 
+    virtual void onKickDog(CBaseJob::Ptr &msg_ref);
+    virtual void onBark(CFdbSession *session);
+
     void role(EFdbEndpointRole role)
     {
         mRole = role;
@@ -888,6 +910,7 @@ protected:
     bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
                         int32_t size, CFdbSession *session);
     void publishCachedEvents(CFdbSession *session);
+    void getDroppedProcesses(CFdbMsgProcessList &process_list);
 private:
     struct CEventData
     {
@@ -916,6 +939,8 @@ private:
 
     tConnCallbackTbl mConnCallbackTbl;
     tRegEntryId mRegIdAllocator;
+
+    CFdbWatchdog *mWatchdog;
 
     void subscribe(CFdbSession *session,
                    FdbMsgCode_t msg,
@@ -997,6 +1022,9 @@ private:
                     , FdbMsgCode_t code
                     , const void *buffer = 0
                     , int32_t size = 0);
+    bool kickDog(CFdbSession *session);
+    void createWatchdog(int32_t interval = 0, int32_t max_retries = 0);
+    void callWatchdogAction(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
 
     friend class COnOnlineJob;
     friend class CBindObjectJob;
@@ -1014,6 +1042,8 @@ private:
     friend class CBaseEndpoint;
     friend class CLogProducer;
     friend class CFdbEventRouter;
+    friend class CFdbWatchdog;
+    friend class CWatchdogJob;
 };
 
 #endif

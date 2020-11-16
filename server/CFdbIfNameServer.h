@@ -40,6 +40,8 @@ enum FdbNsMsgCode
 
     NTF_HOST_ONLINE_LOCAL = 11,
     NTF_HOST_INFO = 12,
+
+    NTF_WATCHDOG = 13
 };
 
 enum FdbHsMsgCode

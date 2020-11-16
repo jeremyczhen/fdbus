@@ -148,4 +148,7 @@ enum EFdbusCredType
 #define fdbEventGroup(_event) ((FdbEventGroup_t)((((uint32_t)(_event)) >> FDB_EVENT_GROUP_SHIFT) & FDB_EVENT_GROUP_BITS))
 #define fdbEventCode(_event) ((FdbMsgCode_t)((_event) & FDB_EVENT_ID_MASK))
 
+#define FDB_WATCHDOG_INTERVAL   2000
+#define FDB_WATCHDOG_RETRIES    5
+
 #endif

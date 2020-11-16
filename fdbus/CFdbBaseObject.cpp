@@ -22,6 +22,7 @@
 #include <common_base/CFdbContext.h>
 #include <utils/CFdbIfMessageHeader.h>
 #include <server/CFdbIfNameServer.h>
+#include "CFdbWatchdog.h"
 #include <utils/Log.h>
 #include <string.h>
 
@@ -35,6 +36,7 @@ CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpoi
     , mRole(role)
     , mSid(FDB_INVALID_ID)
     , mRegIdAllocator(0)
+    , mWatchdog(0)
 {
     if (name)
     {
@@ -44,6 +46,10 @@ CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpoi
 
 CFdbBaseObject::~CFdbBaseObject()
 {
+    if (mWatchdog)
+    {
+        delete mWatchdog;
+    }
 }
 
 bool CFdbBaseObject::invoke(FdbSessionId_t receiver
@@ -499,11 +505,23 @@ void CFdbBaseObject::notifyOnline(CFdbSession *session, bool is_first)
     {
         mEndpoint->updateSessionInfo(session);
     }
+    if (mWatchdog)
+    {
+        mWatchdog->addDog(session);
+    }
+    else if (mFlag & FDB_OBJ_ENABLE_WATCHDOG)
+    {
+        createWatchdog();
+    }
     migrateToWorker(session->sid(), is_first, true);
 }
 
 void CFdbBaseObject::notifyOffline(CFdbSession *session, bool is_last)
 {
+    if (mWatchdog)
+    {
+        mWatchdog->removeDog(session);
+    }
     migrateToWorker(session->sid(), is_last, false);
 }
 
@@ -1290,7 +1308,7 @@ bool CFdbBaseObject::sendSidebandNoQueue(CFdbMessage &msg, bool expect_reply)
 {
     msg.expectReply(expect_reply);
     msg.type(FDB_MT_SIDEBAND_REQUEST);
-    auto session = mEndpoint->preferredPeer();
+    auto session = msg.getSession();
     if (session)
     {
         return session->sendMessage(&msg);
@@ -1422,6 +1440,22 @@ void CFdbBaseObject::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             CFdbParcelableBuilder builder(msg_cache);
             msg->replySideband(msg_ref, builder);
         }
+        break;
+        case FDB_SIDEBAND_KICK_WATCHDOG:
+        {
+            msg->forceRun(true);
+            onKickDog(msg_ref);
+        }
+        break;
+        case FDB_SIDEBAND_FEED_WATCHDOG:
+            if (mWatchdog)
+            {
+                auto session = FDB_CONTEXT->getSession(msg->session());
+                if (session)
+                {
+                    mWatchdog->feedDog(session);
+                }
+            }
         break;
         default:
         break;
@@ -1702,5 +1736,124 @@ bool CFdbBaseObject::invoke(FdbMsgCode_t code, CFdbBaseObject::tInvokeCallbackFn
     auto invoke_msg = new CAFCInvokeMsg(code, callback, worker);
     invoke_msg->setLogData(log_info);
     return CFdbBaseObject::invoke(invoke_msg, buffer, size, timeout);
+}
+
+bool CFdbBaseObject::kickDog(CFdbSession *session)
+{
+    CFdbMessage msg(FDB_SIDEBAND_KICK_WATCHDOG, this);
+    msg.expectReply(false);
+    msg.type(FDB_MT_SIDEBAND_REQUEST);
+    msg.serialize(0, 0, this);
+    return session->sendMessage(&msg);
+}
+
+void CFdbBaseObject::onKickDog(CBaseJob::Ptr &msg_ref)
+{
+    CFdbMessage::feedDogNoQueue(msg_ref);
+}
+
+void CFdbBaseObject::onBark(CFdbSession *session)
+{
+    LOG_F("CFdbBaseObject: NAME %s, PID %d: NO RESPONSE!!!\n", session->getEndpointName().c_str(),
+                                                               session->pid());
+}
+
+enum FdbWdogAction
+{
+    FDB_WDOG_START,
+    FDB_WDOG_STOP,
+    FDB_WDOG_REMOVE
+};
+
+class CWatchdogJob : public CMethodJob<CFdbBaseObject>
+{
+public:
+    CWatchdogJob(CFdbBaseObject *obj, FdbWdogAction action, int32_t interval = 0, int32_t max_retries = 0)
+        : CMethodJob<CFdbBaseObject>(obj, &CFdbBaseObject::callWatchdogAction, JOB_FORCE_RUN)
+        , mAction(action)
+        , mInterval(interval)
+        , mMaxRetries(max_retries)
+    {}
+    FdbWdogAction mAction;
+    int32_t mInterval;
+    int32_t mMaxRetries;
+};
+
+void CFdbBaseObject::createWatchdog(int32_t interval, int32_t max_retries)
+{
+    if (!mWatchdog)
+    {
+        mWatchdog = new CFdbWatchdog(this, interval, max_retries);
+        auto &containers = mEndpoint->getContainer();
+        for (auto socket_it = containers.begin(); socket_it != containers.end(); ++socket_it)
+        {
+            auto container = socket_it->second;
+            if (!container->mConnectedSessionTable.empty())
+            {
+                // get a snapshot of the table to avoid modification of the table in callback
+                auto tbl = container->mConnectedSessionTable;
+                for (auto session_it = tbl.begin(); session_it != tbl.end(); ++session_it)
+                {
+                    auto session = *session_it;
+                    mWatchdog->addDog(session);
+                }
+            }
+        }
+    }
+
+    mWatchdog->start();
+}
+
+void CFdbBaseObject::callWatchdogAction(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job,
+                                            CBaseJob::Ptr &ref)
+{
+    auto the_job = fdb_dynamic_cast_if_available<CWatchdogJob *>(job);
+    if (the_job->mAction == FDB_WDOG_START)
+    {
+        createWatchdog(the_job->mInterval, the_job->mMaxRetries);
+        mFlag |= FDB_OBJ_ENABLE_WATCHDOG;
+    }
+    else if (the_job->mAction == FDB_WDOG_STOP)
+    {
+        if (mWatchdog)
+        {
+            mWatchdog->stop();
+        }
+    }
+    else if (the_job->mAction == FDB_WDOG_REMOVE)
+    {
+        if (mWatchdog)
+        {
+            delete mWatchdog;
+            mWatchdog = 0;
+            mFlag &= ~FDB_OBJ_ENABLE_WATCHDOG;
+        }
+    }
+}
+
+void CFdbBaseObject::startWatchdog(int32_t interval, int32_t max_retries)
+{
+    auto job = new CWatchdogJob(this, FDB_WDOG_START, interval, max_retries);
+    FDB_CONTEXT->sendAsync(job);
+}
+
+void CFdbBaseObject::stopWatchdog()
+{
+    auto job = new CWatchdogJob(this, FDB_WDOG_STOP);
+    FDB_CONTEXT->sendAsync(job);
+}
+
+void CFdbBaseObject::removeWatchdog()
+{
+    auto job = new CWatchdogJob(this, FDB_WDOG_REMOVE);
+    FDB_CONTEXT->sendAsync(job);
+}
+
+void CFdbBaseObject::getDroppedProcesses(CFdbMsgProcessList &process_list)
+{
+    if (mWatchdog)
+    {
+        mWatchdog->getDroppedProcesses(process_list);
+    }
 }
 

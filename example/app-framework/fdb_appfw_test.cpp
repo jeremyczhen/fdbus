@@ -117,6 +117,11 @@ public:
         addEvtHandle(evt_tbl, EVT_RADIO_1, cb1, "topic1");
         addEvtHandle(evt_tbl, EVT_RADIO_2, cb2, "topic1");
         addEvtHandle(evt_tbl, EVT_RADIO_3, cb3, "topic1");
+        // create a FDBus client and enable reconnection
+        CFdbAPPFramework::getInstance()->registerClient(name, "appfw test", [](CBaseEndpoint *endpoint)
+            {
+                endpoint->enableReconnect(true);
+            });
         // connect to FDBus server: if the server is already connected, just register the
         // callbacks; otherwise connecting to the service indicated by 'name' followed by
         // registering the callbacks.
@@ -149,6 +154,8 @@ public:
                 this->name().c_str(), obj->name().c_str(), msg->code());
                 msg->reply(msg_ref);
             });
+        // create a FDBus server. If on-create callback is not needed, this step can be skipped
+        CFdbAPPFramework::getInstance()->registerServer(name);
         // offer the service to FDBus: if the service is already registered at name server,
         // just register the callbacks; otherwise register the service (own the name) at
         // name server followed by registering the callbacks

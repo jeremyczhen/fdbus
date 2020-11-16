@@ -243,3 +243,11 @@ CLogProducer *CFdbContext::getLogger()
     return mLogger;
 }
 
+void CFdbContext::registerNsWatchdogListener(tNsWatchdogListenerFn watchdog_listener)
+{
+    if (mNameProxy)
+    {
+        mNameProxy->registerNsWatchdogListener(watchdog_listener);
+    }
+}
+

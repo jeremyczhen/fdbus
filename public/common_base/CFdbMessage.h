@@ -72,10 +72,11 @@ enum EFdbMessageType {
 enum EFdbSidebandMessage
 {
     FDB_SIDEBAND_AUTH = 0,
-    FDB_SIDEBAND_WATCHDOG = 1,
     FDB_SIDEBAND_SESSION_INFO = 2,
     FDB_SIDEBAND_QUERY_CLIENT = 3,
     FDB_SIDEBAND_QUERY_EVT_CACHE = 4,
+    FDB_SIDEBAND_KICK_WATCHDOG = 5,
+    FDB_SIDEBAND_FEED_WATCHDOG = 6,
     FDB_SIDEBAND_SYSTEM_MAX = 4095,
     FDB_SIDEBAND_USER_MIN = FDB_SIDEBAND_SYSTEM_MAX + 1
 };
@@ -559,6 +560,9 @@ public:
         return mCallable;
     }
 
+    static bool feedDog(CBaseJob::Ptr &msg_ref);
+    static bool kickDog(CBaseJob::Ptr &msg_ref, CBaseWorker *worker, tCallableFn fn);
+
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
@@ -682,9 +686,6 @@ private:
     void doRequest(Ptr &ref);
     void doReply(Ptr &ref);
     void doBroadcast(Ptr &ref);
-    void doStatus(Ptr &ref);
-    void doSubscribeReq(Ptr &ref);
-    void doUnsubscribeReq(Ptr &ref);
 
     static void autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
     void setStatusMsg(int32_t error_code, const char *description = 0, EFdbMessageType type = FDB_MT_UNKNOWN);
@@ -695,6 +696,7 @@ private:
 
     void releaseBuffer();
     void replaceBuffer(uint8_t *buffer, int32_t payload_size = 0, int32_t head_size = 0, int32_t offset = 0);
+    static void feedDogNoQueue(CBaseJob::Ptr &msg_ref);
 
     void code(FdbMsgCode_t code)
     {

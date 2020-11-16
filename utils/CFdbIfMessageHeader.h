@@ -552,9 +552,18 @@ public:
     {
         return !!(mOptions & mMaskHasUDPPort);
     }
+    uint32_t pid() const
+    {
+        return mPid;
+    }
+    void set_pid(uint32_t pid)
+    {
+        mPid = pid;
+    }
     void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mSenderName
+                   << mPid
                    << mOptions;
         if (mOptions & mMaskHasUDPPort)
         {
@@ -564,6 +573,7 @@ public:
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         deserializer >> mSenderName
+                     >> mPid
                      >> mOptions;
         if (mOptions & mMaskHasUDPPort)
         {
@@ -573,6 +583,7 @@ public:
 private:
     std::string mSenderName;
     int32_t mUDPPort;
+    uint32_t mPid;
     uint8_t mOptions;
         static const uint8_t mMaskHasUDPPort = 1 << 0;
 };

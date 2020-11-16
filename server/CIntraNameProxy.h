@@ -21,6 +21,7 @@
 #include <string>
 #include <common_base/CMethodLoopTimer.h>
 #include <common_base/CNotificationCenter.h>
+#include <common_base/CFdbContext.h>
 #include "CBaseNameProxy.h"
 
 class CIntraNameProxy : public CBaseNameProxy
@@ -51,6 +52,7 @@ public:
     {
         mEnableReconnectToNS = enb;
     }
+    void registerNsWatchdogListener(tNsWatchdogListenerFn &watchdog_listener);
     
 protected:
     void onReply(CBaseJob::Ptr &msg_ref);
@@ -90,11 +92,15 @@ private:
     };
     CHostNameNotificationCenter mNotificationCenter;
     bool mEnableReconnectToNS;
+    tNsWatchdogListenerFn mNsWatchdogListener;
 
     void onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer);
     
     void processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list);
     void processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
+    void doRegisterNsWatchdogListener(tNsWatchdogListenerFn &watchdog_listener);
+
+    friend class CRegisterWatchdogJob;
 };
 
 #endif

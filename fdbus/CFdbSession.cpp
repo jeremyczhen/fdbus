@@ -35,6 +35,7 @@ CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CS
     , mSocket(socket)
     , mSecurityLevel(FDB_SECURITY_LEVEL_NONE)
     , mRecursiveDepth(0)
+    , mPid(0)
 {
     mUDPAddr.mPort = FDB_INET_PORT_INVALID;
     mUDPAddr.mType = FDB_SOCKET_UDP;

@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include "CFdbMsgDispatcher.h"
-#include "CBaseJob.h"
+#include "CMethodJob.h"
 #include "CFdbBaseObject.h"
 
 class CBaseClient;

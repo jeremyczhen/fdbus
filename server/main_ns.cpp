@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <stdlib.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/fdb_option_parser.h>
 #include "CNameServer.h"
@@ -44,11 +45,13 @@ int main(int argc, char **argv)
     char *interface_names = 0;
     int32_t help = 0;
     int32_t ret = 0;
+    char *watchdog_params = 0;
     const struct fdb_option core_options[] = {
         { FDB_OPTION_STRING, "url", 'u', &tcp_addr },
         { FDB_OPTION_STRING, "name", 'n', &host_name },
         { FDB_OPTION_STRING, "interface ip list", 'i', &interface_ips },
         { FDB_OPTION_STRING, "interface name list", 'm', &interface_names },
+        { FDB_OPTION_STRING, "watchdog", 'd', &watchdog_params },
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
@@ -64,6 +67,8 @@ int main(int argc, char **argv)
         std::cout << "    -u host_url: the URL of host server to be connected" << std::endl;
         std::cout << "    -i ip1,ip2...: interfaces to listen on in form of IP address" << std::endl;
         std::cout << "    -m if_name1,if_name2...: interfaces to listen on in form of interface name" << std::endl;
+        std::cout << "    -d interval:retries: enable watchdog and specify interval between feeding dog in ms (interval)" << std::endl;
+        std::cout << "         and maximum number of retries (retries). If '0' is given, default value will be used." << std::endl;
         return 0;
     }
 
@@ -72,10 +77,32 @@ int main(int argc, char **argv)
     uint32_t num_interface_names = 0;
     char **interface_names_array = interface_names ? strsplit(interface_names, ",", &num_interface_names) : 0;
 
+    int32_t wd_interval = 0;
+    int32_t wd_retries = 0;
+    uint32_t num_wd_params = 0;
+    char **wd_params_array = watchdog_params ? strsplit(watchdog_params, ":", &num_wd_params) : 0;
+    bool watchdog_enabled = false;
+    if (wd_params_array)
+    {
+        if (num_wd_params != 2)
+        {
+            std::cout << "Bad watchdog parameters! please use -d interval:retries." << std::endl;
+            return -1;
+        }
+        watchdog_enabled = true;
+        wd_interval = atoi(wd_params_array[0]);
+        wd_retries = atoi(wd_params_array[1]);
+    }
+
     FDB_CONTEXT->enableNameProxy(false);
     FDB_CONTEXT->enableLogger(false);
     FDB_CONTEXT->init();
     CNameServer *ns = new CNameServer();
+    if (watchdog_enabled)
+    {
+        std::cout << "Starting watchdog with interval " << wd_interval << " and retries " << wd_retries << std::endl;
+        ns->startWatchdog(wd_interval, wd_retries);
+    }
     if (!ns->online(tcp_addr, host_name, interface_ips_array, num_interface_ips,
                     interface_names_array, num_interface_names))
     {

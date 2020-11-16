@@ -58,5 +58,6 @@
 #include "CFdbSimpleSerializer.h"
 #include "CFdbSession.h"
 #include "CFdbAFComponent.h"
+#include "CFdbAppFramework.h"
 
 #endif
