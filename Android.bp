@@ -21,6 +21,8 @@ SRC_FILES = [
     "fdbus/CFdbMsgDispatcher.cpp",
     "fdbus/CEventSubscribeHandle.cpp",
     "fdbus/CFdbUDPSession.cpp",
+    "fdbus/CFdbWatchdog.cpp",
+    "fdbus/CFdbEventRouter.cpp",
     "platform/CEventFd_eventfd.cpp",
     "platform/linux/CBaseMutexLock.cpp",
     "platform/linux/CBasePipe.cpp",

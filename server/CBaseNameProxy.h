@@ -31,8 +31,6 @@ public:
     virtual void addServiceListener(const char *svc_name) {}
     virtual void addServiceListener(const char *svc_name, CBaseJob::Ptr &msg_ref) {}
     virtual void removeServiceListener(const char *svc_name) {}
-    virtual void addServiceMonitorListener(const char *svc_name, FdbSessionId_t subscriber) {}
-    virtual void removeServiceMonitorListener(const char *svc_name) {}
 
 protected:
     void subscribeListener(NFdbBase::FdbNsMsgCode code, const char *svc_name);
