@@ -464,7 +464,6 @@ int main(int argc, char **argv)
     FDB_CONTEXT->start();
     FDB_CONTEXT->registerNsWatchdogListener([](const tNsWatchdogList &dropped_list)
         {
-            FDB_LOG_F("size: %d\n", dropped_list.size());
             for (auto it = dropped_list.begin(); it != dropped_list.end(); ++it)
             {
                 FDB_LOG_F("Error!!! Endpoint drops - name: %s, pid: %d\n", it->mClientName.c_str(), it->mPid);

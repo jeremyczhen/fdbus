@@ -1227,6 +1227,7 @@ void CFdbMessage::feedDogNoQueue(CBaseJob::Ptr &msg_ref)
         msg->mType = FDB_MT_SIDEBAND_REQUEST;
         msg->mCode = FDB_SIDEBAND_FEED_WATCHDOG;
         msg->mFlag |= MSG_FLAG_NOREPLY_EXPECTED;
+        msg->mFlag &= ~MSG_FLAG_ENABLE_LOG;
         msg->serialize(0, 0);
         session->sendMessage(msg);
     }

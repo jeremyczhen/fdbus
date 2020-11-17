@@ -610,6 +610,13 @@ private:
     CFdbParcelableArray<FdbMsgServiceInfo> mServiceTbl;
 };
 
+enum FdbMsgDogStatus
+{
+    FDB_DOG_ST_DIE = -1,
+    FDB_DOG_ST_OK = 0,
+    FDB_DOG_ST_NON_EXIST = 1
+};
+
 class FdbMsgClientInfo : public IFdbParcelable
 {
 public:
@@ -645,25 +652,49 @@ public:
     {
         mUDPPort = port;
     }
+    FdbMsgDogStatus dog_status() const
+    {
+        return mDogStatus;
+    }
+    void set_dog_status(FdbMsgDogStatus dog_status)
+    {
+        mDogStatus = dog_status;
+    }
+    int32_t pid() const
+    {
+        return mPid;
+    }
+    void set_pid(uint32_t pid)
+    {
+        mPid = pid;
+    }
     void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mPeerName
                    << mPeerAddress
                    << mSecurityLevel
-                   << mUDPPort;
+                   << mUDPPort
+                   << (int8_t)mDogStatus
+                   << mPid;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
+        int8_t dog_status;
         deserializer >> mPeerName
                      >> mPeerAddress
                      >> mSecurityLevel
-                     >> mUDPPort;
+                     >> mUDPPort
+                     >> dog_status
+                     >> mPid;
+        mDogStatus = (FdbMsgDogStatus)dog_status;
     }
 private:
     std::string mPeerName;
     std::string mPeerAddress;
     int32_t mSecurityLevel;
     int32_t mUDPPort;
+    FdbMsgDogStatus mDogStatus;
+    uint32_t mPid;
 };
 
 class FdbMsgClientTable : public IFdbParcelable

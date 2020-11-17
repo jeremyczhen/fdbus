@@ -112,19 +112,36 @@ private:
             {
                 continue;
             }
+            const char *dog_status;
+            if (client_info.dog_status() == NFdbBase::FDB_DOG_ST_DIE)
+            {
+                dog_status = "DEAD";
+            }
+            else if (client_info.dog_status() == NFdbBase::FDB_DOG_ST_OK)
+            {
+                dog_status = "OK";
+            }
+            else
+            {
+                dog_status = "NONE";
+            }
             if (FDB_VALID_PORT(client_info.udp_port()))
             {
-                std::cout << "    " <<  client_info.peer_name() << "@"
+                std::cout << "    " << client_info.peer_name() << "@"
                                     << client_info.peer_address()
+                                    << ", pid: " << client_info.pid()
                                     << ", security: " << client_info.security_level()
                                     << ", udp: " << client_info.udp_port()
+                                    << ", dog: " << dog_status
                                     << std::endl;
             }
             else
             {
-                std::cout << "    " <<  client_info.peer_name() << "@"
+                std::cout << "    " << client_info.peer_name() << "@"
                                     << client_info.peer_address()
+                                    << ", pid: " << client_info.pid()
                                     << ", security: " << client_info.security_level()
+                                    << ", dog: " << dog_status
                                     << std::endl;
             }
         }

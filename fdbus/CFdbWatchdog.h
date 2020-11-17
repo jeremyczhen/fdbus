@@ -38,6 +38,8 @@ public:
     void start(int32_t interval = 0, int32_t max_retries = 0);
     void stop();
     void getDroppedProcesses(CFdbMsgProcessList &process_list);
+    // 0: exist and alive; 1: doesn't exist; -1: exist and die
+    int32_t queryDog(CFdbSession *session);
 protected:
     void run();
 private:

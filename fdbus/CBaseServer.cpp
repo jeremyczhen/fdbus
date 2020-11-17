@@ -21,6 +21,7 @@
 #include <utils/CFdbIfMessageHeader.h>
 #include <server/CFdbIfNameServer.h>
 #include <utils/Log.h>
+#include "CFdbWatchdog.h"
 
 CServerSocket::CServerSocket(CBaseServer *owner
                              , FdbSocketId_t skid
@@ -292,6 +293,10 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
 
                         const CFdbSocketAddr &udp_addr = session->getPeerUDPAddress();
                         cinfo->set_udp_port(udp_addr.mPort);
+                        int32_t dog_status = mWatchdog ?
+                                    mWatchdog->queryDog(session) : NFdbBase::FDB_DOG_ST_NON_EXIST;
+                        cinfo->set_dog_status((NFdbBase::FdbMsgDogStatus)dog_status);
+                        cinfo->set_pid(session->pid());
                     }
                 }
             }

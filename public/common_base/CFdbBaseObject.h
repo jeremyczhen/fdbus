@@ -780,6 +780,7 @@ protected:
     std::string mName;
     CBaseEndpoint *mEndpoint; // Which endpoint the object belongs to
     uint32_t mFlag;
+    CFdbWatchdog *mWatchdog;
 
     /*
      * Implemented by server: called when client subscribe a message
@@ -939,8 +940,6 @@ private:
 
     tConnCallbackTbl mConnCallbackTbl;
     tRegEntryId mRegIdAllocator;
-
-    CFdbWatchdog *mWatchdog;
 
     void subscribe(CFdbSession *session,
                    FdbMsgCode_t msg,

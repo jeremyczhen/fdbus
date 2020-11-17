@@ -127,3 +127,13 @@ void CFdbWatchdog::getDroppedProcesses(CFdbMsgProcessList &process_list)
     }
 }
 
+int32_t CFdbWatchdog::queryDog(CFdbSession *session)
+{
+    auto it = mDogs.find(session->sid());
+    if (it == mDogs.end())
+    {
+        return 1;
+    }
+    return it->second.mDropped ? -1 : 0;
+}
+

@@ -31,12 +31,12 @@ using namespace std::placeholders;
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
     : mEndpoint(0)
     , mFlag(0)
+    , mWatchdog(0)
     , mWorker(worker)
     , mObjId(FDB_INVALID_ID)
     , mRole(role)
     , mSid(FDB_INVALID_ID)
     , mRegIdAllocator(0)
-    , mWatchdog(0)
 {
     if (name)
     {
@@ -1742,6 +1742,7 @@ bool CFdbBaseObject::kickDog(CFdbSession *session)
 {
     CFdbMessage msg(FDB_SIDEBAND_KICK_WATCHDOG, this);
     msg.expectReply(false);
+    msg.enableLog(false);
     msg.type(FDB_MT_SIDEBAND_REQUEST);
     msg.serialize(0, 0, this);
     return session->sendMessage(&msg);
