@@ -42,6 +42,9 @@ static std::vector<std::string> fdb_log_endpoint_white_list;
 static std::vector<std::string> fdb_log_busname_white_list;
 static std::vector<std::string> fdb_trace_host_white_list;
 static std::vector<std::string> fdb_trace_tag_white_list;
+static bool fdb_reverse_endpoint_name = false;
+static bool fdb_reverse_bus_name = false;
+static bool fdb_reverse_tag = false;
 
 static void fdb_populate_white_list(const char *filter_str, std::vector<std::string> &white_list)
 {
@@ -122,6 +125,8 @@ protected:
                 fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_log_host_white_list);
                 fdb_dump_white_list_cmd(in_config.endpoint_white_list(), fdb_log_endpoint_white_list);
                 fdb_dump_white_list_cmd(in_config.busname_white_list(), fdb_log_busname_white_list);
+                fdb_reverse_endpoint_name = in_config.reverse_endpoint_name();
+                fdb_reverse_bus_name = in_config.reverse_bus_name();
 
                 NFdbBase::FdbMsgLogConfig out_config;
                 fillLoggerConfigs(out_config);
@@ -156,6 +161,7 @@ protected:
                 fdb_debug_trace_level = in_config.log_level();
                 fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_trace_host_white_list);
                 fdb_dump_white_list_cmd(in_config.tag_white_list(), fdb_trace_tag_white_list);
+                fdb_reverse_tag = in_config.reverse_tag();
 
                 NFdbBase::FdbTraceConfig out_config;
                 fillTraceConfigs(out_config);
@@ -324,6 +330,8 @@ private:
         fdb_populate_white_list_cmd(config.host_white_list(), fdb_log_host_white_list);
         fdb_populate_white_list_cmd(config.endpoint_white_list(), fdb_log_endpoint_white_list);
         fdb_populate_white_list_cmd(config.busname_white_list(), fdb_log_busname_white_list);
+        config.set_reverse_endpoint_name(fdb_reverse_endpoint_name);
+        config.set_reverse_bus_name(fdb_reverse_bus_name);
     }
 
     void fillTraceConfigs(NFdbBase::FdbTraceConfig &config)
@@ -333,6 +341,7 @@ private:
         config.set_log_level((EFdbLogLevel)fdb_debug_trace_level);
         fdb_populate_white_list_cmd(config.host_white_list(), fdb_trace_host_white_list);
         fdb_populate_white_list_cmd(config.tag_white_list(), fdb_trace_tag_white_list);
+        config.set_reverse_tag(fdb_reverse_tag);
     }
 };
 
@@ -361,7 +370,7 @@ int main(int argc, char **argv)
     char *log_busname_filters = 0;
     char *trace_host_filters = 0;
     char *trace_tag_filters = 0;
-
+    char *reverse_selections = 0;
     const struct fdb_option core_options[] = {
         { FDB_OPTION_BOOLEAN, "request", 'q', &fdb_disable_request },
         { FDB_OPTION_BOOLEAN, "reply", 'p', &fdb_disable_reply },
@@ -371,12 +380,13 @@ int main(int argc, char **argv)
         { FDB_OPTION_BOOLEAN, "output", 'o', &fdb_disable_output },
         { FDB_OPTION_INTEGER, "clip", 'c', &fdb_raw_data_clipping_size },
         { FDB_OPTION_STRING, "log_endpoint", 'e', &log_endpoint_filters },
-            { FDB_OPTION_STRING, "log_busname", 'n', &log_busname_filters },
+        { FDB_OPTION_STRING, "log_busname", 'n', &log_busname_filters },
         { FDB_OPTION_STRING, "log_hosts", 'm', &log_host_filters },
         { FDB_OPTION_INTEGER, "level", 'l', &fdb_debug_trace_level },
         { FDB_OPTION_BOOLEAN, "no_trace", 'd', &fdb_disable_global_trace },
         { FDB_OPTION_STRING, "trace_tags", 't', &trace_tag_filters },
         { FDB_OPTION_STRING, "trace_hosts", 'M', &trace_host_filters },
+        { FDB_OPTION_STRING, "reverse_selection", 'r', &reverse_selections },
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
@@ -386,7 +396,7 @@ int main(int argc, char **argv)
         std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
                                       << FDB_VERSION_MINOR << "."
                                       << FDB_VERSION_BUILD << std::endl;
-        std::cout << "Usage: logsvc[ -q][ -p][ -b][ -s][ -f][ -o][ -c clipping_size][ -e ep1,ep2...][ -m host1,host2...][ -l][ -d][ -t tag1,tag2][ -M host1,host2...][ -h]" << std::endl;
+        std::cout << "Usage: logsvc[ -q][ -p][ -b][ -s][ -f][ -o][ -c clipping_size][ -r e[,n[,t]][ -e ep1,ep2...][ -m host1,host2...][ -l][ -d][ -t tag1,tag2][ -M host1,host2...][ -h]" << std::endl;
         std::cout << "Start log server." << std::endl;
         std::cout << "    ==== Options for fdbus monitor ====" << std::endl;
         std::cout << "    -q: disable logging fdbus request" << std::endl;
@@ -399,11 +409,16 @@ int main(int argc, char **argv)
         std::cout << "    -e: specify a list of endpoints separated by ',' as white list for fdbus logging" << std::endl;
         std::cout << "    -n: specify a list of bus name separated by ',' as white list for fdbus logging" << std::endl;
         std::cout << "    -m: specify a list of host names separated by ',' as white list for fdbus logging" << std::endl;
-        std::cout << "    ==== Options for debug trace   ====" << std::endl;
+        std::cout << "    ==== Options for debug trace ====" << std::endl;
         std::cout << "    -l: specify debug trace level: 0-verbose 1-debug 2-info 3-warning 4-error 5-fatal 6-silent" << std::endl;
         std::cout << "    -d: disable all debug trace log" << std::endl;
         std::cout << "    -t: specify a list of tags separated by ',' as white list for debug trace" << std::endl;
         std::cout << "    -M: specify a list of host names separated by ',' as white list for debug trace" << std::endl;
+        std::cout << "    ==== Other options ====" << std::endl;
+        std::cout << "    -r: reverse selection of white list and can be 'e', 'n', or 't' separated by ','" << std::endl;
+        std::cout << "        'e': reverse selection of endpoints specified by '-e'" << std::endl;
+        std::cout << "        'n': reverse selection of bus names specified by '-n'" << std::endl;
+        std::cout << "        't': reverse selection of tags specified by '-t'" << std::endl;
         std::cout << "    -h: print help" << std::endl;
         std::cout << "    ==== fdbus monitor log format: ====" << std::endl;
         std::cout << "    [F]" << std::endl;
@@ -434,6 +449,27 @@ int main(int argc, char **argv)
     fdb_populate_white_list(log_busname_filters, fdb_log_busname_white_list);
     fdb_populate_white_list(trace_host_filters, fdb_trace_host_white_list);
     fdb_populate_white_list(trace_tag_filters, fdb_trace_tag_white_list);
+
+    if (reverse_selections)
+    {
+        uint32_t num_reverse_selections = 0;
+        char **reverse_array = strsplit(reverse_selections, ",", &num_reverse_selections);
+        for (uint32_t i = 0; i < num_reverse_selections; ++i)
+        {
+            if (reverse_array[i][0] == 'e')
+            {
+                fdb_reverse_endpoint_name = true;
+            }
+            else if (reverse_array[i][0] == 'n')
+            {
+                fdb_reverse_bus_name = true;
+            }
+            else if (reverse_array[i][0] == 't')
+            {
+                fdb_reverse_tag = true;
+            }
+        }
+    }
 
     FDB_CONTEXT->enableLogger(false);
     FDB_CONTEXT->init();

@@ -68,6 +68,11 @@ private:
 
     tFilterTbl mTraceTagWhiteList;
     bool mTraceHostEnabled;
+
+    bool mReverseEndpoints;
+    bool mReverseBusNames;
+    bool mReverseTags;
+
     std::mutex mTraceLock;
 
     bool checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl);

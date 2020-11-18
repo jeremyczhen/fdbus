@@ -40,6 +40,9 @@ CLogProducer::CLogProducer()
     , mTraceDisableGlobal(false)
     , mLogHostEnabled(true)
     , mTraceHostEnabled(true)
+    , mReverseEndpoints(false)
+    , mReverseBusNames(false)
+    , mReverseTags(false)
 {
 }
 
@@ -79,6 +82,8 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             std::lock_guard<std::mutex> _l(mTraceLock);
             populateWhiteList(cfg.endpoint_white_list(), mLogEndpointWhiteList);
             populateWhiteList(cfg.busname_white_list(), mLogBusnameWhiteList);
+            mReverseEndpoints = cfg.reverse_endpoint_name();
+            mReverseBusNames = cfg.reverse_bus_name();
         }
         break;
         case NFdbBase::NTF_TRACE_CONFIG:
@@ -95,6 +100,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             mTraceHostEnabled = checkHostEnabled(cfg.host_white_list());
             std::lock_guard<std::mutex> _l(mTraceLock);
             populateWhiteList(cfg.tag_white_list(), mTraceTagWhiteList);
+            mReverseTags = cfg.reverse_tag();
         }
         break;
         default:
@@ -184,15 +190,19 @@ bool CLogProducer::checkLogEnabledByEndpoint(const char *sender, const char *rec
 {
     if (!mLogEndpointWhiteList.empty())
     {
-        if ((mLogEndpointWhiteList.find(sender) == mLogEndpointWhiteList.end()) &&
-            (mLogEndpointWhiteList.find(receiver) == mLogEndpointWhiteList.end()))
+        auto it_sender = mLogEndpointWhiteList.find(sender);
+        auto it_receiver = mLogEndpointWhiteList.find(receiver);
+        bool exclude = ((it_sender == mLogEndpointWhiteList.end()) && (it_receiver == mLogEndpointWhiteList.end()));
+        if (mReverseEndpoints ^ exclude)
         {
             return false;
         }
     }
     if (!mLogBusnameWhiteList.empty())
     {
-        if (mLogBusnameWhiteList.find(busname) == mLogBusnameWhiteList.end())
+        auto it_bus_name = mLogBusnameWhiteList.find(busname);
+        bool exclude = (it_bus_name == mLogBusnameWhiteList.end());
+        if (mReverseEndpoints ^ exclude)
         {
             return false;
         }
@@ -296,9 +306,14 @@ bool CLogProducer::checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag)
     if (!mTraceTagWhiteList.empty())
     {
         std::lock_guard<std::mutex> _l(mTraceLock);
-        if (!mTraceTagWhiteList.empty() && (mTraceTagWhiteList.find(tag) == mTraceTagWhiteList.end()))
+        if (!mTraceTagWhiteList.empty())
         {
-            return false;
+            auto it_tag = mTraceTagWhiteList.find(tag);
+            bool exclude = (it_tag == mTraceTagWhiteList.end());
+            if (mReverseTags ^ exclude)
+            {
+                return false;
+            }
         }
     }
 

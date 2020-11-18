@@ -367,6 +367,22 @@ public:
     {
         mBusnameWhiteList.Add(name);
     }
+    bool reverse_endpoint_name() const
+    {
+        return mReverseEndpointName;
+    }
+    void set_reverse_endpoint_name(bool reverse)
+    {
+        mReverseEndpointName = reverse;
+    }
+    bool reverse_bus_name() const
+    {
+        return mReverseBusName;
+    }
+    void set_reverse_bus_name(bool reverse)
+    {
+        mReverseBusName = reverse;
+    }
 
     void serialize(CFdbSimpleSerializer &serializer) const
     {
@@ -378,7 +394,9 @@ public:
                    << mRawDataClippingSize
                    << mHostWhiteList
                    << mEndpointWhiteList
-                   << mBusnameWhiteList;
+                   << mBusnameWhiteList
+                   << mReverseEndpointName
+                   << mReverseBusName;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
@@ -390,7 +408,9 @@ public:
                      >> mRawDataClippingSize
                      >> mHostWhiteList
                      >> mEndpointWhiteList
-                     >> mBusnameWhiteList;
+                     >> mBusnameWhiteList
+                     >> mReverseEndpointName
+                     >> mReverseBusName;
     }
 private:
     bool mGlobalEnable;
@@ -402,6 +422,8 @@ private:
     CFdbParcelableArray<std::string> mHostWhiteList;
     CFdbParcelableArray<std::string> mEndpointWhiteList;
     CFdbParcelableArray<std::string> mBusnameWhiteList;
+    bool mReverseEndpointName;
+    bool mReverseBusName;
 };
 
 class FdbTraceConfig : public IFdbParcelable
@@ -459,6 +481,14 @@ public:
     {
         mBusnameWhiteList.Add(name);
     }
+    bool reverse_tag() const
+    {
+        return mReverseTag;
+    }
+    void set_reverse_tag(bool reverse)
+    {
+        mReverseTag = reverse;
+    }
 
     void serialize(CFdbSimpleSerializer &serializer) const
     {
@@ -466,7 +496,8 @@ public:
                    << (uint8_t)mLogLevel
                    << mHostWhiteList
                    << mTagWhiteList
-                   << mBusnameWhiteList;
+                   << mBusnameWhiteList
+                   << mReverseTag;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
@@ -475,7 +506,8 @@ public:
                      >> level
                      >> mHostWhiteList
                      >> mTagWhiteList
-                     >> mBusnameWhiteList;
+                     >> mBusnameWhiteList
+                     >> mReverseTag;
         mLogLevel = (EFdbLogLevel)level;
     }
 private:
@@ -484,6 +516,7 @@ private:
     CFdbParcelableArray<std::string> mHostWhiteList;
     CFdbParcelableArray<std::string> mTagWhiteList;
     CFdbParcelableArray<std::string> mBusnameWhiteList;
+    bool mReverseTag;
 };
 
 class FdbAuthentication : public IFdbParcelable
