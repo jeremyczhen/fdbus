@@ -30,6 +30,10 @@ CFdbCJsonMsgBuilder::CFdbCJsonMsgBuilder(const cJSON *message)
 
 int32_t CFdbCJsonMsgBuilder::build()
 {
+    if (mJson)
+    {
+        cJSON_free((void *)mJson);
+    }
     mJson = cJSON_PrintUnformatted(mMessage);
     mSize = (int32_t)strlen(mJson) + 1; // take EOS into consideration
     return mSize;

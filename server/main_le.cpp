@@ -137,9 +137,11 @@ int main(int argc, char **argv)
 #endif
     if (argc <= 1)
     {
-        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
-                                      << FDB_VERSION_MINOR << "."
-                                      << FDB_VERSION_BUILD << std::endl;
+        std::cout << "FDBus - Fast Distributed Bus" << std::endl;
+        std::cout << "    SDK version " << FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_MINOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_BUILD) << std::endl;
+        std::cout << "    LIB version " << CFdbContext::getFdbLibVersion() << std::endl;
         std::cout << "Usage: lsevt service_name[ object_id]" << std::endl;
         std::cout << "List cached events of specified servers" << std::endl;
         return 0;

@@ -18,6 +18,7 @@
 #include <common_base/CBaseServer.h>
 #include <common_base/fdb_option_parser.h>
 #include <common_base/fdb_log_trace.h>
+#include <common_base/CLogProducer.h>
 #include <utils/Log.h>
 #include <stdlib.h>
 #include <map>
@@ -25,7 +26,6 @@
 #include <vector>
 #include <iostream>
 #include "CLogPrinter.h"
-#include <utils/CFdbIfMessageHeader.h>
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
@@ -107,7 +107,7 @@ protected:
                 }
             }
             break;
-            case NFdbBase::REQ_LOGGER_CONFIG:
+            case NFdbBase::REQ_SET_LOGGER_CONFIG:
             {
                 NFdbBase::FdbMsgLogConfig in_config;
                 CFdbParcelableParser parser(in_config);
@@ -132,7 +132,15 @@ protected:
                 fillLoggerConfigs(out_config);
                 CFdbParcelableBuilder builder(out_config);
                 broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
-                msg->reply(msg_ref);
+                msg->reply(msg_ref, builder);
+            }
+            break;
+            case NFdbBase::REQ_GET_LOGGER_CONFIG:
+            {
+                NFdbBase::FdbMsgLogConfig out_config;
+                fillLoggerConfigs(out_config);
+                CFdbParcelableBuilder builder(out_config);
+                msg->reply(msg_ref, builder);
             }
             break;
             case NFdbBase::REQ_TRACE_LOG:
@@ -148,7 +156,7 @@ protected:
                 }
             }
             break;
-            case NFdbBase::REQ_TRACE_CONFIG:
+            case NFdbBase::REQ_SET_TRACE_CONFIG:
             {
                 NFdbBase::FdbTraceConfig in_config;
                 CFdbParcelableParser parser(in_config);
@@ -167,7 +175,15 @@ protected:
                 fillTraceConfigs(out_config);
                 CFdbParcelableBuilder builder(out_config);
                 broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
-                msg->reply(msg_ref);
+                msg->reply(msg_ref, builder);
+            }
+            break;
+            case NFdbBase::REQ_GET_TRACE_CONFIG:
+            {
+                NFdbBase::FdbTraceConfig out_config;
+                fillTraceConfigs(out_config);
+                CFdbParcelableBuilder builder(out_config);
+                msg->reply(msg_ref, builder);
             }
             break;
             default:
@@ -393,9 +409,11 @@ int main(int argc, char **argv)
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
-        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
-                                      << FDB_VERSION_MINOR << "."
-                                      << FDB_VERSION_BUILD << std::endl;
+        std::cout << "FDBus - Fast Distributed Bus" << std::endl;
+        std::cout << "    SDK version " << FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_MINOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_BUILD) << std::endl;
+        std::cout << "    LIB version " << CFdbContext::getFdbLibVersion() << std::endl;
         std::cout << "Usage: logsvc[ -q][ -p][ -b][ -s][ -f][ -o][ -c clipping_size][ -r e[,n[,t]][ -e ep1,ep2...][ -m host1,host2...][ -l][ -d][ -t tag1,tag2][ -M host1,host2...][ -h]" << std::endl;
         std::cout << "Start log server." << std::endl;
         std::cout << "    ==== Options for fdbus monitor ====" << std::endl;

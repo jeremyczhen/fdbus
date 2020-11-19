@@ -18,12 +18,12 @@
 #include <common_base/CBaseClient.h>
 #include <common_base/fdb_option_parser.h>
 #include <common_base/fdb_log_trace.h>
+#include <common_base/CLogProducer.h>
 #include <utils/Log.h>
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
 #include "CLogPrinter.h"
-#include <utils/CFdbIfMessageHeader.h>
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
@@ -33,6 +33,7 @@ static int32_t fdb_disable_global_logger = 0;
 // 0: no raw data; < 0: all raw data; > 0: actrual size of raw data
 static int32_t fdb_raw_data_clipping_size = 0;
 static int32_t fdb_config_mode = 0;
+static int32_t fdb_info_mode = 0;
 static int32_t fdb_debug_trace_level = (int32_t)FDB_LL_INFO;
 static int32_t fdb_disable_global_trace = 0;
 static std::vector<std::string> fdb_log_host_white_list;
@@ -90,6 +91,16 @@ static void fdb_print_configuration()
     fdb_print_whitelist(fdb_trace_host_white_list);
     std::cout << "fdbus debug trace tag white list:" << std::endl;
     fdb_print_whitelist(fdb_trace_tag_white_list);
+}
+
+void fdb_dump_white_list_cmd(CFdbParcelableArray<std::string> &in_filter
+                           , std::vector<std::string> &white_list)
+{
+    white_list.clear();
+    for (auto it = in_filter.pool().begin(); it != in_filter.pool().end(); ++it)
+    {
+        white_list.push_back(*it);
+    }
 }
 
 static void fdb_populate_white_list(const char *filter_str, std::vector<std::string> &white_list)
@@ -157,15 +168,20 @@ protected:
             fillLoggerConfigs(msg_cfg);
             {
             CFdbParcelableBuilder builder(msg_cfg);
-            invoke(NFdbBase::REQ_LOGGER_CONFIG, builder);
+            invoke(NFdbBase::REQ_SET_LOGGER_CONFIG, builder);
             }
 
             NFdbBase::FdbTraceConfig trace_cfg;
             fillTraceConfigs(trace_cfg);
             {
             CFdbParcelableBuilder builder(trace_cfg);
-            invoke(NFdbBase::REQ_TRACE_CONFIG, builder);
+            invoke(NFdbBase::REQ_SET_TRACE_CONFIG, builder);
             }
+        }
+        else if (fdb_info_mode)
+        {
+            invoke(NFdbBase::REQ_GET_LOGGER_CONFIG);
+            invoke(NFdbBase::REQ_GET_TRACE_CONFIG);
         }
         else
         {
@@ -192,13 +208,49 @@ protected:
         }
         switch (msg->code())
         {
-            case NFdbBase::REQ_LOGGER_CONFIG:
+            case NFdbBase::REQ_SET_LOGGER_CONFIG:
+            case NFdbBase::REQ_GET_LOGGER_CONFIG:
+            {
                 mLoggerCfgReplied = true;
+                NFdbBase::FdbMsgLogConfig in_config;
+                CFdbParcelableParser parser(in_config);
+                if (!msg->deserialize(parser))
+                {
+                    LOG_E("CLogServer: Unable to deserialize message!\n");
+                    return;
+                }
+                fdb_disable_global_logger = !in_config.global_enable();
+                fdb_disable_request = !in_config.enable_request();
+                fdb_disable_reply = !in_config.enable_reply();
+                fdb_disable_broadcast = !in_config.enable_broadcast();
+                fdb_disable_subscribe = !in_config.enable_subscribe();
+                fdb_raw_data_clipping_size = in_config.raw_data_clipping_size();
+                fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_log_host_white_list);
+                fdb_dump_white_list_cmd(in_config.endpoint_white_list(), fdb_log_endpoint_white_list);
+                fdb_dump_white_list_cmd(in_config.busname_white_list(), fdb_log_busname_white_list);
+                fdb_reverse_endpoint_name = in_config.reverse_endpoint_name();
+                fdb_reverse_bus_name = in_config.reverse_bus_name();
                 Exit();
+            }
             break;
-            case NFdbBase::REQ_TRACE_CONFIG:
+            case NFdbBase::REQ_SET_TRACE_CONFIG:
+            case NFdbBase::REQ_GET_TRACE_CONFIG:
+            {
                 mTraceCfgReplied = true;
+                NFdbBase::FdbTraceConfig in_config;
+                CFdbParcelableParser parser(in_config);
+                if (!msg->deserialize(parser))
+                {
+                    LOG_E("CLogServer: Unable to deserialize message!\n");
+                    return;
+                }
+                fdb_disable_global_trace = !in_config.global_enable();
+                fdb_debug_trace_level = in_config.log_level();
+                fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_trace_host_white_list);
+                fdb_dump_white_list_cmd(in_config.tag_white_list(), fdb_trace_tag_white_list);
+                fdb_reverse_tag = in_config.reverse_tag();
                 Exit();
+            }
             break;
             default:
             break;
@@ -278,6 +330,7 @@ int main(int argc, char **argv)
         { FDB_OPTION_BOOLEAN, "no_fdbus", 'f', &fdb_disable_global_logger },
         { FDB_OPTION_INTEGER, "clip", 'c', &fdb_raw_data_clipping_size },
         { FDB_OPTION_BOOLEAN, "cfg_mode", 'x', &fdb_config_mode },
+        { FDB_OPTION_BOOLEAN, "info_mode", 'i', &fdb_info_mode },
         { FDB_OPTION_STRING, "log_endpoint", 'e', &log_endpoint_filters },
         { FDB_OPTION_STRING, "log_busname", 'n', &log_busname_filters },
         { FDB_OPTION_STRING, "log_hosts", 'm', &log_host_filters },
@@ -297,15 +350,18 @@ int main(int argc, char **argv)
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
-        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
-                                      << FDB_VERSION_MINOR << "."
-                                      << FDB_VERSION_BUILD << std::endl;
-        std::cout << "Usage: logviewer -n[ -q][ -p][ -b][ -s][ -f][ -c clipping_size][ -r e[,n[,t]][ -e ep1,ep2...][ -m host1,host2...][ -l][ -d][ -t tag1,tag2][ -M host1,host2...][ -h]" << std::endl;
+        std::cout << "FDBus - Fast Distributed Bus" << std::endl;
+        std::cout << "    SDK version " << FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_MINOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_BUILD) << std::endl;
+        std::cout << "    LIB version " << CFdbContext::getFdbLibVersion() << std::endl;
+        std::cout << "Usage: logviewer -x[ -q][ -p][ -b][ -s][ -f][ -c clipping_size][ -r e[,n[,t]][ -e ep1,ep2...][ -m host1,host2...][ -l][ -d][ -t tag1,tag2][ -M host1,host2...][ -h]" << std::endl;
         std::cout << "           Configure log server or" << std::endl;
+        std::cout << "       logviewer -i" << std::endl;
+        std::cout << "           Retrieve config info from log server or" << std::endl;
         std::cout << "       logviewer" << std::endl;
         std::cout << "           Start log client." << std::endl;
         std::cout << "    ==== Options for fdbus monitor ====" << std::endl;
-        std::cout << "    -x: start with configure mode" << std::endl;
         std::cout << "    -q: disable logging fdbus request" << std::endl;
         std::cout << "    -p: disable logging fdbus response" << std::endl;
         std::cout << "    -b: disable logging fdbus broadcast" << std::endl;

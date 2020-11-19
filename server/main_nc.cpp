@@ -65,9 +65,11 @@ int main(int argc, char **argv)
     fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
     if (help)
     {
-        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
-                                      << FDB_VERSION_MINOR << "."
-                                      << FDB_VERSION_BUILD << std::endl;
+        std::cout << "FDBus - Fast Distributed Bus" << std::endl;
+        std::cout << "    SDK version " << FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_MINOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_BUILD) << std::endl;
+        std::cout << "    LIB version " << CFdbContext::getFdbLibVersion() << std::endl;
         std::cout << "Usage: ntfcenter[ -n service name][ -p peer_name_1[,peer_name_2][,...]]" << std::endl;
         std::cout << "FDBus Notification Center" << std::endl;
         std::cout << "    -n: FDBus service name for notification center" << std::endl;

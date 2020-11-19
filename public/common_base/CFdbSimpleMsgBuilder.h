@@ -30,6 +30,7 @@ public:
     {}
     int32_t build()
     {
+        mSerializer.reset();
         mSerializer << mMessage;
         return mSerializer.bufferSize();
     }

@@ -466,9 +466,11 @@ int main(int argc, char **argv)
 
     if (help)
     {
-        std::cout << "FDBus version " << FDB_VERSION_MAJOR << "."
-                                      << FDB_VERSION_MINOR << "."
-                                      << FDB_VERSION_BUILD << std::endl;
+        std::cout << "FDBus - Fast Distributed Bus" << std::endl;
+        std::cout << "    SDK version " << FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_MINOR) "."
+                                           FDB_DEF_TO_STR(FDB_VERSION_BUILD) << std::endl;
+        std::cout << "    LIB version " << CFdbContext::getFdbLibVersion() << std::endl;
         std::cout << "Usage: fdbxclient[ -b block size][ -s burst size][-d delay][ -u]" << std::endl;
         std::cout << "    -b block size: specify size of date sent for each request" << std::endl;
         std::cout << "    -s burst size: specify how many requests are sent in batch for a burst" << std::endl;

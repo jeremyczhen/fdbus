@@ -35,6 +35,11 @@ CFdbContext::CFdbContext()
 
 }
 
+const char *CFdbContext::getFdbLibVersion()
+{
+    return FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "." FDB_DEF_TO_STR(FDB_VERSION_MINOR) "." FDB_DEF_TO_STR(FDB_VERSION_BUILD);
+}
+
 bool CFdbContext::start(uint32_t flag)
 {
     return CBaseWorker::start(FDB_WORKER_ENABLE_FD_LOOP | flag);

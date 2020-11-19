@@ -25,6 +25,8 @@
 #include "CMethodJob.h"
 
 #define FDB_CONTEXT CFdbContext::getInstance()
+#define FDB_DEF_TO_STR1(R) #R
+#define FDB_DEF_TO_STR(R) FDB_DEF_TO_STR1(R)
 
 class CBaseClient;
 class CBaseServer;
@@ -80,6 +82,7 @@ public:
     void enableLogger(bool enable);
     CLogProducer *getLogger();
     void registerNsWatchdogListener(tNsWatchdogListenerFn watchdog_listener);
+    static const char *getFdbLibVersion();
 
 protected:
     bool asyncReady();
