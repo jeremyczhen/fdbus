@@ -42,9 +42,7 @@ public:
     {
         try
         {
-            google::protobuf::io::ArrayOutputStream aos(buffer, size);
-            google::protobuf::io::CodedOutputStream coded_output(&aos);
-            if (!mMessage.SerializeToCodedStream(&coded_output))
+            if (!mMessage.SerializeToArray(buffer, size))
             {
                 return false;
             }

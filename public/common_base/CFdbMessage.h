@@ -563,6 +563,8 @@ public:
     static bool feedDog(CBaseJob::Ptr &msg_ref);
     static bool kickDog(CBaseJob::Ptr &msg_ref, CBaseWorker *worker, tCallableFn fn);
 
+    bool needReply(CBaseJob::Ptr &msg_ref);
+
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
