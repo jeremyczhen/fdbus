@@ -226,31 +226,15 @@ public:
     struct Callable
     {
         tCallableFn mFunc;
-        union UserData
-        {
-            int64_t mPlaceHolderForAlignment;
-            char mPlaceHolderForSize[sizeof(int64_t)];
-        } mUserData;
-        Callable()
-            : mFunc(0)
-        {}
+        tCallableFn mPostFunc;
     };
-    template <typename T = int32_t> bool setCallable(tCallableFn fn, const T *user_data = 0)
+    void setCallable(tCallableFn fn)
     {
-        bool ret = true;
         mCallable.mFunc = fn;
-        if (user_data)
-        {
-            if (sizeof(T) <= sizeof(mCallable.mUserData))
-            {
-                *((T*)(&mCallable.mUserData)) = *user_data;
-            }
-            else
-            {
-                ret = false;
-            }
-        }
-        return ret;
+    }
+    void setPostProcessing(tCallableFn fn)
+    {
+        mCallable.mPostFunc = fn;
     }
 
     CFdbMessage(FdbMsgCode_t code = FDB_INVALID_ID);

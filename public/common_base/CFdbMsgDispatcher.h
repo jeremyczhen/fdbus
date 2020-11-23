@@ -42,7 +42,7 @@ inline void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispat
     }
     else
     {
-        msg->setCallable(std::bind(fn, std::placeholders::_1, obj));
+        msg->setCallable(std::move(std::bind(fn, std::placeholders::_1, obj)));
         worker->sendAsync(msg_ref);
     }
 }
