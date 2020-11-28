@@ -100,7 +100,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mSid(msg->mSid)
     , mOid(msg->mOid)
     , mBuffer(0)
-    , mFlag(MSG_FLAG_INITIAL_RESPONSE)
+    , mFlag(MSG_FLAG_INITIAL_RESPONSE | MSG_FLAG_NOREPLY_EXPECTED)
     , mTimer(0)
     , mTimeStamp(0)
 {
@@ -157,7 +157,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mHeadSize(0)
     , mOffset(0)
     , mBuffer(0)
-    , mFlag(0)
+    , mFlag(MSG_FLAG_NOREPLY_EXPECTED)
     , mTimer(0)
     , mTimeStamp(0)
 {
@@ -505,7 +505,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , const char *filter)
 {
     auto msg = new CFdbMessage(code, this, filter);
-    msg->mFlag |= (mFlag & MSG_FLAG_ENABLE_LOG) | MSG_FLAG_INITIAL_RESPONSE;
+    msg->mFlag |= (mFlag & MSG_FLAG_ENABLE_LOG) | MSG_FLAG_INITIAL_RESPONSE | MSG_FLAG_NOREPLY_EXPECTED;
     if (!msg->serialize(data))
     {
         delete msg;
@@ -522,7 +522,7 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
                            , const char *log_data)
 {
     auto msg = new CFdbMessage(code, this, filter);
-    msg->mFlag |= (mFlag & MSG_FLAG_ENABLE_LOG) | MSG_FLAG_INITIAL_RESPONSE;
+    msg->mFlag |= (mFlag & MSG_FLAG_ENABLE_LOG) | MSG_FLAG_INITIAL_RESPONSE | MSG_FLAG_NOREPLY_EXPECTED;
     if (!msg->serialize(buffer, size))
     {
         delete msg;
