@@ -144,7 +144,7 @@ void CEventSubscribeHandle::broadcastOneMsg(CFdbSession *session,
 {
     if ((sub_item.mType == FDB_SUB_TYPE_NORMAL) || msg->manualUpdate())
     {
-        if (!msg->preferUDP() || !session->sendUDPMessage(msg))
+        if ((msg->qos() == FDB_QOS_RELIABLE) || !session->sendUDPMessage(msg))
         {
             session->sendMessage(msg);
         }

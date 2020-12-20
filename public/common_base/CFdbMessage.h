@@ -216,7 +216,6 @@ private:
 #define MSG_FLAG_REPLIED            (1 << (MSG_LOCAL_FLAG_SHIFT + 2))
 #define MSG_FLAG_ENABLE_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 3))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
-#define MSG_FLAG_UDP                (1 << (MSG_LOCAL_FLAG_SHIFT + 5))
 #define MSG_FLAG_MANUAL_UPDATE      (1 << (MSG_LOCAL_FLAG_SHIFT + 6))
     static const int32_t mPrefixSize = sizeof(CFdbMsgPrefix);
     static const int32_t mMaxHeadSize = 256;
@@ -466,21 +465,14 @@ public:
         return !!(mFlag & MSG_FLAG_FORCE_UPDATE);
     }
 
-    void preferUDP(bool active)
+    void qos(EFdbQOS qos)
     {
-        if (active)
-        {
-            mFlag |= MSG_FLAG_UDP;
-        }
-        else
-        {
-            mFlag &= ~MSG_FLAG_UDP;
-        }
+        mQOS = qos;
     }
 
-    bool preferUDP() const
+    EFdbQOS qos() const
     {
-        return !!(mFlag & MSG_FLAG_UDP);
+        return mQOS;
     }
 
     /*
@@ -558,7 +550,7 @@ private:
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
               , FdbSessionId_t alt_receiver = FDB_INVALID_ID
-              , bool perfer_udp = false);
+              , EFdbQOS qos = FDB_QOS_RELIABLE);
 
     CFdbMessage(FdbMsgCode_t code
               , CFdbMessage *msg
@@ -569,7 +561,7 @@ private:
                 , const char *filter
                 , FdbSessionId_t alt_sid = FDB_INVALID_ID
                 , FdbObjectId_t alt_oid = FDB_INVALID_ID
-                , bool perfer_udp = false);
+                , EFdbQOS qos = FDB_QOS_RELIABLE);
     
     virtual CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
                               , CFdbMsgPrefix &prefix
@@ -760,6 +752,7 @@ private:
 
     std::string mToken;
     Callable mCallable;
+    EFdbQOS mQOS;
 
     friend class CFdbSession;
     friend class CFdbUDPSession;

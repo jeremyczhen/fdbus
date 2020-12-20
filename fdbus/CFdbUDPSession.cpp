@@ -135,6 +135,7 @@ void CFdbUDPSession::onInput(bool &io_error)
             doBroadcast(head, prefix, whole_buf);
         break;
         case FDB_MT_REQUEST:
+        case FDB_MT_PUBLISH:
             doRequest(head, prefix, whole_buf);
         break;
         default:
@@ -161,7 +162,6 @@ void CFdbUDPSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
     if (object)
     {
         msg->decodeDebugInfo(head);
-        msg->preferUDP(true);
         object->doBroadcast(msg_ref);
     }
 }
@@ -176,15 +176,28 @@ void CFdbUDPSession::doRequest(NFdbBase::CFdbMessageHeader &head,
     if (object)
     {
         msg->decodeDebugInfo(head);
+        switch (head.type())
         {
-            if (mContainer->owner()->onMessageAuthentication(msg))
-            {
-                msg->preferUDP(true);
-                object->doInvoke(msg_ref);
-            }
-            else
-            {
-            }
+            case FDB_MT_REQUEST:
+                if (mContainer->owner()->onMessageAuthentication(msg))
+                {
+                    object->doInvoke(msg_ref);
+                }
+                else
+                {
+                }
+            break;
+            case FDB_MT_PUBLISH:
+                if (mContainer->owner()->onEventAuthentication(msg))
+                {
+                    object->doPublish(msg_ref);
+                }
+                else
+                {
+                }
+            break;
+            default:
+            break;
         }
     }
     else

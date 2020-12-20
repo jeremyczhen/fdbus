@@ -79,7 +79,7 @@ public:
             NFdbExample::SongId data;
             data.set_id(1234);
             CFdbProtoMsgBuilder builder(data);
-            publish(REQ_RAWDATA + event_id_start, builder, "topic 1", true, true);
+            publish(REQ_RAWDATA + event_id_start, builder, "topic 1", true, FDB_QOS_BEST_EFFORTS);
             }
             
             {
@@ -366,6 +366,7 @@ int main(int argc, char **argv)
     server_name += "_client";
     auto client = new CNotificationCenterClient(server_name.c_str(), worker_ptr);
     client->enableReconnect(true);
+    client->enableUDP(true);
     client->connect(url.c_str());
 
     /* convert main thread into worker */

@@ -120,9 +120,9 @@ bool CFdbBaseObject::invoke(CBaseJob::Ptr &msg_ref
 bool CFdbBaseObject::send(FdbSessionId_t receiver
                           , FdbMsgCode_t code
                           , IFdbMsgBuilder &data
-                          , bool fast)
+                          , EFdbQOS qos)
 {
-    auto msg = new CBaseMessage(code, this, receiver, fast);
+    auto msg = new CBaseMessage(code, this, receiver, qos);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -131,19 +131,19 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
     return msg->send();
 }
 
-bool CFdbBaseObject::send(FdbMsgCode_t code, IFdbMsgBuilder &data, bool fast)
+bool CFdbBaseObject::send(FdbMsgCode_t code, IFdbMsgBuilder &data, EFdbQOS qos)
 {
-    return send(FDB_INVALID_ID, code, data, fast);
+    return send(FDB_INVALID_ID, code, data, qos);
 }
 
 bool CFdbBaseObject::send(FdbSessionId_t receiver
                          , FdbMsgCode_t code
                          , const void *buffer
                          , int32_t size
-                         , bool fast
+                         , EFdbQOS qos
                          , const char *log_data)
 {
-    auto msg = new CBaseMessage(code, this, receiver, fast);
+    auto msg = new CBaseMessage(code, this, receiver, qos);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -156,16 +156,16 @@ bool CFdbBaseObject::send(FdbSessionId_t receiver
 bool CFdbBaseObject::send(FdbMsgCode_t code
                          , const void *buffer
                          , int32_t size
-                         , bool fast
+                         , EFdbQOS qos
                          , const char *log_data)
 {
-    return send(FDB_INVALID_ID, code, buffer, size, fast, log_data);
+    return send(FDB_INVALID_ID, code, buffer, size, qos, log_data);
 }
 
 bool CFdbBaseObject::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char *topic,
-                             bool force_update, bool fast)
+                             bool force_update, EFdbQOS qos)
 {
-    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, fast);
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, qos);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -180,9 +180,9 @@ bool CFdbBaseObject::publish(FdbMsgCode_t code, IFdbMsgBuilder &data, const char
 }
  
 bool CFdbBaseObject::publish(FdbMsgCode_t code, const void *buffer, int32_t size, const char *topic,
-                             bool force_update, bool fast, const char *log_data)
+                             bool force_update, EFdbQOS qos, const char *log_data)
 {
-    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, fast);
+    auto msg = new CBaseMessage(code, this, FDB_INVALID_ID, qos);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -198,9 +198,9 @@ bool CFdbBaseObject::publish(FdbMsgCode_t code, const void *buffer, int32_t size
 }
 
 bool CFdbBaseObject::publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
-                                    const char *log_data, bool force_update, bool fast)
+                                    const char *log_data, bool force_update, EFdbQOS qos)
 {
-    CBaseMessage msg(code, this, FDB_INVALID_ID, fast);
+    CBaseMessage msg(code, this, FDB_INVALID_ID, qos);
     msg.expectReply(false);
     msg.forceUpdate(force_update);
     msg.setLogData(log_data);
@@ -306,7 +306,7 @@ bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 
 bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    CBaseMessage msg(code, this, FDB_INVALID_ID, false);
+    CBaseMessage msg(code, this, FDB_INVALID_ID);
     msg.expectReply(false);
     if (!msg.serialize(data))
     {
@@ -323,9 +323,9 @@ bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , IFdbMsgBuilder &data
                                , const char *filter
-                               , bool fast)
+                               , EFdbQOS qos)
 {
-    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, fast);
+    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, qos);
     if (!msg->serialize(data, this))
     {
         delete msg;
@@ -338,10 +338,10 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                               , const void *buffer
                               , int32_t size
                               , const char *filter
-                              , bool fast
+                              , EFdbQOS qos
                               , const char *log_data)
 {
-    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, fast);
+    auto msg = new CFdbMessage(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, qos);
     msg->setLogData(log_data);
     if (!msg->serialize(buffer, size, this))
     {
@@ -354,7 +354,7 @@ bool CFdbBaseObject::broadcast(FdbMsgCode_t code
 void CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
                                          const char *filter)
 {
-    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, false);
+    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID);
     if (!msg.serialize(data, size, this))
     {
         return;
@@ -365,9 +365,9 @@ void CFdbBaseObject::broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data,
 }
 
 void CFdbBaseObject::broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
-                                      const char *filter, bool force_update, bool fast)
+                                      const char *filter, bool force_update, EFdbQOS qos)
 {
-    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, fast);
+    CFdbMessage msg(code, this, filter, FDB_INVALID_ID, FDB_INVALID_ID, qos);
     if (!msg.serialize(data, size, this))
     {
         return;
@@ -1466,7 +1466,7 @@ void CFdbBaseObject::onPublish(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CBaseMessage *>(msg_ref);
     broadcastNoQueue(msg->code(), msg->getPayloadBuffer(), msg->getPayloadSize(),
-                     msg->topic().c_str(), msg->isForceUpdate(), msg->preferUDP());
+                     msg->topic().c_str(), msg->isForceUpdate(), msg->qos());
 }
 
 class CPrepareDestroyJob : public CMethodJob<CFdbBaseObject>

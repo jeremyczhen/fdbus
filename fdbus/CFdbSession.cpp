@@ -339,6 +339,7 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
                     msg->sendStatus(this, NFdbBase::FDB_ST_AUTHENTICATION_FAIL,
                                     "Authentication failed!");
                 }
+            break;
             default:
             break;
         }

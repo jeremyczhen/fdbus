@@ -27,6 +27,7 @@ public:
     {
         enableEventCache(true);
         enableEventRoute(true);
+        enableUDP(true);
         for (uint32_t i = 0; i < num_peers; ++i)
         {
             addPeerRouter(peer_array[i]);

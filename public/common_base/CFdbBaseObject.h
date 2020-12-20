@@ -232,35 +232,33 @@ public:
      * @iparam receiver: the receiver to get the message
      * @iparam code: message code
      * @iparam data: message in protocol buffer format
-     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
-     *              and fallback to TCP/UDS if fail
+     * @iparam qos:  QOS of transport
      */
     bool send(FdbSessionId_t receiver
               , FdbMsgCode_t code
               , IFdbMsgBuilder &data
-              , bool fast = false);
+              , EFdbQOS qos = FDB_QOS_RELIABLE);
               
     /*
      * send[2]
      * Similiar to send[1] without parameter 'receiver'. The method is called
      * from CBaseClient to send message to the connected server.
      */
-    bool send(FdbMsgCode_t code, IFdbMsgBuilder &data, bool fast = false);
+    bool send(FdbMsgCode_t code, IFdbMsgBuilder &data, EFdbQOS qos = FDB_QOS_RELIABLE);
 
     /*
      * send[3]
      * Similiar to send[1] but raw data is sent.
      * @iparam buffer: buffer holding raw data
      * @iparam size: size of buffer
-     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
-     *              and fallback to TCP/UDS if fail
+     * @iparam qos:  QOS of transport
      * @iparam log_data: text collected by log service to show the message
      */
     bool send(FdbSessionId_t receiver
               , FdbMsgCode_t code
               , const void *buffer = 0
               , int32_t size = 0
-              , bool fast = false
+              , EFdbQOS qos = FDB_QOS_RELIABLE
               , const char *log_data = 0);
     /*
      * send[4]
@@ -271,7 +269,7 @@ public:
     bool send(FdbMsgCode_t code
               , const void *buffer = 0
               , int32_t size = 0
-              , bool fast = false
+              , EFdbQOS qos = FDB_QOS_RELIABLE
               , const char *log_data = 0);
 
     /*
@@ -283,7 +281,7 @@ public:
                  , IFdbMsgBuilder &data
                  , const char *topic = 0
                  , bool force_update = false
-                 , bool fast = false);
+                 , EFdbQOS qos = FDB_QOS_RELIABLE);
 
     /*
      * publish[2]
@@ -295,7 +293,7 @@ public:
                 , int32_t size = 0
                 , const char *topic = 0
                 , bool force_update = false
-                , bool fast = false
+                , EFdbQOS qos = FDB_QOS_RELIABLE
                 , const char *log_data = 0);
 
     /*
@@ -327,21 +325,19 @@ public:
      * optional filter.
      * @iparam code: code of the message to be broadcasted
      * @iparam data: message of protocol buffer
-     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
-     *              and fallback to TCP/UDS if fail
+     * @iparam qos:  QOS of transport
      * @iparam filter: the filter associated with the broadcasting
      */
     bool broadcast(FdbMsgCode_t code
                    , IFdbMsgBuilder &data
                    , const char *filter = 0
-                   , bool fast = false);
+                   , EFdbQOS qos = FDB_QOS_RELIABLE);
     /*
      * broadcast[3]
      * Similiar to broadcast[1] except that raw data is broadcasted.
      * @iparam buffer: buffer holding raw data
      * @iparam size: size of buffer
-     * @iparam fast: if false, TCP/UDS is chosen to send; if true, UDP is perferred
-     *              and fallback to TCP/UDS if fail
+     * @iparam qos:  QOS of transport
      * @iparam filter: the filter associated with the broadcasting
      * @iparam log_data: text collected by log service to show the message
      */
@@ -349,7 +345,7 @@ public:
                    , const void *buffer = 0
                    , int32_t size = 0
                    , const char *filter = 0
-                   , bool fast = false
+                   , EFdbQOS qos = FDB_QOS_RELIABLE
                    , const char *log_data = 0);
     /*
      * Build subscribe list before calling subscribe().
@@ -904,10 +900,10 @@ protected:
     // Warning: only used by FDBus internally!!!!!!!
     void broadcastLogNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size, const char *filter);
     void broadcastNoQueue(FdbMsgCode_t code, const uint8_t *data, int32_t size,
-                          const char *filter, bool force_update, bool fast);
+                          const char *filter, bool force_update, EFdbQOS qos);
 
     bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer, int32_t size,
-                        const char *log_data, bool force_update, bool fast);
+                        const char *log_data, bool force_update, EFdbQOS qos);
     bool publishNoQueue(FdbMsgCode_t code, const char *topic, const void *buffer,
                         int32_t size, CFdbSession *session);
     void publishCachedEvents(CFdbSession *session);

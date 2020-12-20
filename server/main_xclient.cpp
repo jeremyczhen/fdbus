@@ -126,7 +126,7 @@ public:
 
         if (fdb_init_skip_count)
         {
-            send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
+            send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, FDB_QOS_BEST_EFFORTS);
             return;
         }
 
@@ -144,7 +144,7 @@ public:
         *(ptr++) = (uint8_t)((sn >> 8) & 0xff);
         *(ptr++) = (uint8_t)((sn >> 16) & 0xff);
         *(ptr++) = (uint8_t)((sn >> 24) & 0xff);
-        send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, true);
+        send(XCLT_TEST_SINGLE_DIRECTION, mBuffer, fdb_block_size, FDB_QOS_BEST_EFFORTS);
         sn++;
     }
     void invokeMethod()

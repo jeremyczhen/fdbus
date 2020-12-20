@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <sys/eventfd.h>
 #include <unistd.h>
 #include <common_base/CEventFd.h>
@@ -30,7 +31,7 @@ CEventFd::~CEventFd()
 bool CEventFd::create(int &fd)
 {
     bool ret = false;
-    mEventFd = eventfd(0, EFD_NONBLOCK);
+    mEventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (mEventFd > 0)
     {
         ret = true;
@@ -41,17 +42,23 @@ bool CEventFd::create(int &fd)
 
 bool CEventFd::pickEvent()
 {
-    uint64_t val;
-    ssize_t s;
-
-    s = read(mEventFd, &val, sizeof(uint64_t));
-    return (s == sizeof(uint64_t)) ? true : false;
+    eventfd_t val;
+    int err;
+    do
+    {
+        err = eventfd_read(mEventFd, &val);
+    }
+    while ((err < 0) && (errno == EINTR));
+    return (err >= 0) || (errno == EAGAIN);
 }
 
 bool CEventFd::triggerEvent()
 {
-    uint64_t val = 1;
-    ssize_t s;
-    s = write(mEventFd, &val, sizeof(uint64_t));
-    return (s == sizeof(uint64_t)) ? true : false;
+    int err;
+    do
+    {
+        err = eventfd_write(mEventFd, 1);
+    }
+    while ((err < 0) && (errno == EINTR));
+    return err >= 0;
 }

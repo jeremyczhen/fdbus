@@ -77,6 +77,14 @@ public:
     {
         mPayloadSize = payload_size;
     }
+    EFdbQOS qos() const
+    {
+        return mQOS;
+    }
+    void qos(EFdbQOS qos)
+    {
+        mQOS = qos;
+    }
     bool has_broadcast_filter() const
     {
         return !!(mOptions & mMaskHeadFilter);
@@ -138,6 +146,7 @@ public:
                    << mFlag
                    << mObjId
                    << mPayloadSize
+                   << (uint8_t)mQOS
                    << mOptions;
         if (mOptions & mMaskHeadFilter)
         {
@@ -160,14 +169,17 @@ public:
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
         uint8_t msg_type;
+        uint8_t qos;
         deserializer >> msg_type
                      >> mSn
                      >> mCode
                      >> mFlag
                      >> mObjId
                      >> mPayloadSize
+                     >> qos
                      >> mOptions;
         mType = (EFdbMessageType)msg_type;
+        mQOS = (EFdbQOS)qos;
         if (mOptions & mMaskHeadFilter)
         {
             deserializer >> mFilter;
@@ -197,6 +209,7 @@ private:
     uint64_t mSendArriveTime;
     uint64_t mReplyTime;
     std::string mToken;
+    EFdbQOS mQOS;
     uint8_t mOptions;
         static const uint8_t mMaskHeadFilter = 1 << 1;
         static const uint8_t mMaskSenderArriveTime = 1 << 2;

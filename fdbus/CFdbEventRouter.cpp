@@ -93,7 +93,7 @@ void CFdbEventRouter::routeMessage(CBaseJob::Ptr &msg_ref)
                                   , msg->getPayloadSize()
                                   , 0
                                   , msg->isForceUpdate()
-                                  , msg->preferUDP());
+                                  , msg->qos());
         }
     }
 }

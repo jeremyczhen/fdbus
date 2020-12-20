@@ -150,7 +150,7 @@ void CFdEventLoop::buildFdArray()
         pfd.fd = fd;
         pfd.events = (int16_t)(*wi)->flags();
         pfd.revents = 0;
-        mPollFds.push_back(pfd);
+        mPollFds.push_back(std::move(pfd));
 
         mPollWatches.push_back(*wi);
     }
@@ -202,7 +202,7 @@ void CFdEventLoop::buildInputFdArray(tWatchPollTbl &watches, tFdPollTbl &fds)
             continue;
         }
         pfd.revents = 0;
-        fds.push_back(pfd);
+        fds.push_back(std::move(pfd));
 
         watches.push_back(*wi);
     }
@@ -215,12 +215,11 @@ void CFdEventLoop::processWatches()
      * Since the first fd is for job processing and might delete other watches,
      * handle it at last.
      */
-    tWatchPollTbl::reverse_iterator wit;
-    tFdPollTbl::reverse_iterator fdit;
-    for (wit = mPollWatches.rbegin(), fdit = mPollFds.rbegin();
-           wit != mPollWatches.rend(); ++wit, ++fdit)
+    auto size = mPollWatches.size();
+    for (auto i = (unsigned)0; i < size; ++i)
     {
-        auto w = *wit;
+        auto j = size - 1 - i;
+        auto w = mPollWatches[j];
         if (watchDestroyed(w))
         {
             continue;
@@ -244,8 +243,8 @@ void CFdEventLoop::processWatches()
             continue;
         }
 
-        int32_t events = w->convertRetEvents(fdit->revents);
-        fdit->revents = 0;
+        int32_t events = w->convertRetEvents(mPollFds[j].revents);
+        mPollFds[j].revents = 0;
         if (events & (POLLIN | POLLOUT | POLLERR | POLLHUP))
         {
             bool io_error = false;
@@ -339,18 +338,17 @@ void CFdEventLoop::processInputWatches(tWatchPollTbl &watches, tFdPollTbl &fds)
      * Since the first fd is for job processing and might delete other watches,
      * handle it at last.
      */
-    tWatchPollTbl::reverse_iterator wit;
-    tFdPollTbl::reverse_iterator fdit;
-    for (wit = watches.rbegin(), fdit = fds.rbegin();
-           wit != watches.rend(); ++wit, ++fdit)
+    auto size = watches.size();
+    for (auto i = (unsigned)0; i < size; ++i)
     {
-        auto w = *wit;
+        auto j = size - 1 - i;
+        auto w = watches[j];
         if (watchDestroyed(w))
         {
             continue;
         }
-        int32_t events = w->convertRetEvents(fdit->revents);
-        fdit->revents = 0;
+        int32_t events = w->convertRetEvents(fds[j].revents);
+        fds[j].revents = 0;
         if (events & (POLLIN))
         {
             bool io_error = false;

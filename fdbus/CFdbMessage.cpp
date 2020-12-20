@@ -63,10 +63,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
+    , mQOS(FDB_QOS_RELIABLE)
 {
 }
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, bool prefer_udp)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, EFdbQOS qos)
     : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
@@ -77,11 +78,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
+    , mQOS(qos)
 {
     setDestination(obj, alt_receiver);
-    if (prefer_udp)
+    if (qos == FDB_QOS_BEST_EFFORTS)
     {
-        mFlag |= MSG_FLAG_UDP;
         setToken(obj);
     }
     if (obj->timeStampEnabled())
@@ -103,6 +104,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mFlag(MSG_FLAG_INITIAL_RESPONSE | MSG_FLAG_NOREPLY_EXPECTED)
     , mTimer(0)
     , mTimeStamp(0)
+    , mQOS(FDB_QOS_RELIABLE)
 {
     if (filter)
     {
@@ -133,6 +135,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
     , mTimeStamp(0)
+    , mQOS(head.qos())
 {
     if (head.has_broadcast_filter())
     {
@@ -149,7 +152,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
                          , const char *filter
                          , FdbSessionId_t alt_sid
                          , FdbObjectId_t alt_oid
-                         , bool prefer_udp)
+                         , EFdbQOS qos)
     : mType(FDB_MT_BROADCAST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
@@ -160,11 +163,11 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mFlag(MSG_FLAG_NOREPLY_EXPECTED)
     , mTimer(0)
     , mTimeStamp(0)
+    , mQOS(qos)
 {
     setDestination(obj, FDB_INVALID_ID);
-    if (prefer_udp)
+    if (qos == FDB_QOS_BEST_EFFORTS)
     {
-        mFlag |= MSG_FLAG_UDP;
         setToken(obj);
     }
 
@@ -207,6 +210,7 @@ CFdbMessage::CFdbMessage(const CFdbMessage *msg)
     mFlag = msg->mFlag;
     mTimer = 0;
     mTimeStamp = 0;
+    mQOS = msg->mQOS;
     allocCopyRawBuffer(msg->getPayloadBuffer(), mPayloadSize);
 }
 
@@ -607,6 +611,7 @@ bool CFdbMessage::buildHeader()
     msg_hdr.set_flag(mFlag & MSG_GLOBAL_FLAG_MASK);
     msg_hdr.set_object_id(mOid);
     msg_hdr.set_payload_size(mPayloadSize);
+    msg_hdr.qos(mQOS);
     if (!mToken.empty())
     {
         msg_hdr.set_token(mToken.c_str());
@@ -756,7 +761,7 @@ void CFdbMessage::doRequest(Ptr &ref)
     {
         if (mFlag & MSG_FLAG_NOREPLY_EXPECTED)
         {
-            if (!(mFlag & MSG_FLAG_UDP) || !session->sendUDPMessage(this))
+            if ((mQOS == FDB_QOS_RELIABLE) || !session->sendUDPMessage(this))
             {
                 success = session->sendMessage(this);
                 if (!success)

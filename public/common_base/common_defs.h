@@ -133,6 +133,17 @@ enum EFdbusCredType
     FDB_PERM_CRED_IP
 };
 
+// hint for QOS of transportation and which QOS is used depends on real
+// connection. For example, if two endpoints are located in the same
+// node, UDS is used without regard to QOS specified.
+enum EFdbQOS
+{
+    // reliable connection like TCP, UDS
+    FDB_QOS_RELIABLE,
+    // unreliable connection like UDP
+    FDB_QOS_BEST_EFFORTS
+};
+
 #define FDB_EVENT_GROUP_SHIFT 24
 #define FDB_EVENT_GROUP_BITS 0xFF
 #define FDB_DEFAULT_GROUP 0
