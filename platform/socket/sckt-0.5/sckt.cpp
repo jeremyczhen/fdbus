@@ -39,6 +39,7 @@ THE SOFTWARE. */
 #include <winsock2.h>
 #include <windows.h>
 #include <stdio.h>
+#include <mstcpip.h>
 #define snprintf _snprintf
 
 #define M_INVALID_SOCKET INVALID_SOCKET
@@ -217,6 +218,77 @@ void Socket::setNonBlock()
 #else
 #warning How do we set non-blocking mode on other operating systems?
 #endif
+}
+
+bool Socket::setKeepAlive()
+{
+    int interval = 2;
+    int count = 2;
+    int val = 1;
+
+    if (!interval || !count)
+    {
+        val = 0;
+    }
+    if (setsockopt(CastToSocket(socket), SOL_SOCKET, SO_KEEPALIVE, (const char*)&val, sizeof(val)) == -1)
+    {
+        return false;
+    }
+    if (!interval || !count)
+    {
+        return true;
+    }
+
+#ifdef __WIN32__
+    interval *= 1000;
+    struct tcp_keepalive in_keep_alive = { 0 };
+    unsigned long ul_in_len = sizeof(struct tcp_keepalive);
+    struct tcp_keepalive out_keep_alive = { 0 };
+    unsigned long ul_out_len = sizeof(struct tcp_keepalive);
+    unsigned long ul_bytes_return = 0;
+
+    in_keep_alive.onoff = 1;
+    in_keep_alive.keepaliveinterval = interval;
+    val = interval / count;
+    if (val == 0) val = 1;
+    in_keep_alive.keepalivetime = val;
+
+    auto ret = WSAIoctl(CastToSocket(socket), SIO_KEEPALIVE_VALS, (LPVOID)&in_keep_alive, ul_in_len,
+                        (LPVOID)&out_keep_alive, ul_out_len, &ul_bytes_return, 0, 0);
+    return ret == SOCKET_ERROR;
+
+#else
+    /* Default settings are more or less garbage, with the keepalive time
+     * set to 7200 by default on Linux. Modify settings to make the feature
+     * actually useful. */
+
+     /* Send first probe after interval. */
+    val = interval;
+    if (setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
+        return false;
+    }
+
+    /* Send next probes after the specified interval. Note that we set the
+     * delay as interval / 3, as we send three probes before detecting
+     * an error (see the next setsockopt call). */
+    val = interval / count;
+    if (val == 0) val = 1;
+    if (setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
+        return false;
+    }
+
+    /* Consider the socket in error state after three we send three ACK
+     * probes without getting a reply. */
+    val = count;
+    if (setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0) {
+        return false;
+    }
+    //struct timeval tval;
+    //tval.tv_sec = 3;
+    //setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPALIVE, &tval, sizeof(tval));
+#endif
+
+    return true;
 }
 
 int Socket::getNativeSocket()const{
@@ -589,6 +661,8 @@ void TCPServerSocket::Accept(TCPSocket &sock){
             sock.self_ip = inet_ntoa(sock_addr.sin_addr);
             sock.self_port = ntohs(sock_addr.sin_port);
         }
+
+        // sock.setKeepAlive();
     }
 
 #if !defined(__WIN32__)

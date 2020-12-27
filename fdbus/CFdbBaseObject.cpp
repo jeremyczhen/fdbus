@@ -1501,8 +1501,8 @@ void CFdbBaseObject::prepareDestroy()
     }
 }
 
-#define FDB_MSG_TYPE_AFC_SUBSCRIBE (FDB_MSG_TYPE_SYSTEM + 1)
-#define FDB_MSG_TYPE_AFC_INVOKE (FDB_MSG_TYPE_SYSTEM + 2)
+#define FDB_MSG_TYPE_AFC_SUBSCRIBE (FDB_MSG_TYPE_SYSTEM - 1)
+#define FDB_MSG_TYPE_AFC_INVOKE (FDB_MSG_TYPE_SYSTEM - 2)
 
 class CAFCSubscribeMsg : public CFdbMessage
 {

@@ -226,6 +226,7 @@ public class MediaServer
             
             servers.add(server);
         }
+        try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
 
         // test dynamic behavior: bind/unbind, create/destroy
         while (true)

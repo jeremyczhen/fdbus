@@ -110,10 +110,15 @@ void CJniClient::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
 {
+    auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (msg->getTypeId() < 0)
+    {
+        CFdbBaseObject::onReply(msg_ref);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
-        auto msg = castToMessage<CFdbMessage *>(msg_ref);
         int32_t error_code = NFdbBase::FDB_ST_OK;
         if (msg->isStatus())
         {
@@ -316,22 +321,87 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
         c_array = env->GetByteArrayElements(pb_data, 0);
         len_arr = env->GetArrayLength(pb_data);
     }
-    
-    auto msg = new CJniInvokeMsg(code, user_data ? env->NewGlobalRef(user_data) : 0);
 
     const char* c_log_data = 0;
     if (log_data)
     {
         c_log_data = env->GetStringUTFChars(log_data, 0);
     }
-    
-    if (c_log_data)
+
+    jboolean ret = false;
+    if (user_data && env->IsInstanceOf(user_data, CFdbusActionParam::mClass))
     {
-        msg->setLogData(c_log_data);
-        env->ReleaseStringUTFChars(log_data, c_log_data);
+        auto callback = env->NewGlobalRef(user_data);
+        ret = client->invoke(code, [callback](CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
+            {
+                if (!callback)
+                {
+                    return;
+                }
+                JNIEnv *env = CGlobalParam::obtainJniEnv();
+                if (!env)
+                {
+                    goto _release;
+                }
+                auto msg = castToMessage<CFdbMessage *>(msg_ref);
+                int32_t error_code = NFdbBase::FDB_ST_OK;
+                if (msg->isStatus())
+                {
+                    std::string reason;
+                    if (!msg->decodeStatus(error_code, reason))
+                    {
+                        FDB_LOG_E("onReply: fail to decode status!\n");
+                        error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
+                    }
+                }
+
+                jmethodID constructor = env->GetMethodID(
+                                                CFdbusMessageParam::mClass,
+                                                "<init>",
+                                                "(II[BI)V");
+                if (!constructor)
+                {
+                    FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async: unable to get constructor.\n");
+                    goto _release;
+                }
+                auto jmsg = env->NewObject(CFdbusMessageParam::mClass,
+                                                constructor,
+                                                msg->session(),
+                                                msg->code(),
+                                                CGlobalParam::createRawPayloadBuffer(env, msg),
+                                                error_code);
+                if (!jmsg)
+                {
+                    FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async: unable to create message.\n");
+                    goto _release;
+                }
+
+                env->CallVoidMethod(callback,
+                                    CFdbusActionParam::mHandleMessage,
+                                    jmsg
+                                    );
+
+        _release:
+                env->DeleteGlobalRef(callback);
+                CGlobalParam::releaseJniEnv(env);
+            },
+            (const void *)c_array, len_arr, 0, timeout, c_log_data
+        );
+    }
+    else
+    {
+        auto msg = new CJniInvokeMsg(code, user_data ? env->NewGlobalRef(user_data) : 0);
+        if (c_log_data)
+        {
+            msg->setLogData(c_log_data);
+        }
+        ret = client->invoke(msg, (const void *)c_array, len_arr, timeout);
     }
 
-    jboolean ret = client->invoke(msg, (const void *)c_array, len_arr, timeout);
+    if (c_log_data)
+    {
+        env->ReleaseStringUTFChars(log_data, c_log_data);
+    }
     if (c_array)
     {
         env->ReleaseByteArrayElements(pb_data, c_array, 0);
@@ -406,7 +476,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
                                     "(II[BI)V");
     if (!constructor)
     {
-        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync: unable to get constructor: %d\n", ret);
+        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync: unable to get constructor.\n");
         return 0;
     }
     return env->NewObject(CFdbusMessageParam::mClass,
@@ -448,7 +518,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1send
     jboolean ret = client->send((FdbMsgCode_t)code,
                         (const void *)c_array,
                         len_arr,
-                        false,
+                        FDB_QOS_RELIABLE,
                         c_log_data);
     if (c_array)
     {
@@ -620,7 +690,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1publish
                                    len_arr,
                                    c_topic,
                                    always_update,
-                                   false,
+                                   FDB_QOS_RELIABLE,
                                    c_log_data);
     if (c_array)
     {

@@ -21,6 +21,7 @@ import ipc.fdbus.FdbusClient;
 import ipc.fdbus.SubscribeItem;
 import ipc.fdbus.FdbusMessage;
 import ipc.fdbus.FdbusMsgBuilder;
+import ipc.fdbus.FdbusAppListener;
 
 public class Fdbus
 {
@@ -76,13 +77,15 @@ public class Fdbus
     public final static int FDB_LL_SILENT           = 6;
     public final static int FDB_LL_MAX              = 7;
 
-    private native void fdb_init(Class server, Class client, Class sub_item, Class msg);
+    private native void fdb_init(Class server, Class client, Class sub_item, Class msg,
+                                 Class connection, Class action);
     private static native void fdb_log_trace(String tag, int level, String data);
     
     public Fdbus()
     {
         System.loadLibrary("fdbus-jni");
-        fdb_init(FdbusServer.class, FdbusClient.class, SubscribeItem.class, FdbusMessage.class);
+        fdb_init(FdbusServer.class, FdbusClient.class, SubscribeItem.class, FdbusMessage.class,
+                 FdbusAppListener.connection.class, FdbusAppListener.action.class);
     }
 
     public static void LOG_D(String tag, String data)

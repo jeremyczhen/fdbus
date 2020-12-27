@@ -28,12 +28,14 @@ import ipc.fdbus.Example.CPerson;
 import ipc.fdbus.FdbusDeserializer;
 import ipc.fdbus.FdbusParcelable;
 import ipc.fdbus.FdbusParcelable.TextFormatter;
+import ipc.fdbus.FdbusAppListener;
 
 public class MediaClient 
 {
     private class FdbusMediaClient extends TimerTask implements FdbusClientListener
     {
-        public final static int CONFIG_SYNC_INVOKE = 0;
+        public final static boolean CONFIG_SYNC_INVOKE = false;
+        public final static boolean CONFIG_INVOKE_WITH_CALLBACK = true;
 
         private int mSongId;
         private Timer mTimer;
@@ -85,7 +87,7 @@ public class MediaClient
             System.out.println(mClient.endpointName() + ": onOffline is received: " + sid);
         }
 
-        private void handleReplyMsg(FdbusMessage msg, boolean sync)
+        public void handleReplyMsg(FdbusMessage msg, String tag)
         {
             if (msg.returnValue() != Fdbus.FDB_ST_OK)
             {
@@ -101,7 +103,7 @@ public class MediaClient
                     try {
                         NFdbExample.NowPlayingDetails np =
                                 NFdbExample.NowPlayingDetails.parseFrom(msg.byteArray());
-                        System.out.println((sync ? "sync reply - " : "async reply - ") + 
+                        System.out.println(tag + " " +
                                            mClient.endpointName() +
                                            ": now playing info: " +
                                            np.toString());
@@ -139,7 +141,7 @@ public class MediaClient
                     }
                 }
             }
-            handleReplyMsg(msg, false);
+            handleReplyMsg(msg, "async reply");
         }
 
         public void onGetEvent(FdbusMessage msg)
@@ -178,20 +180,34 @@ public class MediaClient
             NFdbExample.SongId song_id = proto_builder.build();
             FdbusProtoBuilder builder = new FdbusProtoBuilder(song_id);
 
-            if (CONFIG_SYNC_INVOKE == 0)
+            if (CONFIG_SYNC_INVOKE)
             {
-                ArrayList<String> usr_data = new ArrayList<String>();
-                for (int i = 0; i < 10000; ++i)
-                {
-                    usr_data.add(new String("a quick fox dump over brown dog " + i));
-                }
-                mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder, usr_data, 0);
+                FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder, 0);
+                handleReplyMsg(msg, "sync");
             }
             else
             {
-                
-                FdbusMessage msg = mClient.invokeSync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder, 0);
-                handleReplyMsg(msg, true);
+                if (CONFIG_INVOKE_WITH_CALLBACK)
+                {
+                    mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder,
+                        new FdbusAppListener.action()
+                        {
+                            public void handleMessage(FdbusMessage msg)
+                            {
+                                handleReplyMsg(msg, "async callback");
+                            }
+                        },
+                        0);
+                }
+                else
+                {
+                    ArrayList<String> usr_data = new ArrayList<String>();
+                    for (int i = 0; i < 10000; ++i)
+                    {
+                        usr_data.add(new String("a quick fox dump over brown dog " + i));
+                    }
+                    mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder, usr_data, 0);
+                }
             }
             mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_RAWDATA_VALUE, null, null, 0);
             mTimerRunning = false;
@@ -219,6 +235,7 @@ public class MediaClient
 
             clients.add(client);
         }
+        try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
 
         // test dynamic behavior: connect/disconnect, create/destroy
         while (true)

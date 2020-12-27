@@ -42,6 +42,10 @@ jclass CFdbusSubscribeItemParam::mClass = 0;
 
 jclass CFdbusMessageParam::mClass = 0;
 
+jmethodID CFdbusConnectionParam::mOnConnectionStatus = 0;
+jmethodID CFdbusActionParam::mHandleMessage = 0;
+jclass CFdbusActionParam::mClass = 0;
+
 bool CGlobalParam::init(JNIEnv *env)
 {
     FDB_CONTEXT->start();
@@ -246,19 +250,56 @@ bool CFdbusMessageParam::init(JNIEnv *env, jclass &clazz)
     return true;
 }
 
+bool CFdbusConnectionParam::init(JNIEnv *env, jclass &clazz)
+{
+    bool ret = false;
+    mOnConnectionStatus = env->GetMethodID(clazz, "onConnectionStatus", "(IZZ)V");
+    if (!mOnConnectionStatus)
+    {
+        FDB_LOG_E("CFdbusConnectionParam::init: fail to get method onConnectionStatus!\n");
+        goto _quit;
+    }
+
+    ret = true;
+
+_quit:
+    return ret;
+}
+
+bool CFdbusActionParam::init(JNIEnv *env, jclass &clazz)
+{
+    bool ret = false;
+    mClass = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
+    mHandleMessage = env->GetMethodID(clazz, "handleMessage", "(Lipc/fdbus/FdbusMessage;)V");
+    if (!mHandleMessage)
+    {
+        FDB_LOG_E("CFdbusActionParam::init: fail to get method handleMessage!\n");
+        goto _quit;
+    }
+
+    ret = true;
+
+_quit:
+    return ret;
+}
+
 JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1init
                           (JNIEnv * env,
                            jobject,
                            jclass server_class,
                            jclass client_class,
                            jclass sub_item_class,
-                           jclass fdb_msg_class)
+                           jclass fdb_msg_class,
+                           jclass connection,
+                           jclass action)
 {
     CGlobalParam::init(env);
     CFdbusServerParam::init(env, server_class);
     CFdbusClientParam::init(env, client_class);
     CFdbusSubscribeItemParam::init(env, sub_item_class);
     CFdbusMessageParam::init(env, fdb_msg_class);
+    CFdbusConnectionParam::init(env, connection);
+    CFdbusActionParam::init(env, action);
 }
 
 JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
@@ -285,7 +326,7 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_Fdbus_fdb_1log_1trace
 
 static const JNINativeMethod gFdbusGlobalMethods[] = {
     {(char *)"fdb_init",
-             (char *)"(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
+             (char *)"(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;)V",
              (void*) Java_ipc_fdbus_Fdbus_fdb_1init},
     {(char *)"fdb_log_trace",
              (char *)"(Ljava/lang/String;ILjava/lang/String;)V",

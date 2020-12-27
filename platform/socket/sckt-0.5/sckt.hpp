@@ -273,6 +273,7 @@ protected:
     
     Socket& operator=(const Socket& s);
     void setNonBlock();
+    bool setKeepAlive();
     
 public:
     virtual ~Socket(){

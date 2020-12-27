@@ -83,4 +83,19 @@ public:
     static jclass mClass;
 };
 
+class CFdbusConnectionParam
+{
+public:
+    static jmethodID mOnConnectionStatus;
+    static bool init(JNIEnv *env, jclass &clazz);
+};
+
+class CFdbusActionParam
+{
+public:
+    static jmethodID mHandleMessage;
+    static bool init(JNIEnv *env, jclass &clazz);
+    static jclass mClass;
+};
+
 #endif
