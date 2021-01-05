@@ -18,6 +18,7 @@
 #define _CFDBCONTEXT_H_
 
 #include <vector>
+#include <mutex>
 #include "common_defs.h"
 #include "CEntityContainer.h"
 #include "CBaseWorker.h"
@@ -35,14 +36,7 @@ class CLogProducer;
 class CFdbContext : public CBaseWorker
 {
 public:
-    static CFdbContext *getInstance()
-    {
-        if (!mInstance)
-        {
-            mInstance = new CFdbContext();
-        }
-        return mInstance;
-    }
+    static CFdbContext *getInstance();
     bool start(uint32_t flag = FDB_WORKER_ENABLE_FD_LOOP);
     bool init();
 
@@ -77,6 +71,7 @@ private:
     tSessionContainer mSessionContainer;
     CIntraNameProxy *mNameProxy;
     CLogProducer *mLogger;
+    static std::mutex mSingletonLock;
 
     bool mEnableNameProxy;
     bool mEnableLogger;
