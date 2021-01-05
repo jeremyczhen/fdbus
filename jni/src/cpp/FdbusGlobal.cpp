@@ -38,11 +38,12 @@ jmethodID CFdbusServerParam::mOnSubscribe = 0;
 
 jfieldID CFdbusSubscribeItemParam::mCode = 0;
 jfieldID CFdbusSubscribeItemParam::mTopic = 0;
+jfieldID CFdbusSubscribeItemParam::mCallback = 0;
 jclass CFdbusSubscribeItemParam::mClass = 0;
 
 jclass CFdbusMessageParam::mClass = 0;
 
-jmethodID CFdbusConnectionParam::mOnConnectionStatus = 0;
+jmethodID CFdbusConnectionParam::mHandleConnection = 0;
 jmethodID CFdbusActionParam::mHandleMessage = 0;
 jclass CFdbusActionParam::mClass = 0;
 
@@ -146,6 +147,183 @@ int CGlobalParam::jniRegisterNativeMethods(JNIEnv* env,
     return -1;
 }
 
+void CGlobalParam::getSubscriptionList(JNIEnv *env, jobject sub_items, tSubscriptionTbl &sub_tbl)
+{
+    if (!sub_items)
+    {
+        return;
+    }
+    jint len = 0;
+    jclass sub_item_cls = env->GetObjectClass(sub_items);
+    if (sub_item_cls)
+    {
+        jmethodID arraylist_get = env->GetMethodID(sub_item_cls, "get", "(I)Ljava/lang/Object;");
+        jmethodID arraylist_size = env->GetMethodID(sub_item_cls,"size","()I");
+        len = env->CallIntMethod(sub_items, arraylist_size);
+        for (int i = 0; i < len; ++i)
+        {
+            jobject sub_item_obj = env->CallObjectMethod(sub_items, arraylist_get, i);
+            if (!sub_item_obj)
+            {
+                FDB_LOG_E("Java_FdbusClient_fdb_1subscribe: fail to get item at %d!\n", i);
+                continue;
+            }
+
+            jint code= env->GetIntField(sub_item_obj , CFdbusSubscribeItemParam::mCode);
+            jobject filter_obj = env->GetObjectField(sub_item_obj , CFdbusSubscribeItemParam::mTopic);
+            jobject callback_obj = env->GetObjectField(sub_item_obj , CFdbusSubscribeItemParam::mCallback);
+            jobject global_cb_obj = callback_obj ? env->NewGlobalRef(callback_obj) : 0;
+            const char* c_filter = 0;
+            jstring filter = 0;
+            if (filter_obj)
+            {
+                filter = reinterpret_cast<jstring>(filter_obj);
+                c_filter = env->GetStringUTFChars(filter, 0);
+            }
+            sub_tbl.push_back(std::move(CScriptionItem(code, c_filter, global_cb_obj)));
+            if (c_filter)
+            {
+                env->ReleaseStringUTFChars(filter, c_filter);
+            }
+            if (filter_obj)
+            {
+                env->DeleteLocalRef(filter_obj);
+            }
+            if (callback_obj)
+            {
+                env->DeleteLocalRef(callback_obj);
+            }
+            env->DeleteLocalRef(sub_item_obj);
+        }
+    }
+}
+
+void CGlobalParam::callAction(jobject callback, CBaseJob::Ptr &msg_ref, ECallbakType type)
+{
+    if (!callback)
+    {
+        return;
+    }
+    JNIEnv *env = obtainJniEnv();
+    if (!env)
+    {
+        releaseJniEnv(env);
+        return;
+    }
+    CFdbMessage *msg;
+    msg = castToMessage<CFdbMessage *>(msg_ref);
+
+    jobject jmsg = 0;
+    if (type == MESSAGE)
+    {
+        if (msg->isStatus())
+        {
+            goto _release;
+        }
+        jmethodID constructor;
+        constructor = env->GetMethodID(CFdbusMessageParam::mClass, "<init>", "(JII[B)V");
+        if (!constructor)
+        {
+            FDB_LOG_E("CGlobalParam::callAction: unable to get constructor.\n");
+            goto _release;
+        }
+
+        CBaseJob::Ptr *msg_handle;
+        msg_handle = msg->needReply() ? new CBaseJob::Ptr(msg_ref) : 0;
+        jmsg = env->NewObject(CFdbusMessageParam::mClass,
+                              constructor,
+                              msg_handle,
+                              msg->session(),
+                              msg->code(),
+                              createRawPayloadBuffer(env, msg));
+        if (!jmsg)
+        {
+            delete msg_handle;
+        }
+    }
+    else if (type == EVENT)
+    {
+        if (msg->isStatus())
+        {
+            goto _release;
+        }
+        jmethodID constructor;
+        constructor = env->GetMethodID(CFdbusMessageParam::mClass, "<init>", "(II[B)V");
+        if (!constructor)
+        {
+            FDB_LOG_E("CGlobalParam::callAction: unable to get constructor.\n");
+            goto _release;
+        }
+        jmsg = env->NewObject(CFdbusMessageParam::mClass,
+                              constructor,
+                              msg->session(),
+                              msg->code(),
+                              createRawPayloadBuffer(env, msg));
+    }
+    else if (type == REPLY)
+    {
+        int32_t error_code;
+        error_code = NFdbBase::FDB_ST_OK;
+        if (msg->isStatus())
+        {
+            std::string reason;
+            if (!msg->decodeStatus(error_code, reason))
+            {
+                FDB_LOG_E("onReply: fail to decode status!\n");
+                error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
+            }
+        }
+        jmethodID constructor;
+        constructor = env->GetMethodID(CFdbusMessageParam::mClass, "<init>", "(II[BI)V");
+        if (!constructor)
+        {
+            FDB_LOG_E("CGlobalParam::callAction: unable to get constructor.\n");
+            goto _release;
+        }
+        jmsg = env->NewObject(CFdbusMessageParam::mClass,
+                              constructor,
+                              msg->session(),
+                              msg->code(),
+                              createRawPayloadBuffer(env, msg),
+                              error_code);
+    }
+    else
+    {
+        releaseJniEnv(env);
+        return;
+    }
+
+    if (!jmsg)
+    {
+        FDB_LOG_E("CGlobalParam::callAction: unable to create message.\n");
+        goto _release;
+    }
+
+    env->CallVoidMethod(callback, CFdbusActionParam::mHandleMessage, jmsg);
+
+_release:
+    if (type == REPLY)
+    {
+        env->DeleteGlobalRef(callback);
+    }
+    releaseJniEnv(env);
+}
+
+void CGlobalParam::callConnection(jobject callback, bool is_online, bool is_first)
+{
+    if (!callback)
+    {
+        return;
+    }
+
+    JNIEnv *env = obtainJniEnv();
+    if (env)
+    {
+        env->CallVoidMethod(callback, CFdbusConnectionParam::mHandleConnection, is_online, is_first);
+    }
+    releaseJniEnv(env);
+}
+
 bool CFdbusClientParam::init(JNIEnv *env, jclass clazz)
 {
     bool ret = false;
@@ -235,6 +413,12 @@ bool CFdbusSubscribeItemParam::init(JNIEnv *env, jclass &clazz)
         FDB_LOG_E("CFdbusSubscribeItemParam::init: fail to get field mTopic!\n");
         goto _quit;
     }
+    mCallback = env->GetFieldID(clazz, "mCallback", "Lipc/fdbus/FdbusAppListener$Action;");
+    if (!mCallback)
+    {
+        FDB_LOG_E("CFdbusSubscribeItemParam::init: fail to get field mCallback!\n");
+        goto _quit;
+    }
 
     mClass = reinterpret_cast<jclass>(env->NewGlobalRef(clazz));
 
@@ -253,8 +437,8 @@ bool CFdbusMessageParam::init(JNIEnv *env, jclass &clazz)
 bool CFdbusConnectionParam::init(JNIEnv *env, jclass &clazz)
 {
     bool ret = false;
-    mOnConnectionStatus = env->GetMethodID(clazz, "onConnectionStatus", "(IZZ)V");
-    if (!mOnConnectionStatus)
+    mHandleConnection = env->GetMethodID(clazz, "onConnectionStatus", "(IZZ)V");
+    if (!mHandleConnection)
     {
         FDB_LOG_E("CFdbusConnectionParam::init: fail to get method onConnectionStatus!\n");
         goto _quit;
@@ -343,6 +527,7 @@ int register_fdbus_global(JNIEnv *env)
 extern int register_fdbus_client(JNIEnv *env);
 extern int register_fdbus_server(JNIEnv *env);
 extern int register_fdbus_message(JNIEnv *env);
+extern int register_fdbus_afcomponent(JNIEnv *env);
 jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
 {
     CGlobalParam::mJvm = vm;
@@ -353,6 +538,7 @@ jint JNI_OnLoad(JavaVM* vm, void* /* reserved */)
         register_fdbus_client(env);
         register_fdbus_server(env);
         register_fdbus_message(env);
+        register_fdbus_afcomponent(env);
     }
     return FDB_JNI_VERSION;
 }

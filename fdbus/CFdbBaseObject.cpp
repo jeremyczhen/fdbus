@@ -407,7 +407,7 @@ void CFdbBaseObject::migrateToWorker(CBaseJob::Ptr &msg_ref, tRemoteCallback cal
         if (enableMigrate())
         {
             auto msg = castToMessage<CBaseMessage *>(msg_ref);
-            msg->setCallable(std::move(std::bind(callback, this, _1)));
+            msg->setCallable(std::bind(callback, this, _1));
             if (!worker->sendAsync(msg_ref))
             {
             }
@@ -1720,10 +1720,10 @@ void CFdbBaseObject::onOffline(FdbSessionId_t sid, bool is_last)
 void CFdbBaseObject::onInvoke(CBaseJob::Ptr &msg_ref)
 {
     auto *msg = castToMessage<CBaseMessage *>(msg_ref);
-    msg->setPostProcessing(std::move([](CBaseJob::Ptr &msg_ref)
+    msg->setPostProcessing([](CBaseJob::Ptr &msg_ref)
         {
             CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
-        }));
+        });
     mMsgDispather.processMessage(msg_ref, this);
 }
 

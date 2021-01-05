@@ -190,7 +190,7 @@ public class MediaClient
                 if (CONFIG_INVOKE_WITH_CALLBACK)
                 {
                     mClient.invokeAsync(NFdbExample.FdbMediaSvcMsgId.REQ_METADATA_VALUE, builder,
-                        new FdbusAppListener.action()
+                        new FdbusAppListener.Action()
                         {
                             public void handleMessage(FdbusMessage msg)
                             {
@@ -235,7 +235,7 @@ public class MediaClient
 
             clients.add(client);
         }
-        try{Thread.sleep(500000);}catch(InterruptedException e){System.out.println(e);}
+        try{Thread.sleep(800000000);}catch(InterruptedException e){System.out.println(e);}
 
         // test dynamic behavior: connect/disconnect, create/destroy
         while (true)

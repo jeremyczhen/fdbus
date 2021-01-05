@@ -204,7 +204,6 @@ private:
 #define MSG_GLOBAL_FLAG_MASK        0xffffff
 
 #define MSG_FLAG_NOREPLY_EXPECTED   (1 << 0)
-#define MSG_FLAG_AUTO_REPLY         (1 << 1)
 #define MSG_FLAG_SYNC_REPLY         (1 << 2)
 #define MSG_FLAG_ERROR              (1 << 4)
 #define MSG_FLAG_STATUS             (1 << 5)
@@ -540,6 +539,18 @@ public:
     static bool kickDog(CBaseJob::Ptr &msg_ref, CBaseWorker *worker, tCallableFn fn);
 
     bool needReply(CBaseJob::Ptr &msg_ref);
+    bool needReply()
+    {
+        return (mFlag & (MSG_FLAG_REPLIED | MSG_FLAG_NOREPLY_EXPECTED)) == 0;
+    }
+    static void autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
+    void callPostProcessing(Ptr &msg_ref)
+    {
+        if (mCallable.mPostFunc)
+        {
+            mCallable.mPostFunc(msg_ref);
+        }
+    }
 
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
@@ -665,11 +676,9 @@ private:
     void doReply(Ptr &ref);
     void doBroadcast(Ptr &ref);
 
-    static void autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
     void setStatusMsg(int32_t error_code, const char *description = 0, EFdbMessageType type = FDB_MT_UNKNOWN);
 
     void sendStatus(CFdbSession *session, int32_t error_code, const char *description = 0);
-    void sendAutoReply(CFdbSession *session, int32_t error_code, const char *description = 0);
     static void autoReply(CFdbSession *session, CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description = 0);
 
     void releaseBuffer();

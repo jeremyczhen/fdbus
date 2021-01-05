@@ -32,17 +32,17 @@ typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tDispatcherCallba
 inline void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispatcherCallbackFn &fn,
                                CBaseWorker *worker, CFdbBaseObject *obj)
 {
-    if (!fn)
-    {
-        return;
-    }
     if (!worker || worker->isSelf())
     {
-        fn(msg_ref, obj);
+        if (fn)
+        {
+            fn(msg_ref, obj);
+        }
+        msg->callPostProcessing(msg_ref);
     }
     else
     {
-        msg->setCallable(std::move(std::bind(fn, std::placeholders::_1, obj)));
+        msg->setCallable(std::bind(fn, std::placeholders::_1, obj));
         worker->sendAsync(msg_ref);
     }
 }

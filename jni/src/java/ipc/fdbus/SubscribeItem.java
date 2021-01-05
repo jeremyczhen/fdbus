@@ -15,13 +15,22 @@
  */
 
 package ipc.fdbus;
+import ipc.fdbus.FdbusAppListener;
 
 public class SubscribeItem
 {
+    public SubscribeItem(int code, String topic, FdbusAppListener.Action callback)
+    {
+        mCode = code;
+        mTopic = topic;
+        mCallback = callback;
+    }
+
     public SubscribeItem(int code, String topic)
     {
         mCode = code;
         mTopic = topic;
+        mCallback = null;
     }
 
     public static SubscribeItem newEvent(int code, String topic)
@@ -32,6 +41,16 @@ public class SubscribeItem
     public static SubscribeItem newEvent(int code)
     {
         return new SubscribeItem(code, null);
+    }
+
+    public static SubscribeItem newAction(int code, String topic, FdbusAppListener.Action callback)
+    {
+        return new SubscribeItem(code, topic, callback);
+    }
+
+    public static SubscribeItem newAction(int code, FdbusAppListener.Action callback)
+    {
+        return new SubscribeItem(code, null, callback);
     }
 
     public static SubscribeItem newGroup(int group, String topic)
@@ -56,4 +75,6 @@ public class SubscribeItem
 
     private int mCode;
     private String mTopic;
+    private FdbusAppListener.Action mCallback;
+    private FdbusAppListener xxx;
 }

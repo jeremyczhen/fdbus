@@ -17,7 +17,10 @@
 #ifndef __FDBUS_GLOBAL__H__
 #define __FDBUS_GLOBAL__H__
 #include <jni.h>
+#include <string>
+#include <vector>
 #include <common_base/common_defs.h>
+#include <common_base/CBaseJob.h>
 
 #ifdef JNIEXPORT
     #undef JNIEXPORT
@@ -34,6 +37,29 @@ class CFdbMessage;
 class CGlobalParam
 {
 public:
+    enum ECallbakType
+    {
+        EVENT,      // callback on event (client in response to broadcast)
+        MESSAGE,    // callback on message (server in response to invoke)
+        REPLY       // callback on reply (client in response to reply)
+    };
+    struct CScriptionItem
+    {
+        int32_t mCode;
+        std::string mTopic;
+        jobject mCallback;
+        CScriptionItem(int32_t code, const char *topic, jobject callback)
+            : mCode(code)
+            , mCallback(callback)
+        {
+            if (topic)
+            {
+                mTopic = topic;
+            }
+        }
+    };
+    typedef std::vector<CScriptionItem> tSubscriptionTbl;
+
     static JavaVM* mJvm;
     static bool init(JNIEnv *env);
     static JNIEnv *obtainJniEnv();
@@ -43,6 +69,9 @@ public:
                                     const char* className,
                                     const JNINativeMethod* gMethods,
                                     int32_t numMethods);
+    static void getSubscriptionList(JNIEnv *env, jobject sub_items, tSubscriptionTbl &sub_tbl);
+    static void callAction(jobject callback, CBaseJob::Ptr &msg_ref, ECallbakType type);
+    static void callConnection(jobject callback, bool is_online, bool is_first);
 };
 
 class CFdbusClientParam
@@ -71,6 +100,7 @@ class CFdbusSubscribeItemParam
 public:
     static jfieldID mCode;
     static jfieldID mTopic;
+    static jfieldID mCallback;
 
     static bool init(JNIEnv *env, jclass &clazz);
     static jclass mClass;
@@ -86,7 +116,7 @@ public:
 class CFdbusConnectionParam
 {
 public:
-    static jmethodID mOnConnectionStatus;
+    static jmethodID mHandleConnection;
     static bool init(JNIEnv *env, jclass &clazz);
 };
 

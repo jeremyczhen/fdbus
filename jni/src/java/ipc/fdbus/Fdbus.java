@@ -85,7 +85,7 @@ public class Fdbus
     {
         System.loadLibrary("fdbus-jni");
         fdb_init(FdbusServer.class, FdbusClient.class, SubscribeItem.class, FdbusMessage.class,
-                 FdbusAppListener.connection.class, FdbusAppListener.action.class);
+                 FdbusAppListener.Connection.class, FdbusAppListener.Action.class);
     }
 
     public static void LOG_D(String tag, String data)

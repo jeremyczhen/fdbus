@@ -26,6 +26,7 @@ class CJniServer : public CBaseServer
 {
 public:
     CJniServer(JNIEnv *env, const char *name, jobject &java_server);
+    CJniServer(const char *name);
     ~CJniServer();
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first);
@@ -36,12 +37,23 @@ private:
     jobject mJavaServer;
 };
 
+CBaseServer *FDB_createJniServer(const char *name)
+{
+    return new CJniServer(name);
+}
+
 CJniServer::CJniServer(JNIEnv *env, const char *name, jobject &java_server)
     : CBaseServer(name)
     , mJavaServer(env->NewGlobalRef(java_server))
 {
 }
-    
+
+CJniServer::CJniServer(const char *name)
+    : CBaseServer(name)
+    , mJavaServer(0)
+{
+}
+
 CJniServer::~CJniServer()
 {
     unbind();
@@ -58,6 +70,11 @@ CJniServer::~CJniServer()
 
 void CJniServer::onOnline(FdbSessionId_t sid, bool is_first)
 {
+    if (!mJavaServer)
+    {
+        CFdbBaseObject::onOnline(sid, is_first);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
@@ -68,6 +85,11 @@ void CJniServer::onOnline(FdbSessionId_t sid, bool is_first)
 
 void CJniServer::onOffline(FdbSessionId_t sid, bool is_last)
 {
+    if (!mJavaServer)
+    {
+        CFdbBaseObject::onOffline(sid, is_last);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
@@ -78,13 +100,18 @@ void CJniServer::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CJniServer::onInvoke(CBaseJob::Ptr &msg_ref)
 {
+    if (!mJavaServer)
+    {
+        CFdbBaseObject::onInvoke(msg_ref);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
         auto msg = castToMessage<CFdbMessage *>(msg_ref);
         if (msg)
         {
-            auto msg_handle = new CBaseJob::Ptr(msg_ref);
+            CBaseJob::Ptr *msg_handle = msg->needReply() ? new CBaseJob::Ptr(msg_ref) : 0;
             env->CallVoidMethod(mJavaServer,
                                 CFdbusServerParam::mOnInvoke,
                                 msg->session(),

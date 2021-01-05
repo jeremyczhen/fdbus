@@ -18,11 +18,11 @@ package ipc.fdbus;
 
 public interface FdbusAppListener
 {
-    interface connection
+    public interface Connection
     {
         public void onConnectionStatus(int sid, boolean is_online, boolean is_first);
     }
-    interface action
+    public interface Action
     {
         public void handleMessage(FdbusMessage msg);
     }

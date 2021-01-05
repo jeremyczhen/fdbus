@@ -425,7 +425,7 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
     }
     else
     {
-        mFlag |= MSG_FLAG_AUTO_REPLY;
+        mFlag &= ~MSG_FLAG_NOREPLY_EXPECTED;
         if (sync)
         {
             mFlag |= MSG_FLAG_SYNC_REPLY;
@@ -907,18 +907,9 @@ void CFdbMessage::sendStatus(CFdbSession *session, int32_t error_code, const cha
     }
 }
 
-void CFdbMessage::sendAutoReply(CFdbSession *session, int32_t error_code, const char *description)
-{
-    if ((mFlag & (MSG_FLAG_AUTO_REPLY | MSG_FLAG_REPLIED)) == MSG_FLAG_AUTO_REPLY)
-    {
-        sendStatus(session, error_code, description);
-    }
-}
-
 bool CFdbMessage::needReply(CBaseJob::Ptr &msg_ref)
 {
-    return (((mFlag & (MSG_FLAG_AUTO_REPLY | MSG_FLAG_REPLIED)) == MSG_FLAG_AUTO_REPLY)
-            && !(mFlag & MSG_FLAG_NOREPLY_EXPECTED) && msg_ref.unique());
+    return (needReply() && msg_ref.unique());
 }
 
 void CFdbMessage::autoReply(CFdbSession *session

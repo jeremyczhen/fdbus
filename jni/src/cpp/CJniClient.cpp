@@ -28,6 +28,7 @@ class CJniClient : public CBaseClient
 {
 public:
     CJniClient(JNIEnv *env, const char *name, jobject java_client);
+    CJniClient(const char *name);
     ~CJniClient();
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first);
@@ -67,9 +68,21 @@ public:
     }
 };
 
+CBaseClient *FDB_createJniClient(const char *name)
+{
+    return new CJniClient(name);
+}
+
 CJniClient::CJniClient(JNIEnv *env, const char *name, jobject java_client)
     : CBaseClient(name)
     , mJavaClient(env->NewGlobalRef(java_client))
+{
+    enableReconnect(true);
+}
+
+CJniClient::CJniClient(const char *name)
+    : CBaseClient(name)
+    , mJavaClient(0)
 {
     enableReconnect(true);
 }
@@ -90,6 +103,11 @@ CJniClient::~CJniClient()
 
 void CJniClient::onOnline(FdbSessionId_t sid, bool is_first)
 {
+    if (!mJavaClient)
+    {
+        CFdbBaseObject::onOnline(sid, is_first);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
@@ -100,6 +118,11 @@ void CJniClient::onOnline(FdbSessionId_t sid, bool is_first)
 
 void CJniClient::onOffline(FdbSessionId_t sid, bool is_last)
 {
+    if (!mJavaClient)
+    {
+        CFdbBaseObject::onOffline(sid, is_last);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
@@ -111,7 +134,7 @@ void CJniClient::onOffline(FdbSessionId_t sid, bool is_last)
 void CJniClient::onReply(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    if (msg->getTypeId() < 0)
+    if (!mJavaClient || (msg->getTypeId() < 0))
     {
         CFdbBaseObject::onReply(msg_ref);
         return;
@@ -214,6 +237,11 @@ void CJniClient::onGetEvent(CBaseJob::Ptr &msg_ref)
 
 void CJniClient::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
+    if (!mJavaClient)
+    {
+        CFdbBaseObject::onBroadcast(msg_ref);
+        return;
+    }
     JNIEnv *env = CGlobalParam::obtainJniEnv();
     if (env)
     {
@@ -334,56 +362,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async
         auto callback = env->NewGlobalRef(user_data);
         ret = client->invoke(code, [callback](CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
             {
-                if (!callback)
-                {
-                    return;
-                }
-                JNIEnv *env = CGlobalParam::obtainJniEnv();
-                if (!env)
-                {
-                    goto _release;
-                }
-                auto msg = castToMessage<CFdbMessage *>(msg_ref);
-                int32_t error_code = NFdbBase::FDB_ST_OK;
-                if (msg->isStatus())
-                {
-                    std::string reason;
-                    if (!msg->decodeStatus(error_code, reason))
-                    {
-                        FDB_LOG_E("onReply: fail to decode status!\n");
-                        error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
-                    }
-                }
-
-                jmethodID constructor = env->GetMethodID(
-                                                CFdbusMessageParam::mClass,
-                                                "<init>",
-                                                "(II[BI)V");
-                if (!constructor)
-                {
-                    FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async: unable to get constructor.\n");
-                    goto _release;
-                }
-                auto jmsg = env->NewObject(CFdbusMessageParam::mClass,
-                                                constructor,
-                                                msg->session(),
-                                                msg->code(),
-                                                CGlobalParam::createRawPayloadBuffer(env, msg),
-                                                error_code);
-                if (!jmsg)
-                {
-                    FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1async: unable to create message.\n");
-                    goto _release;
-                }
-
-                env->CallVoidMethod(callback,
-                                    CFdbusActionParam::mHandleMessage,
-                                    jmsg
-                                    );
-
-        _release:
-                env->DeleteGlobalRef(callback);
-                CGlobalParam::releaseJniEnv(env);
+                CGlobalParam::callAction(callback, msg_ref, CGlobalParam::REPLY);
             },
             (const void *)c_array, len_arr, 0, timeout, c_log_data
         );
@@ -536,44 +515,15 @@ static jint getSubscriptionList(JNIEnv *env,
                                 CJniClient *client,
                                 CFdbMsgSubscribeList &subscribe_list)
 {
-    jint len = 0;
-    jclass sub_item_cls = env->GetObjectClass(sub_items);
-    if (sub_item_cls)
+    CGlobalParam::tSubscriptionTbl sub_tbl;
+    CGlobalParam::getSubscriptionList(env, sub_items, sub_tbl);
+
+    int32_t len = (int32_t)sub_tbl.size();
+    for (int32_t i = 0; i < len; ++i)
     {
-        jmethodID arraylist_get = env->GetMethodID(sub_item_cls, "get", "(I)Ljava/lang/Object;");
-        jmethodID arraylist_size = env->GetMethodID(sub_item_cls,"size","()I");
-        len = env->CallIntMethod(sub_items, arraylist_size);
-        for (int i = 0; i < len; ++i)
-        {
-            jobject sub_item_obj = env->CallObjectMethod(sub_items, arraylist_get, i);
-            if (!sub_item_obj)
-            {
-                FDB_LOG_E("Java_FdbusClient_fdb_1subscribe: fail to get item at %d!\n", i);
-                continue;
-            }
-    
-            jint code= env->GetIntField(sub_item_obj , CFdbusSubscribeItemParam::mCode);
-            jobject filter_obj = env->GetObjectField(sub_item_obj , CFdbusSubscribeItemParam::mTopic);
-            const char* c_filter = 0;
-            jstring filter = 0;
-            if (filter_obj)
-            {
-                filter = reinterpret_cast<jstring>(filter_obj);
-                c_filter = env->GetStringUTFChars(filter, 0);
-            }
-            client->addNotifyItem(subscribe_list, code, c_filter);
-            if (c_filter)
-            {
-                env->ReleaseStringUTFChars(filter, c_filter);
-            }
-            if (filter_obj)
-            {
-                env->DeleteLocalRef(filter_obj);
-            }
-            env->DeleteLocalRef(sub_item_obj);
-        }
+        client->addNotifyItem(subscribe_list, sub_tbl[i].mCode, sub_tbl[i].mTopic.c_str());
     }
-    
+
     return len;
 }
 

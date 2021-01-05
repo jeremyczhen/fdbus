@@ -64,6 +64,12 @@ public class FdbusServer
         initialize(name, listener);
     }
 
+    FdbusServer(long handle)
+    {
+        mNativeHandle = handle;
+        mFdbusListener = null;
+    }
+
     /*
      * create fdbus client with default name
      */

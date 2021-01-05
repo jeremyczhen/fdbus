@@ -239,6 +239,11 @@ bool Socket::setKeepAlive()
         return true;
     }
 
+#ifdef CONFIG_QNX_KEEPALIVE
+    struct timeval tval;
+    tval.tv_sec = interval;
+    setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPALIVE, (void *)&tval, sizeof(tval));
+#else
 #ifdef __WIN32__
     interval *= 1000;
     struct tcp_keepalive in_keep_alive = { 0 };
@@ -256,7 +261,6 @@ bool Socket::setKeepAlive()
     auto ret = WSAIoctl(CastToSocket(socket), SIO_KEEPALIVE_VALS, (LPVOID)&in_keep_alive, ul_in_len,
                         (LPVOID)&out_keep_alive, ul_out_len, &ul_bytes_return, 0, 0);
     return ret == SOCKET_ERROR;
-
 #else
     /* Default settings are more or less garbage, with the keepalive time
      * set to 7200 by default on Linux. Modify settings to make the feature
@@ -286,6 +290,7 @@ bool Socket::setKeepAlive()
     //struct timeval tval;
     //tval.tv_sec = 3;
     //setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPALIVE, &tval, sizeof(tval));
+#endif
 #endif
 
     return true;

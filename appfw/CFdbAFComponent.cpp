@@ -48,6 +48,11 @@ public:
     CBaseClient *&mClient;
 };
 
+CBaseClient *CFdbAFComponent::createClient(const char *bus_name)
+{
+    return new CBaseClient(bus_name);
+}
+
 void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref)
 {
     auto the_job = fdb_dynamic_cast_if_available<CQueryServiceJob *>(job);
@@ -55,7 +60,12 @@ void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     auto client = app_fw->findClient(the_job->mBusName);
     if (!client)
     {
-        client = new CBaseClient(mName.c_str());
+        client = createClient(mName.c_str());
+        if (!client)
+        {
+            the_job->mClient = 0;
+            return;
+        }
         app_fw->registerClient(the_job->mBusName, client);
     }
     auto handle = client->registerConnNotification(the_job->mConnCallback, mWorker);
@@ -125,6 +135,11 @@ public:
     CBaseServer *&mServer;
 };
 
+CBaseServer *CFdbAFComponent::createServer(const char *bus_name)
+{
+    return new CBaseServer(bus_name);
+}
+
 void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref)
 {
     auto the_job = fdb_dynamic_cast_if_available<COfferServiceJob *>(job);
@@ -132,7 +147,12 @@ void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     auto server = app_fw->findService(the_job->mBusName);
     if (!server)
     {
-        server = new CBaseServer(mName.c_str());
+        server = createServer(mName.c_str());
+        if (!server)
+        {
+            the_job->mServer = 0;
+            return;
+        }
         server->enableEventCache(true);
         app_fw->registerService(the_job->mBusName, server);
     }

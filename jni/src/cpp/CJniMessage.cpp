@@ -134,6 +134,7 @@ JNIEXPORT void JNICALL Java_ipc_fdbus_FdbusMessage_fdb_1destroy
     {
         return;
     }
+    CFdbMessage::autoReply(*msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
     msg_ref->reset();
     delete msg_ref;
 }

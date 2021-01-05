@@ -35,6 +35,8 @@ public:
     // worker - the thread context where callback is executed; if not specified
     //     callback will be called at FDBus context thread
     CFdbAFComponent(const char *name = "anonymous", CBaseWorker *worker = 0);
+    virtual ~CFdbAFComponent()
+    {}
 
     // create FDBus client, connect to server and register callbacks
     // If the client is already created (connected), do not create (or connect) again
@@ -110,6 +112,8 @@ public:
 protected:
     std::string mName;
     CBaseWorker *mWorker;
+    virtual CBaseClient *createClient(const char *bus_name);
+    virtual CBaseServer *createServer(const char *bus_name);
 private:
     typedef std::vector<CFdbBaseObject::tRegEntryId> tConnHandleTbl;
     CFdbEventDispatcher::tRegistryHandleTbl mEventRegistryTbl;

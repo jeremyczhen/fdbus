@@ -125,6 +125,7 @@ cc_library_shared {
         "jni/src/cpp/CJniMessage.cpp",
         "jni/src/cpp/CJniServer.cpp",
         "jni/src/cpp/FdbusGlobal.cpp",
+        "jni/src/cpp/CJniAFComponent.cpp",
     ],
 
     shared_libs: ["libcommon-base"],
@@ -187,6 +188,47 @@ java_library {
     ],
 }
 
+//=====================================================================================
+//               build fdbus-java-appcomp-client.jar (java test client)               |
+//=====================================================================================
+java_library {
+    sdk_version: "current",
+    name: "fdbus-java-appcomp-client",
+    proto: {
+        type: "lite",
+    },
+    srcs: [
+        "jni/test/AFComponentClient.java",
+        "jni/test/FdbusProtoBuilder.java",
+        "jni/test/CPerson.java",
+        FDB_PROTO_DIR + "/common.base.Example.proto",
+    ],
+    libs: [
+        "fdbus-jni",
+        "libprotobuf-java-lite",
+    ],
+}
+
+//=====================================================================================
+//               build fdbus-java-appcomp-server.jar (java test server)               |
+//=====================================================================================
+java_library {
+    sdk_version: "current",
+    name: "fdbus-java-appcomp-server",
+    proto: {
+        type: "lite",
+    },
+    srcs: [
+        "jni/test/AFComponentServer.java",
+        "jni/test/FdbusProtoBuilder.java",
+        "jni/test/CPerson.java",
+        FDB_PROTO_DIR + "/common.base.Example.proto",
+    ],
+    libs: [
+        "fdbus-jni",
+        "libprotobuf-java-lite",
+    ],
+}
 //=====================================================================================
 //                                  build name-server                                 |
 //=====================================================================================
