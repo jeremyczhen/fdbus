@@ -142,4 +142,10 @@ enum EFdbusCredType
 #define fdbEventGroup(_event) ((FdbEventGroup_t)((((uint32_t)(_event)) >> FDB_EVENT_GROUP_SHIFT) & FDB_EVENT_GROUP_BITS))
 #define fdbEventCode(_event) ((FdbMsgCode_t)((_event) & FDB_EVENT_ID_MASK))
 
+#define FDB_ADDRESS_CONNECT_RETRY_NR    5
+#define FDB_ADDRESS_CONNECT_RETRY_INTERVAL 200
+
+#define FDB_ADDRESS_BIND_RETRY_NR    5
+#define FDB_ADDRESS_BIND_RETRY_INTERVAL 200
+
 #endif

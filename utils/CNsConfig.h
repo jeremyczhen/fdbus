@@ -33,8 +33,6 @@ public:
 #define NS_CFG_HS_RECONNECT_INTERVAL    1500
 #define NS_CFG_NS_RECONNECT_INTERVAL    500
 #define NS_CFG_CHECK_IP_INTERVAL        500
-#define NS_CFG_ADDRESS_BIND_RETRY_NR    5
-#define NS_CFG_ADDRESS_BIND_RETRY_INTERVAL 200
 #define NS_CFG_ADDRESS_BIND_RETRY_CNT   5
 #ifdef FDB_CONFIG_UDS_ABSTRACT
     #define NS_CFG_UDS_ADDRESS_PREFIX  "@"
@@ -143,16 +141,6 @@ public:
     static int32_t getNsReconnectInterval()
     {
         return NS_CFG_NS_RECONNECT_INTERVAL;
-    }
-
-    static int32_t getAddressBindRetryNr()
-    {
-        return NS_CFG_ADDRESS_BIND_RETRY_NR;
-    }
-
-    static int32_t getAddressBindRetryInterval()
-    {
-        return NS_CFG_ADDRESS_BIND_RETRY_INTERVAL;
     }
 
     static int32_t getAddressBindRetryCnt()

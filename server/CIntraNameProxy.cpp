@@ -286,7 +286,6 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
             LOG_I("CIntraNameProxy: tokens of server %s are updated.\n", server->name().c_str());
         }
 
-        int32_t retries = CNsConfig::getAddressBindRetryNr();
         const auto &addr_list = msg_addr_list.address_list();
         if (force_reconnect)
         {
@@ -296,52 +295,42 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
         {
             auto *addr_status = bound_list.add_address_list();
             addr_status->request_address(*it);
-            do
+            CServerSocket *sk = server->doBind(it->c_str());
+            if (!sk)
             {
-                CServerSocket *sk = server->doBind(it->c_str());
-                if (sk)
+                continue;
+            }
+            CFdbSocketInfo info;
+            CFdbSocketAddr addr;
+            std::string url;
+            auto char_url = it->c_str();
+            sk->getSocketInfo(info);
+            CBaseSocketFactory::parseUrl(it->c_str(), addr);
+            if (info.mAddress->mType == FDB_SOCKET_TCP)
+            {
+                if (addr.mPort == info.mAddress->mPort)
                 {
-                    CFdbSocketInfo info;
-                    CFdbSocketAddr addr;
-                    std::string url;
-                    auto char_url = it->c_str();
-                    sk->getSocketInfo(info);
-                    CBaseSocketFactory::parseUrl(it->c_str(), addr);
-                    if (info.mAddress->mType == FDB_SOCKET_TCP)
-                    {
-                        if (addr.mPort == info.mAddress->mPort)
-                        {
-                            addr_status->bind_address(*it);
-                        }
-                        else
-                        {
-                            if (addr.mPort)
-                            {
-                                LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
-                                        msg->session(), svc_name, addr.mPort, info.mAddress->mPort);
-                            }
-                            CBaseSocketFactory::buildUrl(url, addr.mAddr.c_str(), info.mAddress->mPort);
-                            addr_status->bind_address(url);
-                            char_url = url.c_str();
-                        }
-                    }
-                    else
-                    {
-                        addr_status->bind_address(*it);
-                    }
-
-                    LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
-                            msg->session(), svc_name, char_url);
-                    break;
+                    addr_status->bind_address(*it);
                 }
                 else
                 {
-#if 0
-                    LOG_E("CIntraNameProxy: session %d: Fail to bind to %s! Reconnecting...\n", msg->session(), it->c_str());
-#endif
-                    sysdep_sleep(CNsConfig::getAddressBindRetryInterval());
+                    if (addr.mPort)
+                    {
+                        LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
+                                msg->session(), svc_name, addr.mPort, info.mAddress->mPort);
+                    }
+                    CBaseSocketFactory::buildUrl(url, addr.mAddr.c_str(), info.mAddress->mPort);
+                    addr_status->bind_address(url);
+                    char_url = url.c_str();
                 }
-            } while (--retries > 0);
+            }
+            else
+            {
+                addr_status->bind_address(*it);
+            }
+
+            LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
+                    msg->session(), svc_name, char_url);
         }
     }
 

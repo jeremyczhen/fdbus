@@ -53,7 +53,18 @@ void CServerSocket::onInput(bool &io_error)
 
 bool CServerSocket::bind(CBaseWorker *worker)
 {
-    if (mSocket->bind())
+    int32_t retries = FDB_ADDRESS_BIND_RETRY_NR;
+    do
+    {
+        if (mSocket->bind())
+        {
+            break;
+        }
+
+        sysdep_sleep(FDB_ADDRESS_BIND_RETRY_INTERVAL);
+    } while (--retries > 0);
+
+    if (retries > 0)
     {
         descriptor(mSocket->getFd());
         attach(worker);
