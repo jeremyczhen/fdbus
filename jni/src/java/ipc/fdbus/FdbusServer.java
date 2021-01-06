@@ -68,7 +68,7 @@ public class FdbusServer
     {
         mNativeHandle = handle;
         mFdbusListener = null;
-    }
+    } 
 
     /*
      * create fdbus client with default name

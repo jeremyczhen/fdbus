@@ -344,7 +344,6 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
             server->updateSecurityLevel();
         }
 
-        int32_t retries = CNsConfig::getAddressBindRetryNr();
         auto &addr_list = msg_addr_list.address_list();
         if (force_reconnect)
         {
@@ -355,73 +354,63 @@ void CIntraNameProxy::processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAdd
             auto *addr_status = bound_list.add_address_list();
             const std::string &tcp_ipc_url = it->tcp_ipc_url();
             addr_status->request_address(tcp_ipc_url);
-            do
+            int32_t udp_port = FDB_INET_PORT_INVALID;
+            if (it->has_udp_port())
             {
-                int32_t udp_port = FDB_INET_PORT_INVALID;
-                if (it->has_udp_port())
+                udp_port = it->udp_port();
+            }
+            CServerSocket *sk = server->doBind(tcp_ipc_url.c_str(), udp_port);
+            if (!sk)
+            {
+                continue;
+            }
+            int32_t bound_port = FDB_INET_PORT_INVALID;
+            CFdbSocketInfo info;
+            std::string url;
+            auto char_url = tcp_ipc_url.c_str();
+            sk->getSocketInfo(info);
+            if (it->address_type() == FDB_SOCKET_TCP)
+            {
+                if (it->tcp_port() == info.mAddress->mPort)
                 {
-                    udp_port = it->udp_port();
-                }
-                CServerSocket *sk = server->doBind(tcp_ipc_url.c_str(), udp_port);
-                if (sk)
-                {
-                    int32_t bound_port = FDB_INET_PORT_INVALID;
-                    CFdbSocketInfo info;
-                    std::string url;
-                    auto char_url = tcp_ipc_url.c_str();
-                    sk->getSocketInfo(info);
-                    if (it->address_type() == FDB_SOCKET_TCP)
-                    {
-                        if (it->tcp_port() == info.mAddress->mPort)
-                        {
-                            addr_status->bind_address(tcp_ipc_url);
-                        }
-                        else
-                        {
-                            if (it->tcp_port())
-                            {
-                                LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
-                                        msg->session(), svc_name, it->tcp_port(), info.mAddress->mPort);
-                            }
-                            CBaseSocketFactory::buildUrl(url, it->tcp_ipc_address().c_str(), info.mAddress->mPort);
-                            addr_status->bind_address(url);
-                            char_url = url.c_str();
-                        }
-                        if (server->UDPEnabled())
-                        {
-                            CFdbSocketInfo socket_info;
-                            if (sk->getUDPSocketInfo(socket_info) && FDB_VALID_PORT(socket_info.mAddress->mPort))
-                            {
-                                bound_port = socket_info.mAddress->mPort;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        addr_status->bind_address(tcp_ipc_url);
-                    }
-                    addr_status->set_udp_port(bound_port);
-
-                    if (FDB_VALID_PORT(bound_port))
-                    {
-                        LOG_I("CIntraNameProxy: session %d: Server: %s, address %s UDP %d is bound.\n",
-                              msg->session(), svc_name, char_url, bound_port);
-                    }
-                    else
-                    {
-                        LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
-                              msg->session(), svc_name, char_url);
-                    }
-                    break;
+                    addr_status->bind_address(tcp_ipc_url);
                 }
                 else
                 {
-#if 0
-                    LOG_E("CIntraNameProxy: session %d: Fail to bind to %s! Reconnecting...\n", msg->session(), it->c_str());
-#endif
-                    sysdep_sleep(CNsConfig::getAddressBindRetryInterval());
+                    if (it->tcp_port())
+                    {
+                        LOG_W("CIntraNameProxy: session %d: Server: %s, port %d is intended but get %d.\n",
+                               msg->session(), svc_name, it->tcp_port(), info.mAddress->mPort);
+                    }
+                    CBaseSocketFactory::buildUrl(url, it->tcp_ipc_address().c_str(), info.mAddress->mPort);
+                    addr_status->bind_address(url);
+                    char_url = url.c_str();
                 }
-            } while (--retries > 0);
+                if (server->UDPEnabled())
+                {
+                    CFdbSocketInfo socket_info;
+                    if (sk->getUDPSocketInfo(socket_info) && FDB_VALID_PORT(socket_info.mAddress->mPort))
+                    {
+                        bound_port = socket_info.mAddress->mPort;
+                    }
+                }
+            }
+            else
+            {
+                addr_status->bind_address(tcp_ipc_url);
+            }
+            addr_status->set_udp_port(bound_port);
+
+            if (FDB_VALID_PORT(bound_port))
+            {
+                LOG_I("CIntraNameProxy: session %d: Server: %s, address %s UDP %d is bound.\n",
+                      msg->session(), svc_name, char_url, bound_port);
+            }
+            else
+            {
+                LOG_I("CIntraNameProxy: session %d: Server: %s, address %s is bound.\n",
+                      msg->session(), svc_name, char_url);
+            }
         }
     }
 

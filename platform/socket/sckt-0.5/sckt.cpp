@@ -34,6 +34,10 @@ THE SOFTWARE. */
 #define CONFIG_SOCKET_CONNECT_TIMEOUT 2000
 #endif
 
+#if !defined(CONFIG_SOCKET_LISTEN_BACKLOG)
+#define CONFIG_SOCKET_LISTEN_BACKLOG 32
+#endif
+
 //system specific defines, typedefs and includes
 #ifdef __WIN32__
 #include <winsock2.h>
@@ -287,9 +291,6 @@ bool Socket::setKeepAlive()
     if (setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0) {
         return false;
     }
-    //struct timeval tval;
-    //tval.tv_sec = 3;
-    //setsockopt(CastToSocket(socket), IPPROTO_TCP, TCP_KEEPALIVE, &tval, sizeof(tval));
 #endif
 #endif
 
@@ -435,7 +436,7 @@ void TCPServerSocket::Open(const IPAddress& ip, bool disableNaggle){
     }
 #endif
 
-    if( listen(CastToSocket(this->socket), 5) == M_SOCKET_ERROR ){
+    if( listen(CastToSocket(this->socket), CONFIG_SOCKET_LISTEN_BACKLOG) == M_SOCKET_ERROR ){
         this->Close();
         throw sckt::Exc("TCPServerSocket::Open(): Couldn't listen to local port");
     }

@@ -147,6 +147,7 @@ int CGlobalParam::jniRegisterNativeMethods(JNIEnv* env,
     return -1;
 }
 
+#include <stdio.h>
 void CGlobalParam::getSubscriptionList(JNIEnv *env, jobject sub_items, tSubscriptionTbl &sub_tbl)
 {
     if (!sub_items)
@@ -168,7 +169,7 @@ void CGlobalParam::getSubscriptionList(JNIEnv *env, jobject sub_items, tSubscrip
                 FDB_LOG_E("Java_FdbusClient_fdb_1subscribe: fail to get item at %d!\n", i);
                 continue;
             }
-
+    
             jint code= env->GetIntField(sub_item_obj , CFdbusSubscribeItemParam::mCode);
             jobject filter_obj = env->GetObjectField(sub_item_obj , CFdbusSubscribeItemParam::mTopic);
             jobject callback_obj = env->GetObjectField(sub_item_obj , CFdbusSubscribeItemParam::mCallback);
@@ -315,7 +316,7 @@ void CGlobalParam::callConnection(jobject callback, bool is_online, bool is_firs
     {
         return;
     }
-
+    
     JNIEnv *env = obtainJniEnv();
     if (env)
     {

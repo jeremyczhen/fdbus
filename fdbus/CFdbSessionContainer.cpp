@@ -155,7 +155,18 @@ bool CFdbSessionContainer::bindUDPSocket(const char *ip_address, int32_t udp_por
     auto udp_socket = CBaseSocketFactory::createUDPSocket(udp_addr);
     if (udp_socket)
     {
-        auto socket_imp = udp_socket->bind();
+        CSocketImp *socket_imp = 0;
+        int32_t retries = FDB_ADDRESS_BIND_RETRY_NR;
+        do {
+            socket_imp = udp_socket->bind();
+            if (socket_imp)
+            {
+                break;
+            }
+
+            sysdep_sleep(FDB_ADDRESS_BIND_RETRY_INTERVAL);
+        } while (--retries > 0);
+
         if (socket_imp)
         {
             mUDPSocket = udp_socket;

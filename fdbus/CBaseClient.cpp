@@ -43,7 +43,18 @@ CFdbSession *CClientSocket::connect()
 {
     CFdbSession *session = 0;
     auto socket = fdb_dynamic_cast_if_available<CClientSocketImp *>(mSocket);
-    auto sock_imp = socket->connect();
+    int32_t retries = FDB_ADDRESS_CONNECT_RETRY_NR;
+    CSocketImp *sock_imp = 0;
+    do {
+        sock_imp = socket->connect();
+        if (sock_imp)
+        {
+            break;
+        }
+
+        sysdep_sleep(FDB_ADDRESS_CONNECT_RETRY_INTERVAL);
+    } while (--retries > 0);
+
     if (sock_imp)
     {
         session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);

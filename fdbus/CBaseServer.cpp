@@ -54,7 +54,18 @@ void CServerSocket::onInput(bool &io_error)
 bool CServerSocket::bind(CBaseWorker *worker)
 {
     auto socket = fdb_dynamic_cast_if_available<CServerSocketImp *>(mSocket);
-    if (socket->bind())
+    int32_t retries = FDB_ADDRESS_BIND_RETRY_NR;
+    do
+    {
+        if (socket->bind())
+        {
+            break;
+        }
+
+        sysdep_sleep(FDB_ADDRESS_BIND_RETRY_INTERVAL);
+    } while (--retries > 0);
+
+    if (retries > 0)
     {
         descriptor(socket->getFd());
         attach(worker);
