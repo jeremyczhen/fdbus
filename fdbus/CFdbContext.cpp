@@ -56,7 +56,10 @@ const char *CFdbContext::getFdbLibVersion()
 
 bool CFdbContext::start(uint32_t flag)
 {
-    std::lock_guard<std::mutex> _l(mSingletonLock);
+    if (!(flag & FDB_WORKER_EXE_IN_PLACE))
+    {
+        std::lock_guard<std::mutex> _l(mSingletonLock);
+    }
     return CBaseWorker::start(FDB_WORKER_ENABLE_FD_LOOP | flag);
 }
 

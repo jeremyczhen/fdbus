@@ -52,7 +52,7 @@ CFdbSession *CClientSocket::connect()
             break;
         }
 
-        sysdep_sleep(FDB_ADDRESS_CONNECT_RETRY_INTERVAL);
+        FDB_CONTEXT->dispatchInput(FDB_ADDRESS_CONNECT_RETRY_INTERVAL);
     } while (--retries > 0);
 
     if (sock_imp)

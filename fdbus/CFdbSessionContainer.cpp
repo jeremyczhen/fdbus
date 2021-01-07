@@ -164,7 +164,7 @@ bool CFdbSessionContainer::bindUDPSocket(const char *ip_address, int32_t udp_por
                 break;
             }
 
-            sysdep_sleep(FDB_ADDRESS_BIND_RETRY_INTERVAL);
+            FDB_CONTEXT->dispatchInput(FDB_ADDRESS_BIND_RETRY_INTERVAL);
         } while (--retries > 0);
 
         if (socket_imp)
