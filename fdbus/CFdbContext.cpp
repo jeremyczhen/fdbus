@@ -23,11 +23,10 @@
 
 // template<> FdbSessionId_t CFdbContext::tSessionContainer::mUniqueEntryAllocator = 0;
 
-CFdbContext *CFdbContext::mInstance = 0;
-std::mutex CFdbContext::mSingletonLock;
+static CFdbContext mFdbDefaultContextWorker;
 
 CFdbContext::CFdbContext()
-    : CBaseWorker("CFdbContext")
+    : CBaseWorker("FDBus Context")
     , mNameProxy(0)
     , mLogger(0)
     , mEnableNameProxy(true)
@@ -38,15 +37,7 @@ CFdbContext::CFdbContext()
 
 CFdbContext *CFdbContext::getInstance()
 {
-    if (!mInstance)
-    {
-        std::lock_guard<std::mutex> _l(mSingletonLock);
-        if (!mInstance)
-        {
-            mInstance = new CFdbContext();
-        }
-    }
-    return mInstance;
+    return &mFdbDefaultContextWorker;
 }
 
 const char *CFdbContext::getFdbLibVersion()
@@ -56,10 +47,6 @@ const char *CFdbContext::getFdbLibVersion()
 
 bool CFdbContext::start(uint32_t flag)
 {
-    if (!(flag & FDB_WORKER_EXE_IN_PLACE))
-    {
-        std::lock_guard<std::mutex> _l(mSingletonLock);
-    }
     return CBaseWorker::start(FDB_WORKER_ENABLE_FD_LOOP | flag);
 }
 
@@ -118,7 +105,6 @@ bool CFdbContext::destroy()
     exit();
     join();
     delete this;
-    mInstance = 0;
     return true;
 }
 

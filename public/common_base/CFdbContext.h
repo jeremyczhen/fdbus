@@ -19,7 +19,6 @@
 
 #include <vector>
 #include <functional>
-#include <mutex>
 #include "common_defs.h"
 #include "CEntityContainer.h"
 #include "CBaseWorker.h"
@@ -52,6 +51,7 @@ typedef std::function<void(const tNsWatchdogList &)> tNsWatchdogListenerFn;
 class CFdbContext : public CBaseWorker
 {
 public:
+    CFdbContext();
     static CFdbContext *getInstance();
     bool start(uint32_t flag = FDB_WORKER_ENABLE_FD_LOOP);
     bool init();
@@ -89,15 +89,9 @@ private:
     tSessionContainer mSessionContainer;
     CIntraNameProxy *mNameProxy;
     CLogProducer *mLogger;
-    static std::mutex mSingletonLock;
 
     bool mEnableNameProxy;
     bool mEnableLogger;
-
-    CFdbContext();
-    ~CFdbContext() {}
-
-    static CFdbContext *mInstance;
 };
 
 #endif
