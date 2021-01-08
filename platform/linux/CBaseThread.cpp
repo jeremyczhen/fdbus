@@ -47,16 +47,29 @@ bool CBaseThread::start(uint32_t flag)
 {
     if (started())
     {
-        return true;
+        return false;
     }
 
     if (flag & FDB_WORKER_EXE_IN_PLACE)
     {
+        {
+            std::lock_guard<std::mutex> _l(mMutex);
+            if (started())
+            {
+                return false;
+            }
+            mThread = getpid();
+        }
         threadFunc(this);
         return true;
     }
     else
     {
+        std::lock_guard<std::mutex> _l(mMutex);
+        if (started())
+        {
+            return true;
+        }
         bool ret = false;
         pthread_attr_t threadAttr;
         if (!pthread_attr_init(&threadAttr))

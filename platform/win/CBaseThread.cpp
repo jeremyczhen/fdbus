@@ -18,7 +18,7 @@
 #include <common_base/CBaseThread.h>
 
 CBaseThread::CBaseThread(const char* thread_name)
-    : mThread()
+    : mThread(0)
     , mPriority(THREAD_PRIORITY_NORMAL)
 {
     mInvalidTid = GetCurrentThreadId();
@@ -32,12 +32,31 @@ CBaseThread::~CBaseThread()
 
 bool CBaseThread::start(uint32_t flag)
 {
+    if (started())
+    {
+        return false;
+    }
+
     if (flag & FDB_WORKER_EXE_IN_PLACE)
     {
+        {
+            std::lock_guard<std::mutex> _l(mMutex);
+            if (started())
+            {
+                return false;
+            }
+            mThreadId = getPid();
+        }
         threadFunc(this);
+        return true;
     }
     else
     {
+        std::lock_guard<std::mutex> _l(mMutex);
+        if (started())
+        {
+            return true;
+        }
         mThread = reinterpret_cast<CBASE_tThreadHnd>(_beginthreadex(0, 0,
                   CBaseThread::threadFunc,
                   this, CREATE_SUSPENDED, 0));
@@ -142,5 +161,5 @@ unsigned int __stdcall CBaseThread::threadFunc
 
 CBASE_tProcId CBaseThread::getPid()
 {
-    return 0;
+    return GetCurrentThreadId();
 }

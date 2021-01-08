@@ -19,6 +19,7 @@
 
 #include "CBaseSysDep.h"
 #include <string>
+#include <mutex>
 
 /*
  *  * Default starting flag: create thread; doesn't supoort watch
@@ -66,6 +67,7 @@ protected:
     {}
 
     CBASE_tThreadHnd mThread;
+    std::mutex mMutex;
 
 private:
     int32_t mPriority;

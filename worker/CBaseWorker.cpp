@@ -553,13 +553,20 @@ bool CBaseWorker::init(uint32_t flag)
 {
     if (!mEventLoop)
     {
-        if (flag & FDB_WORKER_ENABLE_FD_LOOP)
         {
-            mEventLoop = new CFdEventLoop();
-        }
-        else
-        {
-            mEventLoop = new CThreadEventLoop();
+            std::lock_guard<std::mutex> _l(mMutex);
+            if (mEventLoop)
+            {
+                return true;
+            }
+            if (flag & FDB_WORKER_ENABLE_FD_LOOP)
+            {
+                mEventLoop = new CFdEventLoop();
+            }
+            else
+            {
+                mEventLoop = new CThreadEventLoop();
+            }
         }
         mNormalJobQueue.eventLoop(mEventLoop);
         mUrgentJobQueue.eventLoop(mEventLoop);
@@ -578,11 +585,6 @@ bool CBaseWorker::init(uint32_t flag)
 
 bool CBaseWorker::start(uint32_t flag)
 {
-    if (started())
-    {
-        return false;
-    }
-
     return init(flag) ? CBaseThread::start(flag) : false;
 }
 
