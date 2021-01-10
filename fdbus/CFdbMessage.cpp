@@ -451,7 +451,7 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
     {
         setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
     }
-    return !!(mFlag & MSG_FLAG_STATUS);
+    return !(mFlag & MSG_FLAG_STATUS);
 }
 
 bool CFdbMessage::invoke(CBaseJob::Ptr &msg_ref

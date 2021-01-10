@@ -61,7 +61,8 @@ public class AFComponentClient
                             try {
                                 NFdbExample.NowPlayingDetails np =
                                         NFdbExample.NowPlayingDetails.parseFrom(msg.byteArray());
-                                System.out.println("CP3 Reply is received - now playing info: " +
+                                System.out.println(client.busName() + 
+                                                   ": CP3 Reply is received - now playing info: " +
                                                    np.toString());
                             } catch (Exception e) {
                                 System.out.println(e);
@@ -79,7 +80,7 @@ public class AFComponentClient
                                                                     CPerson.class);
                             TextFormatter fmter = new TextFormatter();
                             fmter.format(persons);
-                            System.out.println("CP4 Reply is received - " + fmter.stream());
+                            System.out.println(client.busName() + ": CP4 Reply is received - " + fmter.stream());
                         }
                     },
                     0);
@@ -100,37 +101,37 @@ public class AFComponentClient
 
         comp_client.mClientList = new ArrayList<FdbusClient>();
         FdbusAFComponent component = new FdbusAFComponent("media client component");
-        ArrayList<SubscribeItem> event_list = new ArrayList<SubscribeItem>();
-        event_list.add(SubscribeItem.newAction(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter",
-                new FdbusAppListener.Action(){
-                    public void handleMessage(FdbusMessage msg)
-                    {
-                        try {
-                            NFdbExample.ElapseTime et =
-                                    NFdbExample.ElapseTime.parseFrom(msg.byteArray());
-                            System.out.println("CP1: elapse time is received. topic: " + msg.topic() +
-                                                ", code: " + msg.code() + ", value: " + et.toString());
-                        } catch (Exception e) {
-                            System.out.println(e);
-                        }
-                    }
-                }));
-        event_list.add(SubscribeItem.newAction(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "raw_buffer",
-                new FdbusAppListener.Action(){
-                    public void handleMessage(FdbusMessage msg)
-                    {
-                        System.out.println("CP2: elapse time is received. topic: " + msg.topic() +
-                                            ", code: " + msg.code());
-                    }
-                }));
         for (String arg : args)
         {
+            ArrayList<SubscribeItem> event_list = new ArrayList<SubscribeItem>();
+            event_list.add(SubscribeItem.newAction(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "my_filter",
+                    new FdbusAppListener.Action(){
+                        public void handleMessage(FdbusMessage msg)
+                        {
+                            try {
+                                NFdbExample.ElapseTime et =
+                                        NFdbExample.ElapseTime.parseFrom(msg.byteArray());
+                                System.out.println(arg + ": CP1: elapse time is received. topic: " + msg.topic() +
+                                                    ", code: " + msg.code() + ", value: " + et.toString());
+                            } catch (Exception e) {
+                                System.out.println(e);
+                            }
+                        }
+                    }));
+            event_list.add(SubscribeItem.newAction(NFdbExample.FdbMediaSvcMsgId.NTF_ELAPSE_TIME_VALUE, "raw_buffer",
+                    new FdbusAppListener.Action(){
+                        public void handleMessage(FdbusMessage msg)
+                        {
+                            System.out.println(arg + ": CP2: elapse time is received. topic: " + msg.topic() +
+                                                ", code: " + msg.code());
+                        }
+                    }));
             FdbusClient client = component.queryService(arg, event_list,
                 new FdbusAppListener.Connection()
                 {
                     public void onConnectionStatus(int sid, boolean is_online, boolean is_first)
                     {
-                        System.out.println("onConnectionStatus - session: " + sid + ", is_online: " + is_online
+                        System.out.println(arg + ": onConnectionStatus - session: " + sid + ", is_online: " + is_online
                                             + ", is_first: " + is_first);
                     }
                 });
