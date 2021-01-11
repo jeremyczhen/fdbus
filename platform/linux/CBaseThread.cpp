@@ -58,7 +58,7 @@ bool CBaseThread::start(uint32_t flag)
             {
                 return false;
             }
-            mThread = getpid();
+            mThread = pthread_self();
         }
         threadFunc(this);
         return true;

@@ -45,7 +45,7 @@ bool CBaseThread::start(uint32_t flag)
             {
                 return false;
             }
-            mThreadId = getPid();
+            mThreadId = GetCurrentThreadId();
         }
         threadFunc(this);
         return true;
