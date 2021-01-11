@@ -91,7 +91,8 @@ class ReturnMessage(ctypes.Structure):
                 ('msg_data', ctypes.POINTER(ctypes.c_byte)), 
                 ('data_size', ctypes.c_int),
                 ('status', ctypes.c_int),
-                ('msg_buffer', ctypes.c_void_p)]
+                ('msg_buffer', ctypes.c_void_p),
+                ('topic', ctypes.c_char_p)]
 
 fdb_client_online_fn_t = ctypes.CFUNCTYPE(None,                                  #return
                                           ctypes.c_void_p,                       #handle
