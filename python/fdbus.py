@@ -80,7 +80,7 @@ def fdbusCtypes2buffer(cptr, length):
     rptr = (ctypes.c_byte * length).from_buffer(res)
     if not ctypes.memmove(rptr, cptr, length):
         return None
-    return res
+    return bytes(res)
 
 class SubscribeItem(ctypes.Structure):
             _fields_ = [('event_code', ctypes.c_int), ('topic', ctypes.c_char_p)]
