@@ -68,6 +68,15 @@ static void on_broadcast(fdb_client_t *self,
     }
 }
 
+static const fdb_client_handles_t g_handles =
+{
+    on_online,
+    on_offline,
+    on_reply,
+    0,
+    on_broadcast
+};
+
 int main(int argc, char **argv)
 {
     int32_t i;
@@ -79,7 +88,7 @@ int main(int argc, char **argv)
         char url[1024];
         snprintf(url, sizeof(url), "svc://%s", argv[i + 1]);
         client_array[i] = fdb_client_create(argv[i + 1], 0);
-        fdb_client_register_event_handle(client_array[i], on_online, on_offline, on_reply, 0, on_broadcast);
+        fdb_client_register_event_handle(client_array[i], &g_handles);
         fdb_client_connect(client_array[i], url);
     }
 

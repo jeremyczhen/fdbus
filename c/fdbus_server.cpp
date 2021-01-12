@@ -51,25 +51,25 @@ CCServer::~CCServer()
 
 void CCServer::onOnline(FdbSessionId_t sid, bool is_first)
 {
-    if (!mServer || !mServer->on_online_func)
+    if (!mServer || !mServer->handles || !mServer->handles->on_online_func)
     {
         return;
     }
-    mServer->on_online_func(mServer, sid, is_first);
+    mServer->handles->on_online_func(mServer, sid, is_first);
 }
 
 void CCServer::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    if (!mServer || !mServer->on_offline_func)
+    if (!mServer || !mServer->handles || !mServer->handles->on_offline_func)
     {
         return;
     }
-    mServer->on_offline_func(mServer, sid, is_last);
+    mServer->handles->on_offline_func(mServer, sid, is_last);
 }
 
 void CCServer::onInvoke(CBaseJob::Ptr &msg_ref)
 {
-    if (!mServer || !mServer->on_invoke_func)
+    if (!mServer || !mServer->handles || !mServer->handles->on_invoke_func)
     {
         return;
     }
@@ -78,7 +78,7 @@ void CCServer::onInvoke(CBaseJob::Ptr &msg_ref)
     if (fdb_msg)
     {
         auto reply_handle = new CBaseJob::Ptr(msg_ref);
-        mServer->on_invoke_func(mServer,
+        mServer->handles->on_invoke_func(mServer,
                                 fdb_msg->session(),
                                 fdb_msg->code(),
                                 fdb_msg->getPayloadBuffer(),
@@ -89,7 +89,7 @@ void CCServer::onInvoke(CBaseJob::Ptr &msg_ref)
 
 void CCServer::onSubscribe(CBaseJob::Ptr &msg_ref)
 {
-    if (!mServer || !mServer->on_subscribe_func)
+    if (!mServer || !mServer->handles || !mServer->handles->on_subscribe_func)
     {
         return;
     }
@@ -115,7 +115,7 @@ void CCServer::onSubscribe(CBaseJob::Ptr &msg_ref)
     if (event_array.size())
     {
         auto reply_handle = new CBaseJob::Ptr(msg_ref);
-        mServer->on_subscribe_func(mServer,
+        mServer->handles->on_subscribe_func(mServer,
                                    event_array.data(),
                                    (int32_t)event_array.size(),
                                    reply_handle);
@@ -137,16 +137,9 @@ void *fdb_server_get_user_data(fdb_server_t *handle)
     return handle ? handle->user_data : 0;
 }
 
-void fdb_server_register_event_handle(fdb_server_t *handle,
-                                      fdb_server_online_fn_t on_online,
-                                      fdb_server_offline_fn_t on_offline,
-                                      fdb_server_invoke_fn_t on_invoke,
-                                      fdb_server_subscribe_fn_t on_subscribe)
+void fdb_server_register_event_handle(fdb_server_t *handle, const fdb_server_handles_t *handles)
 {
-    handle->on_online_func = on_online;
-    handle->on_offline_func = on_offline;
-    handle->on_invoke_func = on_invoke;
-    handle->on_subscribe_func = on_subscribe;
+    handle->handles = handles;
 }
 
 void fdb_server_destroy(fdb_server_t *handle)

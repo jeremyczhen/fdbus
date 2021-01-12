@@ -130,6 +130,13 @@ fdb_client_broadcast_fn_t = ctypes.CFUNCTYPE(None,                              
                                              ctypes.c_char_p                     #topic
                                              )
 
+class ClientHandles(ctypes.Structure):
+    _fields_ = [('on_online', fdb_client_online_fn_t),
+                ('on_offline', fdb_client_offline_fn_t),
+                ('on_reply', fdb_client_reply_fn_t),
+                ('on_get_event', fdb_client_get_event_fn_t),
+                ('on_broadcast', fdb_client_broadcast_fn_t)]
+
 # public function
 # initialize FDBus; should be called before any call to FDBus
 def fdbusStart(clib_path = None):
@@ -160,23 +167,14 @@ class FdbusClient(object):
         fn_create = fdb_clib.fdb_client_create
         fn_create.restype = ctypes.c_void_p
         self.native = fn_create(name)
-        fdb_clib.fdb_client_register_event_handle.argtypes = [ctypes.c_void_p,
-                                                              fdb_client_online_fn_t,
-                                                              fdb_client_offline_fn_t,
-                                                              fdb_client_reply_fn_t,
-                                                              fdb_client_get_event_fn_t,
-                                                              fdb_client_broadcast_fn_t]
-        self.online_func = self.getOnOnlineFunc()
-        self.offline_func = self.getOnOfflineFunc()
-        self.reply_func = self.getOnReplyFunc()
-        self.get_event_func = self.getOnGetEventFunc()
-        self.broadcast_func = self.getOnBroadcast()
-        fdb_clib.fdb_client_register_event_handle(self.native,
-                                                  self.online_func,
-                                                  self.offline_func,
-                                                  self.reply_func,
-                                                  self.get_event_func,
-                                                  self.broadcast_func)
+        self.handles = ClientHandles()
+        self.handles.on_online = self.getOnOnlineFunc()
+        self.handles.on_offline = self.getOnOfflineFunc()
+        self.handles.on_reply = self.getOnReplyFunc()
+        self.handles.on_get_event = self.getOnGetEventFunc()
+        self.handles.on_broadcast = self.getOnBroadcast()
+        fdb_clib.fdb_client_register_event_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ClientHandles)]
+        fdb_clib.fdb_client_register_event_handle(self.native, ctypes.byref(self.handles))
     # private method
     def getOnOnlineFunc(self):
         def callOnOnline(handle, sid):
@@ -619,6 +617,13 @@ fdb_server_subscribe_fn_t = ctypes.CFUNCTYPE(None,                          #ret
                                              ctypes.c_int,                  #nr_items
                                              ctypes.c_void_p                #reply_handle
                                              )
+
+class ServerHandles(ctypes.Structure):
+    _fields_ = [('on_online', fdb_server_online_fn_t),
+                ('on_offline', fdb_server_offline_fn_t),
+                ('on_invoke', fdb_server_invoke_fn_t),
+                ('on_subscribe', fdb_server_subscribe_fn_t)]
+
 #base class of FDBus Server
 class FdbusServer(object):
     # create FDBus server
@@ -633,20 +638,14 @@ class FdbusServer(object):
         fn_create = fdb_clib.fdb_server_create
         fn_create.restype = ctypes.c_void_p
         self.native = fn_create(name)
-        fdb_clib.fdb_server_register_event_handle.argtypes = [ctypes.c_void_p,
-                                                              fdb_server_online_fn_t,
-                                                              fdb_server_offline_fn_t,
-                                                              fdb_server_invoke_fn_t,
-                                                              fdb_server_subscribe_fn_t]
-        self.online_func = self.getOnOnlineFunc()
-        self.offline_func = self.getOnOfflineFunc()
-        self.invoke_func = self.getOnInvokeFunc()
-        self.subscribe_func = self.getOnSubscribeFunc()
-        fdb_clib.fdb_server_register_event_handle(self.native,
-                                                  self.online_func,
-                                                  self.offline_func,
-                                                  self.invoke_func,
-                                                  self.subscribe_func)
+
+        self.handles = ServerHandles()
+        self.handles.on_online = self.getOnOnlineFunc()
+        self.handles.on_offline = self.getOnOfflineFunc()
+        self.handles.on_invoke = self.getOnInvokeFunc()
+        self.handles.on_subscribe = self.getOnSubscribeFunc()
+        fdb_clib.fdb_server_register_event_handle.argtypes = [ctypes.c_void_p, ctypes.POINTER(ServerHandles)]
+        fdb_clib.fdb_server_register_event_handle(self.native, ctypes.byref(self.handles))
 
     # private method
     def getOnOnlineFunc(self):

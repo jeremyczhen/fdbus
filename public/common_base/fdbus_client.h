@@ -59,15 +59,20 @@ typedef void (*fdb_client_broadcast_fn_t)(struct fdb_client_tag *self,
                                           int32_t data_size,
                                           const char *topic);
 
-typedef struct fdb_client_tag
+typedef struct fdb_client_handles_tag
 {
-    void *native_handle;
-    void *user_data;
     fdb_client_online_fn_t on_online_func;
     fdb_client_offline_fn_t on_offline_func;
     fdb_client_reply_fn_t on_reply_func;
     fdb_client_get_event_fn_t on_get_event_func;
     fdb_client_broadcast_fn_t on_broadcast_func;
+}fdb_client_handles_t;
+
+typedef struct fdb_client_tag
+{
+    void *native_handle;
+    void *user_data;
+    const fdb_client_handles_t *handles;
 }fdb_client_t;
 
 LIB_EXPORT
@@ -75,12 +80,7 @@ fdb_client_t *fdb_client_create(const char *name, void *user_data);
 LIB_EXPORT
 void *fdb_client_get_user_data(fdb_client_t *handle);
 LIB_EXPORT
-void fdb_client_register_event_handle(fdb_client_t *handle,
-                                      fdb_client_online_fn_t on_online,
-                                      fdb_client_offline_fn_t on_offline,
-                                      fdb_client_reply_fn_t on_reply,
-                                      fdb_client_get_event_fn_t on_get_event,
-                                      fdb_client_broadcast_fn_t on_broadcast);
+void fdb_client_register_event_handle(fdb_client_t *handle, const fdb_client_handles_t *handles);
 
 LIB_EXPORT
 void fdb_client_destroy(fdb_client_t *handle);

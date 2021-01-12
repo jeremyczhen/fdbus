@@ -69,26 +69,26 @@ CCClient::~CCClient()
 
 void CCClient::onOnline(FdbSessionId_t sid, bool is_first)
 {
-    if (!mClient || !mClient->on_online_func)
+    if (!mClient || !mClient->handles || !mClient->handles->on_online_func)
     {
         return;
     }
     
-    mClient->on_online_func(mClient, sid);
+    mClient->handles->on_online_func(mClient, sid);
 }
 
 void CCClient::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    if (!mClient || !mClient->on_offline_func)
+    if (!mClient || !mClient->handles || !mClient->handles->on_offline_func)
     {
         return;
     }
-    mClient->on_offline_func(mClient, sid);
+    mClient->handles->on_offline_func(mClient, sid);
 }
 
 void CCClient::onReply(CBaseJob::Ptr &msg_ref)
 {
-    if (!mClient || !mClient->on_reply_func)
+    if (!mClient || !mClient->handles || !mClient->handles->on_reply_func)
     {
         return;
     }
@@ -111,7 +111,7 @@ void CCClient::onReply(CBaseJob::Ptr &msg_ref)
         c_msg = castToMessage<CCInvokeMsg *>(msg_ref);
     }
 
-    mClient->on_reply_func(mClient,
+    mClient->handles->on_reply_func(mClient,
                            fdb_msg->session(),
                            fdb_msg->code(),
                            fdb_msg->getPayloadBuffer(),
@@ -122,7 +122,7 @@ void CCClient::onReply(CBaseJob::Ptr &msg_ref)
 
 void CCClient::onGetEvent(CBaseJob::Ptr &msg_ref)
 {
-    if (!mClient || !mClient->on_reply_func)
+    if (!mClient || !mClient->handles || !mClient->handles->on_get_event_func)
     {
         return;
     }
@@ -145,7 +145,7 @@ void CCClient::onGetEvent(CBaseJob::Ptr &msg_ref)
         c_msg = castToMessage<CCInvokeMsg *>(msg_ref);
     }
 
-    mClient->on_get_event_func(mClient,
+    mClient->handles->on_get_event_func(mClient,
                                fdb_msg->session(),
                                fdb_msg->code(),
                                fdb_msg->topic().c_str(),
@@ -157,14 +157,14 @@ void CCClient::onGetEvent(CBaseJob::Ptr &msg_ref)
 
 void CCClient::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    if (!mClient || !mClient->on_broadcast_func)
+    if (!mClient || !mClient->handles || !mClient->handles->on_broadcast_func)
     {
         return;
     }
     auto *fdb_msg = castToMessage<CBaseMessage *>(msg_ref);
     if (fdb_msg)
     {
-        mClient->on_broadcast_func(mClient,
+        mClient->handles->on_broadcast_func(mClient,
                                    fdb_msg->session(),
                                    fdb_msg->code(),
                                    fdb_msg->getPayloadBuffer(),
@@ -188,22 +188,13 @@ void *fdb_client_get_user_data(fdb_client_t *handle)
     return handle ? handle->user_data : 0;
 }
 
-void fdb_client_register_event_handle(fdb_client_t *handle,
-                                      fdb_client_online_fn_t on_online,
-                                      fdb_client_offline_fn_t on_offline,
-                                      fdb_client_reply_fn_t on_reply,
-                                      fdb_client_get_event_fn_t on_get_event,
-                                      fdb_client_broadcast_fn_t on_broadcast)
+void fdb_client_register_event_handle(fdb_client_t *handle, const fdb_client_handles_t *handles)
 {
     if (!handle)
     {
         return;
     }
-    handle->on_online_func = on_online;
-    handle->on_offline_func = on_offline;
-    handle->on_reply_func = on_reply;
-    handle->on_get_event_func = on_get_event;
-    handle->on_broadcast_func = on_broadcast;
+    handle->handles = handles;
 }
 
 void fdb_client_destroy(fdb_client_t *handle)

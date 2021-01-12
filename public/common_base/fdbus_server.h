@@ -38,14 +38,19 @@ typedef void (*fdb_server_subscribe_fn_t)(struct fdb_server_tag *self,
                                           const fdb_subscribe_item_t *sub_items,
                                           int32_t nr_items, void *reply_handle);
 
-typedef struct fdb_server_tag
+typedef struct fdb_server_handles_tag
 {
-    void *native_handle;
-    void *user_data;
     fdb_server_online_fn_t on_online_func;
     fdb_server_offline_fn_t on_offline_func;
     fdb_server_invoke_fn_t on_invoke_func;
     fdb_server_subscribe_fn_t on_subscribe_func;
+}fdb_server_handles_t;
+
+typedef struct fdb_server_tag
+{
+    void *native_handle;
+    void *user_data;
+    const fdb_server_handles_t *handles;
 }fdb_server_t;
 
 LIB_EXPORT
@@ -53,11 +58,7 @@ fdb_server_t *fdb_server_create(const char *name, void *user_data);
 LIB_EXPORT
 void *fdb_server_get_user_data(fdb_server_t *handle);
 LIB_EXPORT
-void fdb_server_register_event_handle(fdb_server_t *handle,
-                                      fdb_server_online_fn_t on_online,
-                                      fdb_server_offline_fn_t on_offline,
-                                      fdb_server_invoke_fn_t on_invoke,
-                                      fdb_server_subscribe_fn_t on_subscribe);
+void fdb_server_register_event_handle(fdb_server_t *handle, const fdb_server_handles_t *handles);
 
 LIB_EXPORT
 void fdb_server_destroy(fdb_server_t *handle);
