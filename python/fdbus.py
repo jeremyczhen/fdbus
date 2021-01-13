@@ -82,6 +82,26 @@ def fdbusCtypes2buffer(cptr, length):
         return None
     return bytes(res)
 
+class FdbusReplyClosure(object):
+    def handleMessage(self, sid, msg_code, msg_data, status, user_data):
+        pass
+    def getMessageCallback(self):
+        def _handleMessage(handle,
+                          sid,
+                          msg_code,
+                          msg_data,
+                          data_size,
+                          status,
+                          user_data):
+            self.handleMessage(sid,
+                               msg_code,
+                               fdbusCtypes2buffer(msg_data, data_size),
+                               status,
+                               user_data)
+
+        self.msg_handle = fdb_message_reply_fn_t(_handleMessage)
+        return self.msg_handle
+
 class SubscribeItem(ctypes.Structure):
             _fields_ = [('event_code', ctypes.c_int), ('topic', ctypes.c_char_p)]
 
@@ -111,6 +131,15 @@ fdb_client_reply_fn_t = ctypes.CFUNCTYPE(None,                                  
                                          ctypes.c_int,                           #status
                                          ctypes.c_void_p                         #user_data
                                          )
+fdb_message_reply_fn_t = ctypes.CFUNCTYPE(None,                                   #return
+                                          ctypes.c_void_p,                        #handle
+                                          ctypes.c_int,                           #sid
+                                          ctypes.c_int,                           #msg_code
+                                          ctypes.POINTER(ctypes.c_byte),          #msg_data
+                                          ctypes.c_int,                           #data_size
+                                          ctypes.c_int,                           #status
+                                          ctypes.c_void_p                         #user_data
+                                          )
 fdb_client_get_event_fn_t = ctypes.CFUNCTYPE(None,                               #return
                                              ctypes.c_void_p,                    #handle
                                              ctypes.c_int,                       #sid
@@ -288,6 +317,34 @@ class FdbusClient(object):
                                          user_data,
                                          castToChar(log_data))
 
+    def invoke_callback(self,
+                        callback,
+                        msg_code,
+                        msg_data = None,
+                        timeout = 0,
+                        user_data = None,
+                        log_data = None):
+        if msg_data is None:
+            data_size = 0
+        else:
+            data_size = len(msg_data)
+        global fdb_clib
+        fdb_clib.fdb_client_invoke_callback.argtypes = [ctypes.c_void_p,
+                                                        ctypes.c_int,
+                                                        ctypes.c_char_p,
+                                                        ctypes.c_int,
+                                                        ctypes.c_int,
+                                                        fdb_message_reply_fn_t,
+                                                        ctypes.c_void_p,
+                                                        ctypes.c_char_p]
+        fdb_clib.fdb_client_invoke_callback(self.native,
+                                            msg_code,
+                                            msg_data,
+                                            data_size,
+                                            timeout,
+                                            callback,
+                                            user_data,
+                                            castToChar(log_data))
     """
     public method
     invoke server method synchronously: will block until reply is received.

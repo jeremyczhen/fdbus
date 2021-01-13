@@ -29,7 +29,7 @@
 class CCClient : public CBaseClient
 {
 public:
-    CCClient(const char *name, fdb_client_t *c_handle);
+    CCClient(const char *name, fdb_client_t *c_handle = 0);
     ~CCClient();
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first);
@@ -56,6 +56,11 @@ public:
     void *mUserData;
 };
 
+CBaseClient *FDB_createCClient(const char *name)
+{
+    return new CCClient(name);
+}
+
 CCClient::CCClient(const char *name, fdb_client_t *c_handle)
     : CBaseClient(name)
     , mClient(c_handle)
@@ -69,7 +74,13 @@ CCClient::~CCClient()
 
 void CCClient::onOnline(FdbSessionId_t sid, bool is_first)
 {
-    if (!mClient || !mClient->handles || !mClient->handles->on_online_func)
+    if (!mClient)
+    {
+        CFdbBaseObject::onOnline(sid, is_first);
+        return;
+    }
+
+    if (!mClient->handles || !mClient->handles->on_online_func)
     {
         return;
     }
@@ -79,7 +90,13 @@ void CCClient::onOnline(FdbSessionId_t sid, bool is_first)
 
 void CCClient::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    if (!mClient || !mClient->handles || !mClient->handles->on_offline_func)
+    if (!mClient)
+    {
+        CFdbBaseObject::onOffline(sid, is_last);
+        return;
+    }
+
+    if (!mClient->handles || !mClient->handles->on_offline_func)
     {
         return;
     }
@@ -88,12 +105,18 @@ void CCClient::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CCClient::onReply(CBaseJob::Ptr &msg_ref)
 {
-    if (!mClient || !mClient->handles || !mClient->handles->on_reply_func)
+    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (!mClient || (fdb_msg->getTypeId() < 0))
+    {
+        CFdbBaseObject::onReply(msg_ref);
+        return;
+    }
+
+    if (!mClient->handles || !mClient->handles->on_reply_func)
     {
         return;
     }
 
-    auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
     int32_t error_code = NFdbBase::FDB_ST_OK;
     if (fdb_msg->isStatus())
     {
@@ -157,7 +180,13 @@ void CCClient::onGetEvent(CBaseJob::Ptr &msg_ref)
 
 void CCClient::onBroadcast(CBaseJob::Ptr &msg_ref)
 {
-    if (!mClient || !mClient->handles || !mClient->handles->on_broadcast_func)
+    if (!mClient)
+    {
+        CFdbBaseObject::onBroadcast(msg_ref);
+        return;
+    }
+
+    if (!mClient->handles || !mClient->handles->on_broadcast_func)
     {
         return;
     }
@@ -251,6 +280,54 @@ fdb_bool_t fdb_client_invoke_async(fdb_client_t *handle,
     auto fdb_msg = new CCInvokeMsg(msg_code, user_data);
     fdb_msg->setLogData(log_data);
     return fdb_client->invoke(fdb_msg, msg_data, data_size, timeout);
+}
+
+fdb_bool_t fdb_client_invoke_callback(fdb_client_t *handle,
+                                      FdbMsgCode_t msg_code,
+                                      const uint8_t *msg_data,
+                                      int32_t data_size,
+                                      int32_t timeout,
+                                      fdb_message_reply_fn_t reply_fn,
+                                      void *user_data,
+                                      const char *log_data)
+{
+    if (!handle || !handle->native_handle)
+    {
+        return fdb_false;
+    }
+
+    if (!reply_fn)
+    {
+        return fdb_client_invoke_async(handle, msg_code, msg_data, data_size,
+                                       timeout, user_data, log_data);
+    }
+
+    auto fdb_client = (CCClient *)handle->native_handle;
+    return fdb_client->invoke(msg_code, [reply_fn, handle, user_data]
+            (CBaseJob::Ptr &msg_ref, CFdbBaseObject *obj)
+            {
+                auto *fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+                int32_t error_code = NFdbBase::FDB_ST_OK;
+                if (fdb_msg->isStatus())
+                {
+                    std::string reason;
+                    if (!fdb_msg->decodeStatus(error_code, reason))
+                    {
+                        FDB_LOG_E("onReply: fail to decode status!\n");
+                        error_code = NFdbBase::FDB_ST_MSG_DECODE_FAIL;
+                    }
+                }
+
+                reply_fn(handle,
+                         fdb_msg->session(),
+                         fdb_msg->code(),
+                         fdb_msg->getPayloadBuffer(),
+                         fdb_msg->getPayloadSize(),
+                         error_code,
+                         user_data);
+            },
+            (const void *)msg_data, data_size, 0, timeout, log_data
+        );
 }
 
 fdb_bool_t fdb_client_invoke_sync(fdb_client_t *handle,
@@ -468,7 +545,8 @@ fdb_bool_t fdb_client_get_event_sync(fdb_client_t *handle,
     {
         ret_msg->sid = fdb_msg->session();
         ret_msg->msg_code = fdb_msg->code();
-        ret_msg->topic = strdup(fdb_msg->topic().c_str());
+        // possibly memory leakage???
+        ret_msg->topic = fdb_msg->topic().empty() ? 0 : strdup(fdb_msg->topic().c_str());
         ret_msg->msg_data = fdb_msg->getPayloadBuffer();
         // avoid buffer from being released.
         ret_msg->msg_buffer = fdb_msg->ownBuffer();

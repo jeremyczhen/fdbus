@@ -28,7 +28,7 @@
 class CCServer : public CBaseServer
 {
 public:
-    CCServer(const char *name, fdb_server_t *server);
+    CCServer(const char *name, fdb_server_t *server = 0);
     ~CCServer();
 protected:
     void onOnline(FdbSessionId_t sid, bool is_first);
@@ -38,6 +38,11 @@ protected:
 private:
     fdb_server_t *mServer;
 };
+
+CBaseServer *FDB_createCServer(const char *name)
+{
+    return new CCServer(name);
+}
 
 CCServer::CCServer(const char *name, fdb_server_t *server)
     : CBaseServer(name)
@@ -51,7 +56,13 @@ CCServer::~CCServer()
 
 void CCServer::onOnline(FdbSessionId_t sid, bool is_first)
 {
-    if (!mServer || !mServer->handles || !mServer->handles->on_online_func)
+    if (!mServer)
+    {
+        CFdbBaseObject::onOnline(sid, is_first);
+        return;
+    }
+
+    if (!mServer->handles || !mServer->handles->on_online_func)
     {
         return;
     }
@@ -60,7 +71,13 @@ void CCServer::onOnline(FdbSessionId_t sid, bool is_first)
 
 void CCServer::onOffline(FdbSessionId_t sid, bool is_last)
 {
-    if (!mServer || !mServer->handles || !mServer->handles->on_offline_func)
+    if (!mServer)
+    {
+        CFdbBaseObject::onOffline(sid, is_last);
+        return;
+    }
+
+    if (!mServer->handles || !mServer->handles->on_offline_func)
     {
         return;
     }
@@ -69,7 +86,13 @@ void CCServer::onOffline(FdbSessionId_t sid, bool is_last)
 
 void CCServer::onInvoke(CBaseJob::Ptr &msg_ref)
 {
-    if (!mServer || !mServer->handles || !mServer->handles->on_invoke_func)
+    if (!mServer)
+    {
+        CFdbBaseObject::onInvoke(msg_ref);
+        return;
+    }
+
+    if (!mServer->handles || !mServer->handles->on_invoke_func)
     {
         return;
     }

@@ -44,6 +44,13 @@ typedef void (*fdb_client_reply_fn_t)(struct fdb_client_tag *self,
                                       int32_t data_size,
                                       int32_t status,
                                       void *user_data);
+typedef void (*fdb_message_reply_fn_t)(struct fdb_client_tag *self,
+                                       FdbSessionId_t sid,
+                                       FdbMsgCode_t msg_code,
+                                       const uint8_t *msg_data,
+                                       int32_t data_size,
+                                       int32_t status,
+                                       void *user_data);
 typedef void (*fdb_client_get_event_fn_t)(struct fdb_client_tag *self,
                                           FdbSessionId_t sid,
                                           FdbMsgCode_t msg_code,
@@ -94,6 +101,15 @@ fdb_bool_t fdb_client_invoke_async(fdb_client_t *handle,
                                    const uint8_t *msg_data,
                                    int32_t data_size,
                                    int32_t timeout,
+                                   void *user_data,
+                                   const char *log_data);
+LIB_EXPORT
+fdb_bool_t fdb_client_invoke_callback(fdb_client_t *handle,
+                                   FdbMsgCode_t msg_code,
+                                   const uint8_t *msg_data,
+                                   int32_t data_size,
+                                   int32_t timeout,
+                                   fdb_message_reply_fn_t reply_fn,
                                    void *user_data,
                                    const char *log_data);
 LIB_EXPORT

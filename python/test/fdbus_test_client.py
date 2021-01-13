@@ -49,7 +49,7 @@ class MyTestClient(fdbus.FdbusClient):
     def onReply(self, sid, msg_code, msg_data, status, user_data):
         if status == 0:
             process_response(msg_code, msg_data, 'onResply: ')
-        
+
     def onBroadcast(self, sid, event_code, event_data, topic):
         if event_code == ex.NTF_ELAPSE_TIME:
             et = ex.ElapseTime()
@@ -59,7 +59,12 @@ class MyTestClient(fdbus.FdbusClient):
             print('onBroadcast: event: ', event_code, ', topic: ', topic)
         else:
             print('onBroadcast - unknown event: ', event_code)
-        
+
+class MyReplyClosure(fdbus.FdbusReplyClosure):
+    def handleMessage(self, sid, msg_code, msg_data, status, user_data):
+        if status == 0:
+            process_response(msg_code, msg_data, 'handleMessage: ')
+
 fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 client_list = []
 nr_clients = len(sys.argv) - 1
@@ -69,7 +74,8 @@ for i in range(nr_clients):
     client = MyTestClient(name)
     client_list.append(client)
     client.connect(url)
-    
+
+cb = MyReplyClosure()
 song_id = 0
 while True:
     req = ex.SongId()
@@ -91,3 +97,10 @@ while True:
         fdbus.releaseReturnMsg(msg)
         fdbus.FDB_LOG_E('fdb_py_clt', 'name: ', 'sdcard', 'size', 1000)
         time.sleep(1)
+
+        req.id = song_id
+        song_id += 1
+        #client_list[i].invoke_async(200, 'hello, world')
+        client_list[i].invoke_callback(cb.getMessageCallback(), ex.REQ_METADATA, req.SerializeToString())
+        time.sleep(1)
+
