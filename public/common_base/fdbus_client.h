@@ -31,7 +31,7 @@ typedef struct fdb_message_tag
     int32_t data_size;
     int32_t status;
     void *msg_buffer;
-    char *topic;
+    const char *topic;
 }fdb_message_t;
 
 struct fdb_client_tag;

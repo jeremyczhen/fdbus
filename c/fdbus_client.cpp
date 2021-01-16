@@ -403,7 +403,7 @@ void fdb_client_release_return_msg(fdb_message_t *ret_msg)
     {
         if (ret_msg->topic)
         {
-            free(ret_msg->topic);
+            free((void *)(ret_msg->topic));
         }
         if (ret_msg->msg_buffer)
         {

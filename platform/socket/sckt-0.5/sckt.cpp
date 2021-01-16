@@ -207,7 +207,8 @@ void Socket::setNonBlock()
     }
 #elif defined(O_NONBLOCK)
     {
-        fcntl(CastToSocket(this->socket), F_SETFL, O_NONBLOCK);
+        int flags = fcntl(CastToSocket(this->socket), F_GETFL, 0);
+        fcntl(CastToSocket(this->socket), F_SETFL, flags | O_NONBLOCK);
     }
 #elif defined(__WIN32__)
     {
@@ -543,6 +544,7 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
         socket_type = SCKT_SOCKET_UNIX;
     }
 #endif
+    this->setNonBlock();
     
     //Disable Naggle algorithm if required
     if(disableNaggle)
@@ -636,21 +638,7 @@ void TCPServerSocket::Accept(TCPSocket &sock){
         return;//no connections to be accepted, return invalid socket
     
     sock.socket_type = socket_type;
-    //set blocking mode
-#ifdef __WIN32__
-    {
-        /* passing a zero value, socket mode set to block on */
-        u_long mode = 0;
-        ioctlsocket(CastToSocket(sock.socket), FIONBIO, &mode);
-    }
-#elif defined(O_NONBLOCK)
-    {
-        int flags = fcntl(CastToSocket(sock.socket), F_GETFL, 0);
-        fcntl(CastToSocket(sock.socket), F_SETFL, flags & ~O_NONBLOCK);
-    }
-#else
-#error do not know how to set blocking mode to socket
-#endif //#ifdef __WIN32__
+    sock.setNonBlock();
 
     if (socket_type != SCKT_SOCKET_UNIX)
     {
