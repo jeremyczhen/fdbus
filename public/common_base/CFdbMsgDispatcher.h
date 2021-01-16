@@ -36,7 +36,13 @@ inline void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispat
     {
         if (fn)
         {
-            fn(msg_ref, obj);
+            try // catch exception to avoid missing post processing
+            {
+                fn(msg_ref, obj);
+            }
+            catch (...)
+            {
+            }
         }
         msg->callPostProcessing(msg_ref);
     }

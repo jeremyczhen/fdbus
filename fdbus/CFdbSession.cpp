@@ -313,7 +313,13 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
                 }
             break;
             case FDB_MT_SIDEBAND_REQUEST:
-                object->onSidebandInvoke(msg_ref);
+                try // catch exception to avoid missing of auto-reply
+                {
+                    object->onSidebandInvoke(msg_ref);
+                }
+                catch (...)
+                {
+                }
                 // check if auto-reply is required
                 msg->autoReply(this, msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK,
                                "Automatically reply to request.");

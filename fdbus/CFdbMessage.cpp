@@ -269,7 +269,13 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
 {
     if (mCallable.mFunc)
     {
-        mCallable.mFunc(ref);
+        try // catch exception to avoid missing post processing
+        {
+            mCallable.mFunc(ref);
+        }
+        catch (...)
+        {
+        }
     }
     if (mCallable.mPostFunc)
     {

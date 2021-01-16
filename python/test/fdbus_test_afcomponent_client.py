@@ -30,27 +30,17 @@ def process_response(code, resp_data, tag):
     else:
         print('unknown message code is received: ', code)
 
-class MyTestClient(fdbus.FdbusClient):
-    def __init__(self, name):
-        super(MyTestClient, self).__init__(name)
-        
-    def onOnline(self, sid):
-        print('MyTestClient: onOnline')
-        subscribe_list = [{'event_code' : ex.NTF_ELAPSE_TIME,         'topic' : None},
-                          {'event_code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-1'},
-                          {'event_code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-2'}]
-        self.subscribe(subscribe_list)
-        super(MyTestClient, self).onOnline(sid)
-
-    def onOffline(self, sid):
-        print('MyTestClient: onOffline')
-        super(MyTestClient, self).onOffline(sid)
-
-    def onReply(self, sid, msg_code, msg_data, status, user_data):
+class MyReplyClosure(fdbus.ReplyClosure):
+    def handleReply(self, sid, msg_code, msg_data, status, user_data):
         if status == 0:
-            process_response(msg_code, msg_data, 'onResply: ')
+            process_response(msg_code, msg_data, 'handleMessage: ')
 
-    def onBroadcast(self, sid, event_code, event_data, topic):
+class MyConnectionHandle(fdbus.ConnectionClosure):
+    def handleConnection(self, sid, is_online, is_first):
+        print('Connection status is changed - sid: ', sid, ', online: ', is_online, ', first: ', is_first)
+
+class MyEventHandle(fdbus.EventClosure):
+    def handleEvent(self, sid, event_code, event_data, topic):
         if event_code == ex.NTF_ELAPSE_TIME:
             et = ex.ElapseTime()
             et.ParseFromString(event_data)
@@ -60,31 +50,33 @@ class MyTestClient(fdbus.FdbusClient):
         else:
             print('onBroadcast - unknown event: ', event_code)
 
-class MyReplyClosure(fdbus.ReplyClosure):
-    def handleMessage(self, sid, msg_code, msg_data, status, user_data):
-        if status == 0:
-            process_response(msg_code, msg_data, 'handleMessage: ')
+conn_callback = MyConnectionHandle()
+evt_callback = MyEventHandle()
+event_handle_tbl = [
+     {'evt_code' : ex.NTF_ELAPSE_TIME, 'topic' : None, 'callback' : evt_callback.getEventCallback()},
+     {'evt_code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-1', 'callback' : evt_callback.getEventCallback()},
+     {'evt_code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-2', 'callback' : evt_callback.getEventCallback()}]
 
 fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
+component = fdbus.FdbusAfComponent("default component")
 client_list = []
 nr_clients = len(sys.argv) - 1
 for i in range(nr_clients):
     name = sys.argv[i+1]
-    url = 'svc://' + name
-    client = MyTestClient(name)
+    client = component.queryService(name, event_handle_tbl, conn_callback.getConnectionCallback())
     client_list.append(client)
-    client.connect(url)
 
 cb = MyReplyClosure()
 song_id = 0
 while True:
     req = ex.SongId()
     for i in range(nr_clients):
-        req.id = song_id
-        song_id += 1
-        #client_list[i].invoke_async(200, 'hello, world')
-        client_list[i].invoke_async(ex.REQ_METADATA, req.SerializeToString())
-        time.sleep(1)
+        """
+        #req.id = song_id
+        #song_id += 1
+        #client_list[i].invoke_async(ex.REQ_METADATA, req.SerializeToString())
+        #time.sleep(1)
+        """
 
         req.id = song_id
         song_id += 1
@@ -93,14 +85,12 @@ while True:
             print('Error for sync invoke: ', msg['status'])
         else:
             process_response(msg['msg_code'], msg['msg_data'], 'sync reply: ')
-     
         fdbus.releaseReturnMsg(msg)
         fdbus.FDB_LOG_E('fdb_py_clt', 'name: ', 'sdcard', 'size', 1000)
         time.sleep(1)
 
         req.id = song_id
         song_id += 1
-        #client_list[i].invoke_async(200, 'hello, world')
-        client_list[i].invoke_callback(cb.getMessageCallback(), ex.REQ_METADATA, req.SerializeToString())
+        client_list[i].invoke_callback(cb.getReplyCallback(), ex.REQ_METADATA, req.SerializeToString())
         time.sleep(1)
 

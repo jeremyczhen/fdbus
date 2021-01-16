@@ -56,6 +56,8 @@ typedef struct fdb_server_tag
 LIB_EXPORT
 fdb_server_t *fdb_server_create(const char *name, void *user_data);
 LIB_EXPORT
+fdb_server_t *fdb_server_create_with_handle(void *user_data, void *server_handle);
+LIB_EXPORT
 void *fdb_server_get_user_data(fdb_server_t *handle);
 LIB_EXPORT
 void fdb_server_register_event_handle(fdb_server_t *handle, const fdb_server_handles_t *handles);

@@ -464,7 +464,13 @@ void CFdbBaseObject::migrateToWorker(FdbSessionId_t sid, bool first_or_last, boo
 
 void CFdbBaseObject::callSubscribe(CBaseJob::Ptr &msg_ref)
 {
-    onSubscribe(msg_ref);
+    try // catch exception to avoid missing of auto-reply
+    {
+        onSubscribe(msg_ref);
+    }
+    catch (...)
+    {
+    }
     CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
 }
 
@@ -475,7 +481,13 @@ void CFdbBaseObject::callBroadcast(CBaseJob::Ptr &msg_ref)
 
 void CFdbBaseObject::callInvoke(CBaseJob::Ptr &msg_ref)
 {
-    onInvoke(msg_ref);
+    try // catch exception to avoid missing of auto-reply
+    {
+        onInvoke(msg_ref);
+    }
+    catch (...)
+    {
+    }
     CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to request.");
 }
 
@@ -623,8 +635,15 @@ void CFdbBaseObject::doSubscribe(CBaseJob::Ptr &msg_ref)
 {
     if (mFlag & FDB_OBJ_ENABLE_EVENT_CACHE)
     {
-        /* broadcast current value of event/filter pair */
-        broadcastCached(msg_ref);
+        try // catch exception to avoid missing of auto-reply
+        {
+            /* broadcast current value of event/filter pair */
+            broadcastCached(msg_ref);
+        }
+        catch (...)
+        {
+        }
+
         CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to subscribe request.");
         return;
     }
@@ -683,7 +702,13 @@ void CFdbBaseObject::doPublish(CBaseJob::Ptr &msg_ref)
 {
     if (mFlag & FDB_OBJ_ENABLE_EVENT_ROUTE)
     {
-        onPublish(msg_ref);
+        try // catch exception to avoid missing of auto-reply
+        {
+            onPublish(msg_ref);
+        }
+        catch (...)
+        {
+        }
     }
     // check if auto-reply is required
     CFdbMessage::autoReply(msg_ref, NFdbBase::FDB_ST_AUTO_REPLY_OK, "Automatically reply to publish request.");

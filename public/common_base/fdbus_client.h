@@ -85,6 +85,8 @@ typedef struct fdb_client_tag
 LIB_EXPORT
 fdb_client_t *fdb_client_create(const char *name, void *user_data);
 LIB_EXPORT
+fdb_client_t *fdb_client_create_with_handle(void *user_data, void *client_handle);
+LIB_EXPORT
 void *fdb_client_get_user_data(fdb_client_t *handle);
 LIB_EXPORT
 void fdb_client_register_event_handle(fdb_client_t *handle, const fdb_client_handles_t *handles);

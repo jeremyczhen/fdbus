@@ -58,7 +58,7 @@ public:
 #define FDB_OBJ_ENABLE_WATCHDOG         (1 << 5)
 
     typedef uint32_t tRegEntryId;
-    typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t, bool is_online, bool is_first)> tConnCallbackFn;
+    typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool is_first)> tConnCallbackFn;
     struct CConnCbRegistryItem
     {
         tConnCallbackFn mCallback;

@@ -20,6 +20,7 @@
 #include "fdbus_server.h"
 #include "fdbus_client.h"
 #include "fdb_log_trace.h"
+#include "fdbus_afcomponent.h"
 
 #ifdef __cplusplus
 extern "C"

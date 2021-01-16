@@ -212,6 +212,19 @@ fdb_client_t *fdb_client_create(const char *name, void *user_data)
     return c_client;
 }
 
+fdb_client_t *fdb_client_create_with_handle(void *user_data, void *client_handle)
+{
+    if (!client_handle)
+    {
+        return 0;
+    }
+    auto c_client = new fdb_client_t();
+    memset(c_client, 0, sizeof(fdb_client_t));
+    c_client->user_data = user_data;
+    c_client->native_handle = client_handle;
+    return c_client;
+}
+
 void *fdb_client_get_user_data(fdb_client_t *handle)
 {
     return handle ? handle->user_data : 0;
@@ -545,8 +558,7 @@ fdb_bool_t fdb_client_get_event_sync(fdb_client_t *handle,
     {
         ret_msg->sid = fdb_msg->session();
         ret_msg->msg_code = fdb_msg->code();
-        // possibly memory leakage???
-        ret_msg->topic = fdb_msg->topic().empty() ? 0 : strdup(fdb_msg->topic().c_str());
+        ret_msg->topic = fdb_msg->topic().empty() ? 0 : fdb_msg->topic().c_str();
         ret_msg->msg_data = fdb_msg->getPayloadBuffer();
         // avoid buffer from being released.
         ret_msg->msg_buffer = fdb_msg->ownBuffer();

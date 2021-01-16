@@ -155,6 +155,19 @@ fdb_server_t *fdb_server_create(const char *name, void *user_data)
     return c_server;
 }
 
+fdb_server_t *fdb_server_create_with_handle(void *user_data, void *server_handle)
+{
+    if (!server_handle)
+    {
+        return 0;
+    }
+    auto c_server = new fdb_server_t();
+    memset(c_server, 0, sizeof(fdb_server_t));
+    c_server->user_data = user_data;
+    c_server->native_handle = server_handle;
+    return c_server;
+}
+
 void *fdb_server_get_user_data(fdb_server_t *handle)
 {
     return handle ? handle->user_data : 0;
