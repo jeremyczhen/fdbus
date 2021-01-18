@@ -664,7 +664,7 @@ fdb_server_online_fn_t = ctypes.CFUNCTYPE(None,                             #ret
 fdb_server_offline_fn_t = ctypes.CFUNCTYPE(None,                            #return
                                            ctypes.c_void_p,                 #handle
                                            ctypes.c_int,                    #sid
-                                           ctypes.c_byte                    #is_first
+                                           ctypes.c_byte                    #is_last
                                            )
 fdb_server_invoke_fn_t = ctypes.CFUNCTYPE(None,                             #return
                                           ctypes.c_void_p,                  #handle
@@ -830,7 +830,7 @@ class FdbusServer(object):
     Callback method and should be overrided
     called when a client is connected
     @sid(int) - session ID
-    @is_first(bool) - True if this is the last connected client; otherwise False
+    @is_last(bool) - True if this is the last connected client; otherwise False
     """
     def onOffline(self, sid, is_last):
         print('onOffline for server ', self.name, ', last: ', is_last)
@@ -869,7 +869,7 @@ class FdbusServer(object):
 fdb_comp_connection_fn_t = ctypes.CFUNCTYPE(None,                               #return
                                             ctypes.c_int,                       #sid
                                             ctypes.c_byte,                      #is_online
-                                            ctypes.c_byte,                      #is_first
+                                            ctypes.c_byte,                      #first_or_last
                                             ctypes.c_void_p,                    #user_data
                                           )
 fdb_comp_event_handle_fn_t = ctypes.CFUNCTYPE(None,                             #return
@@ -890,11 +890,11 @@ fdb_comp_message_handle_fn_t = ctypes.CFUNCTYPE(None,                           
                                                 )
 
 class ConnectionClosure(object):
-    def handleConnection(self, sid, is_online, is_first):
+    def handleConnection(self, sid, is_online, first_or_last):
         pass
     def getConnectionCallback(self):
-        def _handleConnection(sid, is_online, is_first, user_data):
-            self.handleConnection(sid, is_online, is_first);
+        def _handleConnection(sid, is_online, first_or_last, user_data):
+            self.handleConnection(sid, is_online, first_or_last);
 
         self.connection_handle = fdb_comp_connection_fn_t(_handleConnection)
         return self.connection_handle
@@ -950,7 +950,7 @@ class FdbusAfComponent(object):
         if not event_handle_tbl is None:
             handle = (EventHandle * nr_handles)()
             for i in range(nr_handles):
-                handle[i].evt_code = event_handle_tbl[i]['evt_code']
+                handle[i].evt_code = event_handle_tbl[i]['code']
                 handle[i].topic = castToChar(event_handle_tbl[i]['topic'])
                 handle[i].fn = event_handle_tbl[i]['callback']
                 handle[i].user_data = None
@@ -977,7 +977,7 @@ class FdbusAfComponent(object):
         if not message_handle_tbl is None:
             handle = (MessageHandle * nr_handles)()
             for i in range(nr_handles):
-                handle[i].evt_code = message_handle_tbl[i]['msg_code']
+                handle[i].msg_code = message_handle_tbl[i]['code']
                 handle[i].fn = message_handle_tbl[i]['callback']
                 handle[i].user_data = None
             message_tbl = ctypes.cast(handle, ctypes.POINTER(MessageHandle))

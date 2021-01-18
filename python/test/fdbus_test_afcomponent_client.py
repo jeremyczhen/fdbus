@@ -36,8 +36,8 @@ class MyReplyClosure(fdbus.ReplyClosure):
             process_response(msg_code, msg_data, 'handleMessage: ')
 
 class MyConnectionHandle(fdbus.ConnectionClosure):
-    def handleConnection(self, sid, is_online, is_first):
-        print('Connection status is changed - sid: ', sid, ', online: ', is_online, ', first: ', is_first)
+    def handleConnection(self, sid, is_online, first_or_last):
+        print('Connection status is changed - sid: ', sid, ', online: ', is_online, ', f or l: ', first_or_last)
 
 class MyEventHandle(fdbus.EventClosure):
     def handleEvent(self, sid, event_code, event_data, topic):
@@ -53,9 +53,9 @@ class MyEventHandle(fdbus.EventClosure):
 conn_callback = MyConnectionHandle()
 evt_callback = MyEventHandle()
 event_handle_tbl = [
-     {'evt_code' : ex.NTF_ELAPSE_TIME, 'topic' : None, 'callback' : evt_callback.getEventCallback()},
-     {'evt_code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-1', 'callback' : evt_callback.getEventCallback()},
-     {'evt_code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-2', 'callback' : evt_callback.getEventCallback()}]
+     {'code' : ex.NTF_ELAPSE_TIME, 'topic' : None, 'callback' : evt_callback.getEventCallback()},
+     {'code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-1', 'callback' : evt_callback.getEventCallback()},
+     {'code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-2', 'callback' : evt_callback.getEventCallback()}]
 
 fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 component = fdbus.FdbusAfComponent("default component")

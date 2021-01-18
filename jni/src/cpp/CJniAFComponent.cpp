@@ -113,8 +113,8 @@ JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusAFComponent_fdb_1query_1service
     {
         auto callback = env->NewGlobalRef(conn_callback);
         native_handle = (jlong)component->queryService(c_name, evt_tbl, [callback](
-            CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool is_first) {
-                CGlobalParam::callConnection(callback, is_online, is_first);
+            CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool first_or_last) {
+                CGlobalParam::callConnection(callback, is_online, first_or_last);
             }
         );
     }
@@ -173,8 +173,8 @@ JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusAFComponent_fdb_1offer_1service
     {
         auto callback = env->NewGlobalRef(conn_callback);
         native_handle = (jlong)component->offerService(c_name, msg_tbl, [callback](
-            CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool is_first) {
-                CGlobalParam::callConnection(callback, is_online, is_first);
+            CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool first_or_last) {
+                CGlobalParam::callConnection(callback, is_online, first_or_last);
             }
         );
     }

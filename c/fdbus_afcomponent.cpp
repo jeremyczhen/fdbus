@@ -93,9 +93,9 @@ fdb_client_t *fdb_afcomponent_query_service(void *component_handle,
     if (connection_fn)
     {
         client = component->queryService(bus_name, evt_tbl, [connection_fn, client_user_data]
-            (CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool is_first)
+            (CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool first_or_last)
             {
-                connection_fn(sid, is_online, is_first, client_user_data);
+                connection_fn(sid, is_online, first_or_last, client_user_data);
             });
     }
     else
@@ -147,9 +147,9 @@ fdb_server_t *fdb_afcomponent_offer_service(void *component_handle,
     if (connection_fn)
     {
         server = component->offerService(bus_name, msg_tbl, [connection_fn, server_user_data]
-            (CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool is_first)
+            (CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool first_or_last)
             {
-                connection_fn(sid, is_online, is_first, server_user_data);
+                connection_fn(sid, is_online, first_or_last, server_user_data);
             });
     }
     else

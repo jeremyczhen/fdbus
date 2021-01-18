@@ -38,10 +38,10 @@ static void fdb_event_handle(FdbSessionId_t sid,
 }
 
 static void fdb_connection_handle(FdbSessionId_t sid, fdb_bool_t is_online,
-                                    fdb_bool_t is_first, void *user_data)
+                                    fdb_bool_t first_or_last, void *user_data)
 {
-    FDB_LOG_D("connection status changed- sid: %d, is_online: %d, is_first: %d, user dat: %s\n",
-                sid, is_online, is_first, (char*)user_data);
+    FDB_LOG_D("connection status changed- sid: %d, is_online: %d, first_or_last: %d, user dat: %s\n",
+                sid, is_online, first_or_last, (char*)user_data);
 }
 
 int main(int argc, char **argv)

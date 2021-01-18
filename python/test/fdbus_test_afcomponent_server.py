@@ -33,8 +33,8 @@ def get_elapse_time():
     return et.SerializeToString()
 
 class MyConnectionHandle(fdbus.ConnectionClosure):
-    def handleConnection(self, sid, is_online, is_first):
-        print('Connection status is changed - sid: ', sid, ', online: ', is_online, ', first: ', is_first)
+    def handleConnection(self, sid, is_online, first_or_last):
+        print('Connection status is changed - sid: ', sid, ', online: ', is_online, ', f or l: ', first_or_last)
 
 class MyMessageHandle(fdbus.MessageClosure):
     def handleMessage(self, sid, msg_code, msg_data, reply_handle):
@@ -58,8 +58,8 @@ class MyMessageHandle(fdbus.MessageClosure):
 conn_callback = MyConnectionHandle()
 msg_callback = MyMessageHandle()
 message_handle_tbl = [
-     {'msg_code' : ex.REQ_METADATA, 'callback' : msg_callback.getMessageCallback()},
-     {'msg_code' : ex.REQ_CREATE_MEDIAPLAYER, 'callback' : msg_callback.getMessageCallback()}]
+     {'code' : ex.REQ_METADATA, 'callback' : msg_callback.getMessageCallback()},
+     {'code' : ex.REQ_CREATE_MEDIAPLAYER, 'callback' : msg_callback.getMessageCallback()}]
 
 fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 component = fdbus.FdbusAfComponent("default component")

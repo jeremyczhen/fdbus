@@ -149,10 +149,10 @@ public class AFComponentServer
                     }));
             FdbusServer server = component.offerService(arg, message_list,
                 new FdbusAppListener.Connection(){
-                    public void onConnectionStatus(int sid, boolean is_online, boolean is_first)
+                    public void onConnectionStatus(int sid, boolean is_online, boolean first_or_last)
                     {
                         System.out.println(arg + "onConnectionStatus - session: " + sid + ", is_online: " + is_online
-                                            + ", is_first: " + is_first);
+                                            + ", first_or_last: " + first_or_last);
                     }
                 });
             comp_server.mServerList.add(server);

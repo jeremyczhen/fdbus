@@ -1619,7 +1619,7 @@ void CFdbBaseObject::migrateToWorker(FdbSessionId_t sid, bool first_or_last, boo
     }
     if (!worker || worker->isSelf())
     {
-        callback(this, sid, first_or_last, online);
+        callback(this, sid, online, first_or_last);
     }
     else
     {
