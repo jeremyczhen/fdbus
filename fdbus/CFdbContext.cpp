@@ -23,7 +23,8 @@
 
 // template<> FdbSessionId_t CFdbContext::tSessionContainer::mUniqueEntryAllocator = 0;
 
-static CFdbContext mFdbDefaultContextWorker;
+std::mutex CFdbContext::mSingletonLock;
+CFdbContext *CFdbContext::mInstance = 0;
 
 CFdbContext::CFdbContext()
     : CBaseWorker("FDBus Context")
@@ -37,7 +38,15 @@ CFdbContext::CFdbContext()
 
 CFdbContext *CFdbContext::getInstance()
 {
-    return &mFdbDefaultContextWorker;
+    if (!mInstance)
+    {
+        std::lock_guard<std::mutex> _l(mSingletonLock);
+        if (!mInstance)
+        {
+            mInstance = new CFdbContext();
+        }
+    }
+    return mInstance;
 }
 
 const char *CFdbContext::getFdbLibVersion()

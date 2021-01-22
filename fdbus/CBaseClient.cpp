@@ -45,8 +45,10 @@ CFdbSession *CClientSocket::connect()
     auto socket = fdb_dynamic_cast_if_available<CClientSocketImp *>(mSocket);
     int32_t retries = FDB_ADDRESS_CONNECT_RETRY_NR;
     CSocketImp *sock_imp = 0;
+    bool blocking_mode = (mSocket->getAddress().mType == FDB_SOCKET_IPC) ?
+                          mOwner->enableIpcBlockingMode() : mOwner->enableTcpBlockingMode();
     do {
-        sock_imp = socket->connect();
+        sock_imp = socket->connect(blocking_mode);
         if (sock_imp)
         {
             break;
@@ -114,7 +116,8 @@ CBaseClient::CBaseClient(const char *name, CBaseWorker *worker)
     : CBaseEndpoint(name, worker, FDB_OBJECT_ROLE_CLIENT)
     , mIsLocal(true)
 {
-
+    enableTcpBlockingMode(true);
+    enableIpcBlockingMode(false);
 }
 
 CBaseClient::~CBaseClient()

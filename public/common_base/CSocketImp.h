@@ -143,7 +143,7 @@ public:
     {
     }
 
-    virtual CSocketImp *connect()
+    virtual CSocketImp *connect(bool block = false, int32_t ka_interval = 0, int32_t ka_retries = 0)
     {
         return 0;
     }
@@ -167,7 +167,7 @@ public:
         return false;
     }
 
-    virtual CSocketImp *accept()
+    virtual CSocketImp *accept(bool block = false, int32_t ka_interval = 0, int32_t ka_retries = 0)
     {
         return 0;
     }

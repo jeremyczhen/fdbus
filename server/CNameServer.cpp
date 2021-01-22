@@ -35,6 +35,8 @@ CNameServer::CNameServer()
     setNsName(CNsConfig::getNameServerName());
     mServerSecruity.importSecurity();
     role(FDB_OBJECT_ROLE_NS_SERVER);
+    enableTcpBlockingMode(true);
+    enableIpcBlockingMode(true);
     
     mMsgHdl.registerCallback(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS, &CNameServer::onAllocServiceAddressReq);
     mMsgHdl.registerCallback(NFdbBase::REQ_REGISTER_SERVICE, &CNameServer::onRegisterServiceReq);

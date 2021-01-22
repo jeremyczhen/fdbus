@@ -41,6 +41,8 @@ public:
 #define FDB_EP_RECONNECT_ENABLED        (1 << 9)
 #define FDB_EP_RECONNECT_ACTIVATED      (1 << 10)
 #define FDB_EP_ENABLE_UDP               (1 << 11)
+#define FDB_OBJ_TCP_BLOCKING_MODE       (1 << 12)
+#define FDB_OBJ_IPC_BLOCKING_MODE       (1 << 13)
     CBaseEndpoint(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     ~CBaseEndpoint();
 
@@ -137,6 +139,40 @@ public:
         {
             mFlag &= ~FDB_EP_ENABLE_UDP;
         }
+    }
+
+    void enableTcpBlockingMode(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_TCP_BLOCKING_MODE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_TCP_BLOCKING_MODE;
+        }
+    }
+
+    bool enableTcpBlockingMode() const
+    {
+        return !!(mFlag & FDB_OBJ_TCP_BLOCKING_MODE);
+    }
+
+    void enableIpcBlockingMode(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_IPC_BLOCKING_MODE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_IPC_BLOCKING_MODE;
+        }
+    }
+
+    bool enableIpcBlockingMode() const
+    {
+        return !!(mFlag & FDB_OBJ_IPC_BLOCKING_MODE);
     }
 
     void prepareDestroy();

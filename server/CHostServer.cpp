@@ -29,6 +29,8 @@ CHostServer::CHostServer()
     , mHeartBeatTimer(this)
 {
     mHostSecurity.importSecurity();
+    enableTcpBlockingMode(true);
+    enableIpcBlockingMode(true);
 
     mMsgHdl.registerCallback(NFdbBase::REQ_REGISTER_HOST, &CHostServer::onRegisterHostReq);
     mMsgHdl.registerCallback(NFdbBase::REQ_UNREGISTER_HOST, &CHostServer::onUnregisterHostReq);
