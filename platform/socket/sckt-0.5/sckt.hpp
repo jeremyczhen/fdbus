@@ -52,17 +52,28 @@ This is the main header file of sckt. You need to include it to use sckt library
 #include <map>
 
 
+/**
+@brief the main namespace of sckt library.
+All the declarations of sckt library are made inside this namespace.
+*/
+namespace sckt{
 enum SocketType
 {
     SCKT_SOCKET_INET,
     SCKT_SOCKET_UNIX,
 };
 
-/**
-@brief the main namespace of sckt library.
-All the declarations of sckt library are made inside this namespace.
-*/
-namespace sckt{
+struct Options
+{
+    bool mNonBlock;
+    int32_t mKAInterval;
+    int32_t mKARetries;
+    Options(bool non_block = true, int32_t ka_interval = 0, int32_t ka_retries = 0)
+        : mNonBlock(non_block)
+        , mKAInterval(ka_interval)
+        , mKARetries(ka_retries)
+    {}
+};
 
 //=================
 //= Static Assert =
@@ -272,7 +283,7 @@ protected:
     Socket();
     
     Socket& operator=(const Socket& s);
-    void setNonBlock();
+    void setNonBlock(bool on = true);
     
 public:
     virtual ~Socket(){
@@ -344,7 +355,7 @@ public:
     @param ip - IP address to 'connect to/listen on'.
     @param disableNaggle - enable/disable Naggle algorithm.
     */
-    TCPSocket(const IPAddress& ip, bool disableNaggle = false)
+    TCPSocket(const IPAddress& ip, Options *options = 0, bool disableNaggle = false)
         : pid(0)
         , gid(0)
         , uid(0)
@@ -352,7 +363,7 @@ public:
         , self_port(0)
         , socket_type(SCKT_SOCKET_INET)
     {
-        this->Open(ip, disableNaggle);
+        this->Open(ip, options, disableNaggle);
     };
     
     /**
@@ -372,7 +383,7 @@ public:
     @param ip - IP address.
     @param disableNaggle - enable/disable Naggle algorithm.
     */
-    void Open(const IPAddress& ip, bool disableNaggle = false);
+    void Open(const IPAddress& ip, Options *options = 0, bool disableNaggle = false);
     
     /**
     @brief Send data to connected socket.
@@ -488,7 +499,7 @@ public:
         - if the socket is valid then it is a newly connected socket, further it can be used to send or receive data.
         - if the socket is invalid then there was no any connections pending, so no connection was accepted.
     */
-    void Accept(TCPSocket &sock);
+    void Accept(TCPSocket &sock, Options *options);
     std::string self_ip;
     u16 self_port;
 };

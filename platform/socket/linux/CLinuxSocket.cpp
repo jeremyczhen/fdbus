@@ -98,9 +98,10 @@ CLinuxClientSocket::~CLinuxClientSocket()
 {
 }
 
-CSocketImp *CLinuxClientSocket::connect()
+CSocketImp *CLinuxClientSocket::connect(bool block, int32_t ka_interval, int32_t ka_retries)
 {
     CSocketImp *ret = 0;
+    sckt::Options opt(!block, ka_interval, ka_retries);
     try
     {
         sckt::TCPSocket *sckt_imp = 0;
@@ -111,13 +112,13 @@ CSocketImp *CLinuxClientSocket::connect()
                 mAddress.mAddr = "127.0.0.1";
             }
             sckt::IPAddress address(mAddress.mAddr.c_str(), (sckt::u16)mAddress.mPort);
-            sckt_imp = new sckt::TCPSocket(address);
+            sckt_imp = new sckt::TCPSocket(address, &opt);
         }
 #ifndef __WIN32__
         else if (mAddress.mType == FDB_SOCKET_IPC)
         {
             sckt::IPAddress address(mAddress.mAddr.c_str());
-            sckt_imp = new sckt::TCPSocket(address);
+            sckt_imp = new sckt::TCPSocket(address, &opt);
         }
 #endif
 
@@ -185,16 +186,17 @@ bool CLinuxServerSocket::bind()
 
 }
 
-CSocketImp *CLinuxServerSocket::accept()
+CSocketImp *CLinuxServerSocket::accept(bool block, int32_t ka_interval, int32_t ka_retries)
 {
     CSocketImp *ret = 0;
     sckt::TCPSocket *sock_imp = 0;
+    sckt::Options opt(!block, ka_interval, ka_retries);
     try
     {
         if (mServerSocketImp)
         {
             sock_imp = new sckt::TCPSocket();
-            mServerSocketImp->Accept(*sock_imp);
+            mServerSocketImp->Accept(*sock_imp, &opt);
             ret = new CLinuxSocket(sock_imp);
         }
     }

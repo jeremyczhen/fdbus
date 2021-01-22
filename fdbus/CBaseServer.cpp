@@ -38,7 +38,9 @@ CServerSocket::~CServerSocket()
 
 void CServerSocket::onInput(bool &io_error)
 {
-    auto sock_imp = mSocket->accept();
+    bool blocking_mode = (mSocket->getAddress().mType == FDB_SOCKET_IPC) ?
+                          mOwner->enableIpcBlockingMode() : mOwner->enableTcpBlockingMode();
+    auto sock_imp = mSocket->accept(blocking_mode);
     if (sock_imp)
     {
         auto session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
@@ -90,6 +92,8 @@ void CServerSocket::getSocketInfo(CFdbSocketInfo &info)
 CBaseServer::CBaseServer(const char *name, CBaseWorker *worker)
     : CBaseEndpoint(name, worker, FDB_OBJECT_ROLE_SERVER)
 {
+    enableTcpBlockingMode(true);
+    enableIpcBlockingMode(false);
 }
 
 CBaseServer::~CBaseServer()

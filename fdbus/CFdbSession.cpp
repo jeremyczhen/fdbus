@@ -23,9 +23,11 @@
 #include <common_base/CFdbIfMessageHeader.h>
 
 #define FDB_SEND_RETRIES (1024 * 10)
-#define FDB_RECV_RETRIES 256
-#define FDB_SEND_DELAY 1
+#define FDB_SEND_DELAY 2
 #define FDB_SEND_MAX_RECURSIVE 128
+
+#define FDB_RECV_RETRIES FDB_SEND_RETRIES
+#define FDB_RECV_DELAY FDB_SEND_DELAY
 
 CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CSocketImp *socket)
     : CBaseFdWatch(socket->getFd(), POLLIN | POLLHUP | POLLERR)
@@ -69,15 +71,15 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         return false;
     }
 
+    int32_t cnt = 0;
     int32_t retries = FDB_SEND_RETRIES;
     mRecursiveDepth++;
     while (1)
     {
-        int32_t cnt = mSocket->send((uint8_t *)buffer, size);
+        cnt = mSocket->send((uint8_t *)buffer, size);
         if (cnt < 0)
         {
-            mRecursiveDepth--;
-            return false;
+            break;
         }
         buffer += cnt;
         size -= cnt;
@@ -88,7 +90,8 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
         }
         if (mRecursiveDepth < FDB_SEND_MAX_RECURSIVE)
         {
-            worker()->dispatchInput(FDB_SEND_DELAY);
+            worker()->dispatchInput(FDB_SEND_DELAY >> 1);
+            sysdep_sleep(FDB_SEND_DELAY >> 1);
         }
         else
         {
@@ -98,12 +101,19 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
     }
     mRecursiveDepth--;
 
-    if (size > 0)
+    if ((cnt < 0) || (size > 0))
     {
-        LOG_E("CFdbSession: Session %d is kicked off for being unable to send %d bytes!\n", mSid, size);
+        if (cnt < 0)
+        {
+            LOG_E("CFdbSession: process %d: fatal error when writing!\n", CBaseThread::getPid());
+        }
+        else
+        {
+            LOG_E("CFdbSession: process %d: fail to write data!\n", CBaseThread::getPid());
+        }
         fatalError(true);
         return false;
-    } 
+    }
 
     return true;
 }
@@ -157,19 +167,40 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
 
 bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
 {
+    int32_t cnt = 0;
     int32_t retries = FDB_RECV_RETRIES;
-    while ((size > 0) && (retries > 0))
+    while (1)
     {
-        int32_t cnt = mSocket->recv(buf, size);
+        cnt = mSocket->recv(buf, size);
         if (cnt < 0)
         {
-            return false;
+            break;
         }
         buf += cnt;
         size -= cnt;
         retries--;
+        if ((size <= 0) || (retries <= 0))
+        {
+            break;
+        }
+        sysdep_sleep(FDB_RECV_DELAY);
     }
-    return retries > 0;
+
+    if ((cnt < 0) || (size > 0))
+    {
+        if (cnt < 0)
+        {
+            LOG_E("CFdbSession: process %d: fatal error when reading!\n", CBaseThread::getPid());
+        }
+        else
+        {
+            LOG_E("CFdbSession: process %d: fail to read data!\n", CBaseThread::getPid());
+        }
+        fatalError(true);
+        return false;
+    }
+
+    return true;
 }
 
 void CFdbSession::onInput(bool &io_error)

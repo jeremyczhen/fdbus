@@ -195,7 +195,7 @@ Socket& Socket::operator=(const Socket& s){
     return *this;
 };
 
-void Socket::setNonBlock()
+void Socket::setNonBlock(bool on)
 {
     //Set the socket to non-blocking mode for accept()
 #if defined(__BEOS__) && defined(SO_NONBLOCK)
@@ -207,11 +207,19 @@ void Socket::setNonBlock()
 #elif defined(O_NONBLOCK)
     {
         int flags = fcntl(CastToSocket(this->socket), F_GETFL, 0);
-        fcntl(CastToSocket(this->socket), F_SETFL, flags | O_NONBLOCK);
+        if (on)
+        {
+            flags |= O_NONBLOCK;
+        }
+        else
+        {
+            flags &= ~O_NONBLOCK;
+        }
+        fcntl(CastToSocket(this->socket), F_SETFL, flags);
     }
 #elif defined(__WIN32__)
     {
-        u_long mode = 1;
+        u_long mode = on ? 1 : 0;
         ioctlsocket(CastToSocket(this->socket), FIONBIO, &mode);
     }
 #elif defined(__OS2__)
@@ -393,7 +401,7 @@ void TCPServerSocket::Open(const IPAddress& ip, bool disableNaggle){
 /* Open a TCP network socket.
    A TCP connection to the remote host and port is attempted.
 */
-void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
+void TCPSocket::Open(const IPAddress& ip, Options *options, bool disableNaggle){
     if(this->IsValid())
         throw sckt::Exc("TCPSocket::Open(): socket already opened");
     
@@ -470,7 +478,7 @@ void TCPSocket::Open(const IPAddress& ip, bool disableNaggle){
         socket_type = SCKT_SOCKET_UNIX;
     }
 #endif
-    this->setNonBlock();
+    this->setNonBlock(options ? options->mNonBlock : true);
     
     //Disable Naggle algorithm if required
     if(disableNaggle)
@@ -539,7 +547,7 @@ void Socket::Close(){
 };
 
 
-void TCPServerSocket::Accept(TCPSocket &sock){
+void TCPServerSocket::Accept(TCPSocket &sock, Options *options){
     if(!this->IsValid())
         throw sckt::Exc("TCPServerSocket::Accept(): the socket is not opened");
     
@@ -564,10 +572,9 @@ void TCPServerSocket::Accept(TCPSocket &sock){
         return;//no connections to be accepted, return invalid socket
     
     sock.socket_type = socket_type;
-    sock.setNonBlock();
-
     if (socket_type != SCKT_SOCKET_UNIX)
     {
+        sock.setNonBlock(false);
         struct sockaddr_in sock_addr;
         socklen_t len = sizeof(sock_addr);
         if (getpeername(CastToSocket(sock.socket), (struct sockaddr*)&sock_addr, &len) != -1)
@@ -606,6 +613,7 @@ void TCPServerSocket::Accept(TCPSocket &sock){
     }
 #endif
 #endif
+    sock.setNonBlock(options ? options->mNonBlock : true);
     
     if(this->disableNaggle)
         sock.DisableNaggle();
@@ -624,7 +632,7 @@ sckt::uint TCPSocket::Send(const sckt::byte* data, uint size){
 
     int res;
     do{
-        res = (int)send(CastToSocket(this->socket), reinterpret_cast<const char*>(data), left, MSG_NOSIGNAL | MSG_DONTWAIT);
+        res = (int)send(CastToSocket(this->socket), reinterpret_cast<const char*>(data), left, MSG_NOSIGNAL/* | MSG_DONTWAIT*/);
         if(res == M_SOCKET_ERROR){
 #ifdef __WIN32__
             errorCode = WSAGetLastError();
@@ -670,6 +678,11 @@ sckt::uint TCPSocket::Recv(sckt::byte* buf, uint maxSize){
     
     do{
         len = (int)recv(CastToSocket(this->socket), reinterpret_cast<char *>(buf), maxSize, 0/*MSG_DONTWAIT*/);
+        if (!len)
+        {
+            len = M_SOCKET_ERROR;
+            break;
+        }
         if(len == M_SOCKET_ERROR){
 #ifdef __WIN32__
             errorCode = WSAGetLastError();

@@ -44,7 +44,7 @@ class CLinuxClientSocket : public CClientSocketImp
 public:
     CLinuxClientSocket(CFdbSocketAddr &addr);
     ~CLinuxClientSocket();
-    CSocketImp *connect();
+    CSocketImp *connect(bool block = false, int32_t ka_interval = 0, int32_t ka_retries = 0);
 };
 
 class CLinuxServerSocket : public CServerSocketImp
@@ -53,7 +53,7 @@ public:
     CLinuxServerSocket(CFdbSocketAddr &addr);
     ~CLinuxServerSocket();
     bool bind();
-    CSocketImp *accept();
+    CSocketImp *accept(bool block = false, int32_t ka_interval = 0, int32_t ka_retries = 0);
     int getFd();
 private:
     sckt::TCPServerSocket *mServerSocketImp;

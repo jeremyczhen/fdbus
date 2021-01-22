@@ -52,6 +52,8 @@ public:
 #define FDB_OBJ_REGISTERED              (1 << 3)
 #define FDB_OBJ_RECONNECT_ACTIVATED     (1 << 4)
 #define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 5)
+#define FDB_OBJ_TCP_BLOCKING_MODE       (1 << 6)
+#define FDB_OBJ_IPC_BLOCKING_MODE       (1 << 7)
 
     CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
@@ -631,6 +633,40 @@ public:
     bool enableEventCache() const
     {
         return !!(mFlag & FDB_OBJ_ENABLE_EVENT_CACHE);
+    }
+
+    void enableTcpBlockingMode(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_TCP_BLOCKING_MODE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_TCP_BLOCKING_MODE;
+        }
+    }
+
+    bool enableTcpBlockingMode() const
+    {
+        return !!(mFlag & FDB_OBJ_TCP_BLOCKING_MODE);
+    }
+
+    void enableIpcBlockingMode(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_IPC_BLOCKING_MODE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_IPC_BLOCKING_MODE;
+        }
+    }
+
+    bool enableIpcBlockingMode() const
+    {
+        return !!(mFlag & FDB_OBJ_IPC_BLOCKING_MODE);
     }
 
     void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)
