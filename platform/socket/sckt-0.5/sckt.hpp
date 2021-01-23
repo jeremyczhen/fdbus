@@ -284,7 +284,7 @@ protected:
     
     Socket& operator=(const Socket& s);
     void setNonBlock(bool on = true);
-    bool setKeepAlive();
+    bool setKeepAlive(int interval, int count);
     
 public:
     virtual ~Socket(){

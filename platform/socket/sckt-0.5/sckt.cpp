@@ -233,10 +233,8 @@ void Socket::setNonBlock(bool on)
 #endif
 }
 
-bool Socket::setKeepAlive()
+bool Socket::setKeepAlive(int interval, int count)
 {
-    int interval = 2;
-    int count = 2;
     int val = 1;
 
     if (!interval || !count)
@@ -663,7 +661,10 @@ void TCPServerSocket::Accept(TCPSocket &sock, Options *options){
             sock.self_port = ntohs(sock_addr.sin_port);
         }
 
-        // sock.setKeepAlive();
+        if (options)
+        {
+            sock.setKeepAlive(options->mKAInterval, options->mKARetries);
+        }
     }
 
 #if !defined(__WIN32__)
@@ -761,6 +762,12 @@ sckt::uint TCPSocket::Recv(sckt::byte* buf, uint maxSize){
         if(len == M_SOCKET_ERROR){
 #ifdef __WIN32__
             errorCode = WSAGetLastError();
+            if ((errorCode == WSAETIMEDOUT) || (errorCode == WSAEWOULDBLOCK))
+            {
+                len = 0;
+                break;
+            }
+
 #else //linux/unix
             errorCode = errno;
             if ((errorCode == EAGAIN) || (errorCode == EWOULDBLOCK)) {
