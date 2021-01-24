@@ -177,7 +177,7 @@ bool CFdbEventDispatcher::CEvtHandleTbl::add(FdbMsgCode_t code, tDispatcherCallb
     return true;
 }
 
-inline void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispatcherCallbackFn &fn,
+void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispatcherCallbackFn &fn,
                                CBaseWorker *worker, CFdbBaseObject *obj)
 {
     if (!worker || worker->isSelf())

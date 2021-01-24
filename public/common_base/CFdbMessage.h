@@ -355,6 +355,11 @@ public:
         return buf;
     }
 
+    void releaseBuffer(void *buf)
+    {
+        delete[] (uint8_t *)buf;
+    }
+
     /*
      * Release the buffer obtained from ownBuffer().
      */

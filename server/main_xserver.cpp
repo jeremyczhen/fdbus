@@ -95,7 +95,7 @@ protected:
                 auto size = msg->getPayloadSize();
                 auto to_be_release = msg->ownBuffer();
                 msg->reply(msg_ref, buffer, size);
-                delete[] to_be_release;
+                msg->releaseBuffer(to_be_release);
             }
             break;
             case XCLT_TEST_SINGLE_DIRECTION:
