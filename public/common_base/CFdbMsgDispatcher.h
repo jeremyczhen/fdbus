@@ -29,29 +29,8 @@ class CFdbBaseObject;
 
 typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tDispatcherCallbackFn;
 
-inline void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispatcherCallbackFn &fn,
-                               CBaseWorker *worker, CFdbBaseObject *obj)
-{
-    if (!worker || worker->isSelf())
-    {
-        if (fn)
-        {
-            try // catch exception to avoid missing post processing
-            {
-                fn(msg_ref, obj);
-            }
-            catch (...)
-            {
-            }
-        }
-        msg->callPostProcessing(msg_ref);
-    }
-    else
-    {
-        msg->setCallable(std::bind(fn, std::placeholders::_1, obj));
-        worker->sendAsync(msg_ref);
-    }
-}
+void fdbMigrateCallback(CBaseJob::Ptr &msg_ref, CFdbMessage *msg, tDispatcherCallbackFn &fn,
+                               CBaseWorker *worker, CFdbBaseObject *obj);
 
 template<typename T>
 class CFdbMessageHandle

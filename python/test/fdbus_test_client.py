@@ -101,6 +101,6 @@ while True:
         req.id = song_id
         song_id += 1
         #client_list[i].invoke_async(200, 'hello, world')
-        client_list[i].invoke_callback(cb.getMessageCallback(), ex.REQ_METADATA, req.SerializeToString())
+        client_list[i].invoke_callback(cb, ex.REQ_METADATA, req.SerializeToString())
         time.sleep(1)
 

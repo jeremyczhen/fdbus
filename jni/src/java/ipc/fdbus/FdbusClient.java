@@ -305,7 +305,11 @@ public class FdbusClient
     {
         if (mFdbusListener != null)
         {
-            mFdbusListener.onOnline(sid);
+            try {
+                mFdbusListener.onOnline(sid);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
         }
     }
     
@@ -313,7 +317,11 @@ public class FdbusClient
     {
         if (mFdbusListener != null)
         {
-            mFdbusListener.onOffline(sid);
+            try {
+                mFdbusListener.onOffline(sid);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
         }
     }
     
@@ -326,7 +334,11 @@ public class FdbusClient
         if (mFdbusListener != null)
         {
             FdbusMessage msg = new FdbusMessage(sid, msg_code, payload, user_data, status);
-            mFdbusListener.onReply(msg);
+            try {
+                mFdbusListener.onReply(msg);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
         }
     }
 
@@ -340,7 +352,11 @@ private void callbackGetEvent(int sid,
     if (mFdbusListener != null)
     {
         FdbusMessage msg = new FdbusMessage(sid, msg_code, topic, payload, user_data, status);
-        mFdbusListener.onGetEvent(msg);
+        try {
+            mFdbusListener.onGetEvent(msg);
+        } catch (Exception e) {
+            System.out.println(e);
+        }
     }
 }
     
@@ -353,7 +369,11 @@ private void callbackGetEvent(int sid,
         {
             FdbusMessage msg = new FdbusMessage(sid, msg_code, payload);
             msg.topic(filter);
-            mFdbusListener.onBroadcast(msg);
+            try {
+                mFdbusListener.onBroadcast(msg);
+            } catch (Exception e) {
+                System.out.println(e);
+            }
         }
     }
 }

@@ -55,11 +55,9 @@ class MyMessageHandle(fdbus.MessageClosure):
         else:
             print('Invoke is received - sid: ', sid, ', code: ', msg_code)
 
-conn_callback = MyConnectionHandle()
-msg_callback = MyMessageHandle()
 message_handle_tbl = [
-     {'code' : ex.REQ_METADATA, 'callback' : msg_callback.getMessageCallback()},
-     {'code' : ex.REQ_CREATE_MEDIAPLAYER, 'callback' : msg_callback.getMessageCallback()}]
+     {'code' : ex.REQ_METADATA, 'callback' : MyMessageHandle()},
+     {'code' : ex.REQ_CREATE_MEDIAPLAYER, 'callback' : MyMessageHandle()}]
 
 fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 component = fdbus.FdbusAfComponent("default component")
@@ -67,7 +65,7 @@ server_list = []
 nr_servers = len(sys.argv) - 1
 for i in range(nr_servers):
     name = sys.argv[i+1]
-    server = component.offerService(name, message_handle_tbl, conn_callback.getConnectionCallback())
+    server = component.offerService(name, message_handle_tbl, MyConnectionHandle())
     server_list.append(server)
 
 while True:

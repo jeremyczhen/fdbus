@@ -415,7 +415,13 @@ void CFdbBaseObject::migrateToWorker(CBaseJob::Ptr &msg_ref, tRemoteCallback cal
     }
     else
     {
-        (this->*callback)(msg_ref);
+        try
+        {
+            (this->*callback)(msg_ref);
+        }
+        catch (...)
+        {
+        }
     }
 }
 
@@ -493,21 +499,27 @@ void CFdbBaseObject::callInvoke(CBaseJob::Ptr &msg_ref)
 
 void CFdbBaseObject::callOnline(FdbSessionId_t sid, bool first_or_last, bool online)
 {
-    if (online)
+    try
     {
-        if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
+        if (online)
         {
-            mSid = sid;
+            if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
+            {
+                mSid = sid;
+            }
+            onOnline(sid, first_or_last);
         }
-        onOnline(sid, first_or_last);
+        else
+        {
+            onOffline(sid, first_or_last);
+            if (!isPrimary() && (mSid == sid))
+            {
+                mSid = FDB_INVALID_ID;
+            }
+        }
     }
-    else
+    catch (...)
     {
-        onOffline(sid, first_or_last);
-        if (!isPrimary() && (mSid == sid))
-        {
-            mSid = FDB_INVALID_ID;
-        }
     }
 }
 
@@ -1619,7 +1631,13 @@ void CFdbBaseObject::migrateToWorker(FdbSessionId_t sid, bool first_or_last, boo
     }
     if (!worker || worker->isSelf())
     {
-        callback(this, sid, online, first_or_last);
+        try
+        {
+            callback(this, sid, online, first_or_last);
+        }
+        catch (...)
+        {
+        }
     }
     else
     {

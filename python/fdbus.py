@@ -19,6 +19,7 @@
 import sys
 import ctypes
 import os
+import threading
 
 fdb_clib = None
 
@@ -83,8 +84,10 @@ def fdbusCtypes2buffer(cptr, length):
     return bytes(res)
 
 class ReplyClosure(object):
-    def handleReply(self, sid, msg_code, msg_data, status, user_data):
+    def handleReply(self, sid, msg_code, msg_data, status):
         pass
+    def setClient(self, client):
+        self.client = client
     def getReplyCallback(self):
         def _handleReply(handle,
                           sid,
@@ -93,11 +96,15 @@ class ReplyClosure(object):
                           data_size,
                           status,
                           user_data):
-            self.handleReply(sid,
-                             msg_code,
-                             fdbusCtypes2buffer(msg_data, data_size),
-                             status,
-                             user_data)
+            try:
+                self.handleReply(sid,
+                                 msg_code,
+                                 fdbusCtypes2buffer(msg_data, data_size),
+                                 status)
+            except Exception as e:
+                print('Except in handleReply: ', e)
+            if (self.client):
+                self.client.removeReply(self)
 
         self.msg_handle = fdb_message_reply_fn_t(_handleReply)
         return self.msg_handle
@@ -207,16 +214,26 @@ class FdbusClient(object):
             fdb_clib.fdb_client_register_event_handle(self.native, ctypes.byref(self.handles))
         else:
             self.native = native_handle
+
+        self.mutex = threading.Lock()
+        self.pending_reply = {}
+
     # private method
     def getOnOnlineFunc(self):
         def callOnOnline(handle, sid):
-            self.onOnline(sid)
+            try:
+                self.onOnline(sid)
+            except Exception as e:
+                print('Except in onOnline: ', e)
         return fdb_client_online_fn_t(callOnOnline)
 
     # private method
     def getOnOfflineFunc(self):
         def callOnOffline(handle, sid):
-            self.onOffline(sid)
+            try:
+                self.onOffline(sid)
+            except Exception as e:
+                print('Except in onOffline: ', e)
         return fdb_client_offline_fn_t(callOnOffline)
 
     # private method
@@ -228,11 +245,14 @@ class FdbusClient(object):
                         data_size,
                         status,
                         user_data):
-            self.onReply(sid,
-                         msg_code,
-                         fdbusCtypes2buffer(msg_data, data_size),
-                         status,
-                         user_data)
+            try:
+                self.onReply(sid,
+                             msg_code,
+                             fdbusCtypes2buffer(msg_data, data_size),
+                             status,
+                             user_data)
+            except Exception as e:
+                print('Except in onReply: ', e)
         return fdb_client_reply_fn_t(callOnReply)
 
     # private method
@@ -245,12 +265,15 @@ class FdbusClient(object):
                            data_size,
                            status,
                            user_data):
-            self.onGetEvent(sid,
-                            event,
-                            topic,
-                            fdbusCtypes2buffer(event_data, data_size),
-                            status,
-                            user_data)
+            try:
+                self.onGetEvent(sid,
+                                event,
+                                topic,
+                                fdbusCtypes2buffer(event_data, data_size),
+                                status,
+                                user_data)
+            except Exception as e:
+                print('Except in onGetEvent: ', e)
         return fdb_client_get_event_fn_t(callOnGetEvent)
 
     # private method
@@ -261,10 +284,13 @@ class FdbusClient(object):
                             event_data,
                             data_size,
                             topic):
-            self.onBroadcast(sid,
-                             event_code,
-                             fdbusCtypes2buffer(event_data, data_size),
-                             topic)
+            try:
+                self.onBroadcast(sid,
+                                 event_code,
+                                 fdbusCtypes2buffer(event_data, data_size),
+                                 topic)
+            except Exception as e:
+                print('Except in onBroadcast: ', e)
         return fdb_client_broadcast_fn_t(callOnBroadcast)
 
     # public method
@@ -325,7 +351,6 @@ class FdbusClient(object):
                         msg_code,
                         msg_data = None,
                         timeout = 0,
-                        user_data = None,
                         log_data = None):
         if msg_data is None:
             data_size = 0
@@ -345,9 +370,22 @@ class FdbusClient(object):
                                             msg_data,
                                             data_size,
                                             timeout,
-                                            callback,
-                                            user_data,
+                                            callback.getReplyCallback(),
+                                            None,
                                             castToChar(log_data))
+        callback.setClient(self)
+        self.mutex.acquire()
+        self.pending_reply[callback] = callback
+        self.mutex.release()
+
+    def removeReply(self, reply):
+        self.mutex.acquire()
+        try:
+            self.pending_reply.pop(reply)
+        except Exception:
+            pass
+        self.mutex.release()
+
     """
     public method
     invoke server method synchronously: will block until reply is received.
@@ -717,22 +755,31 @@ class FdbusServer(object):
     # private method
     def getOnOnlineFunc(self):
         def callOnOnline(handle, sid, is_first):
-            self.onOnline(sid, bool(is_first))
+            try:
+                self.onOnline(sid, bool(is_first))
+            except Exception as e:
+                print('Except in onOnline: ', e)
         return fdb_server_online_fn_t(callOnOnline)
 
     # private method
     def getOnOfflineFunc(self):
         def callOnOffline(handle, sid, is_last):
-            self.onOffline(sid, bool(is_last))
+            try:
+                self.onOffline(sid, bool(is_last))
+            except Exception as e:
+                print('Except in onOffline: ', e)
         return fdb_server_offline_fn_t(callOnOffline)
 
     # private method
     def getOnInvokeFunc(self):
         def callOnInvoke(handle, sid, msg_code, msg_data, data_size, reply_handle):
-            self.onInvoke(sid,
-                          msg_code,
-                          fdbusCtypes2buffer(msg_data, data_size),
-                          FdbusReplyHandle(reply_handle))
+            try:
+                self.onInvoke(sid,
+                              msg_code,
+                              fdbusCtypes2buffer(msg_data, data_size),
+                              FdbusReplyHandle(reply_handle))
+            except Exception as e:
+                print('Except in onInvoke: ', e)
         return fdb_server_invoke_fn_t(callOnInvoke)
 
     # private method
@@ -745,8 +792,11 @@ class FdbusServer(object):
                 items.append({'event_code': c_items[i].event_code,
                               'topic' : str(c_items[i].topic)})
 
-            self.onSubscribe(items,
-                             FdbusReplyHandle(reply_handle))
+            try:
+                self.onSubscribe(items,
+                                 FdbusReplyHandle(reply_handle))
+            except Exception as e:
+                print('Except in onSubscribe: ', e)
         return fdb_server_subscribe_fn_t(callOnSubscribe)
 
     # public method
@@ -894,7 +944,10 @@ class ConnectionClosure(object):
         pass
     def getConnectionCallback(self):
         def _handleConnection(sid, is_online, first_or_last, user_data):
-            self.handleConnection(sid, is_online, first_or_last);
+            try:
+                self.handleConnection(sid, is_online, first_or_last);
+            except Exception as e:
+                print('Except in handleConnection: ', e)
 
         self.connection_handle = fdb_comp_connection_fn_t(_handleConnection)
         return self.connection_handle
@@ -904,7 +957,10 @@ class EventClosure(object):
         pass
     def getEventCallback(self):
         def _handleEvent(sid, evt_code, evt_data, data_size, topic, user_data):
-            self.handleEvent(sid, evt_code, fdbusCtypes2buffer(evt_data, data_size), topic);
+            try:
+                self.handleEvent(sid, evt_code, fdbusCtypes2buffer(evt_data, data_size), topic);
+            except Exception as e:
+                print('Except in handleEvent: ', e)
 
         self.event_handle = fdb_comp_event_handle_fn_t(_handleEvent)
         return self.event_handle
@@ -914,10 +970,13 @@ class MessageClosure(object):
         pass
     def getMessageCallback(self):
         def _handleMessage(sid, msg_code, msg_data, data_size, reply_handle, user_data):
-            self.handleMessage(sid,
-                               msg_code,
-                               fdbusCtypes2buffer(msg_data, data_size),
-                               FdbusReplyHandle(reply_handle));
+            try:
+                self.handleMessage(sid,
+                                   msg_code,
+                                   fdbusCtypes2buffer(msg_data, data_size),
+                                   FdbusReplyHandle(reply_handle));
+            except Exception as e:
+                print('Except in handleMessage: ', e)
 
         self.message_handle = fdb_comp_message_handle_fn_t(_handleMessage)
         return self.message_handle
@@ -942,6 +1001,9 @@ class FdbusAfComponent(object):
         fn_create = fdb_clib.fdb_create_afcomponent
         fn_create.restype = ctypes.c_void_p
         self.native = fn_create(name)
+        self.connection_callbacks = []
+        self.event_handles = []
+        self.message_handles = []
 
     def queryService(self, bus_name, event_handle_tbl, connection_callback):
         global fdb_clib
@@ -950,11 +1012,19 @@ class FdbusAfComponent(object):
         if not event_handle_tbl is None:
             handle = (EventHandle * nr_handles)()
             for i in range(nr_handles):
+                event_handle = event_handle_tbl[i]['callback']
+                self.event_handles.append(event_handle)
                 handle[i].evt_code = event_handle_tbl[i]['code']
                 handle[i].topic = castToChar(event_handle_tbl[i]['topic'])
-                handle[i].fn = event_handle_tbl[i]['callback']
+                handle[i].fn = event_handle.getEventCallback()
                 handle[i].user_data = None
             event_tbl = ctypes.cast(handle, ctypes.POINTER(EventHandle))
+
+        if connection_callback:
+            self.connection_callbacks.append(connection_callback)
+            connection_callback_fn = connection_callback.getConnectionCallback()
+        else:
+            connection_callback_fn = None
 
         fn_query_service = fdb_clib.fdb_afcomponent_query_service
         fn_query_service.argtypes = [ctypes.c_void_p,
@@ -967,7 +1037,7 @@ class FdbusAfComponent(object):
                                          castToChar(bus_name),
                                          event_tbl,
                                          nr_handles,
-                                         connection_callback)
+                                         connection_callback_fn)
         return FdbusClient(bus_name, client_handle)
 
     def offerService(self, bus_name, message_handle_tbl, connection_callback):
@@ -977,10 +1047,18 @@ class FdbusAfComponent(object):
         if not message_handle_tbl is None:
             handle = (MessageHandle * nr_handles)()
             for i in range(nr_handles):
+                message_handle = message_handle_tbl[i]['callback']
+                self.message_handles.append(message_handle)
                 handle[i].msg_code = message_handle_tbl[i]['code']
-                handle[i].fn = message_handle_tbl[i]['callback']
+                handle[i].fn = message_handle.getMessageCallback()
                 handle[i].user_data = None
             message_tbl = ctypes.cast(handle, ctypes.POINTER(MessageHandle))
+
+        if connection_callback:
+            self.connection_callbacks.append(connection_callback)
+            connection_callback_fn = connection_callback.getConnectionCallback()
+        else:
+            connection_callback_fn = None
 
         fn_offer_service = fdb_clib.fdb_afcomponent_offer_service
         fn_offer_service.argtypes = [ctypes.c_void_p,
@@ -993,5 +1071,5 @@ class FdbusAfComponent(object):
                                          castToChar(bus_name),
                                          message_tbl,
                                          nr_handles,
-                                         connection_callback)
+                                         connection_callback_fn)
         return FdbusServer(bus_name, server_handle)

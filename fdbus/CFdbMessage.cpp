@@ -279,7 +279,13 @@ void CFdbMessage::run(CBaseWorker *worker, Ptr &ref)
     }
     if (mCallable.mPostFunc)
     {
-        mCallable.mPostFunc(ref);
+        try
+        {
+            mCallable.mPostFunc(ref);
+        }
+        catch (...)
+        {
+        }
     }
 }
 

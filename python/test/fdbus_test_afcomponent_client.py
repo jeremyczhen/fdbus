@@ -31,7 +31,7 @@ def process_response(code, resp_data, tag):
         print('unknown message code is received: ', code)
 
 class MyReplyClosure(fdbus.ReplyClosure):
-    def handleReply(self, sid, msg_code, msg_data, status, user_data):
+    def handleReply(self, sid, msg_code, msg_data, status):
         if status == 0:
             process_response(msg_code, msg_data, 'handleMessage: ')
 
@@ -50,12 +50,10 @@ class MyEventHandle(fdbus.EventClosure):
         else:
             print('onBroadcast - unknown event: ', event_code)
 
-conn_callback = MyConnectionHandle()
-evt_callback = MyEventHandle()
 event_handle_tbl = [
-     {'code' : ex.NTF_ELAPSE_TIME, 'topic' : None, 'callback' : evt_callback.getEventCallback()},
-     {'code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-1', 'callback' : evt_callback.getEventCallback()},
-     {'code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-2', 'callback' : evt_callback.getEventCallback()}]
+     {'code' : ex.NTF_ELAPSE_TIME, 'topic' : None, 'callback' : MyEventHandle()},
+     {'code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-1', 'callback' : MyEventHandle()},
+     {'code' : ex.NTF_MEDIAPLAYER_CREATED, 'topic' : 'topic-2', 'callback' : MyEventHandle()}]
 
 fdbus.fdbusStart(os.getenv('FDB_CLIB_PATH'))
 component = fdbus.FdbusAfComponent("default component")
@@ -63,7 +61,7 @@ client_list = []
 nr_clients = len(sys.argv) - 1
 for i in range(nr_clients):
     name = sys.argv[i+1]
-    client = component.queryService(name, event_handle_tbl, conn_callback.getConnectionCallback())
+    client = component.queryService(name, event_handle_tbl, MyConnectionHandle())
     client_list.append(client)
 
 cb = MyReplyClosure()
@@ -91,6 +89,6 @@ while True:
 
         req.id = song_id
         song_id += 1
-        client_list[i].invoke_callback(cb.getReplyCallback(), ex.REQ_METADATA, req.SerializeToString())
+        client_list[i].invoke_callback(cb, ex.REQ_METADATA, req.SerializeToString())
         time.sleep(1)
 
