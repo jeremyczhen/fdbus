@@ -181,7 +181,7 @@ void CGlobalParam::getSubscriptionList(JNIEnv *env, jobject sub_items, tSubscrip
                 filter = reinterpret_cast<jstring>(filter_obj);
                 c_filter = env->GetStringUTFChars(filter, 0);
             }
-            sub_tbl.push_back(std::move(CScriptionItem(code, c_filter, global_cb_obj)));
+            sub_tbl.push_back(CScriptionItem(code, c_filter, global_cb_obj));
             if (c_filter)
             {
                 env->ReleaseStringUTFChars(filter, c_filter);
