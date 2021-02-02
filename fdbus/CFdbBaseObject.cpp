@@ -320,6 +320,22 @@ bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
     return false;
 }
 
+bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, const void *buffer, int32_t size)
+{
+    CBaseMessage msg(code, this, FDB_INVALID_ID);
+    msg.expectReply(false);
+    if (!msg.serialize(buffer, size))
+    {
+        return false;
+    }
+    auto session = mEndpoint->preferredPeer();
+    if (session)
+    {
+        return session->sendMessage(&msg);
+    }
+    return false;
+}
+
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , IFdbMsgBuilder &data
                                , const char *filter

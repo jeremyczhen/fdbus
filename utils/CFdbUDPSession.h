@@ -44,7 +44,7 @@ public:
         return mSocket;
     }
 protected:
-    void onInput(bool &io_error);
+    void onInput();
     void onError();
     void onHup();
 

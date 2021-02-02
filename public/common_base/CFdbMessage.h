@@ -119,15 +119,15 @@ struct CFdbMsgPrefix
 
     void deserialize(const uint8_t *buffer)
     {
-        mTotalLength = buffer[0] << 0;
-        mTotalLength |= buffer[1] << 8;
-        mTotalLength |= buffer[2] << 16;
-        mTotalLength |= buffer[3] << 24;
+        mTotalLength = (buffer[0] << 0)  |
+                       (buffer[1] << 8)  |
+                       (buffer[2] << 16) |
+                       (buffer[3] << 24);
 
-        mHeadLength = buffer[4] << 0;
-        mHeadLength |= buffer[5] << 8;
-        mHeadLength |= buffer[6] << 16;
-        mHeadLength |= buffer[7] << 24;
+        mHeadLength = (buffer[4] << 0)  |
+                      (buffer[5] << 8)  |
+                      (buffer[6] << 16) |
+                      (buffer[7] << 24);
     }
 
     CFdbMsgPrefix(const uint8_t *buffer)

@@ -35,7 +35,7 @@ CServerSocket::~CServerSocket()
 {
 }
 
-void CServerSocket::onInput(bool &io_error)
+void CServerSocket::onInput()
 {
     bool blocking_mode = (mSocket->getAddress().mType == FDB_SOCKET_IPC) ?
                           mOwner->enableIpcBlockingMode() : mOwner->enableTcpBlockingMode();
@@ -64,7 +64,7 @@ bool CServerSocket::bind(CBaseWorker *worker)
             break;
         }
 
-        FDB_CONTEXT->dispatchInput(FDB_ADDRESS_BIND_RETRY_INTERVAL);
+        sysdep_sleep(FDB_ADDRESS_BIND_RETRY_INTERVAL);
     } while (--retries > 0);
 
     if (retries > 0)
@@ -79,8 +79,6 @@ bool CServerSocket::bind(CBaseWorker *worker)
 CBaseServer::CBaseServer(const char *name, CBaseWorker *worker)
     : CBaseEndpoint(name, worker, FDB_OBJECT_ROLE_SERVER)
 {
-    enableTcpBlockingMode(true);
-    enableIpcBlockingMode(false);
 }
 
 CBaseServer::~CBaseServer()

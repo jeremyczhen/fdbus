@@ -42,6 +42,7 @@ SRC_FILES = [
     "worker/CBaseWorker.cpp",
     "worker/CFdEventLoop.cpp",
     "worker/CThreadEventLoop.cpp",
+    "worker/CSysFdWatch.cpp",
     "server/CBaseNameProxy.cpp",
     "server/CIntraNameProxy.cpp",
     "server/CAddressAllocator.cpp",

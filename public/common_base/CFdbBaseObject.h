@@ -955,6 +955,7 @@ private:
 
     bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
     bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);
+    bool sendLogNoQueue(FdbMsgCode_t code, const void *buffer, int32_t size);
 
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
 
@@ -1039,6 +1040,7 @@ private:
     friend class CFdbEventRouter;
     friend class CFdbWatchdog;
     friend class CWatchdogJob;
+    friend class CSysFdWatch;
 };
 
 #endif

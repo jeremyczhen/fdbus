@@ -17,11 +17,48 @@
 #ifndef _CSYSFDWATCH_H_
 #define _CSYSFDWATCH_H_
 
+#include <list>
 #include "common_defs.h"
 
 class CFdEventLoop;
+class CFdbRawMsgBuilder;
 class CSysFdWatch
 {
+private:
+    struct CInputDataChunk
+    {
+        uint8_t *mBuffer;
+        int32_t mSize;
+        int32_t mConsumed;
+        CInputDataChunk()
+            : mBuffer(0)
+            , mSize(0)
+            , mConsumed(0)
+        {}
+        CInputDataChunk(uint8_t *buffer, int32_t size, int32_t consumed = 0)
+            : mBuffer(buffer)
+            , mSize(size)
+            , mConsumed(consumed)
+        {}
+    };
+    struct COutputDataChunk
+    {
+        uint8_t *mBuffer;
+        int32_t mSize;
+        int32_t mConsumed;
+        uint8_t *mLogBuffer;
+        int32_t mLogSize;
+        COutputDataChunk()
+            : mBuffer(0)
+            , mSize(0)
+            , mConsumed(0)
+            , mLogBuffer(0)
+            , mLogSize(0)
+        {}
+        COutputDataChunk(uint8_t *buffer, int32_t size,
+                         int32_t consumed, CFdbRawMsgBuilder *log_builder);
+        ~COutputDataChunk();
+    };
 public:
     /*
      * Create FD watch
@@ -37,7 +74,7 @@ public:
      *     POLLERR
      *  @return - NA
      */
-    CSysFdWatch(int fd, int32_t flags);
+    CSysFdWatch(int fd, uint32_t flags);
 
     virtual ~CSysFdWatch();
 
@@ -57,7 +94,7 @@ public:
     /*
      * set polling flag of the watch. Internally used only!!!
      */
-    int32_t flags()
+    uint32_t flags()
     {
         return mFlags;
     }
@@ -65,7 +102,7 @@ public:
     /*
      * query flag.
      */
-    void flags(int32_t flgs)
+    void flags(uint32_t flgs)
     {
         mFlags = flgs;
     }
@@ -93,6 +130,11 @@ public:
 
     void fatalError(bool enb);
 
+    uint32_t getPendingChunkSize() const
+    {
+        return (uint32_t)mOutputChunkList.size();
+    }
+
 protected:
     /*-----------------------------------------------------------------------------
      * The virtual function should be implemented by subclass
@@ -104,7 +146,7 @@ protected:
      * Otherwise the poll() will not be blocked.
      * Also, the read() should be non-block!!!
      */
-    virtual void onInput(bool &io_error) {}
+    virtual void onInput() {}
 
     /*
      * callback invoked when POLLOUT is set after poll()
@@ -113,7 +155,7 @@ protected:
      * Otherwise the poll() will not be blocked.
      * Also, the write() should be non-block!!!
      */
-    virtual void onOutput(bool &io_error) {}
+    virtual void onOutput() {}
 
     /*
      * callback invoked when POLLHUP is set after poll()
@@ -136,7 +178,35 @@ protected:
         return revents;
     }
 
+    virtual void onInputReady(const uint8_t *data, int32_t size)
+    {}
+
+    virtual int32_t writeStream(const uint8_t *data, int32_t size)
+    {
+        return -1;
+    }
+
+    virtual int32_t readStream(uint8_t *data, int32_t size)
+    {
+        return -1;
+    }
+
+    virtual void freeOutputBuffer(uint8_t *buffer)
+    {
+        if (buffer)
+        {
+            delete[] buffer;
+        }
+    }
+
+    void submitInput(uint8_t *buffer, int32_t size, bool trigger_read);
+
+    void submitOutput(uint8_t *buffer, int32_t size, CFdbRawMsgBuilder *log_builder);
+
+    void updateFlags(uint32_t mask, uint32_t value);
+
 private:
+    typedef std::list<COutputDataChunk *> tOutputChunkList;
     void eventloop(CFdEventLoop *loop)
     {
         mEventLoop = loop;
@@ -147,11 +217,19 @@ private:
         return mEventLoop;
     }
 
+    void clearOutputChunkList();
+
+    void processInput();
+    void processOutput();
+
     int mFd;
-    int32_t mFlags;
+    uint32_t mFlags;
     bool mEnable;
     bool mFatalError;
     CFdEventLoop *mEventLoop;
+    CInputDataChunk mInputChunk;
+    tOutputChunkList mOutputChunkList;
+    int32_t mInputRecursiveDepth;
     
     friend class CFdEventLoop;
     friend class CNotifyFdWatch;

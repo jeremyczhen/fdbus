@@ -70,7 +70,7 @@ private:
     bool addWatchToList(tCFdWatchList &wlist, CSysFdWatch *watch, bool enable);
     void rebuildPollFd()
     {
-	mRebuildPollFd = true;
+        mRebuildPollFd = true;
     }
 
     friend CSysFdWatch;

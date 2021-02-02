@@ -246,7 +246,8 @@ bool CLogProducer::checkLogEnabled(EFdbMessageType type,
     }
 }
 
-void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint)
+void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint,
+                              CFdbRawMsgBuilder &builder)
 {
     if (!msg->isLogEnabled())
     {
@@ -258,7 +259,6 @@ void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEn
     auto busname = endpoint->nsName().c_str();
     auto proxy = FDB_CONTEXT->getNameProxy();
 
-    CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
                          << (proxy ? proxy->hostName().c_str() : "Unknown")
                          << sender
@@ -276,7 +276,6 @@ void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEn
     if (!msg->mStringData.empty())
     {
         builder.serializer() << true << msg->mStringData;
-        sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
     }
     else
     {
@@ -288,8 +287,14 @@ void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEn
         }
         builder.serializer() << log_size;
         builder.serializer().addRawData(msg->getPayloadBuffer(), log_size);
-        sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
     }
+}
+
+void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint)
+{
+    CFdbRawMsgBuilder builder;
+    logMessage(msg, sender_name, endpoint, builder);
+    sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
 }
 
 bool CLogProducer::checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag)

@@ -20,6 +20,7 @@
 #include <common_base/CBaseEndpoint.h>
 #include <common_base/CLogProducer.h>
 #include <common_base/CSocketImp.h>
+#include <common_base/CFdbRawMsgBuilder.h>
 #include <utils/Log.h>
 #include <utils/CFdbIfMessageHeader.h>
 
@@ -38,9 +39,15 @@ CFdbSession::CFdbSession(FdbSessionId_t sid, CFdbSessionContainer *container, CS
     , mSecurityLevel(FDB_SECURITY_LEVEL_NONE)
     , mRecursiveDepth(0)
     , mPid(0)
+    , mPayloadBuffer(0)
 {
     mUDPAddr.mPort = FDB_INET_PORT_INVALID;
     mUDPAddr.mType = FDB_SOCKET_UDP;
+
+    if (mContainer->owner()->enableAysncRead())
+    {
+        submitInput(mPrefixBuffer, sizeof(mPrefixBuffer), false);
+    }
 }
 
 CFdbSession::~CFdbSession()
@@ -109,11 +116,11 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
     {
         if (cnt < 0)
         {
-            LOG_E("CFdbSession: process %d: fatal error when writing!\n", CBaseThread::getPid());
+            LOG_E("CFdbSession: process %d: fatal error or peer drops when writing %d bytes!\n", CBaseThread::getPid(), size);
         }
         else
         {
-            LOG_E("CFdbSession: process %d: fail to write data!\n", CBaseThread::getPid());
+            LOG_E("CFdbSession: process %d: fail to write %d bytes!\n", CBaseThread::getPid(), size);
         }
         fatalError(true);
         return false;
@@ -128,19 +135,42 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
     {
         return false;
     }
-    if (sendMessage(msg->getRawBuffer(), msg->getRawDataSize()))
+
+    bool ret = true;
+    if (mContainer->owner()->enableAysncWrite())
     {
-        if (msg->isLogEnabled())
+        auto logger = CFdbContext::getInstance()->getLogger();
+        if (logger && msg->isLogEnabled())
         {
-            auto logger = CFdbContext::getInstance()->getLogger();
-            if (logger)
+            CFdbRawMsgBuilder builder;
+            logger->logMessage(msg, mSenderName.c_str(), mContainer->owner(), builder);
+            submitOutput(msg->getRawBuffer(), msg->getRawDataSize(), &builder);
+        }
+        else
+        {
+            submitOutput(msg->getRawBuffer(), msg->getRawDataSize(), 0);
+        }
+    }
+    else
+    {
+        if (sendMessage(msg->getRawBuffer(), msg->getRawDataSize()))
+        {
+            if (msg->isLogEnabled())
             {
-                logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
+                auto logger = CFdbContext::getInstance()->getLogger();
+                if (logger)
+                {
+                    logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
+                }
             }
         }
-        return true;
+        else
+        {
+            ret = false;
+        }
     }
-    return false;
+
+    return ret;
 }
 
 bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
@@ -198,11 +228,11 @@ bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
     {
         if (cnt < 0)
         {
-            LOG_E("CFdbSession: process %d: fatal error when reading!\n", CBaseThread::getPid());
+            LOG_E("CFdbSession: process %d: fatal error or peer drops when reading %d bytes!\n", CBaseThread::getPid(), size);
         }
         else
         {
-            LOG_E("CFdbSession: process %d: fail to read data!\n", CBaseThread::getPid());
+            LOG_E("CFdbSession: process %d: fail to read %d bytes!\n", CBaseThread::getPid(), size);
         }
         fatalError(true);
         return false;
@@ -211,21 +241,15 @@ bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
     return true;
 }
 
-void CFdbSession::onInput(bool &io_error)
+void CFdbSession::parsePrefix(const uint8_t *data, int32_t size)
 {
-    uint8_t hdr_buf[CFdbMessage::mPrefixSize];
-    if (!receiveData(hdr_buf, sizeof(hdr_buf)))
+    if (size < 0)
     {
-#if 0
-        LOG_E("CFdbSession: Session %d: Unable to read prefix: %d!\n", mSid, (int)sizeof(hdr_buf));
-#endif
-        fatalError(true);
         return;
     }
-
-    CFdbMsgPrefix prefix(hdr_buf);
-
-    int32_t data_size = prefix.mTotalLength - CFdbMessage::mPrefixSize;
+    mPayloadBuffer = 0;
+    mMsgPrefix.deserialize(mPrefixBuffer);
+    int32_t data_size = mMsgPrefix.mTotalLength - CFdbMessage::mPrefixSize;
     if (data_size < 0)
     {
         fatalError(true);
@@ -235,33 +259,40 @@ void CFdbSession::onInput(bool &io_error)
      * The leading CFdbMessage::mPrefixSize bytes are not used; just for
      * keeping uniform structure
      */
-    uint8_t *whole_buf;
     try
     {
-        whole_buf = new uint8_t[prefix.mTotalLength];
+        mPayloadBuffer = new uint8_t[mMsgPrefix.mTotalLength];
     }
     catch (...)
     {
         LOG_E("CFdbSession: Session %d: Unable to allocate buffer of size %d!\n",
-                mSid, CFdbMessage::mPrefixSize + data_size);
+                mSid, mMsgPrefix.mTotalLength);
         fatalError(true);
-        return;
     }
-    uint8_t *head_start = whole_buf + CFdbMessage::mPrefixSize;
-    if (!receiveData(head_start, data_size))
+}
+
+void CFdbSession::processPayload(const uint8_t *data, int32_t size)
+{
+    if (size < 0)
     {
-        LOG_E("CFdbSession: Session %d: Unable to read message: %d!\n", mSid, data_size);
-        delete[] whole_buf;
-        fatalError(true);
+        if (mPayloadBuffer)
+        {
+            delete[] mPayloadBuffer;
+            mPayloadBuffer = 0;
+        }
         return;
     }
 
     NFdbBase::CFdbMessageHeader head;
     CFdbParcelableParser parser(head);
-    if (!parser.parse(head_start, prefix.mHeadLength))
+    if (!parser.parse(data, mMsgPrefix.mHeadLength))
     {
         LOG_E("CFdbSession: Session %d: Unable to deserialize message head!\n", mSid);
-        delete[] whole_buf;
+        if (mPayloadBuffer)
+        {
+            delete[] mPayloadBuffer;
+            mPayloadBuffer = 0;
+        }
         fatalError(true);
         return;
     }
@@ -272,38 +303,88 @@ void CFdbSession::onInput(bool &io_error)
         case FDB_MT_SIDEBAND_REQUEST:
         case FDB_MT_GET_EVENT:
         case FDB_MT_PUBLISH:
-            doRequest(head, prefix, whole_buf);
+            doRequest(head);
             break;
         case FDB_MT_RETURN_EVENT:
         case FDB_MT_REPLY:
         case FDB_MT_SIDEBAND_REPLY:
-            doResponse(head, prefix, whole_buf);
+            doResponse(head);
             break;
         case FDB_MT_BROADCAST:
-            doBroadcast(head, prefix, whole_buf);
+            doBroadcast(head);
             break;
         case FDB_MT_STATUS:
-            doResponse(head, prefix, whole_buf);
+            doResponse(head);
             break;
         case FDB_MT_SUBSCRIBE_REQ:
             if (head.code() == FDB_CODE_SUBSCRIBE)
             {
-                doSubscribeReq(head, prefix, whole_buf, true);
+                doSubscribeReq(head, true);
             }
             else if (head.code() == FDB_CODE_UNSUBSCRIBE)
             {
-                doSubscribeReq(head, prefix, whole_buf, false);
+                doSubscribeReq(head, false);
             }
             else if (head.code() == FDB_CODE_UPDATE)
             {
-                doUpdate(head, prefix, whole_buf);
+                doUpdate(head);
             }
             break;
         default:
             LOG_E("CFdbSession: Message %d: Unknown type!\n", (int32_t)head.serial_number());
-            delete[] whole_buf;
+            delete[] mPayloadBuffer;
+            mPayloadBuffer = 0;
             fatalError(true);
             break;
+    }
+
+    mPayloadBuffer = 0;
+}
+
+int32_t CFdbSession::writeStream(const uint8_t *data, int32_t size)
+{
+    return mSocket->send((uint8_t *)data, size);
+}
+
+int32_t CFdbSession::readStream(uint8_t *data, int32_t size)
+{
+    return mSocket->recv(data, size);
+}
+
+void CFdbSession::onInputReady(const uint8_t *data, int32_t size)
+{
+    if (data == mPrefixBuffer)
+    {
+        parsePrefix(data, size);
+        if (mPayloadBuffer)
+        {
+            submitInput(mPayloadBuffer + CFdbMessage::mPrefixSize,
+                        mMsgPrefix.mTotalLength - CFdbMessage::mPrefixSize, true);
+        }
+    }
+    else
+    {
+        processPayload(data, size);
+        submitInput(mPrefixBuffer, sizeof(mPrefixBuffer), true);
+    }
+}
+
+void CFdbSession::onInput()
+{
+    if (receiveData(mPrefixBuffer, sizeof(mPrefixBuffer)))
+    {
+        parsePrefix(mPrefixBuffer, sizeof(mPrefixBuffer));
+    }
+    if (fatalError())
+    {
+        return;
+    }
+
+    if (receiveData(mPayloadBuffer + CFdbMessage::mPrefixSize,
+                     mMsgPrefix.mTotalLength - CFdbMessage::mPrefixSize))
+    {
+        processPayload(mPayloadBuffer + CFdbMessage::mPrefixSize,
+                       mMsgPrefix.mTotalLength - CFdbMessage::mPrefixSize);
     }
 }
 
@@ -319,10 +400,9 @@ void CFdbSession::onHup()
     endpoint->checkAutoRemove();
 }
 
-void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
-                            CFdbMsgPrefix &prefix, uint8_t *buffer)
+void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
@@ -387,8 +467,7 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
-                             CFdbMsgPrefix &prefix, uint8_t *buffer)
+void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head)
 {
     bool found;
     PendingMsgTable_t::EntryContainer_t::iterator it;
@@ -403,16 +482,17 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
                     object_id, msg->objectId());
             terminateMessage(msg_ref, NFdbBase::FDB_ST_OBJECT_NOT_FOUND, "Object ID does not match.");
             mPendingMsgTable.deleteEntry(it);
-            delete[] buffer;
+            delete[] mPayloadBuffer;
+            mPayloadBuffer = 0;
             return;
         }
 
         auto object = mContainer->owner()->getObject(msg, false);
         if (object)
         {
-            msg->update(head, prefix);
+            msg->update(head, mMsgPrefix);
             msg->decodeDebugInfo(head);
-            msg->replaceBuffer(buffer, head.payload_size(), prefix.mHeadLength);
+            msg->replaceBuffer(mPayloadBuffer, head.payload_size(), mMsgPrefix.mHeadLength);
             if (!msg->sync())
             {
                 switch (head.type())
@@ -452,7 +532,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
         }
         else
         {
-            delete[] buffer;
+            delete[] mPayloadBuffer;
         }
 
         msg_ref->terminate(msg_ref);
@@ -460,8 +540,7 @@ void CFdbSession::doResponse(NFdbBase::CFdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
-                              CFdbMsgPrefix &prefix, uint8_t *buffer)
+void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head)
 {
     CFdbMessage *msg = 0;
     if (head.flag() & MSG_FLAG_INITIAL_RESPONSE)
@@ -472,13 +551,13 @@ void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
         if (found)
         {
             auto outgoing_msg = castToMessage<CFdbMessage *>(msg_ref);
-            msg = outgoing_msg->clone(head, prefix, buffer, mSid);
+            msg = outgoing_msg->clone(head, mMsgPrefix, mPayloadBuffer, mSid);
         }
     }
 
     if (!msg)
     {
-        msg = new CFdbMessage(head, prefix, buffer, mSid);
+        msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
     }
     auto object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
@@ -489,12 +568,10 @@ void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head,
     }
 }
 
-void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head,
-                                 CFdbMsgPrefix &prefix,
-                                 uint8_t *buffer, bool subscribe)
+void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head, bool subscribe)
 {
     auto object_id = head.object_id();
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
     
@@ -589,11 +666,9 @@ _reply_status:
     msg->sendStatus(this, error_code, error_msg);
 }
 
-void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head,
-                           CFdbMsgPrefix &prefix,
-                           uint8_t *buffer)
+void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head)
 {
-    auto msg = new CFdbMessage(head, prefix, buffer, mSid);
+    auto msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 

@@ -40,6 +40,8 @@ public:
         mTimer = new CStatisticTimer(this);
         mTimer->attach(fdb_statistic_worker, false);
         enableUDP(true);
+        enableAysncRead(true);
+        enableAysncWrite(true);
     }
     void doStatistic(CMethodLoopTimer<CXServer> *timer)
     {

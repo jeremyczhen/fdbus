@@ -283,10 +283,13 @@ private:
 };
 }
 
+class CFdbRawMsgBuilder;
 class CLogProducer : public CBaseClient
 {
 public:
     CLogProducer();
+    void logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint,
+                    CFdbRawMsgBuilder &builder);
     void logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint);
     bool checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *info);

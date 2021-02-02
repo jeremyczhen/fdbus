@@ -84,6 +84,8 @@ public:
         resetTotal();
         enableUDP(true);
         enableTimeStamp(true);
+        enableAysncWrite(true);
+        enableAysncRead(true);
     }
     void doStatistic(CMethodLoopTimer<CXClient> *timer)
     {

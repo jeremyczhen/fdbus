@@ -21,41 +21,6 @@
 #include <common_base/CSysFdWatch.h>
 #include <common_base/CBaseWorker.h>
 
-CSysFdWatch::CSysFdWatch(int fd, int32_t flags)
-    : mFd(fd)
-    , mFlags(flags)
-    , mEnable(false)
-    , mFatalError(false)
-    , mEventLoop(0)
-{}
-
-CSysFdWatch::~CSysFdWatch()
-{
-    if (mFd > 0)
-    {
-        closePollFd(mFd);
-    }
-}
-
-void CSysFdWatch::enable(bool enb)
-{
-    if (enb)
-    {
-        mFatalError = false;
-    }
-    mEventLoop->enableWatch(this, enb);
-    mEnable = enb;
-}
-
-void CSysFdWatch::fatalError(bool enb)
-{
-    if (mFatalError != enb)
-    {
-	mEventLoop->rebuildPollFd();
-    }
-    mFatalError = enb;
-}
-
 class CNotifyFdWatch : public CSysFdWatch
 {
 public:
@@ -64,7 +29,7 @@ public:
         , mWorker(worker)
     {}
 protected:
-    void onInput(bool &io_error)
+    void onInput()
     {
         if (mEventLoop->mEventFd.pickEvent())
         {
@@ -78,12 +43,10 @@ protected:
     }
     void onHup()
     {
-        mWorker->doExit();
         LOG_E("CFdEventLoop: Worker exits due to eventfd error!\n");
     }
     void onError()
     {
-        mWorker->doExit();
         LOG_E("CFdEventLoop: Worker exits due to eventfd hup!\n");
     }
 private:
@@ -247,7 +210,6 @@ void CFdEventLoop::processWatches()
         mPollFds[j].revents = 0;
         if (events & (POLLIN | POLLOUT | POLLERR | POLLHUP))
         {
-            bool io_error = false;
             if (events & POLLERR)
             {
                 try
@@ -282,7 +244,7 @@ void CFdEventLoop::processWatches()
             {
                 try
                 {
-                    w->onInput(io_error);
+                    w->processInput();
                 }
                 catch (...)
                 {
@@ -297,7 +259,7 @@ void CFdEventLoop::processWatches()
             {
                 try
                 {
-                    w->onOutput(io_error);
+                    w->processOutput();
                 }
                 catch (...)
                 {
@@ -309,7 +271,7 @@ void CFdEventLoop::processWatches()
                 }
             }
 
-            if (io_error || w->fatalError())
+            if (w->fatalError())
             {
                 try
                 {
@@ -351,12 +313,11 @@ void CFdEventLoop::processInputWatches(tWatchPollTbl &watches, tFdPollTbl &fds)
         fds[j].revents = 0;
         if (events & (POLLIN))
         {
-            bool io_error = false;
             if (events & POLLIN)
             {
                 try
                 {
-                    w->onInput(io_error);
+                    w->processInput();
                 }
                 catch (...)
                 {
@@ -366,9 +327,6 @@ void CFdEventLoop::processInputWatches(tWatchPollTbl &watches, tFdPollTbl &fds)
                 {
                     continue;
                 }
-            }
-            if (io_error)
-            {
             }
         }
     }
@@ -527,3 +485,4 @@ bool CFdEventLoop::init(CBaseWorker *worker)
     }
     return true;
 }
+

@@ -24,6 +24,7 @@
 #include <common_base/CBaseJob.h>
 #include <common_base/CEntityContainer.h>
 #include <common_base/CFdbSessionContainer.h>
+#include <common_base/CFdbMessage.h>
 
 struct CFdbSessionInfo
 {
@@ -35,7 +36,6 @@ struct CFdbSessionInfo
 class CFdbSessionContainer;
 class CSocketImp;
 class CFdbMessage;
-struct CFdbMsgPrefix;
 
 namespace NFdbBase {
     class CFdbMessageHeader;
@@ -108,19 +108,24 @@ public:
         return mSocket;
     }
 protected:
-    void onInput(bool &io_error);
+    void onInput();
     void onError();
     void onHup();
+    void onInputReady(const uint8_t *data, int32_t size);
+    int32_t writeStream(const uint8_t *data, int32_t size);
+    int32_t readStream(uint8_t *data, int32_t size);
 private:
     typedef CEntityContainer<FdbMsgSn_t, CBaseJob::Ptr> PendingMsgTable_t;
 
-    void doRequest(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doResponse(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doBroadcast(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
-    void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer, bool subscribe);
-    void doUpdate(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix, uint8_t *buffer);
+    void doRequest(NFdbBase::CFdbMessageHeader &head);
+    void doResponse(NFdbBase::CFdbMessageHeader &head);
+    void doBroadcast(NFdbBase::CFdbMessageHeader &head);
+    void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, bool subscribe);
+    void doUpdate(NFdbBase::CFdbMessageHeader &head);
     void checkLogEnabled(CFdbMessage *msg);
     bool receiveData(uint8_t *buf, int32_t size);
+    void parsePrefix(const uint8_t *data, int32_t size);
+    void processPayload(const uint8_t *data, int32_t size);
 
     PendingMsgTable_t mPendingMsgTable;
     FdbSessionId_t mSid;
@@ -132,6 +137,9 @@ private:
     int32_t mRecursiveDepth;
     CFdbSocketAddr mUDPAddr;
     CBASE_tProcId mPid;
+    uint8_t *mPayloadBuffer;
+    uint8_t mPrefixBuffer[CFdbMessage::mPrefixSize];
+    CFdbMsgPrefix mMsgPrefix;
 };
 
 #endif

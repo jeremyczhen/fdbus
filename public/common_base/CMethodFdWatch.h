@@ -67,7 +67,7 @@ public:
         , mError(error)
         , mHup(hup)
     {
-        int32_t flgs = 0;
+        uint32_t flgs = 0;
         if (input)
         {
             flgs |= POLLIN;
@@ -87,18 +87,18 @@ public:
         CSysFdWatch::flags(flgs);
     }
 private:
-    void onInput(bool &io_error)
+    void onInput()
     {
         if (mInstance && mInput)
         {
-            (mInstance->*mInput)(this, io_error);
+            (mInstance->*mInput)(this);
         }
     }
-    void onOutput(bool &io_error)
+    void onOutput()
     {
         if (mInstance && mOutput)
         {
-            (mInstance->*mOutput)(this, io_error);
+            (mInstance->*mOutput)(this);
         }
     }
     void onError()

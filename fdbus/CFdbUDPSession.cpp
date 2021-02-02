@@ -80,7 +80,7 @@ int32_t CFdbUDPSession::receiveData(uint8_t *buf, int32_t size)
     return mSocket->recv(buf, size);
 }
 
-void CFdbUDPSession::onInput(bool &io_error)
+void CFdbUDPSession::onInput()
 {
     uint8_t rx_buffer[FDB_UDP_RECEIVE_BUFFER_SIZE];
     int32_t rx_size = receiveData(rx_buffer, sizeof(rx_buffer));

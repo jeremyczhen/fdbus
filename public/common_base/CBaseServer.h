@@ -34,7 +34,7 @@ public:
     ~CServerSocket();
     bool bind(CBaseWorker *worker);
 protected:
-    void onInput(bool &io_error);
+    void onInput();
 };
 
 class CBaseServer : public CBaseEndpoint

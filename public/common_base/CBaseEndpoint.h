@@ -41,8 +41,10 @@ public:
 #define FDB_EP_RECONNECT_ENABLED        (1 << 9)
 #define FDB_EP_RECONNECT_ACTIVATED      (1 << 10)
 #define FDB_EP_ENABLE_UDP               (1 << 11)
-#define FDB_OBJ_TCP_BLOCKING_MODE       (1 << 12)
-#define FDB_OBJ_IPC_BLOCKING_MODE       (1 << 13)
+#define FDB_EP_TCP_BLOCKING_MODE        (1 << 12)
+#define FDB_EP_IPC_BLOCKING_MODE        (1 << 13)
+#define FDB_EP_READ_ASYNC               (1 << 14)
+#define FDB_EP_WRITE_ASYNC              (1 << 15)
     CBaseEndpoint(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     ~CBaseEndpoint();
 
@@ -145,34 +147,66 @@ public:
     {
         if (active)
         {
-            mFlag |= FDB_OBJ_TCP_BLOCKING_MODE;
+            mFlag |= FDB_EP_TCP_BLOCKING_MODE;
         }
         else
         {
-            mFlag &= ~FDB_OBJ_TCP_BLOCKING_MODE;
+            mFlag &= ~FDB_EP_TCP_BLOCKING_MODE;
         }
     }
 
     bool enableTcpBlockingMode() const
     {
-        return !!(mFlag & FDB_OBJ_TCP_BLOCKING_MODE);
+        return !!(mFlag & FDB_EP_TCP_BLOCKING_MODE);
     }
 
     void enableIpcBlockingMode(bool active)
     {
         if (active)
         {
-            mFlag |= FDB_OBJ_IPC_BLOCKING_MODE;
+            mFlag |= FDB_EP_IPC_BLOCKING_MODE;
         }
         else
         {
-            mFlag &= ~FDB_OBJ_IPC_BLOCKING_MODE;
+            mFlag &= ~FDB_EP_IPC_BLOCKING_MODE;
         }
     }
 
     bool enableIpcBlockingMode() const
     {
-        return !!(mFlag & FDB_OBJ_IPC_BLOCKING_MODE);
+        return !!(mFlag & FDB_EP_IPC_BLOCKING_MODE);
+    }
+
+    void enableAysncWrite(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_EP_WRITE_ASYNC;
+        }
+        else
+        {
+            mFlag &= ~FDB_EP_WRITE_ASYNC;
+        }
+    }
+    bool enableAysncWrite()
+    {
+        return !!(mFlag & FDB_EP_WRITE_ASYNC);
+    }
+
+    void enableAysncRead(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_EP_READ_ASYNC;
+        }
+        else
+        {
+            mFlag &= ~FDB_EP_READ_ASYNC;
+        }
+    }
+    bool enableAysncRead()
+    {
+        return !!(mFlag & FDB_EP_READ_ASYNC);
     }
 
     void prepareDestroy();

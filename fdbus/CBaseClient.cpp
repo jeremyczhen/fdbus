@@ -54,7 +54,7 @@ CFdbSession *CClientSocket::connect()
             break;
         }
 
-        FDB_CONTEXT->dispatchInput(FDB_ADDRESS_CONNECT_RETRY_INTERVAL);
+        sysdep_sleep(FDB_ADDRESS_CONNECT_RETRY_INTERVAL);
     } while (--retries > 0);
 
     if (sock_imp)
@@ -116,8 +116,6 @@ CBaseClient::CBaseClient(const char *name, CBaseWorker *worker)
     : CBaseEndpoint(name, worker, FDB_OBJECT_ROLE_CLIENT)
     , mIsLocal(true)
 {
-    enableTcpBlockingMode(true);
-    enableIpcBlockingMode(false);
 }
 
 CBaseClient::~CBaseClient()

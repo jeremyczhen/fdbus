@@ -18,6 +18,7 @@
 #define __IFDBRAWMSGBUILDER_H__
 
 #include "IFdbMsgBuilder.h"
+#include "CFdbSimpleSerializer.h"
 
 class CFdbRawMsgBuilder : public IFdbMsgBuilder
 {
