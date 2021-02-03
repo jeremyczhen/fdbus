@@ -70,7 +70,7 @@ int32_t CFdbSimpleSerializer::toBuffer(uint8_t *buffer, int32_t size)
 
 void CFdbSimpleSerializer::reset()
 {
-    mTotalSize = 0;
+    mTotalSize = FDB_SCRATCH_CACHE_SIZE;
     mPos = 0;
     if (mBuffer && (mBuffer != mScratchCache))
     {
