@@ -77,9 +77,12 @@ CSysFdWatch::COutputDataChunk::COutputDataChunk(uint8_t *buffer, int32_t size,
                                                 int32_t consumed, CFdbRawMsgBuilder *log_builder)
     : mSize(size)
     , mConsumed(consumed)
+    , mLogBuffer(0)
+    , mLogSize(0)
 {
     mBuffer = new uint8_t[size];
     memcpy(mBuffer, buffer, size);
+
     if (log_builder)
     {
         mLogSize = log_builder->serializer().bufferSize();
@@ -88,11 +91,6 @@ CSysFdWatch::COutputDataChunk::COutputDataChunk(uint8_t *buffer, int32_t size,
             mLogBuffer = new uint8_t[mLogSize];
             log_builder->toBuffer(mLogBuffer, mLogSize);
         }
-    }
-    else
-    {
-        mLogBuffer = 0;
-        mLogSize = 0;
     }
 }
 
