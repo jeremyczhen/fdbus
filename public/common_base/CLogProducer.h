@@ -293,11 +293,20 @@ public:
     void logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint);
     bool checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *info);
+    static void printTrace(EFdbLogLevel log_level, const char *tag, const char *info);
 
     bool checkLogEnabled(EFdbMessageType type,
                          const char *sender_name,
                          const CBaseEndpoint *endpoint,
                          bool lock = true);
+    static EFdbLogLevel staticLogLevel()
+    {
+        return mStaticLogLevel;
+    }
+    void staticLogLevel(EFdbLogLevel level)
+    {
+        mStaticLogLevel = level;
+    }
     static const int32_t mMaxTraceLogSize = 4096;
 protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref);
@@ -336,6 +345,8 @@ private:
     bool mReverseTags;
 
     std::mutex mTraceLock;
+
+    static EFdbLogLevel mStaticLogLevel;
 
     bool checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl);
     void populateWhiteList(const CFdbParcelableArray<std::string> &in_filter

@@ -19,6 +19,7 @@
 #include <common_base/CBaseThread.h>
 #include <common_base/CFdbContext.h>
 #include <server/CIntraNameProxy.h>
+#include <server/CLogPrinter.h>
 #include <common_base/CFdbRawMsgBuilder.h>
 #include <utils/CFdbIfMessageHeader.h>
 #include <common_base/fdb_log_trace.h>
@@ -26,6 +27,8 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include <utils/Log.h>
+
+EFdbLogLevel CLogProducer::mStaticLogLevel = FDB_LL_INFO;
 
 CLogProducer::CLogProducer()
     : CBaseClient(FDB_LOG_SERVER_NAME)
@@ -339,6 +342,19 @@ void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char 
     sendLog(NFdbBase::REQ_TRACE_LOG, builder);
 }
 
+void CLogProducer::printTrace(EFdbLogLevel log_level, const char *tag, const char *info)
+{
+    auto proxy = FDB_CONTEXT->getNameProxy();
+    CLogPrinter::TraceInfo trace_info;
+    trace_info.mPid = CBaseThread::getPid();
+    trace_info.mTag = tag;
+    trace_info.mHostName = (proxy ? proxy->hostName().c_str() : "Unknown");
+    trace_info.mTimeStamp = sysdep_getsystemtime_milli();
+    trace_info.mLogLevel = log_level;
+    trace_info.mData = info ? info : "\n";
+    CLogPrinter::outputTraceLog(trace_info);
+}
+
 bool CLogProducer::checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl)
 {
     if (host_tbl.empty())
@@ -393,7 +409,6 @@ void CLogProducer::populateWhiteList(const CFdbParcelableArray<std::string> &in_
     logger->logTrace(_level_, tag, info);\
 }while(0)
 
-
 void fdb_log_debug(const char *tag, ...)
 {
     FDB_DO_LOG(FDB_LL_DEBUG, tag);
@@ -418,3 +433,44 @@ void fdb_log_fatal(const char *tag, ...)
 {
     FDB_DO_LOG(FDB_LL_FATAL, tag);
 }
+
+#define FDB_PRINT_LOG(_level_, _tag_) do{ \
+    if (_level_ < CLogProducer::staticLogLevel()) \
+    { \
+        return; \
+    } \
+    char info[CLogProducer::mMaxTraceLogSize];\
+    info[0] = '\0'; \
+    va_list args; \
+    va_start(args, tag); \
+    const char *format = va_arg(args, const char *); \
+    vsnprintf(info, CLogProducer::mMaxTraceLogSize, format, args);\
+    va_end(args);\
+    CLogProducer::printTrace(_level_, tag, info);\
+}while(0)
+
+void fdb_print_debug(const char *tag, ...)
+{
+    FDB_PRINT_LOG(FDB_LL_DEBUG, tag);
+}
+
+void fdb_print_info(const char *tag, ...)
+{
+    FDB_PRINT_LOG(FDB_LL_INFO, tag);
+}
+
+void fdb_print_warning(const char *tag, ...)
+{
+    FDB_PRINT_LOG(FDB_LL_WARNING, tag);
+}
+
+void fdb_print_error(const char *tag, ...)
+{
+    FDB_PRINT_LOG(FDB_LL_ERROR, tag);
+}
+
+void fdb_print_fatal(const char *tag, ...)
+{
+    FDB_PRINT_LOG(FDB_LL_FATAL, tag);
+}
+

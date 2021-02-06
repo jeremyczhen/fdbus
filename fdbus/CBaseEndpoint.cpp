@@ -30,6 +30,7 @@ CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpoint
     , mEpid(FDB_INVALID_ID)
     , mEventRouter(this)
 {
+    enableBlockingMode(false);
     mObjId = FDB_OBJECT_MAIN;
     mEndpoint = this;
     registerSelf();

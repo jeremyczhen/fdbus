@@ -21,6 +21,11 @@
 extern "C"
 {
 #endif
+void fdb_print_debug(const char *tag, ...);
+void fdb_print_info(const char *tag, ...);
+void fdb_print_warning(const char *tag, ...);
+void fdb_print_error(const char *tag, ...);
+void fdb_print_fatal(const char *tag, ...);
 
 void fdb_log_debug(const char *tag, ...);
 void fdb_log_info(const char *tag, ...);
@@ -35,11 +40,11 @@ void fdb_log_fatal(const char *tag, ...);
 #if defined(CONFIG_DEBUG_LOG)
 #if defined(CONFIG_LOG_TO_STDOUT)
 #include <stdio.h>
-#define FDB_TLOG_D(_tag, ...) fprintf(stdout, __VA_ARGS__)
-#define FDB_TLOG_I(_tag, ...) fprintf(stdout, __VA_ARGS__)
-#define FDB_TLOG_W(_tag, ...) fprintf(stdout, __VA_ARGS__)
-#define FDB_TLOG_E(_tag, ...) fprintf(stderr, __VA_ARGS__)
-#define FDB_TLOG_F(_tag, ...) fprintf(stderr, __VA_ARGS__)
+#define FDB_TLOG_D(_tag, ...) fdb_print_debug(_tag,   __VA_ARGS__)
+#define FDB_TLOG_I(_tag, ...) fdb_print_info(_tag,    __VA_ARGS__)
+#define FDB_TLOG_W(_tag, ...) fdb_print_warning(_tag, __VA_ARGS__)
+#define FDB_TLOG_E(_tag, ...) fdb_print_error(_tag,   __VA_ARGS__)
+#define FDB_TLOG_F(_tag, ...) fdb_print_fatal(_tag,   __VA_ARGS__)
 #else /* CONFIG_LOG_TO_STDOUT */
 #define FDB_TLOG_D(_tag, ...) fdb_log_debug(_tag,   __VA_ARGS__)
 #define FDB_TLOG_I(_tag, ...) fdb_log_info(_tag,    __VA_ARGS__)

@@ -105,6 +105,7 @@ set(SECURITY_SOURCES
 set(OTHER_SOURCES
     ${PACKAGE_SOURCE_ROOT}/server/CBaseNameProxy.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CIntraNameProxy.cpp
+    ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
 )
 
 include_directories(
@@ -147,6 +148,7 @@ add_library(common_base ${LIB_BUILD_TYPE}
 )
 install(TARGETS common_base DESTINATION usr/lib)
 install(DIRECTORY ${PACKAGE_SOURCE_ROOT}/public/common_base/ DESTINATION usr/include/common_base)
+install(FILES ${PACKAGE_SOURCE_ROOT}/python/fdbus.py DESTINATION usr/share/fdbus)
 
 include(service.cmake)
 

@@ -188,6 +188,7 @@ public:
             mFlag &= ~FDB_EP_WRITE_ASYNC;
         }
     }
+
     bool enableAysncWrite()
     {
         return !!(mFlag & FDB_EP_WRITE_ASYNC);
@@ -207,6 +208,20 @@ public:
     bool enableAysncRead()
     {
         return !!(mFlag & FDB_EP_READ_ASYNC);
+    }
+
+    void enableBlockingMode(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_EP_IPC_BLOCKING_MODE | FDB_EP_TCP_BLOCKING_MODE;
+            mFlag &= ~(FDB_EP_WRITE_ASYNC | FDB_EP_READ_ASYNC);
+        }
+        else
+        {
+            mFlag &= ~(FDB_EP_IPC_BLOCKING_MODE | FDB_EP_TCP_BLOCKING_MODE);
+            mFlag |= FDB_EP_WRITE_ASYNC | FDB_EP_READ_ASYNC;
+        }
     }
 
     void prepareDestroy();

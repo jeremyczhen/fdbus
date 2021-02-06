@@ -644,7 +644,14 @@ void CBaseWorker::runOneJob(tJobContainer::iterator &it, bool run_job)
                 if (run_job)
                 {
                     (*it)->success(true);
-                    (*it)->run(this, *it);
+                    try
+                    {
+                        (*it)->run(this, *it);
+                    }
+                    catch (...)
+                    {
+                        LOG_E("CBaseWorker: exception when run job!\n");
+                    }
                 }
                 (*it)->wakeup(*it);
             }
@@ -655,7 +662,14 @@ void CBaseWorker::runOneJob(tJobContainer::iterator &it, bool run_job)
         if (run_job)
         {
             (*it)->success(true);
-            (*it)->run(this, *it);
+            try
+            {
+                (*it)->run(this, *it);
+            }
+            catch (...)
+            {
+                LOG_E("CBaseWorker: exception when run job!\n");
+            }
         }
         (*it)->terminate(*it);
     }

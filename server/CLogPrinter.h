@@ -26,9 +26,38 @@ class CFdbSimpleDeserializer;
 class CLogPrinter
 {
 public:
+    struct LogInfo
+    {
+        uint32_t mPid;
+        std::string mHostName;
+        std::string mSender;
+        std::string mReceiver;
+        std::string mBusName;
+        std::string mTopic;
+        uint8_t mMsgType;
+        FdbMsgCode_t mMsgCode;
+        uint64_t mTimeStamp;
+        int32_t mPayloadSize;
+        FdbMsgSn_t mMsgSn;
+        FdbObjectId_t mObjId;
+        bool mIsString;
+        const void *mData;
+        int32_t mDataSize;
+    };
+    struct TraceInfo
+    {
+        uint32_t mPid;
+        std::string mTag;
+        std::string mHostName;
+        uint64_t mTimeStamp;
+        uint8_t mLogLevel;
+        const char *mData;
+    };
     CLogPrinter(uint32_t mode = LOG_MODE_STDOUT);
     void outputFdbLog(CFdbSimpleDeserializer &log_info, CFdbMessage *log_msg);
+    static void outputFdbLog(LogInfo &log_info);
     void outputTraceLog(CFdbSimpleDeserializer &trace_info, CFdbMessage *trace_msg);
+    static void outputTraceLog(TraceInfo &trace_info);
     void setPrintMode(uint32_t print_mode)
     {
         mPrintMode = print_mode;

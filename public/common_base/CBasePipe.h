@@ -28,7 +28,7 @@ public:
     CBasePipe();
     ~CBasePipe();
 
-    bool open(bool blockOnRead = false, bool blockOnWrite = true);
+    bool open(bool blockOnRead = false, bool blockOnWrite = false);
     bool close();
 
     int32_t getReadFd() const;
