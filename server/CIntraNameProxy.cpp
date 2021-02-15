@@ -28,21 +28,25 @@
 class CNSProxyMsg : public CFdbMessage
 {
 public:
-    CNSProxyMsg(FdbContextId_t ctx_id)
+    CNSProxyMsg(FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
         : CFdbMessage()
         , mCtxId(ctx_id)
+        , mEpId(ep_id)
     {
     }
-    CNSProxyMsg(FdbMsgCode_t code, FdbContextId_t ctx_id)
+    CNSProxyMsg(FdbMsgCode_t code, FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
         : CFdbMessage(code)
         , mCtxId(ctx_id)
+        , mEpId(ep_id)
     {
     }
     CNSProxyMsg(NFdbBase::CFdbMessageHeader &head
                       , CFdbSession *session
-                      , FdbContextId_t ctx_id)
+                      , FdbContextId_t ctx_id
+                      , FdbEndpointId_t ep_id)
         : CFdbMessage(head, session)
         , mCtxId(ctx_id)
+        , mEpId(ep_id)
     {
     }
     FdbMessageType_t getTypeId()
@@ -51,11 +55,12 @@ public:
     }
 
     FdbContextId_t mCtxId;
+    FdbEndpointId_t mEpId;
 protected:
     CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
                        , CFdbSession *session)
     {
-        return new CNSProxyMsg(head, session, mCtxId);
+        return new CNSProxyMsg(head, session, mCtxId, mEpId);
     }
 };
 
@@ -109,14 +114,19 @@ void CIntraNameProxy::CConnectTimer::fire()
     enableOneShot(CNsConfig::getNsReconnectInterval());
 }
 
-void CIntraNameProxy::addServiceListener(const char *svc_name, CFdbBaseContext *context)
+void CIntraNameProxy::addServiceListener(const char *svc_name, FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
 {
     if (connected())
     {
         CFdbMsgSubscribeList subscribe_list;
         addNotifyItem(subscribe_list, NFdbBase::NTF_SERVICE_ONLINE, svc_name);
-        subscribe(subscribe_list, new CNSProxyMsg(context->ctxId()));
+        subscribe(subscribe_list, new CNSProxyMsg(ctx_id, ep_id));
     }
+}
+
+void CIntraNameProxy::addServiceListener(const char *svc_name, CBaseEndpoint *endpoint)
+{
+    addServiceListener(svc_name, endpoint->context()->ctxId(), endpoint->epid());
 }
 
 void CIntraNameProxy::removeServiceListener(const char *svc_name)
@@ -143,13 +153,14 @@ void CIntraNameProxy::removeAddressListener(const char *svc_name)
     }
 }
 
-void CIntraNameProxy::registerService(const char *svc_name, CFdbBaseContext *context)
+void CIntraNameProxy::registerService(const char *svc_name, CBaseEndpoint *endpoint)
 {
     if (!connected())
     {
         return;
     }
-    CFdbMessage *msg = new CNSProxyMsg(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS, context->ctxId());
+    CFdbMessage *msg = new CNSProxyMsg(NFdbBase::REQ_ALLOC_SERVICE_ADDRESS,
+                                       endpoint->context()->ctxId(), endpoint->epid());
     NFdbBase::FdbMsgServerName msg_svc_name;
     msg_svc_name.set_name(svc_name);
     CFdbParcelableBuilder builder(msg_svc_name);
@@ -168,8 +179,8 @@ void CIntraNameProxy::unregisterService(const char *svc_name)
     send(NFdbBase::REQ_UNREGISTER_SERVICE, builder);
 }
 
-void CIntraNameProxy::doConnectToServer(CFdbBaseContext *context, NFdbBase::FdbMsgAddressList &msg_addr_list,
-                                        bool is_init_response)
+void CIntraNameProxy::doConnectToServer(CFdbBaseContext *context, FdbEndpointId_t ep_id,
+                                        NFdbBase::FdbMsgAddressList &msg_addr_list, bool is_init_response)
 {
     auto svc_name = msg_addr_list.service_name().c_str();
     const std::string &host_name = msg_addr_list.host_name();
@@ -181,6 +192,10 @@ void CIntraNameProxy::doConnectToServer(CFdbBaseContext *context, NFdbBase::FdbM
     for (auto ep_it = container.begin(); ep_it != container.end(); ++ep_it)
     {
         if (ep_it->second->role() != FDB_OBJECT_ROLE_CLIENT)
+        {
+            continue;
+        }
+        if (fdbValidFdbId(ep_id) && (ep_id != ep_it->second->epid()))
         {
             continue;
         }
@@ -290,7 +305,7 @@ void CIntraNameProxy::doConnectToServer(CFdbBaseContext *context, NFdbBase::FdbM
         for (int32_t i = 0; i < nr_request; ++i)
         {
             LOG_E("CIntraNameProxy: Server: %s: requesting next UDP...\n", svc_name);
-            addServiceListener(svc_name, context);
+            addServiceListener(svc_name, context->ctxId(), ep_id);
         }
     }
 }
@@ -303,17 +318,19 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
         case NFdbBase::NTF_SERVICE_ONLINE:
         {
             FdbContextId_t ctx_id = FDB_INVALID_ID;
+            FdbEndpointId_t ep_id = FDB_INVALID_ID;
             if (msg->isInitialResponse() && (msg->getTypeId() == FDB_MSG_TYPE_NSP_SUBSCRIBE))
             {
                 auto nsp_msg = castToMessage<CNSProxyMsg *>(msg_ref);
                 ctx_id = nsp_msg->mCtxId;
+                ep_id = nsp_msg->mEpId;
             }
-            connectToServer(msg, ctx_id);
+            connectToServer(msg, ctx_id, ep_id);
         }
         break;
         case NFdbBase::NTF_MORE_ADDRESS:
         {
-            bindAddress(msg, FDB_INVALID_ID);
+            bindAddress(msg, FDB_INVALID_ID, FDB_INVALID_ID);
         }
         break;
         case NFdbBase::NTF_HOST_INFO:
@@ -356,8 +373,8 @@ void CIntraNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
     }
 }
 
-void CIntraNameProxy::doBindAddress(CFdbBaseContext *context, NFdbBase::FdbMsgAddressList &msg_addr_list,
-                                    bool force_rebind)
+void CIntraNameProxy::doBindAddress(CFdbBaseContext *context, FdbEndpointId_t ep_id,
+                                    NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_rebind)
 {
     auto svc_name = msg_addr_list.service_name().c_str();
     NFdbBase::FdbMsgAddrBindResults bound_list;
@@ -370,16 +387,15 @@ void CIntraNameProxy::doBindAddress(CFdbBaseContext *context, NFdbBase::FdbMsgAd
         {
             continue;
         }
+        if (fdbValidFdbId(ep_id) && (ep_id != ep_it->second->epid()))
+        {
+            continue;
+        }
         if (ep_it->second->nsName().compare(svc_name))
         {
             continue;
         }
         auto server = fdb_dynamic_cast_if_available<CBaseServer *>(ep_it->second);
-        if (!server)
-        {
-            LOG_E("CIntraNameProxy: Fail to convert to CIntraNameProxy!\n");
-            continue;
-        }
 
         if (msg_addr_list.has_token_list() && server->importTokens(msg_addr_list.token_list().tokens()))
         {
@@ -454,10 +470,11 @@ void CIntraNameProxy::doBindAddress(CFdbBaseContext *context, NFdbBase::FdbMsgAd
                       svc_name, char_url);
             }
         }
+        CFdbParcelableBuilder builder(bound_list);
+        send(NFdbBase::REQ_REGISTER_SERVICE, builder);
+        // One name, one server; no servers can bind to the same name!
+        break;
     }
-
-    CFdbParcelableBuilder builder(bound_list);
-    send(NFdbBase::REQ_REGISTER_SERVICE, builder);
 }
 
 void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
@@ -482,7 +499,7 @@ void CIntraNameProxy::onReply(CBaseJob::Ptr &msg_ref)
         case NFdbBase::REQ_ALLOC_SERVICE_ADDRESS:
         {
             auto nsp_msg = castToMessage<CNSProxyMsg *>(msg_ref);
-            bindAddress(msg, nsp_msg->mCtxId);
+            bindAddress(msg, nsp_msg->mCtxId, nsp_msg->mEpId);
         }
         break;
         default:
@@ -574,13 +591,15 @@ void CIntraNameProxy::registerNsWatchdogListener(tNsWatchdogListenerFn &watchdog
 class CConnectToServerJob : public CMethodJob<CIntraNameProxy>
 {
 public:
-    CConnectToServerJob(CIntraNameProxy *object, bool is_init_response)
+    CConnectToServerJob(CIntraNameProxy *object, bool is_init_response, FdbEndpointId_t ep_id)
         : CMethodJob<CIntraNameProxy>(object, &CIntraNameProxy::callConnectToServer, JOB_FORCE_RUN)
         , mIsInitResponse(is_init_response)
+        , mEpId(ep_id)
     {}
 
     NFdbBase::FdbMsgAddressList mAddressList;
     bool mIsInitResponse;
+    FdbEndpointId_t mEpId;
 };
 
 void CIntraNameProxy::callConnectToServer(CBaseWorker *worker,
@@ -588,10 +607,10 @@ void CIntraNameProxy::callConnectToServer(CBaseWorker *worker,
 {
     auto the_job = fdb_dynamic_cast_if_available<CConnectToServerJob *>(job);
     auto *context = fdb_dynamic_cast_if_available<CFdbBaseContext *>(worker);
-    doConnectToServer(context, the_job->mAddressList, the_job->mIsInitResponse);
+    doConnectToServer(context, the_job->mEpId, the_job->mAddressList, the_job->mIsInitResponse);
 }
 
-void CIntraNameProxy::connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id)
+void CIntraNameProxy::connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
 {
     auto session = msg->getSession();
     bool is_init_response = msg->isInitialResponse();
@@ -604,7 +623,7 @@ void CIntraNameProxy::connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id)
         {
             continue;
         }
-        auto job = new CConnectToServerJob(this, is_init_response);
+        auto job = new CConnectToServerJob(this, is_init_response, ep_id);
         CFdbParcelableParser parser(job->mAddressList);
         if (!msg->deserialize(parser))
         {
@@ -619,13 +638,15 @@ void CIntraNameProxy::connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id)
 class CBindAddressJob : public CMethodJob<CIntraNameProxy>
 {
 public:
-    CBindAddressJob(CIntraNameProxy *object, bool force_rebind)
+    CBindAddressJob(CIntraNameProxy *object, bool force_rebind, FdbEndpointId_t ep_id)
         : CMethodJob<CIntraNameProxy>(object, &CIntraNameProxy::callBindAddress, JOB_FORCE_RUN)
         , mForceRebind(force_rebind)
+        , mEpId(ep_id)
     {}
 
     NFdbBase::FdbMsgAddressList mAddressList;
     bool mForceRebind;
+    FdbEndpointId_t mEpId;
 };
 
 void CIntraNameProxy::callBindAddress(CBaseWorker *worker,
@@ -633,10 +654,10 @@ void CIntraNameProxy::callBindAddress(CBaseWorker *worker,
 {
     auto the_job = fdb_dynamic_cast_if_available<CBindAddressJob *>(job);
     auto *context = fdb_dynamic_cast_if_available<CFdbBaseContext *>(worker);
-    doBindAddress(context, the_job->mAddressList, the_job->mForceRebind);
+    doBindAddress(context, the_job->mEpId, the_job->mAddressList, the_job->mForceRebind);
 }
 
-void CIntraNameProxy::bindAddress(CFdbMessage *msg, FdbContextId_t ctx_id)
+void CIntraNameProxy::bindAddress(CFdbMessage *msg, FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
 {
     bool force_rebind = fdbValidFdbId(ctx_id) ? true : false;
     // CIntraNameProxy should run at CFdbContext, not CFdbBaseContext
@@ -648,7 +669,7 @@ void CIntraNameProxy::bindAddress(CFdbMessage *msg, FdbContextId_t ctx_id)
         {
             continue;
         }
-        auto job = new CBindAddressJob(this, force_rebind);
+        auto job = new CBindAddressJob(this, force_rebind, ep_id);
         CFdbParcelableParser parser(job->mAddressList);
         if (!msg->deserialize(parser))
         {

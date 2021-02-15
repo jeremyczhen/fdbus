@@ -39,11 +39,12 @@ public:
         std::string &mHostName;
     };
     CIntraNameProxy();
-    void addServiceListener(const char *svc_name, CFdbBaseContext *context);
+    void addServiceListener(const char *svc_name, CBaseEndpoint *endpoint);
+    void addServiceListener(const char *svc_name, FdbContextId_t ctx_id, FdbEndpointId_t ep_id);
     void removeServiceListener(const char *svc_name);
     void addAddressListener(const char *svc_name);
     void removeAddressListener(const char *svc_name);
-    void registerService(const char *svc_name, CFdbBaseContext *context);
+    void registerService(const char *svc_name, CBaseEndpoint *endpoint);
     void unregisterService(const char *svc_name);
     bool connectToNameServer();
     std::string &hostName()
@@ -99,13 +100,13 @@ private:
 
     void onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer);
     
-    void doConnectToServer(CFdbBaseContext *context, NFdbBase::FdbMsgAddressList &msg_addr_list,
-                           bool is_init_response);
-    void doBindAddress(CFdbBaseContext *context, NFdbBase::FdbMsgAddressList &msg_addr_list,
-                              bool force_rebind);
+    void doConnectToServer(CFdbBaseContext *context, FdbEndpointId_t ep_id,
+                           NFdbBase::FdbMsgAddressList &msg_addr_list, bool is_init_response);
+    void doBindAddress(CFdbBaseContext *context, FdbEndpointId_t ep_id,
+                       NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_rebind);
     void doRegisterNsWatchdogListener(tNsWatchdogListenerFn &watchdog_listener);
-    void connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id);
-    void bindAddress(CFdbMessage *msg, FdbContextId_t ctx_id);
+    void connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id, FdbEndpointId_t ep_id);
+    void bindAddress(CFdbMessage *msg, FdbContextId_t ctx_id, FdbEndpointId_t ep_id);
     void queryServiceAddress();
     void callConnectToServer(CBaseWorker *worker, CMethodJob<CIntraNameProxy> *job, CBaseJob::Ptr &ref);
     void callBindAddress(CBaseWorker *worker, CMethodJob<CIntraNameProxy> *job, CBaseJob::Ptr &ref);

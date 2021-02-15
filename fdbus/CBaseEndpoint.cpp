@@ -574,14 +574,15 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
     {
         if (mContext->serverAlreadyRegistered(this))
         {
+            LOG_E("CBaseEndpoint: service %s exists and fails to bind again!\n", server_name);
             return false;
         }
-        name_proxy->registerService(server_name, mContext);
+        name_proxy->registerService(server_name, this);
         name_proxy->addAddressListener(server_name);
     }
     else
     {
-        name_proxy->addServiceListener(server_name, mContext);
+        name_proxy->addServiceListener(server_name, this);
     }
     mEventRouter.connectPeers();
     return true;
