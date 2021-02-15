@@ -1559,11 +1559,9 @@ public:
         }
     }
     CAFCSubscribeMsg(NFdbBase::CFdbMessageHeader &head
-                      , CFdbMsgPrefix &prefix
-                      , uint8_t *buffer
-                      , FdbSessionId_t sid
-                      , CFdbEventDispatcher::tRegistryHandleTbl &reg_handle)
-        : CFdbMessage(head, prefix, buffer, sid)
+                     , CFdbSession *session
+                     , CFdbEventDispatcher::tRegistryHandleTbl &reg_handle)
+        : CFdbMessage(head, session)
         , mRegHandle(reg_handle)
     {
     }
@@ -1575,11 +1573,9 @@ public:
     CFdbEventDispatcher::tRegistryHandleTbl mRegHandle;
 protected:
     CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
-                      , CFdbMsgPrefix &prefix
-                      , uint8_t *buffer
-                      , FdbSessionId_t sid)
+                      , CFdbSession *session)
     {
-        return new CAFCSubscribeMsg(head, prefix, buffer, sid, mRegHandle);
+        return new CAFCSubscribeMsg(head, session, mRegHandle);
     }
 };
 

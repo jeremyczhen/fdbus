@@ -39,11 +39,9 @@ public:
     {
     }
     CNSProxyMsg(NFdbBase::CFdbMessageHeader &head
-                      , CFdbMsgPrefix &prefix
-                      , uint8_t *buffer
-                      , FdbSessionId_t sid
+                      , CFdbSession *session
                       , FdbContextId_t ctx_id)
-        : CFdbMessage(head, prefix, buffer, sid)
+        : CFdbMessage(head, session)
         , mCtxId(ctx_id)
     {
     }
@@ -55,11 +53,9 @@ public:
     FdbContextId_t mCtxId;
 protected:
     CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
-                      , CFdbMsgPrefix &prefix
-                      , uint8_t *buffer
-                      , FdbSessionId_t sid)
+                       , CFdbSession *session)
     {
-        return new CNSProxyMsg(head, prefix, buffer, sid, mCtxId);
+        return new CNSProxyMsg(head, session, mCtxId);
     }
 };
 

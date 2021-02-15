@@ -107,6 +107,14 @@ public:
     {
         return mSocket;
     }
+    const CFdbMsgPrefix &msgPrefix() const
+    {
+        return mMsgPrefix;
+    }
+    uint8_t *payloadBuffer()
+    {
+        return mPayloadBuffer;
+    }
 protected:
     void onInput();
     void onError();

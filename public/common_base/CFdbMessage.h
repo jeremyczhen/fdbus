@@ -241,7 +241,10 @@ public:
     CFdbMessage(NFdbBase::CFdbMessageHeader &head
                 , CFdbMsgPrefix &prefix
                 , uint8_t *buffer
-                , FdbSessionId_t sid);
+                , FdbSessionId_t sid
+                , const char *sender_name = 0);
+    CFdbMessage(NFdbBase::CFdbMessageHeader &head
+                , CFdbSession *session);
     CFdbMessage(const CFdbMessage *msg);
     virtual ~CFdbMessage();
 
@@ -566,6 +569,10 @@ public:
 
     // Internal use only!!!
     CFdbSession *getSession();
+    const std::string &senderName() const
+    {
+        return mStringData;
+    }
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
@@ -589,9 +596,7 @@ private:
                 , EFdbQOS qos = FDB_QOS_RELIABLE);
     
     virtual CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
-                              , CFdbMsgPrefix &prefix
-                              , uint8_t *buffer
-                              , FdbSessionId_t sid)
+                               , CFdbSession *session)
     {
         return 0;
     }
@@ -755,6 +760,10 @@ private:
     {
         mContext = context;
     }
+    void senderName(const char *sender_name)
+    {
+        mStringData = sender_name ? "" : sender_name;
+    }
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -771,7 +780,7 @@ private:
     uint8_t *mBuffer;
     uint32_t mFlag;
     CMessageTimer *mTimer;
-    std::string mStringData;
+    std::string mStringData; // log in text format or sender name
     std::string mFilter;
 
     CFdbMsgMetadata *mTimeStamp;

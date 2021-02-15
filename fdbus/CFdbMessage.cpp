@@ -124,6 +124,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
                          , CFdbMsgPrefix &prefix
                          , uint8_t *buffer
                          , FdbSessionId_t sid
+                         , const char *sender_name
                         )
     : mType(FDB_MT_REPLY)
     , mCode(head.code())
@@ -136,6 +137,36 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
+    , mStringData(sender_name ? sender_name : "")
+    , mTimeStamp(0)
+    , mQOS(head.qos())
+    , mContext(0)
+{
+    if (head.has_broadcast_filter())
+    {
+        mFilter = head.broadcast_filter().c_str();
+    }
+    if (head.has_reply_time() || head.has_send_or_arrive_time())
+    {
+        mTimeStamp = new CFdbMsgMetadata();
+    }
+};
+
+CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
+                         , CFdbSession *session
+                        )
+    : mType(FDB_MT_REPLY)
+    , mCode(head.code())
+    , mSn(head.serial_number())
+    , mPayloadSize(head.payload_size())
+    , mHeadSize(session->msgPrefix().mHeadLength)
+    , mOffset(0)
+    , mSid(session->sid())
+    , mOid(head.object_id())
+    , mBuffer(session->payloadBuffer())
+    , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
+    , mTimer(0)
+    , mStringData(session->senderName())
     , mTimeStamp(0)
     , mQOS(head.qos())
     , mContext(0)

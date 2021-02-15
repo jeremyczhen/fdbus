@@ -420,7 +420,7 @@ void CFdbSession::onHup()
 
 void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head)
 {
-    auto msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
+    auto msg = new CFdbMessage(head, this);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
@@ -569,13 +569,13 @@ void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head)
         if (found)
         {
             auto outgoing_msg = castToMessage<CFdbMessage *>(msg_ref);
-            msg = outgoing_msg->clone(head, mMsgPrefix, mPayloadBuffer, mSid);
+            msg = outgoing_msg->clone(head, this);
         }
     }
 
     if (!msg)
     {
-        msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
+        msg = new CFdbMessage(head, this);
     }
     auto object = mContainer->owner()->getObject(msg, false);
     CBaseJob::Ptr msg_ref(msg);
@@ -589,7 +589,7 @@ void CFdbSession::doBroadcast(NFdbBase::CFdbMessageHeader &head)
 void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head, bool subscribe)
 {
     auto object_id = head.object_id();
-    auto msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
+    auto msg = new CFdbMessage(head, this);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
     
@@ -686,7 +686,7 @@ _reply_status:
 
 void CFdbSession::doUpdate(NFdbBase::CFdbMessageHeader &head)
 {
-    auto msg = new CFdbMessage(head, mMsgPrefix, mPayloadBuffer, mSid);
+    auto msg = new CFdbMessage(head, this);
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 

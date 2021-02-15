@@ -146,7 +146,7 @@ protected:
                     return;
                 }
 
-                FDB_LOG_I("requested song id is: %d\n", song_id.id());
+                FDB_LOG_I("requested song id is: %d, sender: %s\n", song_id.id(), msg->senderName().c_str());
                 /* fill in protocol buffer and reply to client */
                 NFdbExample::NowPlayingDetails rep_msg;
                 rep_msg.set_artist("Liu Dehua");
@@ -164,7 +164,7 @@ protected:
                 /* raw data is received from client */
                 // const char *buffer = (char *)msg->getPayloadBuffer();
                 int32_t size = msg->getPayloadSize();
-                FDB_LOG_I("Invoke of raw buffer is received: size: %d\n", size);
+                FDB_LOG_I("Invoke of raw buffer is received: size: %d, sender: %s\n", size, msg->senderName().c_str());
                 //msg->status(msg_ref, NFdbBase::FDB_ST_OK, "REQ_RAWDATA is processed successfully!");
                 CFdbParcelableArray<CPerson> persions;
                 {
@@ -246,13 +246,13 @@ protected:
 
             if (fdbIsGroup(msg_code))
             {
-                FDB_LOG_I("group message %d, filter %s of session %d is registered!\n", msg_code, filter, sid);
+                FDB_LOG_I("group message %d, filter %s of session %d is registered! sender: %s\n\n", msg_code, filter, sid, msg->senderName().c_str());
                 msg->broadcast(NTF_GROUP_TEST1);
                 msg->broadcast(NTF_GROUP_TEST2);
                 msg->broadcast(NTF_GROUP_TEST3);
                 return;
             }
-            FDB_LOG_I("single message %d, filter %s of session %d is registered!\n", msg_code, filter, sid);
+            FDB_LOG_I("single message %d, filter %s of session %d is registered! sender: %s\n\n", msg_code, filter, sid, msg->senderName().c_str());
 
             /* reply initial value to the client subscribing the message id */
             switch (msg_code)
