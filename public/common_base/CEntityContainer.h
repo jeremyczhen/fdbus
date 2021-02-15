@@ -27,7 +27,6 @@ public:
     typedef std::map<IDX, EP> EntryContainer_t;
     CEntityContainer()
         : mEntryAllocator(FDB_FIRST_ENTRY_ID)
-        , mValidIt(false)
     {}
     virtual ~CEntityContainer()
     {}
@@ -46,7 +45,6 @@ public:
         if (it == mEntryContainer.end())
         {
             mEntryContainer[index] = ep;
-            mValidIt = false;
             return 0;
         }
         return -1;
@@ -78,13 +76,24 @@ public:
         }
     }
 
+    bool findEntry(EP &entry)
+    {
+        for (typename EntryContainer_t::iterator it = mEntryContainer.begin(); it != mEntryContainer.end(); ++it)
+        {
+            if (it->second == entry)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void deleteEntry(IDX index)
     {
         typename EntryContainer_t::iterator it = mEntryContainer.find(index);
         if (it != mEntryContainer.end())
         {
             mEntryContainer.erase(it);
-            mValidIt = false;
         }
     }
     void deleteEntry(typename EntryContainer_t::iterator &it)
@@ -92,7 +101,6 @@ public:
         if (it != mEntryContainer.end())
         {
             mEntryContainer.erase(it);
-            mValidIt = false;
         }
     }
     EntryContainer_t &getContainer()
@@ -103,7 +111,6 @@ private:
     IDX mEntryAllocator;
     static IDX mUniqueEntryAllocator;
     EntryContainer_t mEntryContainer;
-    bool mValidIt;
 };
 
 #endif

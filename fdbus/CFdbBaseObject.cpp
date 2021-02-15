@@ -28,9 +28,10 @@
 
 using namespace std::placeholders;
 
-CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
+CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, CFdbBaseContext *dummy,
+                               EFdbEndpointRole role)
     : mEndpoint(0)
-    , mFlag(0)
+    , mFlag(FDB_OBJ_AUTO_REMOVE)
     , mWatchdog(0)
     , mWorker(worker)
     , mObjId(FDB_INVALID_ID)
@@ -295,45 +296,60 @@ bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t time
 
 bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
 {
-    auto msg = new CBaseMessage(code, this);
-    if (!msg->serialize(data))
+    if (FDB_CONTEXT->isSelf())
     {
-        delete msg;
+        CBaseMessage msg(code, this, FDB_INVALID_ID);
+        msg.expectReply(false);
+        if (!msg.serialize(data))
+        {
+            return false;
+        }
+        auto session = mEndpoint->preferredPeer();
+        if (session)
+        {
+            return session->sendMessage(&msg);
+        }
         return false;
     }
-    return msg->send();
+    else
+    {
+        auto msg = new CBaseMessage(code, this);
+        if (!msg->serialize(data))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->send();
+    }
 }
 
-bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data)
+bool CFdbBaseObject::sendLog(FdbMsgCode_t code, const void *buffer, int32_t size)
 {
-    CBaseMessage msg(code, this, FDB_INVALID_ID);
-    msg.expectReply(false);
-    if (!msg.serialize(data))
+    if (FDB_CONTEXT->isSelf())
     {
+        CBaseMessage msg(code, this);
+        msg.expectReply(false);
+        if (!msg.serialize(buffer, size))
+        {
+            return false;
+        }
+        auto session = mEndpoint->preferredPeer();
+        if (session)
+        {
+            return session->sendMessage(&msg);
+        }
         return false;
     }
-    auto session = mEndpoint->preferredPeer();
-    if (session)
+    else
     {
-        return session->sendMessage(&msg);
+        auto msg = new CBaseMessage(code, this);
+        if (!msg->serialize(buffer, size))
+        {
+            delete msg;
+            return false;
+        }
+        return msg->send();
     }
-    return false;
-}
-
-bool CFdbBaseObject::sendLogNoQueue(FdbMsgCode_t code, const void *buffer, int32_t size)
-{
-    CBaseMessage msg(code, this, FDB_INVALID_ID);
-    msg.expectReply(false);
-    if (!msg.serialize(buffer, size))
-    {
-        return false;
-    }
-    auto session = mEndpoint->preferredPeer();
-    if (session)
-    {
-        return session->sendMessage(&msg);
-    }
-    return false;
 }
 
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
@@ -608,7 +624,7 @@ const CFdbBaseObject::CEventData *CFdbBaseObject::getCachedEventData(FdbMsgCode_
 void CFdbBaseObject::broadcastCached(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     if (!session)
     {
         return;
@@ -1091,11 +1107,6 @@ FdbObjectId_t CFdbBaseObject::addToEndpoint(CBaseEndpoint *endpoint, FdbObjectId
     mEndpoint = endpoint;
     mObjId = obj_id;
     obj_id = endpoint->addObject(this);
-    if (fdbValidFdbId(obj_id))
-    {
-        LOG_I("CFdbBaseObject: Object %d is created.\n", obj_id);
-        registered(true);
-    }
     return mObjId;
 }
 
@@ -1104,7 +1115,6 @@ void CFdbBaseObject::removeFromEndpoint()
     if (mEndpoint)
     {
         mEndpoint->removeObject(this);
-        registered(false);
         mEndpoint = 0;
     }
 }
@@ -1163,14 +1173,7 @@ void CFdbBaseObject::callBindObject(CBaseWorker *worker, CMethodJob<CFdbBaseObje
 
 FdbObjectId_t CFdbBaseObject::bind(CBaseEndpoint *endpoint, FdbObjectId_t oid)
 {
-    if (registered())
-    {
-        oid = mObjId;
-    }
-    else
-    {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CBindObjectJob(this, endpoint, oid), 0, true);
-    }
+    endpoint->context()->sendSyncEndeavor(new CBindObjectJob(this, endpoint, oid), 0, true);
     return oid;
 }
 
@@ -1200,14 +1203,7 @@ void CFdbBaseObject::callConnectObject(CBaseWorker *worker, CMethodJob<CFdbBaseO
 
 FdbObjectId_t CFdbBaseObject::connect(CBaseEndpoint *endpoint, FdbObjectId_t oid)
 {
-    if (registered())
-    {
-        oid = mObjId;
-    }
-    else
-    {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CConnectObjectJob(this, endpoint, oid));
-    }
+    endpoint->context()->sendSyncEndeavor(new CConnectObjectJob(this, endpoint, oid));
     return oid;
 }
 
@@ -1228,12 +1224,9 @@ void CFdbBaseObject::callUnbindObject(CBaseWorker *worker, CMethodJob<CFdbBaseOb
 
 void CFdbBaseObject::unbind()
 {
-    if (registered())
-    {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CUnbindObjectJob(this), 0, true);
-        // From now on, there will be no jobs migrated to worker thread. Applying a
-        // flush to worker thread to ensure no one refers to the object.
-    }
+    mEndpoint->context()->sendSyncEndeavor(new CUnbindObjectJob(this), 0, true);
+    // From now on, there will be no jobs migrated to worker thread. Applying a
+    // flush to worker thread to ensure no one refers to the object.
 }
 
 //================================== Disconnect ==========================================
@@ -1253,13 +1246,10 @@ void CFdbBaseObject::callDisconnectObject(CBaseWorker *worker, CMethodJob<CFdbBa
 
 void CFdbBaseObject::disconnect()
 {
-    if (registered())
-    {
-        unsubscribe();
-        CFdbContext::getInstance()->sendSyncEndeavor(new CDisconnectObjectJob(this), 0, true);
-        // From now on, there will be no jobs migrated to worker thread. Applying a
-        // flush to worker thread to ensure no one refers to the object.
-    }
+    unsubscribe();
+    mEndpoint->context()->sendSyncEndeavor(new CDisconnectObjectJob(this), 0, true);
+    // From now on, there will be no jobs migrated to worker thread. Applying a
+    // flush to worker thread to ensure no one refers to the object.
 }
 
 bool CFdbBaseObject::broadcast(FdbSessionId_t sid
@@ -1503,7 +1493,7 @@ void CFdbBaseObject::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
         case FDB_SIDEBAND_FEED_WATCHDOG:
             if (mWatchdog)
             {
-                auto session = FDB_CONTEXT->getSession(msg->session());
+                auto session = msg->getSession();
                 if (session)
                 {
                     mWatchdog->feedDog(session);
@@ -1546,7 +1536,7 @@ void CFdbBaseObject::prepareDestroy()
      * between 1 and 2, call callPrepareDestroy() followed by flush(). It might
      * be possible that the job to flush is in front of the job for migration.
      */
-    CFdbContext::getInstance()->sendSyncEndeavor(new CPrepareDestroyJob(this), 0, true);
+    mEndpoint->context()->sendSyncEndeavor(new CPrepareDestroyJob(this), 0, true);
     if (mWorker)
     {
         // Make sure no pending remote callback is queued
@@ -1900,19 +1890,19 @@ void CFdbBaseObject::callWatchdogAction(CBaseWorker *worker, CMethodJob<CFdbBase
 void CFdbBaseObject::startWatchdog(int32_t interval, int32_t max_retries)
 {
     auto job = new CWatchdogJob(this, FDB_WDOG_START, interval, max_retries);
-    FDB_CONTEXT->sendAsync(job);
+    mEndpoint->context()->sendAsync(job);
 }
 
 void CFdbBaseObject::stopWatchdog()
 {
     auto job = new CWatchdogJob(this, FDB_WDOG_STOP);
-    FDB_CONTEXT->sendAsync(job);
+    mEndpoint->context()->sendAsync(job);
 }
 
 void CFdbBaseObject::removeWatchdog()
 {
     auto job = new CWatchdogJob(this, FDB_WDOG_REMOVE);
-    FDB_CONTEXT->sendAsync(job);
+    mEndpoint->context()->sendAsync(job);
 }
 
 void CFdbBaseObject::getDroppedProcesses(CFdbMsgProcessList &process_list)

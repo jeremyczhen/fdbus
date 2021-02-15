@@ -63,7 +63,7 @@ CFdbSession::~CFdbSession()
 
     mContainer->owner()->deleteConnectedSession(this);
     mContainer->owner()->unsubscribeSession(this);
-    CFdbContext::getInstance()->unregisterSession(mSid);
+    mContainer->owner()->context()->unregisterSession(mSid);
 
     if (mSocket)
     {
@@ -139,7 +139,7 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
     bool ret = true;
     if (mContainer->owner()->enableAysncWrite())
     {
-        auto logger = CFdbContext::getInstance()->getLogger();
+        auto logger = FDB_CONTEXT->getLogger();
         if (logger && msg->isLogEnabled())
         {
             CFdbRawMsgBuilder builder;
@@ -157,7 +157,7 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
         {
             if (msg->isLogEnabled())
             {
-                auto logger = CFdbContext::getInstance()->getLogger();
+                auto logger = FDB_CONTEXT->getLogger();
                 if (logger)
                 {
                     logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
@@ -200,7 +200,25 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
 
 bool CFdbSession::sendUDPMessage(CFdbMessage *msg)
 {
+#if 0
+    if (mContainer->sendUDPmessage(msg, mUDPAddr))
+    {
+        if (msg->isLogEnabled())
+        {
+            auto logger = FDB_CONTEXT->getLogger();
+            if (logger)
+            {
+                logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
+            }
+        }
+        return true;
+    }
+
+    return false;
+#else
+    // do not log UDP message
     return mContainer->sendUDPmessage(msg, mUDPAddr);
+#endif
 }
 
 bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
@@ -770,7 +788,7 @@ void CFdbSession::checkLogEnabled(CFdbMessage *msg)
 {
     if (!msg->isLogEnabled())
     {
-        CLogProducer *logger = CFdbContext::getInstance()->getLogger();
+        CLogProducer *logger = FDB_CONTEXT->getLogger();
         if (logger && logger->checkLogEnabled(msg->type(), mSenderName.c_str(), mContainer->owner(), false))
         {
             msg->enableLog(true);

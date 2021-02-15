@@ -17,25 +17,20 @@
 #ifndef _CFDBCONTEXT_H_
 #define _CFDBCONTEXT_H_
 
-#include <vector>
 #include <mutex>
 #include <functional>
 #include "common_defs.h"
-#include "CEntityContainer.h"
-#include "CBaseWorker.h"
+#include "CFdbBaseContext.h"
 #include "CMethodJob.h"
+#include "CEntityContainer.h"
 
 #define FDB_CONTEXT CFdbContext::getInstance()
 #define FDB_DEF_TO_STR1(R) #R
 #define FDB_DEF_TO_STR(R) FDB_DEF_TO_STR1(R)
 
-class CBaseClient;
-class CBaseServer;
-class CFdbSession;
 class CIntraNameProxy;
 class CLogProducer;
-class CFdbSessionContainer;
-class CBaseEndpoint;
+class CBaseWorker;
 
 struct CNsWatchdogItem
 {
@@ -49,44 +44,36 @@ struct CNsWatchdogItem
 typedef std::vector<CNsWatchdogItem> tNsWatchdogList;
 typedef std::function<void(const tNsWatchdogList &)> tNsWatchdogListenerFn;
 
-class CFdbContext : public CBaseWorker
+class CFdbContext : public CFdbBaseContext 
 {
 public:
-    static CFdbContext *getInstance();
-    bool start(uint32_t flag = FDB_WORKER_ENABLE_FD_LOOP);
-    bool init();
+    typedef CEntityContainer<FdbContextId_t, CFdbBaseContext *> tContextContainer;
 
+    static CFdbContext *getInstance();
     bool destroy();
 
-    void findEndpoint(const char *name
-                      , std::vector<CBaseEndpoint *> &skt_tbl
-                      , bool is_server);
-
-    CBaseEndpoint *getEndpoint(FdbEndpointId_t server_id);
-    void registerSession(CFdbSession *session);
-    CFdbSession *getSession(FdbSessionId_t session_id);
-    void unregisterSession(FdbSessionId_t session_id);
-    void deleteSession(FdbSessionId_t session_id);
-    void deleteSession(CFdbSessionContainer *container);
-    FdbEndpointId_t registerEndpoint(CBaseEndpoint *endpoint);
-    void unregisterEndpoint(CBaseEndpoint *endpoint);
     CIntraNameProxy *getNameProxy();
-    void reconnectOnNsConnected();
     void enableNameProxy(bool enable);
     void enableLogger(bool enable);
     CLogProducer *getLogger();
     void registerNsWatchdogListener(tNsWatchdogListenerFn watchdog_listener);
     static const char *getFdbLibVersion();
+    void registerContext(CFdbBaseContext *context);
+    void unregisterContext(CFdbBaseContext *context);
+
+    tContextContainer &getContexts()
+    {
+        return mContextContainer;
+    }
 
 protected:
     bool asyncReady();
     
 private:
-    typedef CEntityContainer<FdbEndpointId_t, CBaseEndpoint *> tEndpointContainer;
-    typedef CEntityContainer<FdbSessionId_t, CFdbSession *> tSessionContainer;
+    void doRegisterContext(CFdbBaseContext *context);
+    void doUnregisterContext(CFdbBaseContext *context);
+    void callRegisterContext(CBaseWorker *worker, CMethodJob<CFdbContext> *job, CBaseJob::Ptr &ref);
 
-    tEndpointContainer mEndpointContainer;
-    tSessionContainer mSessionContainer;
     CIntraNameProxy *mNameProxy;
     CLogProducer *mLogger;
     static std::mutex mSingletonLock;
@@ -94,9 +81,10 @@ private:
 
     bool mEnableNameProxy;
     bool mEnableLogger;
+    tContextContainer mContextContainer;
 
     CFdbContext();
-    ~CFdbContext() {}
+    friend class CRegisterContextJob;
 };
 
 #endif

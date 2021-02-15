@@ -44,7 +44,7 @@ CHostProxy::CHostProxy(CNameServer *ns, const char *host_name)
         mHostName = buffer;
     }
     mName = mHostName;
-    mConnectTimer.attach(FDB_CONTEXT, false);
+    mConnectTimer.attach(mContext, false);
 }
 
 void CHostProxy::isolate(tNameProxyTbl::iterator &it)
@@ -183,7 +183,7 @@ void CHostProxy::onHostOnlineNotify(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList host_list;
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     if (!session)
     {
         return; //never happen!!!
@@ -415,7 +415,7 @@ void CHostProxy::onConnectTimer(CMethodLoopTimer<CHostProxy> *timer)
 void CHostProxy::queryServiceReq(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     if (mNameProxyTbl.empty())
     {
         NFdbBase::FdbMsgServiceTable svc_tbl;

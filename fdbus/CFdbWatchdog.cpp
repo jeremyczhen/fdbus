@@ -18,13 +18,15 @@
 #include <common_base/CFdbBaseObject.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CFdbSession.h>
+#include <common_base/CFdbBaseContext.h>
+#include <common_base/CBaseEndpoint.h>
 
 CFdbWatchdog::CFdbWatchdog(CFdbBaseObject *obj, int32_t interval, int32_t max_retries)
                            : CBaseLoopTimer(interval ? interval : FDB_WATCHDOG_INTERVAL, true)
                            , mObject(obj)
                            , mMaxRetries(max_retries ? max_retries : FDB_WATCHDOG_RETRIES)
 {
-    attach(FDB_CONTEXT);
+    attach(obj->endpoint()->context());
 }
 
 void CFdbWatchdog::addDog(CFdbSession *session)
@@ -75,7 +77,7 @@ void CFdbWatchdog::run()
         ++it;
         auto sid = the_it->first;
         auto &dog = the_it->second;
-        auto session = FDB_CONTEXT->getSession(sid);
+        auto session = mObject->endpoint()->context()->getSession(sid);
         if (!session)
         {
             mDogs.erase(the_it);
@@ -116,7 +118,7 @@ void CFdbWatchdog::getDroppedProcesses(CFdbMsgProcessList &process_list)
         auto &dog = it->second;
         if (dog.mDropped)
         {
-            auto session = FDB_CONTEXT->getSession(sid);
+            auto session = mObject->endpoint()->context()->getSession(sid);
             if (session)
             {
                 auto process = process_list.add_process_list();

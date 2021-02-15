@@ -44,7 +44,7 @@ void CServerSocket::onInput()
     if (sock_imp)
     {
         auto session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
-        CFdbContext::getInstance()->registerSession(session);
+        mOwner->context()->registerSession(session);
         session->attach(worker());
         if (!mOwner->addConnectedSession(this, session))
         {
@@ -76,8 +76,8 @@ bool CServerSocket::bind(CBaseWorker *worker)
     return false;
 }
 
-CBaseServer::CBaseServer(const char *name, CBaseWorker *worker)
-    : CBaseEndpoint(name, worker, FDB_OBJECT_ROLE_SERVER)
+CBaseServer::CBaseServer(const char *name, CBaseWorker *worker, CFdbBaseContext *context)
+    : CBaseEndpoint(name, worker, context, FDB_OBJECT_ROLE_SERVER)
 {
 }
 
@@ -103,7 +103,7 @@ public:
 FdbSocketId_t CBaseServer::bind(const char *url)
 {
     FdbSocketId_t skid = FDB_INVALID_ID;
-    CFdbContext::getInstance()->sendSyncEndeavor(
+    mContext->sendSyncEndeavor(
         new CBindServerJob(this, &CBaseServer::cbBind, skid, url), 0, true);
     return skid;
 }
@@ -183,7 +183,7 @@ CServerSocket *CBaseServer::doBind(const char *url, int32_t udp_port)
         addSocket(sk);
         sk->bindUDPSocket(0, udp_port);
 
-        if (sk->bind(CFdbContext::getInstance()))
+        if (sk->bind(mContext))
         {
             return sk;
         }
@@ -230,7 +230,7 @@ void CBaseServer::doUnbind(FdbSocketId_t skid)
 
 void CBaseServer::unbind(FdbSocketId_t skid)
 {
-    CFdbContext::getInstance()->sendSyncEndeavor(
+    mContext->sendSyncEndeavor(
             new CUnbindServerJob(this, &CBaseServer::cbUnbind, skid), 0, true);
 }
 
@@ -249,7 +249,7 @@ void CBaseServer::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
                 return;
             }
 
-            auto session = FDB_CONTEXT->getSession(msg->session());
+            auto session = msg->getSession();
             if (!session)
             {
                 return;

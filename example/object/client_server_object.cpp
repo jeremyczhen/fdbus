@@ -24,7 +24,8 @@
 #include FDB_IDL_EXAMPLE_H
 #include <common_base/CFdbProtoMsgBuilder.h>
 
-#define OBJ_FROM_SERVER_TO_CLIENT 1
+#define OBJ_FROM_SERVER_TO_CLIENT   1
+#define FDB_SHUTDOWN_TEST           0
 
 #if 1
 CBaseNotificationCenter<void *> nc;
@@ -100,11 +101,16 @@ template <class T>
 class CMyServer : public T
 {
 public:
-    CMyServer(const char *name, CBaseWorker *worker = 0)
-        : T(name, worker)
+    CBroadcastTimer<T> *mTimer;
+    CMyServer(const char *name, CBaseWorker *worker = 0, CFdbBaseContext *context = 0)
+        : T(name, worker, context)
     {
         mTimer = new CBroadcastTimer<T>(this);
         mTimer->attach(&main_worker, false);
+    }
+    ~CMyServer()
+    {
+        delete mTimer;
     }
 
     void broadcastElapseTime(CMethodLoopTimer<CMyServer<T> > *timer)
@@ -264,8 +270,6 @@ protected:
         auto obj = new CMyServer<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
         obj->bind(dynamic_cast<CBaseEndpoint *>(this), msg->objectId());
     }
-private:
-    CBroadcastTimer<T> *mTimer;
 };
 
 template <typename T>
@@ -284,11 +288,16 @@ template <typename T>
 class CMyClient : public T
 {
 public:
-    CMyClient(const char *name, CBaseWorker *worker = 0)
-        : T(name, worker)
+    CInvokeTimer<T> *mTimer;
+    CMyClient(const char *name, CBaseWorker *worker = 0, CFdbBaseContext *context = 0)
+        : T(name, worker, context)
     {
         mTimer = new CInvokeTimer<T>(this);
         mTimer->attach(&main_worker, false);
+    }
+    ~CMyClient()
+    {
+        delete mTimer;
     }
 
     void callServer(CMethodLoopTimer<CMyClient<T> > *timer)
@@ -563,8 +572,6 @@ protected:
         CMyServer<CFdbBaseObject> *obj = new CMyServer<CFdbBaseObject>("mediaplayer", &mediaplayer_worker);
         obj->bind(dynamic_cast<CBaseEndpoint *>(this), msg->objectId());
     }
-protected:
-    CInvokeTimer<T> *mTimer;
 };
 
 class CObjTestTimer : public CBaseLoopTimer
@@ -661,6 +668,13 @@ int main(int argc, char **argv)
     CObjTestTimer obj_test_timer;
     obj_test_timer.attach(&main_worker, true);
 
+    while (1)
+    {
+    std::vector<CMyServer<CBaseServer> *> servers;
+    std::vector<CMyClient<CBaseClient> *> clients;
+    std::vector<CFdbBaseContext *> server_contexts;
+    std::vector<CFdbBaseContext *> client_contexts;
+
     if (is_server)
     {
         for (int i = 2; i < argc; ++i)
@@ -669,7 +683,11 @@ int main(int argc, char **argv)
             std::string url(FDB_URL_SVC);
             url += server_name;
             server_name += "_server";
-            auto server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr);
+            auto context = new CFdbBaseContext();
+            server_contexts.push_back(context);
+            context->start();
+            auto server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr, context);
+            servers.push_back(server);
             server->enableUDP(true);
 
 #ifdef OBJ_FROM_SERVER_TO_CLIENT
@@ -685,20 +703,20 @@ int main(int argc, char **argv)
 
             server->bind(url.c_str());
         }
-        CBaseWorker background_worker;
-        background_worker.start(FDB_WORKER_EXE_IN_PLACE);
     }
     else
     {
-        // 创建client并连接Server
-        CMyClient<CBaseClient> *client = 0;
         for (int i = 2; i < argc; ++i)
         {
             std::string server_name = argv[i];
             std::string url(FDB_URL_SVC);
             url += server_name;
             server_name += "_client";
-            client = new CMyClient<CBaseClient>(server_name.c_str(), worker_ptr);
+            auto context = new CFdbBaseContext();
+            client_contexts.push_back(context);
+            context->start();
+            auto client = new CMyClient<CBaseClient>(server_name.c_str(), worker_ptr, context);
+            clients.push_back(client);
             client->enableUDP(true);
             
 #ifndef OBJ_FROM_SERVER_TO_CLIENT
@@ -715,17 +733,44 @@ int main(int argc, char **argv)
             client->enableReconnect(true);
             client->connect(url.c_str());
         }
-#if 0
-        sysdep_sleep(1000);
-        client->disconnect();
-        main_worker.flush();
-        main_worker.exit();
-        main_worker.join();
-        FDB_CONTEXT->destroy();
-        return 0;
+    }
+
+#if FDB_SHUTDOWN_TEST == 1
+    sysdep_sleep(5000);
+
+    FDB_LOG_I("================ Destroying clients ================\n");
+    for (auto it = clients.begin(); it != clients.end(); ++it)
+    {
+        (*it)->mTimer->disable();
+        (*it)->prepareDestroy();
+        delete *it;
+    }
+    FDB_LOG_I("================ Destroying servers ================\n");
+    for (auto it = servers.begin(); it != servers.end(); ++it)
+    {
+        (*it)->mTimer->disable();
+        (*it)->prepareDestroy();
+        delete *it;
+    }
+    FDB_LOG_I("================ Destroying client contexts ================\n");
+    for (auto it = client_contexts.begin(); it != client_contexts.end(); ++it)
+    {
+        (*it)->exit();
+        (*it)->join();
+        delete (*it);
+    }
+    FDB_LOG_I("================ Destroying server contexts ================\n");
+    for (auto it = server_contexts.begin(); it != server_contexts.end(); ++it)
+    {
+        (*it)->exit();
+        (*it)->join();
+        delete (*it);
+    }
+    sysdep_sleep(1000);
+#else
+    CBaseWorker background_worker;
+    background_worker.start(FDB_WORKER_EXE_IN_PLACE);
 #endif
-        CBaseWorker background_worker;
-        background_worker.start(FDB_WORKER_EXE_IN_PLACE);
     }
 
     return 0;

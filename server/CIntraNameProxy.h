@@ -22,7 +22,10 @@
 #include <common_base/CMethodLoopTimer.h>
 #include <common_base/CNotificationCenter.h>
 #include <common_base/CFdbContext.h>
+#include <common_base/CMethodJob.h>
 #include "CBaseNameProxy.h"
+
+class CFdbBaseContext;
 
 class CIntraNameProxy : public CBaseNameProxy
 {
@@ -36,11 +39,11 @@ public:
         std::string &mHostName;
     };
     CIntraNameProxy();
-    void addServiceListener(const char *svc_name);
+    void addServiceListener(const char *svc_name, CFdbBaseContext *context);
     void removeServiceListener(const char *svc_name);
     void addAddressListener(const char *svc_name);
     void removeAddressListener(const char *svc_name);
-    void registerService(const char *svc_name);
+    void registerService(const char *svc_name, CFdbBaseContext *context);
     void unregisterService(const char *svc_name);
     bool connectToNameServer();
     std::string &hostName()
@@ -96,11 +99,22 @@ private:
 
     void onConnectTimer(CMethodLoopTimer<CIntraNameProxy> *timer);
     
-    void processClientOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list);
-    void processServiceOnline(CFdbMessage *msg, NFdbBase::FdbMsgAddressList &msg_addr_list, bool force_reconnect);
+    void doConnectToServer(CFdbBaseContext *context, NFdbBase::FdbMsgAddressList &msg_addr_list,
+                           bool is_init_response);
+    void doBindAddress(CFdbBaseContext *context, NFdbBase::FdbMsgAddressList &msg_addr_list,
+                              bool force_rebind);
     void doRegisterNsWatchdogListener(tNsWatchdogListenerFn &watchdog_listener);
+    void connectToServer(CFdbMessage *msg, FdbContextId_t ctx_id);
+    void bindAddress(CFdbMessage *msg, FdbContextId_t ctx_id);
+    void queryServiceAddress();
+    void callConnectToServer(CBaseWorker *worker, CMethodJob<CIntraNameProxy> *job, CBaseJob::Ptr &ref);
+    void callBindAddress(CBaseWorker *worker, CMethodJob<CIntraNameProxy> *job, CBaseJob::Ptr &ref);
+    void callQueryServiceAddress(CBaseWorker *worker, CMethodJob<CIntraNameProxy> *job, CBaseJob::Ptr &ref);
 
     friend class CRegisterWatchdogJob;
+    friend class CConnectToServerJob;
+    friend class CBindAddressJob;
+    friend class CQueryServiceAddressJob;
 };
 
 #endif

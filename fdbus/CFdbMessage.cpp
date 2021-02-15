@@ -89,6 +89,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     {
         mTimeStamp = new CFdbMsgMetadata();
     }
+    mContext = obj->endpoint()->context();
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
@@ -105,6 +106,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mTimer(0)
     , mTimeStamp(0)
     , mQOS(FDB_QOS_RELIABLE)
+    , mContext(msg->mContext)
 {
     if (filter)
     {
@@ -136,6 +138,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mTimer(0)
     , mTimeStamp(0)
     , mQOS(head.qos())
+    , mContext(0)
 {
     if (head.has_broadcast_filter())
     {
@@ -194,6 +197,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     {
         mTimeStamp = new CFdbMsgMetadata();
     }
+    mContext = obj->endpoint()->context();
 }
 
 CFdbMessage::CFdbMessage(const CFdbMessage *msg)
@@ -211,6 +215,7 @@ CFdbMessage::CFdbMessage(const CFdbMessage *msg)
     mTimer = 0;
     mTimeStamp = 0;
     mQOS = msg->mQOS;
+    mContext = msg->mContext;
     allocCopyRawBuffer(msg->getPayloadBuffer(), mPayloadSize);
 }
 
@@ -249,6 +254,7 @@ void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid)
         mFlag |= MSG_FLAG_ENDPOINT;
     }
     mOid = obj->objId();
+    mContext = obj->endpoint()->context();
 }
 
 void CFdbMessage::setToken(CFdbBaseObject *obj)
@@ -318,10 +324,10 @@ bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
     mType = type;
     mFlag |= MSG_FLAG_REPLIED;
     setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
-    if (!CFdbContext::getInstance()->sendAsync(msg_ref))
+    if (!mContext->sendAsync(msg_ref))
     {
         mFlag &= ~MSG_FLAG_REPLIED;
-        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to context");
         return false;
     }
     return true;
@@ -360,10 +366,10 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
     fdb_msg->mType = FDB_MT_REPLY;
     fdb_msg->mFlag |= MSG_FLAG_REPLIED;
     fdb_msg->setCallable(std::bind(&CFdbMessage::dispatchMsg, fdb_msg, _1));
-    if (!CFdbContext::getInstance()->sendAsync(msg_ref))
+    if (!fdb_msg->mContext->sendAsync(msg_ref))
     {
         fdb_msg->mFlag &= ~MSG_FLAG_REPLIED;
-        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to context");
         return false;
     }
     return true;
@@ -400,9 +406,9 @@ bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char 
     }
     fdb_msg->setStatusMsg(error_code, description, FDB_MT_STATUS);
     fdb_msg->setCallable(std::bind(&CFdbMessage::dispatchMsg, fdb_msg, _1));
-    if (!CFdbContext::getInstance()->sendAsync(msg_ref))
+    if (!fdb_msg->mContext->sendAsync(msg_ref))
     {
-        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to context");
         return false;
     }
     return true;
@@ -425,9 +431,9 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
                          , int32_t timeout)
 {
     bool sync = !!(tx_flag & FDB_MSG_TX_SYNC);
-    if (sync && FDB_CONTEXT->isSelf())
+    if (sync && mContext->isSelf())
     {
-        LOG_E("CFdbMessage: Cannot send sychronously from FDB_CONTEXT!\n");
+        LOG_E("CFdbMessage: Cannot send sychronously from context!\n");
         return false;
     }
 
@@ -453,15 +459,15 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
     bool ret;
     if (sync)
     {
-        ret = CFdbContext::getInstance()->sendSync(msg_ref);
+        ret = mContext->sendSync(msg_ref);
     }
     else
     {
-        ret = CFdbContext::getInstance()->sendAsync(msg_ref);
+        ret = mContext->sendAsync(msg_ref);
     }
     if (!ret)
     {
-        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to context");
     }
     return !(mFlag & MSG_FLAG_STATUS);
 }
@@ -553,9 +559,9 @@ bool CFdbMessage::broadcast()
 {
    mType = FDB_MT_BROADCAST;
    setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
-   if (!CFdbContext::getInstance()->sendAsync(this))
+   if (!mContext->sendAsync(this))
    {
-        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to FDB_CONTEXT");
+        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "Fail to send job to context");
         return false;
    }
    return true;
@@ -716,7 +722,7 @@ bool CFdbMessage::serialize(IFdbMsgBuilder &data, const CFdbBaseObject *object)
 
     if (mFlag & MSG_FLAG_ENABLE_LOG)
     {
-        auto logger = CFdbContext::getInstance()->getLogger();
+        auto logger = FDB_CONTEXT->getLogger();
         if (logger)
         {
             data.toString(mStringData);
@@ -789,7 +795,7 @@ void CFdbMessage::doRequest(Ptr &ref)
                 mTimer->mSession = session;
                 //TODO: store ref rather than sn for performance
                 mTimer->mMsgSn = mSn;
-                mTimer->attach(CFdbContext::getInstance());
+                mTimer->attach(mContext);
             }
         }
     }
@@ -831,7 +837,7 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     const char *reason = "";
     if (mFlag & MSG_FLAG_ENDPOINT)
     {
-        auto endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
+        auto endpoint = mContext->getEndpoint(mEpid);
         if (endpoint)
         {
             auto object = endpoint->getObject(this, true);
@@ -854,7 +860,7 @@ void CFdbMessage::doBroadcast(Ptr &ref)
     }
     else
     {
-        auto session = CFdbContext::getInstance()->getSession(mSid);
+        auto session = mContext->getSession(mSid);
         if (session)
         {
             auto object =
@@ -944,7 +950,7 @@ void CFdbMessage::autoReply(CBaseJob::Ptr &msg_ref, int32_t error_code, const ch
         auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
         fdb_msg->setStatusMsg(error_code, description, FDB_MT_STATUS);
         fdb_msg->setCallable(std::bind(&CFdbMessage::dispatchMsg, fdb_msg, _1));
-        CFdbContext::getInstance()->sendAsync(msg_ref);
+        fdb_msg->mContext->sendAsync(msg_ref);
     }
 }
 
@@ -1028,7 +1034,7 @@ CFdbSession *CFdbMessage::getSession()
     CFdbSession *session;
     if (mFlag & MSG_FLAG_ENDPOINT)
     {
-        auto endpoint = CFdbContext::getInstance()->getEndpoint(mEpid);
+        auto endpoint = mContext->getEndpoint(mEpid);
         session = endpoint ? endpoint->preferredPeer() : 0;
         if (session)
         {
@@ -1038,7 +1044,7 @@ CFdbSession *CFdbMessage::getSession()
     }
     else
     {
-        session = CFdbContext::getInstance()->getSession(mSid);
+        session = mContext->getSession(mSid);
     }
     return session;
 }
@@ -1084,7 +1090,7 @@ void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
 {
     if (!(mFlag & MSG_FLAG_ENABLE_LOG))
     {
-        CLogProducer *logger = CFdbContext::getInstance()->getLogger();
+        CLogProducer *logger = FDB_CONTEXT->getLogger();
         if (logger && logger->checkLogEnabled(mType, 0, object->endpoint(), lock))
         {
             mFlag |= MSG_FLAG_ENABLE_LOG;
@@ -1253,7 +1259,7 @@ bool CFdbMessage::feedDog(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
     msg->setCallable(std::bind(&CFdbMessage::feedDogNoQueue, _1));
-    return FDB_CONTEXT->sendAsync(msg_ref, true);
+    return msg->mContext->sendAsync(msg_ref, true);
 }
 
 bool CFdbMessage::kickDog(CBaseJob::Ptr &msg_ref, CBaseWorker *worker, tCallableFn fn)

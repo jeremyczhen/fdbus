@@ -127,7 +127,6 @@ void CSysFdWatch::submitInput(uint8_t *buffer, int32_t size, bool trigger_read)
         auto consumed = readStream(buffer, size);
         if (consumed < 0)
         {
-            LOG_E("CSysFdWatch: process %d: fatal error or peer drops when reading %d bytes!\n", CBaseThread::getPid(), size);
             fatalError(true);
             onInputReady(buffer, consumed); // consumed < 0 means error happens
         }
@@ -164,7 +163,6 @@ void CSysFdWatch::submitOutput(uint8_t *buffer, int32_t size, CFdbRawMsgBuilder 
         auto consumed = writeStream(buffer, size);
         if (consumed < 0)
         {
-            LOG_E("CSysFdWatch: process %d: fatal error or peer drops when writing %d bytes!\n", CBaseThread::getPid(), size);
             fatalError(true);
         }
         else if (consumed < size)
@@ -176,10 +174,10 @@ void CSysFdWatch::submitOutput(uint8_t *buffer, int32_t size, CFdbRawMsgBuilder 
         {
             if (log_builder && log_builder->serializer().bufferSize())
             {
-                auto logger = CFdbContext::getInstance()->getLogger();
+                auto logger = FDB_CONTEXT->getLogger();
                 if (logger)
                 {
-                    logger->sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, *log_builder);
+                    logger->sendLog(NFdbBase::REQ_FDBUS_LOG, *log_builder);
                 }
             }
         }
@@ -199,7 +197,6 @@ void CSysFdWatch::processInput()
     auto consumed = readStream(buffer, size);
     if (consumed < 0)
     {
-        LOG_E("CSysFdWatch: process %d: fatal error when reading!\n", CBaseThread::getPid());
         fatalError(true);
         onInputReady(mInputChunk.mBuffer, consumed); // consumed < size means error happens
     }
@@ -240,7 +237,6 @@ void CSysFdWatch::processOutput()
         auto consumed = writeStream(buffer, size);
         if (consumed < 0)
         {
-            LOG_E("CSysFdWatch: process %d: fatal error when writing!\n", CBaseThread::getPid());
             fatalError(true);
             clearOutputChunkList();
             break;
@@ -254,10 +250,10 @@ void CSysFdWatch::processOutput()
         {
             if (chunk->mLogBuffer)
             {
-                auto logger = CFdbContext::getInstance()->getLogger();
+                auto logger = FDB_CONTEXT->getLogger();
                 if (logger)
                 {
-                    logger->sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, chunk->mLogBuffer, chunk->mLogSize);
+                    logger->sendLog(NFdbBase::REQ_FDBUS_LOG, chunk->mLogBuffer, chunk->mLogSize);
                 }
             }
             delete chunk;

@@ -32,12 +32,14 @@ class CFdbMessage;
 struct CFdbSocketAddr;
 class CFdbSession;
 class CApiSecurityConfig;
+class CFdbBaseContext;
 
 class CBaseEndpoint : public CEntityContainer<FdbSocketId_t, CFdbSessionContainer *>
                     , public CFdbBaseObject
 {
 public:
-#define FDB_EP_AUTO_REMOVE              (1 << 8)
+    typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
+
 #define FDB_EP_RECONNECT_ENABLED        (1 << 9)
 #define FDB_EP_RECONNECT_ACTIVATED      (1 << 10)
 #define FDB_EP_ENABLE_UDP               (1 << 11)
@@ -45,7 +47,9 @@ public:
 #define FDB_EP_IPC_BLOCKING_MODE        (1 << 13)
 #define FDB_EP_READ_ASYNC               (1 << 14)
 #define FDB_EP_WRITE_ASYNC              (1 << 15)
-    CBaseEndpoint(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
+
+    CBaseEndpoint(const char *name = 0, CBaseWorker *worker = 0, CFdbBaseContext *context = 0,
+                  EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     ~CBaseEndpoint();
 
     const std::string &nsName() const
@@ -73,23 +77,6 @@ public:
     FdbEndpointId_t epid() const
     {
         return mEpid;
-    }
-
-    void autoRemove(bool enb)
-    {
-        if (enb)
-        {
-            mFlag |= FDB_EP_AUTO_REMOVE;
-        }
-        else
-        {
-            mFlag &= ~FDB_EP_AUTO_REMOVE;
-        }
-    }
-
-    bool autoRemove() const
-    {
-        return !!(mFlag & FDB_EP_AUTO_REMOVE);
     }
 
     void enableReconnect(bool active)
@@ -231,6 +218,16 @@ public:
         mEventRouter.addPeer(peer_router_name);
     }
 
+    CFdbBaseContext *context() const
+    {
+        return mContext;
+    }
+
+    tObjectContainer &getObjectContainer()
+    {
+        return mObjectContainer;
+    }
+
 protected:
     std::string mNsName;
     CFdbToken::tTokenList mTokens;
@@ -265,9 +262,9 @@ protected:
         }
     }
     void onPublish(CBaseJob :: Ptr &msg_ref);
+    CFdbBaseContext *mContext;
 
 private:
-    typedef CEntityContainer<FdbObjectId_t, CFdbBaseObject *> tObjectContainer;
     tObjectContainer mObjectContainer;
 
     uint32_t mSessionCnt;
@@ -304,7 +301,7 @@ private:
     friend class CFdbSession;
     friend class CFdbUDPSession;
     friend class CFdbMessage;
-    friend class CFdbContext;
+    friend class CFdbBaseContext;
     friend class CBaseServer;
     friend class CBaseClient;
     friend class CIntraNameProxy;

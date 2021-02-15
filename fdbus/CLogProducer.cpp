@@ -297,7 +297,7 @@ void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEn
 {
     CFdbRawMsgBuilder builder;
     logMessage(msg, sender_name, endpoint, builder);
-    sendLogNoQueue(NFdbBase::REQ_FDBUS_LOG, builder);
+    sendLog(NFdbBase::REQ_FDBUS_LOG, builder);
 }
 
 bool CLogProducer::checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag)

@@ -350,7 +350,7 @@ JNIEXPORT jboolean JNICALL Java_ipc_fdbus_FdbusServer_fdb_1log_1enabled
     auto server = (CJniServer *)handle;
     if (server)
     {
-        auto logger = CFdbContext::getInstance()->getLogger();
+        auto logger = FDB_CONTEXT->getLogger();
         if (logger && logger->checkLogEnabled((EFdbMessageType)msg_type, 0, server))
         {
             return true;

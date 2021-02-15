@@ -64,7 +64,7 @@ bool CFdbUDPSession::sendMessage(CFdbMessage *msg, const CFdbSocketAddr &dest_ad
     {
         if (msg->isLogEnabled())
         {
-            auto logger = CFdbContext::getInstance()->getLogger();
+            auto logger = FDB_CONTEXT->getLogger();
             if (logger)
             {
                 logger->logMessage(msg, 0, mContainer->owner());

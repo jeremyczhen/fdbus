@@ -56,6 +56,7 @@ public:
 #define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
 #define FDB_OBJ_ENABLE_EVENT_ROUTE      (1 << 4)
 #define FDB_OBJ_ENABLE_WATCHDOG         (1 << 5)
+#define FDB_OBJ_AUTO_REMOVE             (1 << 6)
 
     typedef uint32_t tRegEntryId;
     typedef std::function<void(CFdbBaseObject *obj, FdbSessionId_t sid, bool is_online, bool first_or_last)> tConnCallbackFn;
@@ -68,7 +69,8 @@ public:
 
     typedef std::function<void(CBaseJob::Ptr &, CFdbBaseObject *)> tInvokeCallbackFn;
 
-    CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
+    CFdbBaseObject(const char *name = 0, CBaseWorker *worker = 0, CFdbBaseContext *dummy = 0,
+                   EFdbEndpointRole role = FDB_OBJECT_ROLE_UNKNOWN);
     virtual ~CFdbBaseObject();
 
     /*
@@ -707,6 +709,23 @@ public:
         return !!(mFlag & FDB_OBJ_ENABLE_EVENT_ROUTE);
     }
 
+    void autoRemove(bool enb)
+    {
+        if (enb)
+        {
+            mFlag |= FDB_OBJ_AUTO_REMOVE;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_AUTO_REMOVE;
+        }
+    }
+
+    bool autoRemove() const
+    {
+        return !!(mFlag & FDB_OBJ_AUTO_REMOVE);
+    }
+
     void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)
     {
         mSid = sid;
@@ -875,23 +894,6 @@ protected:
         mObjId = obj_id;
     }
 
-    bool registered()
-    {
-        return !!(mFlag & FDB_OBJ_REGISTERED);
-    }
-
-    void registered(bool active)
-    {
-        if (active)
-        {
-            mFlag |= FDB_OBJ_REGISTERED;
-        }
-        else
-        {
-            mFlag &= ~FDB_OBJ_REGISTERED;
-        }
-    }
-
     virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
     {}
@@ -954,8 +956,7 @@ private:
     void broadcast(CFdbMessage *msg);
 
     bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool sendLogNoQueue(FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool sendLogNoQueue(FdbMsgCode_t code, const void *buffer, int32_t size);
+    bool sendLog(FdbMsgCode_t code, const void *buffer, int32_t size);
 
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
 

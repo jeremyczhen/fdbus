@@ -20,6 +20,7 @@
 CBaseThread::CBaseThread(const char* thread_name)
     : mThread(0)
     , mPriority(THREAD_PRIORITY_NORMAL)
+    , mThreadName(thread_name ? thread_name : "")
 {
     mInvalidTid = GetCurrentThreadId();
     mThreadId = mInvalidTid;
@@ -144,6 +145,10 @@ bool CBaseThread::applyPriority(int32_t level)
 
 bool CBaseThread::name(const char* thread_name)
 {
+    if (thread_name)
+    {
+        mThreadName = thread_name;
+    }
     return true;
 }
 

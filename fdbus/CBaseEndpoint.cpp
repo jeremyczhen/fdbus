@@ -23,13 +23,16 @@
 #include <server/CIntraNameProxy.h>
 #include <utils/Log.h>
 
-CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, EFdbEndpointRole role)
-    : CFdbBaseObject(name, worker, role)
+CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, CFdbBaseContext *context,
+                             EFdbEndpointRole role)
+    : CFdbBaseObject(name, worker, context, role)
     , mSessionCnt(0)
     , mSnAllocator(1)
     , mEpid(FDB_INVALID_ID)
     , mEventRouter(this)
 {
+    autoRemove(false);
+    mContext = context ? context : FDB_CONTEXT;
     enableBlockingMode(false);
     mObjId = FDB_OBJECT_MAIN;
     mEndpoint = this;
@@ -93,7 +96,7 @@ CFdbSession *CBaseEndpoint::preferredPeer()
     CFdbSession *session = 0;
     if (fdbValidFdbId(mSid))
     {
-        session = CFdbContext::getInstance()->getSession(mSid);
+        session = mContext->getSession(mSid);
     }
     if (session)
     {
@@ -140,6 +143,11 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
     if (obj_id == FDB_OBJECT_MAIN)
     {
         return FDB_INVALID_ID;
+    }
+
+    if (mObjectContainer.findEntry(obj))
+    {
+        return obj_id;
     }
 
     if (!fdbValidFdbId(obj_id))
@@ -202,6 +210,11 @@ FdbObjectId_t CBaseEndpoint::addObject(CFdbBaseObject *obj)
 
 void CBaseEndpoint::removeObject(CFdbBaseObject *obj)
 {
+    if (!mObjectContainer.findEntry(obj))
+    {
+        return;
+    }
+
     auto is_last = false;
     auto session_cnt = mSessionCnt;
 
@@ -224,10 +237,18 @@ void CBaseEndpoint::removeObject(CFdbBaseObject *obj)
             }
         }
     }
-    
-    mObjectContainer.deleteEntry(obj->objId());
-    // obj->objId(FDB_INVALID_ID);
+
     obj->enableMigrate(false);
+    if (obj->mWorker)
+    {
+        obj->mWorker->flush();
+    }
+    mObjectContainer.deleteEntry(obj->objId());
+    if (obj->autoRemove())
+    {
+        delete obj;
+    }
+    // obj->objId(FDB_INVALID_ID);
 }
 
 void CBaseEndpoint::unsubscribeSession(CFdbSession *session)
@@ -238,7 +259,7 @@ void CBaseEndpoint::unsubscribeSession(CFdbSession *session)
         auto object = it->second;
         object->unsubscribe(session);
     }
-    
+
     unsubscribe(session);
 }
 
@@ -253,7 +274,8 @@ public:
 protected:
     void run(CBaseWorker *worker, Ptr &ref)
     {
-        CFdbContext::getInstance()->deleteSession(mSid);
+        auto *context = fdb_dynamic_cast_if_available<CFdbBaseContext *>(worker);
+        context->deleteSession(mSid);
     }
 private:
     FdbSessionId_t mSid;
@@ -261,7 +283,7 @@ private:
 
 void CBaseEndpoint::kickOut(FdbSessionId_t sid)
 {
-    CFdbContext::getInstance()->sendAsyncEndeavor(new CKickOutSessionJob(sid));
+    mContext->sendAsyncEndeavor(new CKickOutSessionJob(sid));
 }
 
 CFdbBaseObject *CBaseEndpoint::getObject(CFdbMessage *msg, bool server_only)
@@ -269,6 +291,7 @@ CFdbBaseObject *CBaseEndpoint::getObject(CFdbMessage *msg, bool server_only)
     auto obj_id = msg->objectId();
     if (obj_id == FDB_OBJECT_MAIN)
     {
+        msg->context(mContext);
         return this;
     }
     
@@ -278,7 +301,12 @@ CFdbBaseObject *CBaseEndpoint::getObject(CFdbMessage *msg, bool server_only)
     while (1)
     {
         object = findObject(obj_id, server_only);
-        if (object || tried_to_create)
+        if (object)
+        {
+            msg->context(object->endpoint()->context());
+            break;
+        }
+        else if (tried_to_create)
         {
             break;
         }
@@ -412,22 +440,14 @@ void CBaseEndpoint::callRegisterEndpoint(CBaseWorker *worker,
     auto the_job = fdb_dynamic_cast_if_available<CRegisterJob *>(job);
     if (the_job)
     {
-        the_job->mEpid = CFdbContext::getInstance()->registerEndpoint(this);
-        registered(true);
+        the_job->mEpid = mContext->registerEndpoint(this);
     }
 }
 
 FdbEndpointId_t CBaseEndpoint::registerSelf()
 {
-    auto epid = mEpid;
-    if (!registered())
-    {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CRegisterJob(this, epid));
-        if (fdbValidFdbId(epid))
-        {
-            registered(true);
-        }
-    }
+    FdbEndpointId_t epid = FDB_INVALID_ID;
+    mContext->sendSyncEndeavor(new CRegisterJob(this, epid));
     return epid;
 }
 
@@ -449,10 +469,6 @@ void CBaseEndpoint::callDestroyEndpoint(CBaseWorker *worker,
     auto the_job = fdb_dynamic_cast_if_available<CDestroyJob *>(job);
     if (the_job->mPrepare)
     {
-        CFdbContext::getInstance()->unregisterEndpoint(this);
-    }
-    else
-    {
         auto &object_tbl = mObjectContainer.getContainer();
         while (!object_tbl.empty())
         {
@@ -461,19 +477,19 @@ void CBaseEndpoint::callDestroyEndpoint(CBaseWorker *worker,
             removeObject(object);
         }
 
+        mContext->unregisterEndpoint(this);
+    }
+    else
+    {
         deleteSocket();
         // ensure if prepare is not called, it still can be unregistered.
-        CFdbContext::getInstance()->unregisterEndpoint(this);
+        mContext->unregisterEndpoint(this);
     }
 }
 
 void CBaseEndpoint::destroySelf(bool prepare)
 {
-    if (registered())
-    {
-        CFdbContext::getInstance()->sendSyncEndeavor(new CDestroyJob(this, prepare));
-        registered(false);
-    }
+    mContext->sendSyncEndeavor(new CDestroyJob(this, prepare));
 }
 
 bool CBaseEndpoint::importTokens(const CFdbParcelableArray<std::string> &in_tokens)
@@ -546,6 +562,7 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
         // is connected but bind() or connect() is not called.
         return false;
     }
+    server_name = mNsName.c_str();
 
     auto name_proxy = FDB_CONTEXT->getNameProxy();
     if (!name_proxy)
@@ -555,12 +572,16 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
 
     if (role() == FDB_OBJECT_ROLE_SERVER)
     {
-        name_proxy->registerService(mNsName.c_str());
-        name_proxy->addAddressListener(mNsName.c_str());
+        if (mContext->serverAlreadyRegistered(this))
+        {
+            return false;
+        }
+        name_proxy->registerService(server_name, mContext);
+        name_proxy->addAddressListener(server_name);
     }
     else
     {
-        name_proxy->addServiceListener(mNsName.c_str());
+        name_proxy->addServiceListener(server_name, mContext);
     }
     mEventRouter.connectPeers();
     return true;
@@ -610,7 +631,7 @@ void CBaseEndpoint::onSidebandInvoke(CBaseJob::Ptr &msg_ref)
             {
                 return;
             }
-            auto session = FDB_CONTEXT->getSession(msg->session());
+            auto session = msg->getSession();
             if (!session)
             {
                 return;

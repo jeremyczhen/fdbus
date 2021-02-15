@@ -26,6 +26,7 @@
 class CBaseClient;
 class CBaseServer;
 class CBaseWorker;
+class CFdbBaseContext;
 
 class CFdbAFComponent
 {
@@ -34,7 +35,7 @@ public:
     // @name - name of the component for debug purpose
     // worker - the thread context where callback is executed; if not specified
     //     callback will be called at FDBus context thread
-    CFdbAFComponent(const char *name = "anonymous", CBaseWorker *worker = 0);
+    CFdbAFComponent(const char *name = "anonymous", CBaseWorker *worker = 0, CFdbBaseContext *context = 0);
     virtual ~CFdbAFComponent()
     {}
 
@@ -112,12 +113,13 @@ public:
 protected:
     std::string mName;
     CBaseWorker *mWorker;
-    virtual CBaseClient *createClient(const char *bus_name);
-    virtual CBaseServer *createServer(const char *bus_name);
+    virtual CBaseClient *createClient();
+    virtual CBaseServer *createServer();
 private:
     typedef std::vector<CFdbBaseObject::tRegEntryId> tConnHandleTbl;
     CFdbEventDispatcher::tRegistryHandleTbl mEventRegistryTbl;
     tConnHandleTbl mConnHandleTbl;
+    CFdbBaseContext *mContext;
 
     void callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
     void callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);

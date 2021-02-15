@@ -37,7 +37,7 @@ CHostServer::CHostServer()
     mMsgHdl.registerCallback(NFdbBase::REQ_HOST_READY, &CHostServer::onHostReady);
 
     mSubscribeHdl.registerCallback(NFdbBase::NTF_HOST_ONLINE, &CHostServer::onHostOnlineReg);
-    mHeartBeatTimer.attach(FDB_CONTEXT, false);
+    mHeartBeatTimer.attach(mContext, false);
 }
 
 CHostServer::~CHostServer()
@@ -269,7 +269,7 @@ void CHostServer::onHostOnlineReg(CBaseJob::Ptr &msg_ref, const CFdbMsgSubscribe
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgHostAddressList addr_list;
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     for (auto it = mHostTbl.begin(); it != mHostTbl.end(); ++it)
     {
         auto &info = it->second;

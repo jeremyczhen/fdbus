@@ -112,8 +112,8 @@ void CClientSocket::onSessionDeleted(CFdbSession *session)
     }
 }
 
-CBaseClient::CBaseClient(const char *name, CBaseWorker *worker)
-    : CBaseEndpoint(name, worker, FDB_OBJECT_ROLE_CLIENT)
+CBaseClient::CBaseClient(const char *name, CBaseWorker *worker, CFdbBaseContext *context)
+    : CBaseEndpoint(name, worker, context, FDB_OBJECT_ROLE_CLIENT)
     , mIsLocal(true)
 {
 }
@@ -140,7 +140,7 @@ public:
 FdbSessionId_t CBaseClient::connect(const char *url)
 {
     FdbSessionId_t sid = FDB_INVALID_ID;
-    CFdbContext::getInstance()->sendSyncEndeavor(
+    mContext->sendSyncEndeavor(
                 new CConnectClientJob(this, &CBaseClient::cbConnect, sid, url), 0, true);
     return sid;
 }
@@ -242,8 +242,8 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name, in
         auto session = sk->connect();
         if (session)
         {
-            CFdbContext::getInstance()->registerSession(session);
-            session->attach(CFdbContext::getInstance());
+            mContext->registerSession(session);
+            session->attach(mContext);
             if (addConnectedSession(sk, session))
             {
                 activateReconnect(true);
@@ -300,7 +300,7 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
     
     if (fdbValidFdbId(sid))
     {
-        auto session = CFdbContext::getInstance()->getSession(sid);
+        auto session = mContext->getSession(sid);
         if (session)
         {
             skid = session->container()->skid();
@@ -312,7 +312,7 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
 
 void CBaseClient::disconnect(FdbSessionId_t sid)
 {
-    CFdbContext::getInstance()->sendSyncEndeavor(
+    mContext->sendSyncEndeavor(
                 new CDisconnectClientJob(this, &CBaseClient::cbDisconnect, sid), 0, true);
 }
 

@@ -51,7 +51,7 @@ void CEventRouterProxy::onOnline(FdbSessionId_t sid, bool is_first)
 {
     if (is_first)
     {
-        mRouter->syncEventPool(sid);
+        mRouter->syncEventPool(mContext->getSession(sid));
     }
 }
 
@@ -81,7 +81,7 @@ void CFdbEventRouter::connectPeers()
 void CFdbEventRouter::routeMessage(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CBaseMessage *>(msg_ref);
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     for (auto it = mPeerTbl.begin(); it != mPeerTbl.end(); ++it)
     {
         /* avoid back and forth between NCs */
@@ -98,9 +98,8 @@ void CFdbEventRouter::routeMessage(CBaseJob::Ptr &msg_ref)
     }
 }
 
-void CFdbEventRouter::syncEventPool(FdbSessionId_t sid)
+void CFdbEventRouter::syncEventPool(CFdbSession *session)
 {
-    auto session = FDB_CONTEXT->getSession(sid);
     if (session)
     {
         mEndpoint->publishCachedEvents(session);

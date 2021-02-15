@@ -312,7 +312,7 @@ void CNameServer::broadcastSvcAddrRemote(const CFdbToken::tTokenList &tokens,
                                          CFdbMessage *msg)
 {
     auto svc_name = addr_list.service_name().c_str();
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     if (session)
     {    
         populateTokensRemote(tokens, addr_list, session);
@@ -371,7 +371,7 @@ void CNameServer::broadcastSvcAddrLocal(const CFdbToken::tTokenList &tokens,
                                         CFdbMessage *msg)
 {
     auto svc_name = addr_list.service_name().c_str();
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     if (session)
     {    
         populateTokensLocal(tokens, addr_list, session);
@@ -536,7 +536,7 @@ void CNameServer::onRegisterServiceReq(CBaseJob::Ptr &msg_ref)
                     {
                         if (hs_tcp_url.empty())
                         {
-                            buildSpecificTCPAddress(FDB_CONTEXT->getSession(msg->session()),
+                            buildSpecificTCPAddress(msg->getSession(),
                                                     desc->mAddress.mPort, hs_tcp_url);
                         }
                     }
@@ -808,7 +808,7 @@ void CNameServer::onQueryServiceInterMachineReq(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
     NFdbBase::FdbMsgServiceTable svc_tbl;
-    auto session = FDB_CONTEXT->getSession(msg->session());
+    auto session = msg->getSession();
     populateServerTable(session, svc_tbl, false);
     CFdbParcelableBuilder builder(svc_tbl);
     msg->reply(msg_ref, builder);
@@ -1183,7 +1183,7 @@ void CNameServer::allocateAddress(EFdbSocketType sckt_type, const std::string &s
 
 EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
 {
-    auto session = FDB_CONTEXT->getSession(sid);
+    auto session = mContext->getSession(sid);
     if (session)
     {
         CFdbSessionInfo sinfo;

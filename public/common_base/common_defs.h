@@ -32,6 +32,7 @@ typedef uint32_t FdbMsgSn_t;
 typedef FdbMsgCode_t FdbEventCode_t;
 typedef uint32_t FdbObjectId_t;
 typedef uint8_t FdbEventGroup_t;
+typedef uint16_t FdbContextId_t;
 
 #define FDB_NAME_SERVER_NAME            "org.fdbus.name-server"
 #define FDB_HOST_SERVER_NAME            "org.fdbus.host-server"

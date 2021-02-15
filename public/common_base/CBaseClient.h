@@ -26,6 +26,8 @@
 class CBaseClient;
 class CBaseWorker;
 class CFdbSession;
+class CFdbBaseContext;
+
 namespace NFdbBase {
     class FdbMsgAddressList;
 }
@@ -69,7 +71,7 @@ private:
 class CBaseClient : public CBaseEndpoint
 {
 public:
-    CBaseClient(const char *name = 0, CBaseWorker *worker = 0);
+    CBaseClient(const char *name = 0, CBaseWorker *worker = 0, CFdbBaseContext *context = 0);
     virtual ~CBaseClient();
     /*
      * Connect a client to an address

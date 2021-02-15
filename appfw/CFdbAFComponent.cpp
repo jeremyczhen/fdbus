@@ -21,10 +21,11 @@
 #include <common_base/CBaseServer.h>
 #include <common_base/CFdbContext.h>
 
-CFdbAFComponent::CFdbAFComponent(const char *name, CBaseWorker *worker)
+CFdbAFComponent::CFdbAFComponent(const char *name, CBaseWorker *worker, CFdbBaseContext *context)
     : mName(name ? name : CFdbAPPFramework::getInstance()->name())
     , mWorker(worker)
 {
+    mContext = context ? context : FDB_CONTEXT;
 }
 
 class CQueryServiceJob : public CMethodJob<CFdbAFComponent>
@@ -48,9 +49,9 @@ public:
     CBaseClient *&mClient;
 };
 
-CBaseClient *CFdbAFComponent::createClient(const char *bus_name)
+CBaseClient *CFdbAFComponent::createClient()
 {
-    return new CBaseClient(bus_name);
+    return new CBaseClient(mName.c_str(), mWorker, mContext);
 }
 
 void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref)
@@ -60,7 +61,7 @@ void CFdbAFComponent::callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     auto client = app_fw->findClient(the_job->mBusName);
     if (!client)
     {
-        client = createClient(mName.c_str());
+        client = createClient();
         if (!client)
         {
             the_job->mClient = 0;
@@ -135,9 +136,9 @@ public:
     CBaseServer *&mServer;
 };
 
-CBaseServer *CFdbAFComponent::createServer(const char *bus_name)
+CBaseServer *CFdbAFComponent::createServer()
 {
-    return new CBaseServer(bus_name);
+    return new CBaseServer(mName.c_str(), mWorker, mContext);
 }
 
 void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref)
@@ -147,7 +148,7 @@ void CFdbAFComponent::callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFCom
     auto server = app_fw->findService(the_job->mBusName);
     if (!server)
     {
-        server = createServer(mName.c_str());
+        server = createServer();
         if (!server)
         {
             the_job->mServer = 0;

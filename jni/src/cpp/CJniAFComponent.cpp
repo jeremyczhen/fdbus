@@ -33,18 +33,18 @@ public:
     {
     }
 protected:
-    CBaseClient *createClient(const char *bus_name);
-    CBaseServer *createServer(const char *bus_name);
+    CBaseClient *createClient();
+    CBaseServer *createServer();
 };
 
-CBaseClient *CJniAFComponent::createClient(const char *bus_name)
+CBaseClient *CJniAFComponent::createClient()
 {
-    return FDB_createJniClient(bus_name);
+    return FDB_createJniClient(mName.c_str());
 }
 
-CBaseServer *CJniAFComponent::createServer(const char *bus_name)
+CBaseServer *CJniAFComponent::createServer()
 {
-    return FDB_createJniServer(bus_name);
+    return FDB_createJniServer(mName.c_str());
 }
 
 JNIEXPORT jlong JNICALL Java_ipc_fdbus_FdbusAFComponent_fdb_1create 

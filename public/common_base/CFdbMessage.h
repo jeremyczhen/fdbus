@@ -23,6 +23,8 @@
 #include "CBaseJob.h"
 #include "CBaseLoopTimer.h"
 
+class CFdbBaseContext;
+
 namespace NFdbBase
 {
     enum FdbMsgStatusCode
@@ -557,6 +559,13 @@ public:
         }
     }
 
+    CFdbBaseContext *context() const
+    {
+        return mContext;
+    }
+
+    // Internal use only!!!
+    CFdbSession *getSession();
 protected:
     virtual bool allocCopyRawBuffer(const void *src, int32_t payload_size);
     virtual void freeRawBuffer();
@@ -715,7 +724,6 @@ private:
     }
 
     void update(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix);
-    CFdbSession *getSession();
 
     void setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid = FDB_INVALID_ID);
     void setToken(CFdbBaseObject *obj);
@@ -743,6 +751,10 @@ private:
 
     static bool replyEventCache(CBaseJob::Ptr &msg_ref , const void *buffer = 0 , int32_t size = 0);
     void dispatchMsg(Ptr &ref);
+    void context(CFdbBaseContext *context)
+    {
+        mContext = context;
+    }
 
     EFdbMessageType mType;
     FdbMsgCode_t mCode;
@@ -767,10 +779,12 @@ private:
     std::string mToken;
     Callable mCallable;
     EFdbQOS mQOS;
+    CFdbBaseContext *mContext;
 
     friend class CFdbSession;
     friend class CFdbUDPSession;
     friend class CFdbBaseObject;
+    friend class CBaseEndpoint;
     friend class CBaseServer;
     friend class CBaseClient;
     friend class CLogProducer;

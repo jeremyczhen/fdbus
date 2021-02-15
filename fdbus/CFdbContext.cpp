@@ -15,19 +15,15 @@
  */
 
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbSession.h>
 #include <server/CIntraNameProxy.h>
 #include <common_base/CLogProducer.h>
 #include <utils/Log.h>
-#include <iostream>
-
-// template<> FdbSessionId_t CFdbContext::tSessionContainer::mUniqueEntryAllocator = 0;
 
 std::mutex CFdbContext::mSingletonLock;
 CFdbContext *CFdbContext::mInstance = 0;
 
 CFdbContext::CFdbContext()
-    : CBaseWorker("FDBus Context")
+    : CFdbBaseContext("FDBusDefaultContext")
     , mNameProxy(0)
     , mLogger(0)
     , mEnableNameProxy(true)
@@ -52,16 +48,6 @@ CFdbContext *CFdbContext::getInstance()
 const char *CFdbContext::getFdbLibVersion()
 {
     return FDB_DEF_TO_STR(FDB_VERSION_MAJOR) "." FDB_DEF_TO_STR(FDB_VERSION_MINOR) "." FDB_DEF_TO_STR(FDB_VERSION_BUILD);
-}
-
-bool CFdbContext::start(uint32_t flag)
-{
-    return CBaseWorker::start(FDB_WORKER_ENABLE_FD_LOOP | flag);
-}
-
-bool CFdbContext::init()
-{
-    return CBaseWorker::init(FDB_WORKER_ENABLE_FD_LOOP);
 }
 
 bool CFdbContext::asyncReady()
@@ -101,149 +87,15 @@ bool CFdbContext::destroy()
         delete logger;
     }
 
-    if (!mEndpointContainer.getContainer().empty())
-    {
-        std::cout << "CFdbContext: Unable to destroy context since there are active endpoint!" << std::endl;
-        return false;
-    }
-    if (!mSessionContainer.getContainer().empty())
-    {
-        std::cout << "CFdbContext: Unable to destroy context since there are active sessions!\n" << std::endl;
-        return false;
-    }
     exit();
     join();
     delete this;
     return true;
 }
 
-CBaseEndpoint *CFdbContext::getEndpoint(FdbEndpointId_t endpoint_id)
-{
-    CBaseEndpoint *endpoint = 0;
-    mEndpointContainer.retrieveEntry(endpoint_id, endpoint);
-    return endpoint;
-}
-
-void CFdbContext::registerSession(CFdbSession *session)
-{
-    auto sid = mSessionContainer.allocateEntityId();
-    session->sid(sid);
-    mSessionContainer.insertEntry(sid, session);
-}
-
-CFdbSession *CFdbContext::getSession(FdbSessionId_t session_id)
-{
-    CFdbSession *session = 0;
-    mSessionContainer.retrieveEntry(session_id, session);
-    return session;
-}
-
-void CFdbContext::unregisterSession(FdbSessionId_t session_id)
-{
-    CFdbSession *session = 0;
-    auto it = mSessionContainer.retrieveEntry(session_id, session);
-    if (session)
-    {
-        mSessionContainer.deleteEntry(it);
-    }
-}
-
-void CFdbContext::deleteSession(FdbSessionId_t session_id)
-{
-    CFdbSession *session = 0;
-    (void)mSessionContainer.retrieveEntry(session_id, session);
-    if (session)
-    {
-        delete session;
-    }
-}
-
-void CFdbContext::deleteSession(CFdbSessionContainer *container)
-{
-    auto &session_tbl = mSessionContainer.getContainer();
-    for (auto it = session_tbl.begin(); it != session_tbl.end();)
-    {
-        CFdbSession *session = it->second;
-        ++it;
-        if (session->container() == container)
-        {
-            delete session;
-        }
-    }
-}
-
-FdbEndpointId_t CFdbContext::registerEndpoint(CBaseEndpoint *endpoint)
-{
-    auto id = endpoint->epid();
-    if (!fdbValidFdbId(id))
-    {
-        id = mEndpointContainer.allocateEntityId();
-        endpoint->epid(id);
-        mEndpointContainer.insertEntry(id, endpoint);
-        endpoint->enableMigrate(true);
-    }
-    return id;
-}
-
-void CFdbContext::unregisterEndpoint(CBaseEndpoint *endpoint)
-{
-    CBaseEndpoint *self = 0;
-    auto it = mEndpointContainer.retrieveEntry(endpoint->epid(), self);
-    if (self)
-    {
-        endpoint->enableMigrate(false);
-        endpoint->epid(FDB_INVALID_ID);
-        mEndpointContainer.deleteEntry(it);
-    }
-}
-
-void CFdbContext::findEndpoint(const char *name
-                               , std::vector<CBaseEndpoint *> &ep_tbl
-                               , bool is_server)
-{
-    auto &container = mEndpointContainer.getContainer();
-    for (auto it = container.begin(); it != container.end(); ++it)
-    {
-        auto endpoint = it->second;
-        auto found = false;
-
-        if (is_server)
-        {
-            if (endpoint->role() == FDB_OBJECT_ROLE_SERVER)
-            {
-                found = true;
-            }
-        }
-        else if (endpoint->role() == FDB_OBJECT_ROLE_CLIENT)
-        {
-            found = true;
-        }
-
-        if (!found)
-        {
-            continue;
-        }
-
-        if (!endpoint->nsName().compare(name))
-        {
-            ep_tbl.push_back(endpoint);
-        }
-    }
-}
-
 CIntraNameProxy *CFdbContext::getNameProxy()
 {
     return (mNameProxy && mNameProxy->connected()) ? mNameProxy : 0;
-}
-
-void CFdbContext::reconnectOnNsConnected()
-{
-    auto &container = mEndpointContainer.getContainer();
-    for (auto it = container.begin(); it != container.end(); ++it)
-    {
-        auto endpoint = it->second;
-        endpoint->requestServiceAddress();
-    }
 }
 
 void CFdbContext::enableNameProxy(bool enable)
@@ -267,5 +119,53 @@ void CFdbContext::registerNsWatchdogListener(tNsWatchdogListenerFn watchdog_list
     {
         mNameProxy->registerNsWatchdogListener(watchdog_listener);
     }
+}
+
+class CRegisterContextJob : public CMethodJob<CFdbContext>
+{
+public:
+    CRegisterContextJob(CFdbContext *object, CFdbBaseContext *context, bool do_register)
+        : CMethodJob<CFdbContext>(object, &CFdbContext::callRegisterContext, JOB_FORCE_RUN)
+        , mContext(context)
+        , mDoRegister(do_register)
+    {}
+    CFdbBaseContext *mContext;
+    bool mDoRegister;
+};
+
+void CFdbContext::callRegisterContext(CBaseWorker *worker,
+            CMethodJob<CFdbContext> *job, CBaseJob::Ptr &ref)
+{
+    auto the_job = fdb_dynamic_cast_if_available<CRegisterContextJob *>(job);
+    if (the_job->mDoRegister)
+    {
+        doRegisterContext(the_job->mContext);
+    }
+    else
+    {
+        doUnregisterContext(the_job->mContext);
+    }
+}
+
+void CFdbContext::doRegisterContext(CFdbBaseContext *context)
+{
+    auto id = mContextContainer.allocateEntityId();
+    context->ctxId(id);
+    mContextContainer.insertEntry(id, context);
+}
+
+void CFdbContext::doUnregisterContext(CFdbBaseContext *context)
+{
+    mContextContainer.deleteEntry(context->ctxId());
+}
+
+void CFdbContext::registerContext(CFdbBaseContext *context)
+{
+    sendSyncEndeavor(new CRegisterContextJob(this, context, true));
+}
+
+void CFdbContext::unregisterContext(CFdbBaseContext *context)
+{
+    sendSyncEndeavor(new CRegisterContextJob(this, context, false));
 }
 

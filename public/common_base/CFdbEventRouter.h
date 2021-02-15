@@ -24,6 +24,7 @@
 class CBaseEndpoint;
 class CFdbMessage;
 class CEventRouterProxy;
+class CFdbSession;
 
 class CFdbEventRouter
 {
@@ -35,7 +36,7 @@ public:
     void addPeer(const char *peer_name);
     void connectPeers();
     void routeMessage(CBaseJob::Ptr &msg_ref);
-    void syncEventPool(FdbSessionId_t sid);
+    void syncEventPool(CFdbSession *session);
     CBaseEndpoint *endpoint() const
     {
         return mEndpoint;

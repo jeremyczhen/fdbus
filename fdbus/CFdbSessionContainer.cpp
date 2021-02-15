@@ -37,7 +37,7 @@ CFdbSessionContainer::CFdbSessionContainer(FdbSocketId_t skid , CBaseEndpoint *o
 
 CFdbSessionContainer::~CFdbSessionContainer()
 {
-    CFdbContext::getInstance()->deleteSession(this);
+    mOwner->context()->deleteSession(this);
     if (!mConnectedSessionTable.empty())
     {
         LOG_E("CFdbSessionContainer: Untracked sessions are found!!!\n");
@@ -164,14 +164,14 @@ bool CFdbSessionContainer::bindUDPSocket(const char *ip_address, int32_t udp_por
                 break;
             }
 
-            FDB_CONTEXT->dispatchInput(FDB_ADDRESS_BIND_RETRY_INTERVAL);
+            sysdep_sleep(FDB_ADDRESS_BIND_RETRY_INTERVAL);
         } while (--retries > 0);
 
         if (socket_imp)
         {
             mUDPSocket = udp_socket;
             mUDPSession = new CFdbUDPSession(this, socket_imp);
-            mUDPSession->attach(CFdbContext::getInstance());
+            mUDPSession->attach(mOwner->context());
 
             const CFdbSocketAddr &newly_addr = socket_imp->getAddress();
             mPendingUDPPort = newly_addr.mPort;

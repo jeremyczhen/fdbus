@@ -25,6 +25,8 @@
 #include "CApiSecurityConfig.h"
 
 class CBaseServer;
+class CFdbBaseContext;
+
 class CServerSocket : public CBaseFdWatch, public CFdbSessionContainer
 {
 public:
@@ -40,7 +42,7 @@ protected:
 class CBaseServer : public CBaseEndpoint
 {
 public:
-    CBaseServer(const char *name = 0, CBaseWorker *worker = 0);
+    CBaseServer(const char *name = 0, CBaseWorker *worker = 0, CFdbBaseContext *context = 0);
     virtual ~CBaseServer();
 
     /*

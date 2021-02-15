@@ -33,18 +33,18 @@ public:
     {
     }
 protected:
-    CBaseClient *createClient(const char *bus_name);
-    CBaseServer *createServer(const char *bus_name);
+    CBaseClient *createClient();
+    CBaseServer *createServer();
 };
 
-CBaseClient *CPyAFComponent::createClient(const char *bus_name)
+CBaseClient *CPyAFComponent::createClient()
 {
-    return FDB_createCClient(bus_name);
+    return FDB_createCClient(mName.c_str());
 }
 
-CBaseServer *CPyAFComponent::createServer(const char *bus_name)
+CBaseServer *CPyAFComponent::createServer()
 {
-    return FDB_createCServer(bus_name);
+    return FDB_createCServer(mName.c_str());
 }
 
 void *fdb_create_afcomponent(const char *name)

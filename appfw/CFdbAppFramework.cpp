@@ -19,7 +19,6 @@
 #include <common_base/CBaseClient.h>
 #include <common_base/CBaseServer.h>
 #include <common_base/CFdbContext.h>
-#include <common_base/CFdbContext.h>
 
 CFdbAPPFramework *CFdbAPPFramework::mInstance = 0;
 

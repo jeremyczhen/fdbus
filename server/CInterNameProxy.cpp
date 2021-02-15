@@ -186,7 +186,7 @@ void CInterNameProxy::onBroadcast(CBaseJob::Ptr &msg_ref)
             }
 
             // now show forward appear/disappear of the server to local clients
-            CFdbSession *session = FDB_CONTEXT->getSession(msg->session());
+            CFdbSession *session = msg->getSession();
             // empty means dropping, so should broadcast anyway
             if (session && !msg_addr_list.address_list().pool().empty())
             {
@@ -329,8 +329,7 @@ void CInterNameProxy::onReply(CBaseJob::Ptr &msg_ref)
             auto &svc_list = svc_tbl.service_tbl();
             for (auto it = svc_list.vpool().begin(); it != svc_list.vpool().end(); ++it)
             {
-                replaceSourceUrl(it->service_addr(),
-                                 FDB_CONTEXT->getSession(msg->session()));
+                replaceSourceUrl(it->service_addr(), msg->getSession());
             }
             mHostProxy->finalizeServiceQuery(&svc_tbl, msg);
         }
