@@ -434,7 +434,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync
     }
     if (!ret)
     {
-        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync: unable to call method: %d\n", ret);
+        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1invoke_1sync: unable to call method: %d\n", code);
         return 0;
     }
 
@@ -722,7 +722,7 @@ JNIEXPORT jobject JNICALL Java_ipc_fdbus_FdbusClient_fdb_1get_1event_1sync
     
     if (!ret)
     {
-        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1get_1event_1sync: unable to call method: %d\n", ret);
+        FDB_LOG_E("Java_ipc_fdbus_FdbusClient_fdb_1get_1event_1sync: unable to call method: %d\n", event);
         return 0;
     }
     

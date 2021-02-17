@@ -114,7 +114,7 @@ void CIntraNameProxy::CConnectTimer::fire()
     enableOneShot(CNsConfig::getNsReconnectInterval());
 }
 
-void CIntraNameProxy::addServiceListener(const char *svc_name, FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
+void CIntraNameProxy::listenOnService(const char *svc_name, FdbContextId_t ctx_id, FdbEndpointId_t ep_id)
 {
     if (connected())
     {
@@ -124,9 +124,9 @@ void CIntraNameProxy::addServiceListener(const char *svc_name, FdbContextId_t ct
     }
 }
 
-void CIntraNameProxy::addServiceListener(const char *svc_name, CBaseEndpoint *endpoint)
+void CIntraNameProxy::listenOnService(const char *svc_name, CBaseEndpoint *endpoint)
 {
-    addServiceListener(svc_name, endpoint->context()->ctxId(), endpoint->epid());
+    listenOnService(svc_name, endpoint->context()->ctxId(), endpoint->epid());
 }
 
 void CIntraNameProxy::removeServiceListener(const char *svc_name)
@@ -287,7 +287,7 @@ void CIntraNameProxy::doConnectToServer(CFdbBaseContext *context, FdbEndpointId_
         // if client starts before server, once server appears, only one event is
         // received by client process. If more than one client connects to the same
         // server in the same process, shall ask name server to allocate UDP port
-        // for each client. A calling to addServiceListener() will lead to a
+        // for each client. A calling to listenOnService() will lead to a
         // broadcast of server address with isInitialResponse() being true. Only
         // UDP port will be valid and TCP address will be discussed in subsequent broadcast.
         int32_t nr_request = 0;
@@ -305,7 +305,7 @@ void CIntraNameProxy::doConnectToServer(CFdbBaseContext *context, FdbEndpointId_
         for (int32_t i = 0; i < nr_request; ++i)
         {
             LOG_E("CIntraNameProxy: Server: %s: requesting next UDP...\n", svc_name);
-            addServiceListener(svc_name, context->ctxId(), ep_id);
+            listenOnService(svc_name, context->ctxId(), ep_id);
         }
     }
 }

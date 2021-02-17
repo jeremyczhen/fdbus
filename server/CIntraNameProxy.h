@@ -39,8 +39,8 @@ public:
         std::string &mHostName;
     };
     CIntraNameProxy();
-    void addServiceListener(const char *svc_name, CBaseEndpoint *endpoint);
-    void addServiceListener(const char *svc_name, FdbContextId_t ctx_id, FdbEndpointId_t ep_id);
+    void listenOnService(const char *svc_name, CBaseEndpoint *endpoint);
+    void listenOnService(const char *svc_name, FdbContextId_t ctx_id, FdbEndpointId_t ep_id);
     void removeServiceListener(const char *svc_name);
     void addAddressListener(const char *svc_name);
     void removeAddressListener(const char *svc_name);

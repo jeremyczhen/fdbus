@@ -582,7 +582,7 @@ bool CBaseEndpoint::requestServiceAddress(const char *server_name)
     }
     else
     {
-        name_proxy->addServiceListener(server_name, this);
+        name_proxy->listenOnService(server_name, this);
     }
     mEventRouter.connectPeers();
     return true;
