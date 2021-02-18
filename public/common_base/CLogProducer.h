@@ -36,6 +36,8 @@ enum FdbMessageLoggerCode
     REQ_GET_LOGGER_CONFIG       = 4,
     REQ_GET_TRACE_CONFIG        = 5,
 
+    REQ_LOG_START               = 10,
+
     NTF_LOGGER_CONFIG           = 6,
     NTF_TRACE_CONFIG            = 7,
 
@@ -232,18 +234,6 @@ public:
     {
         mTagWhiteList.Add(name);
     }
-    CFdbParcelableArray<std::string> &busname_white_list()
-    {
-        return mBusnameWhiteList;
-    }
-    void add_busname_white_list(const std::string &name)
-    {
-        mBusnameWhiteList.Add(name);
-    }
-    void add_busname_white_list(const char *name)
-    {
-        mBusnameWhiteList.Add(name);
-    }
     bool reverse_tag() const
     {
         return mReverseTag;
@@ -259,8 +249,8 @@ public:
                    << (uint8_t)mLogLevel
                    << mHostWhiteList
                    << mTagWhiteList
-                   << mBusnameWhiteList
-                   << mReverseTag;
+                   << mReverseTag
+                   << mCacheSize;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
@@ -269,17 +259,48 @@ public:
                      >> level
                      >> mHostWhiteList
                      >> mTagWhiteList
-                     >> mBusnameWhiteList
-                     >> mReverseTag;
+                     >> mReverseTag
+                     >> mCacheSize;
         mLogLevel = (EFdbLogLevel)level;
+    }
+    int32_t cache_size() const
+    {
+        return mCacheSize;
+    }
+    void set_cache_size(int32_t size)
+    {
+        mCacheSize = size;
     }
 private:
     bool mGlobalEnable;
     EFdbLogLevel mLogLevel;
     CFdbParcelableArray<std::string> mHostWhiteList;
     CFdbParcelableArray<std::string> mTagWhiteList;
-    CFdbParcelableArray<std::string> mBusnameWhiteList;
     bool mReverseTag;
+    int32_t mCacheSize;
+};
+
+class FdbLogStart : public IFdbParcelable
+{
+public:
+    int32_t cache_size() const
+    {
+        return mCacheSize;
+    }
+    void set_cache_size(int32_t size)
+    {
+        mCacheSize = size;
+    }
+    void serialize(CFdbSimpleSerializer &serializer) const
+    {
+        serializer << mCacheSize;
+    }
+    void deserialize(CFdbSimpleDeserializer &deserializer)
+    {
+        deserializer >> mCacheSize;
+    }
+private:
+    int32_t mCacheSize;
 };
 }
 

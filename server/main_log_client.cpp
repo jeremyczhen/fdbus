@@ -36,6 +36,7 @@ static int32_t fdb_config_mode = 0;
 static int32_t fdb_info_mode = 0;
 static int32_t fdb_debug_trace_level = (int32_t)FDB_LL_INFO;
 static int32_t fdb_disable_global_trace = 0;
+static int32_t fdb_cache_size = -1;
 static std::vector<std::string> fdb_log_host_white_list;
 static std::vector<std::string> fdb_log_endpoint_white_list;
 static std::vector<std::string> fdb_log_busname_white_list;
@@ -79,6 +80,7 @@ static void fdb_print_configuration()
     std::cout << "exclusive endpoints: " << (fdb_reverse_endpoint_name ? "true" : "false") << std::endl;
     std::cout << "exclusive bus names: " << (fdb_reverse_bus_name ? "true" : "false") << std::endl;
     std::cout << "exclusive tags:      " << (fdb_reverse_tag ? "true" : "false") << std::endl;
+    std::cout << "log cache size:      " << fdb_cache_size << "kB" << std::endl;
 
     std::cout << "fdbus log host white list:" << std::endl;
     fdb_print_whitelist(fdb_log_host_white_list);
@@ -185,10 +187,14 @@ protected:
         }
         else
         {
-            CFdbMsgSubscribeList subscribe_list;
-            addNotifyItem(subscribe_list, NFdbBase::NTF_FDBUS_LOG);
-            addNotifyItem(subscribe_list, NFdbBase::NTF_TRACE_LOG);
-            subscribe(subscribe_list);
+            //CFdbMsgSubscribeList subscribe_list;
+            //addNotifyItem(subscribe_list, NFdbBase::NTF_FDBUS_LOG);
+            //addNotifyItem(subscribe_list, NFdbBase::NTF_TRACE_LOG);
+            //subscribe(subscribe_list);
+            NFdbBase::FdbLogStart log_start;
+            log_start.set_cache_size(fdb_cache_size);
+            CFdbParcelableBuilder builder(log_start);
+            send(NFdbBase::REQ_LOG_START, builder);
         }
     }
 
@@ -246,6 +252,7 @@ protected:
                 }
                 fdb_disable_global_trace = !in_config.global_enable();
                 fdb_debug_trace_level = in_config.log_level();
+                fdb_cache_size = in_config.cache_size();
                 fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_trace_host_white_list);
                 fdb_dump_white_list_cmd(in_config.tag_white_list(), fdb_trace_tag_white_list);
                 fdb_reverse_tag = in_config.reverse_tag();
@@ -276,6 +283,7 @@ private:
     {
         config.set_log_level((EFdbLogLevel)fdb_debug_trace_level);
         config.set_global_enable(!fdb_disable_global_trace);
+        config.set_cache_size(fdb_cache_size);
         fdb_populate_white_list_cmd(config.host_white_list(), fdb_trace_host_white_list);
         fdb_populate_white_list_cmd(config.tag_white_list(), fdb_trace_tag_white_list);
         config.set_reverse_tag(fdb_reverse_tag);
@@ -339,6 +347,7 @@ int main(int argc, char **argv)
         { FDB_OPTION_STRING, "trace_tags", 't', &trace_tag_filters },
         { FDB_OPTION_STRING, "trace_hosts", 'M', &trace_host_filters },
         { FDB_OPTION_STRING, "reverse_selection", 'r', &reverse_selections },
+        { FDB_OPTION_INTEGER, "initial_cache_size", 'g', &fdb_cache_size },
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
@@ -380,6 +389,10 @@ int main(int argc, char **argv)
         std::cout << "        'e': reverse selection of endpoints specified by '-e'" << std::endl;
         std::cout << "        'n': reverse selection of bus names specified by '-n'" << std::endl;
         std::cout << "        't': reverse selection of tags specified by '-t'" << std::endl;
+        std::cout << "    -g: specify size of cached logs before showing instance logs" << std::endl;
+        std::cout << "        -1: all cached logs are retrieved" << std::endl;
+        std::cout << "         0: don't show cached logs (default)" << std::endl;
+        std::cout << "        >0: size of cached data in kB before showing instance logs" << std::endl;
         std::cout << "    -h: print help" << std::endl;
         std::cout << "    ==== fdbus monitor log format: ====" << std::endl;
         std::cout << "    [F]" << std::endl;

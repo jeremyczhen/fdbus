@@ -801,6 +801,7 @@ private:
     friend class CLogServer;
     friend class CLogClient;
     friend class CEventSubscribeHandle;
+    friend class CFdbLogCache;
 };
 
 typedef CFdbMessage CBaseMessage;

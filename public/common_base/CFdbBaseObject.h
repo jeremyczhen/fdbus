@@ -1042,6 +1042,8 @@ private:
     friend class CFdbWatchdog;
     friend class CWatchdogJob;
     friend class CSysFdWatch;
+    friend class CFdbLogCache;
+    friend class CLogServer;
 };
 
 #endif

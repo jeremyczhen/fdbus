@@ -407,6 +407,7 @@ cc_binary {
     srcs: [
         "server/main_log_server.cpp",
         "server/CLogPrinter.cpp",
+        "server/CFdbLogCache.cpp",
     ],
 
     shared_libs: [

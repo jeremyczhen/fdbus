@@ -26,6 +26,7 @@
 #include <vector>
 #include <iostream>
 #include "CLogPrinter.h"
+#include "CFdbLogCache.h"
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
@@ -37,6 +38,7 @@ static int32_t fdb_disable_global_logger = 0;
 static int32_t fdb_raw_data_clipping_size = 0;
 static int32_t fdb_debug_trace_level = FDB_LL_INFO;
 static int32_t fdb_disable_global_trace = 0;
+static int32_t fdb_cache_size = 0; // initial cache size: 0kB
 static std::vector<std::string> fdb_log_host_white_list;
 static std::vector<std::string> fdb_log_endpoint_white_list;
 static std::vector<std::string> fdb_log_busname_white_list;
@@ -86,6 +88,7 @@ class CLogServer : public CBaseServer
 public:
     CLogServer()
         : CBaseServer(FDB_LOG_SERVER_NAME)
+        , mLogCache(fdb_cache_size * 1024)
     {
     }
 protected:
@@ -101,10 +104,7 @@ protected:
                     CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
                     mLogPrinter.outputFdbLog(deserializer, msg);
                 }
-                if (!mLoggerClientTbl.empty())
-                {
-                    broadcastLogNoQueue(NFdbBase::NTF_FDBUS_LOG, msg->getPayloadBuffer(), msg->getPayloadSize(), 0);
-                }
+                forwardLogData(NFdbBase::NTF_FDBUS_LOG, msg);
             }
             break;
             case NFdbBase::REQ_SET_LOGGER_CONFIG:
@@ -150,10 +150,7 @@ protected:
                     CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
                     mLogPrinter.outputTraceLog(deserializer, msg);
                 }
-                if (!mLoggerClientTbl.empty())
-                {
-                    broadcastLogNoQueue(NFdbBase::NTF_TRACE_LOG, msg->getPayloadBuffer(), msg->getPayloadSize(), 0);
-                }
+                forwardLogData(NFdbBase::NTF_TRACE_LOG, msg);
             }
             break;
             case NFdbBase::REQ_SET_TRACE_CONFIG:
@@ -170,6 +167,9 @@ protected:
                 fdb_dump_white_list_cmd(in_config.host_white_list(), fdb_trace_host_white_list);
                 fdb_dump_white_list_cmd(in_config.tag_white_list(), fdb_trace_tag_white_list);
                 fdb_reverse_tag = in_config.reverse_tag();
+                fdb_cache_size = in_config.cache_size();
+
+                mLogCache.resize(fdb_cache_size * 1024);
 
                 NFdbBase::FdbTraceConfig out_config;
                 fillTraceConfigs(out_config);
@@ -186,6 +186,30 @@ protected:
                 msg->reply(msg_ref, builder);
             }
             break;
+            case NFdbBase::REQ_LOG_START:
+            {
+                NFdbBase::FdbLogStart log_start;
+                CFdbParcelableParser parser(log_start);
+                if (!msg->deserialize(parser))
+                {
+                    LOG_E("CLogServer: Unable to deserialize message!\n");
+                    return;
+                }
+                auto session = msg->getSession();
+
+                subscribe(session, NFdbBase::NTF_FDBUS_LOG, objId(), 0, FDB_SUB_TYPE_NORMAL);
+                onSubscribeFDBusLogger(msg->session());
+
+                subscribe(session, NFdbBase::NTF_TRACE_LOG, objId(), 0, FDB_SUB_TYPE_NORMAL);
+                onSubscribeTraceLogger(msg->session());
+
+                auto cache_size = log_start.cache_size();
+                if (cache_size > 0)
+                {
+                    cache_size *= 1024;
+                }
+                mLogCache.dump(this, session, cache_size);
+            }
             default:
             break;
         }
@@ -217,36 +241,12 @@ protected:
                 break;
                 case NFdbBase::NTF_FDBUS_LOG:
                 {
-                    bool is_first = mLoggerClientTbl.empty();
-                    auto it = mLoggerClientTbl.find(msg->session());
-                    if (it == mLoggerClientTbl.end())
-                    {
-                        mLoggerClientTbl[msg->session()] = new CLogClientCfg();
-                    }
-                    if (is_first)
-                    {
-                        NFdbBase::FdbMsgLogConfig cfg;
-                        fillLoggerConfigs(cfg);
-                        CFdbParcelableBuilder builder(cfg);
-                        broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
-                    }
+                    onSubscribeFDBusLogger(msg->session());
                 }
                 break;
                 case NFdbBase::NTF_TRACE_LOG:
                 {
-                    bool is_first = mTraceClientTbl.empty();
-                    auto it = mTraceClientTbl.find(msg->session());
-                    if (it == mTraceClientTbl.end())
-                    {
-                        mTraceClientTbl[msg->session()] = new CTraceClientCfg();
-                    }
-                    if (is_first)
-                    {
-                        NFdbBase::FdbTraceConfig cfg;
-                        fillTraceConfigs(cfg);
-                        CFdbParcelableBuilder builder(cfg);
-                        broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
-                    }
+                    onSubscribeTraceLogger(msg->session());
                 }
                 break;
             }
@@ -316,6 +316,8 @@ private:
 
     CLogPrinter mLogPrinter;
 
+    CFdbLogCache mLogCache;
+
     bool checkLogEnabled(bool global_disable, bool no_client_connected)
     {
         bool cfg_enable;
@@ -355,9 +357,61 @@ private:
         config.set_global_enable(checkLogEnabled(fdb_disable_global_trace,
                                                  mTraceClientTbl.empty()));
         config.set_log_level((EFdbLogLevel)fdb_debug_trace_level);
+        config.set_cache_size(fdb_cache_size);
         fdb_populate_white_list_cmd(config.host_white_list(), fdb_trace_host_white_list);
         fdb_populate_white_list_cmd(config.tag_white_list(), fdb_trace_tag_white_list);
         config.set_reverse_tag(fdb_reverse_tag);
+    }
+
+    void onSubscribeFDBusLogger(FdbSessionId_t sid)
+    {
+        bool is_first = mLoggerClientTbl.empty();
+        auto it = mLoggerClientTbl.find(sid);
+        if (it == mLoggerClientTbl.end())
+        {
+            mLoggerClientTbl[sid] = new CLogClientCfg();
+        }
+        if (is_first)
+        {
+            NFdbBase::FdbMsgLogConfig cfg;
+            fillLoggerConfigs(cfg);
+            CFdbParcelableBuilder builder(cfg);
+            broadcast(NFdbBase::NTF_LOGGER_CONFIG, builder);
+        }
+    }
+
+    void onSubscribeTraceLogger(FdbSessionId_t sid)
+    {
+        bool is_first = mTraceClientTbl.empty();
+        auto it = mTraceClientTbl.find(sid);
+        if (it == mTraceClientTbl.end())
+        {
+            mTraceClientTbl[sid] = new CTraceClientCfg();
+        }
+        if (is_first)
+        {
+            NFdbBase::FdbTraceConfig cfg;
+            fillTraceConfigs(cfg);
+            CFdbParcelableBuilder builder(cfg);
+            broadcast(NFdbBase::NTF_TRACE_CONFIG, builder);
+        }
+    }
+
+    void forwardLogData(FdbEventCode_t code, CFdbMessage *msg)
+    {
+        auto payload = (uint8_t *)msg->getPayloadBuffer();
+        int32_t size = msg->getPayloadSize();
+        if (!payload || (size <= 0))
+        {
+            return;
+        }
+        mLogCache.push(payload, size, code);
+
+        if (((code == NFdbBase::NTF_FDBUS_LOG) && !mLoggerClientTbl.empty()) ||
+            ((code == NFdbBase::NTF_TRACE_LOG) && !mTraceClientTbl.empty()))
+        {
+            broadcastLogNoQueue(code, payload, size, 0);
+        }
     }
 };
 
@@ -403,6 +457,7 @@ int main(int argc, char **argv)
         { FDB_OPTION_STRING, "trace_tags", 't', &trace_tag_filters },
         { FDB_OPTION_STRING, "trace_hosts", 'M', &trace_host_filters },
         { FDB_OPTION_STRING, "reverse_selection", 'r', &reverse_selections },
+        { FDB_OPTION_INTEGER, "cache_size", 'g', &fdb_cache_size },
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
@@ -437,6 +492,7 @@ int main(int argc, char **argv)
         std::cout << "        'e': reverse selection of endpoints specified by '-e'" << std::endl;
         std::cout << "        'n': reverse selection of bus names specified by '-n'" << std::endl;
         std::cout << "        't': reverse selection of tags specified by '-t'" << std::endl;
+        std::cout << "    -g: specify size of log cache in kB; no log cache if 0 is given (default)" << std::endl;
         std::cout << "    -h: print help" << std::endl;
         std::cout << "    ==== fdbus monitor log format: ====" << std::endl;
         std::cout << "    [F]" << std::endl;
