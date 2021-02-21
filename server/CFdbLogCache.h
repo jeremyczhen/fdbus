@@ -35,6 +35,14 @@ public:
     void push(uint8_t *log_data, int32_t size, FdbEventCode_t code);
     void dump(CFdbBaseObject *object, CFdbSession *session, int32_t size);
     void resize(int32_t max_size);
+    int32_t size() const
+    {
+        return mMaxSize;
+    }
+    int32_t dataSize() const
+    {
+        return mCacheSize;
+    }
 
 private:
     struct CDataItem

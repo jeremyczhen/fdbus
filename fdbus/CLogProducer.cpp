@@ -47,6 +47,7 @@ CLogProducer::CLogProducer()
     , mReverseBusNames(false)
     , mReverseTags(false)
 {
+    enableLog(false);
 }
 
 void CLogProducer::onOnline(FdbSessionId_t sid, bool is_first)
@@ -82,7 +83,7 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
             mDisableSubscribe = !cfg.enable_subscribe();
             mRawDataClippingSize = cfg.raw_data_clipping_size();
             mLogHostEnabled = checkHostEnabled(cfg.host_white_list());
-            std::lock_guard<std::mutex> _l(mTraceLock);
+            std::lock_guard<std::mutex> _l(mFdbusLogLock);
             populateWhiteList(cfg.endpoint_white_list(), mLogEndpointWhiteList);
             populateWhiteList(cfg.busname_white_list(), mLogBusnameWhiteList);
             mReverseEndpoints = cfg.reverse_endpoint_name();
@@ -109,36 +110,6 @@ void CLogProducer::onBroadcast(CBaseJob::Ptr &msg_ref)
         default:
         break;
     }
-}
-
-const char *CLogProducer::getReceiverName(EFdbMessageType type,
-                                          const char *sender_name,
-                                          const CBaseEndpoint *endpoint)
-{
-    const char *receiver;
-    
-    switch (type)
-    {
-        case FDB_MT_REQUEST:
-        case FDB_MT_SUBSCRIBE_REQ:
-        case FDB_MT_SIDEBAND_REQUEST:
-        case FDB_MT_GET_EVENT:
-        case FDB_MT_PUBLISH:
-            receiver = endpoint->nsName().c_str();
-        break;
-        default:
-            if (!sender_name || (sender_name[0] == '\0'))
-            {
-                receiver = (type == FDB_MT_BROADCAST) ? "__ANY__" : "__UNKNOWN__";
-            }
-            else
-            {
-                receiver = sender_name ? sender_name : "__UNKNOWN__";
-            }
-        break;
-    }
-
-    return receiver;
 }
 
 bool CLogProducer::checkLogEnabledGlobally()
@@ -189,35 +160,9 @@ bool CLogProducer::checkLogEnabledByMessageType(EFdbMessageType type)
     return match;
 }
 
-bool CLogProducer::checkLogEnabledByEndpoint(const char *sender, const char *receiver, const char *busname)
-{
-    if (!mLogEndpointWhiteList.empty())
-    {
-        auto it_sender = mLogEndpointWhiteList.find(sender);
-        auto it_receiver = mLogEndpointWhiteList.find(receiver);
-        bool exclude = ((it_sender == mLogEndpointWhiteList.end()) && (it_receiver == mLogEndpointWhiteList.end()));
-        if (mReverseEndpoints ^ exclude)
-        {
-            return false;
-        }
-    }
-    if (!mLogBusnameWhiteList.empty())
-    {
-        auto it_bus_name = mLogBusnameWhiteList.find(busname);
-        bool exclude = (it_bus_name == mLogBusnameWhiteList.end());
-        if (mReverseEndpoints ^ exclude)
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 bool CLogProducer::checkLogEnabled(EFdbMessageType type,
-                                    const char *sender_name,
-                                    const CBaseEndpoint *endpoint,
-                                    bool lock)
+                                   const char *receiver_name,
+                                   CBaseEndpoint *endpoint)
 {
     if (!checkLogEnabledGlobally())
     {
@@ -229,27 +174,69 @@ bool CLogProducer::checkLogEnabled(EFdbMessageType type,
         return false;
     }
 
-    if (!endpoint)
+    const char *sender_name = endpoint->name().c_str();
+    const char *bus_name = endpoint->nsName().c_str();
+    if (!mLogEndpointWhiteList.empty() || !mLogBusnameWhiteList.empty())
     {
-        return true;
+        std::lock_guard<std::mutex> _l(mFdbusLogLock);
+        if (!mLogEndpointWhiteList.empty())
+        {
+            if (!sender_name || (sender_name[0] == '\0'))
+            {
+                if (!receiver_name || (receiver_name[0] == '\0'))
+                {
+                    return false;
+                }
+                auto it_receiver = mLogEndpointWhiteList.find(receiver_name);
+                bool exclude = it_receiver == mLogEndpointWhiteList.end();
+                if (mReverseEndpoints ^ exclude)
+                {
+                    return false;
+                }
+            }
+            else if (!receiver_name || (receiver_name[0] == '\0'))
+            {
+                if (!sender_name || (sender_name[0] == '\0'))
+                {
+                    return false;
+                }
+                auto it_sender = mLogEndpointWhiteList.find(sender_name);
+                bool exclude = it_sender == mLogEndpointWhiteList.end();
+                if (mReverseEndpoints ^ exclude)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                auto it_sender = mLogEndpointWhiteList.find(sender_name);
+                auto it_receiver = mLogEndpointWhiteList.find(receiver_name);
+                bool exclude = ((it_sender == mLogEndpointWhiteList.end()) && (it_receiver == mLogEndpointWhiteList.end()));
+                if (mReverseEndpoints ^ exclude)
+                {
+                    return false;
+                }
+            }
+        }
+        if (!mLogBusnameWhiteList.empty())
+        {
+            if (!bus_name || (bus_name[0] == '\0'))
+            {
+                return false;
+            }
+            auto it_bus_name = mLogBusnameWhiteList.find(bus_name);
+            bool exclude = (it_bus_name == mLogBusnameWhiteList.end());
+            if (mReverseBusNames ^ exclude)
+            {
+                return false;
+            }
+        }
     }
 
-    auto sender = endpoint->name().c_str();
-    auto receiver = getReceiverName(type, sender_name, endpoint);
-    auto busname = endpoint->nsName().c_str();
-    
-    if (lock)
-    {
-        std::lock_guard<std::mutex> _l(mTraceLock);
-        return checkLogEnabledByEndpoint(sender, receiver, busname);
-    }
-    else
-    {
-        return checkLogEnabledByEndpoint(sender, receiver, busname);
-    }
+    return true;
 }
 
-void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint,
+void CLogProducer::logMessage(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint,
                               CFdbRawMsgBuilder &builder)
 {
     if (!msg->isLogEnabled())
@@ -257,16 +244,20 @@ void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEn
         return;
     }
 
-    auto sender = endpoint->name().c_str();
-    auto receiver = getReceiverName(msg->type(), sender_name, endpoint);
-    auto busname = endpoint->nsName().c_str();
+    const char *sender_name = endpoint->name().empty() ? "None" :  endpoint->name().c_str();
+    const char *bus_name = endpoint->nsName().empty() ? "None" :  endpoint->nsName().c_str();
+    if (!receiver_name || (receiver_name[0] == '\0'))
+    {
+        receiver_name = "None";
+    }
+
     auto proxy = FDB_CONTEXT->getNameProxy();
 
     builder.serializer() << (uint32_t)mPid
-                         << (proxy ? proxy->hostName().c_str() : "Unknown")
-                         << sender
-                         << receiver
-                         << busname
+                         << (proxy ? proxy->hostName().c_str() : "None")
+                         << sender_name
+                         << receiver_name
+                         << bus_name
                          << (uint8_t)msg->type()
                          << msg->code()
                          << msg->topic()
@@ -293,20 +284,18 @@ void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEn
     }
 }
 
-void CLogProducer::logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint)
+void CLogProducer::logMessage(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint)
 {
     CFdbRawMsgBuilder builder;
-    logMessage(msg, sender_name, endpoint, builder);
+    logMessage(msg, receiver_name, endpoint, builder);
     sendLog(NFdbBase::REQ_FDBUS_LOG, builder);
 }
 
 bool CLogProducer::checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag)
 {
-    if (!getSessionCount()
-        || mTraceDisableGlobal
+    if (!checkLogEnabledGlobally()
         || (log_level < mLogLevel)
-        || (log_level >= FDB_LL_SILENT)
-        || !mTraceHostEnabled)
+        || (log_level >= FDB_LL_SILENT))
     {
         return false;
     }

@@ -242,6 +242,14 @@ public:
     {
         mReverseTag = reverse;
     }
+    int32_t cache_size() const
+    {
+        return mCacheSize;
+    }
+    void set_cache_size(int32_t size)
+    {
+        mCacheSize = size;
+    }
 
     void serialize(CFdbSimpleSerializer &serializer) const
     {
@@ -262,14 +270,6 @@ public:
                      >> mReverseTag
                      >> mCacheSize;
         mLogLevel = (EFdbLogLevel)level;
-    }
-    int32_t cache_size() const
-    {
-        return mCacheSize;
-    }
-    void set_cache_size(int32_t size)
-    {
-        mCacheSize = size;
     }
 private:
     bool mGlobalEnable;
@@ -309,17 +309,16 @@ class CLogProducer : public CBaseClient
 {
 public:
     CLogProducer();
-    void logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint,
+    void logMessage(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint,
                     CFdbRawMsgBuilder &builder);
-    void logMessage(CFdbMessage *msg, const char *sender_name, CBaseEndpoint *endpoint);
+    void logMessage(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint);
     bool checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *info);
     static void printTrace(EFdbLogLevel log_level, const char *tag, const char *info);
 
     bool checkLogEnabled(EFdbMessageType type,
-                         const char *sender_name,
-                         const CBaseEndpoint *endpoint,
-                         bool lock = true);
+                         const char *receiver_name,
+                         CBaseEndpoint *endpoint);
     static EFdbLogLevel staticLogLevel()
     {
         return mStaticLogLevel;
@@ -336,13 +335,8 @@ protected:
 private:
     typedef std::set<std::string> tFilterTbl;
     
-    const char *getReceiverName(EFdbMessageType type,
-                                const char *sender_name,
-                                const CBaseEndpoint *endpoint);
-    
     bool checkLogEnabledGlobally();
     bool checkLogEnabledByMessageType(EFdbMessageType type);
-    bool checkLogEnabledByEndpoint(const char *sender, const char *receiver, const char *busname);
     
     CBASE_tProcId mPid;
     bool mLoggerDisableGlobal;
@@ -365,7 +359,8 @@ private:
     bool mReverseBusNames;
     bool mReverseTags;
 
-    std::mutex mTraceLock;
+    std::mutex mTraceLock; // protect mTraceTagWhiteList
+    std::mutex mFdbusLogLock; // protect mLogEndpointWhiteList and mLogBusnameWhiteList
 
     static EFdbLogLevel mStaticLogLevel;
 

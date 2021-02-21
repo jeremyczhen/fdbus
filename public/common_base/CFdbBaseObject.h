@@ -51,7 +51,7 @@ private:
     typedef void (CFdbBaseObject::*tRemoteCallback)(CBaseJob::Ptr &msg_ref);
 public:
 #define FDB_OBJ_ENABLED_MIGRATE         (1 << 0)
-#define FDB_OBJ_REGISTERED              (1 << 1)
+#define FDB_OBJ_ENABLE_LOG              (1 << 1)
 #define FDB_OBJ_ENABLE_EVENT_CACHE      (1 << 2)
 #define FDB_OBJ_ENABLE_TIMESTAMP        (1 << 3)
 #define FDB_OBJ_ENABLE_EVENT_ROUTE      (1 << 4)
@@ -675,7 +675,7 @@ public:
         }
     }
 
-    bool timeStampEnabled()
+    bool timeStampEnabled() const
     {
         return !!(mFlag & FDB_OBJ_ENABLE_TIMESTAMP);
     }
@@ -702,6 +702,23 @@ public:
         {
             mFlag &= ~FDB_OBJ_ENABLE_WATCHDOG;
         }
+    }
+
+    void enableLog(bool active)
+    {
+        if (active)
+        {
+            mFlag |= FDB_OBJ_ENABLE_LOG;
+        }
+        else
+        {
+            mFlag &= ~FDB_OBJ_ENABLE_LOG;
+        }
+    }
+
+    bool logEnabled()const
+    {
+        return !!(mFlag & FDB_OBJ_ENABLE_LOG);
     }
 
     bool eventRouteEnabled()

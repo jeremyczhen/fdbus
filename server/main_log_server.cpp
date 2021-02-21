@@ -32,7 +32,7 @@ static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
 static int32_t fdb_disable_broadcast = 0;
 static int32_t fdb_disable_subscribe = 0;
-static int32_t fdb_disable_output = 0;
+static int32_t fdb_disable_std_output = 0;
 static int32_t fdb_disable_global_logger = 0;
 // 0: no raw data; < 0: all raw data; > 0: actrual size of raw data
 static int32_t fdb_raw_data_clipping_size = 0;
@@ -99,7 +99,7 @@ protected:
         {
             case NFdbBase::REQ_FDBUS_LOG:
             {
-                if (!fdb_disable_output)
+                if (!fdb_disable_std_output)
                 {
                     CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
                     mLogPrinter.outputFdbLog(deserializer, msg);
@@ -145,7 +145,7 @@ protected:
             break;
             case NFdbBase::REQ_TRACE_LOG:
             {
-                if (!fdb_disable_output)
+                if (!fdb_disable_std_output)
                 {
                     CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
                     mLogPrinter.outputTraceLog(deserializer, msg);
@@ -320,20 +320,20 @@ private:
 
     bool checkLogEnabled(bool global_disable, bool no_client_connected)
     {
-        bool cfg_enable;
         if (global_disable)
         {
-            cfg_enable = false;
+            return false; // if log is disabled globally, don't generate log message
         }
-        else if (fdb_disable_output && no_client_connected)
+        else if (mLogCache.size() || !fdb_disable_std_output || !no_client_connected)
         {
-            cfg_enable = false;
+            // if log cache is enabled OR log is allowed to to show at stdout OR
+            // any log viewer is connected, generate log message
+            return true;
         }
         else
         {
-            cfg_enable = true;
+            return false; // don't generat any log message
         }
-        return cfg_enable;
     }
 
     void fillLoggerConfigs(NFdbBase::FdbMsgLogConfig &config)
@@ -447,7 +447,7 @@ int main(int argc, char **argv)
         { FDB_OPTION_BOOLEAN, "broadcast", 'b', &fdb_disable_broadcast },
         { FDB_OPTION_BOOLEAN, "subscribe", 's', &fdb_disable_subscribe },
         { FDB_OPTION_BOOLEAN, "no_fdbus", 'f', &fdb_disable_global_logger },
-        { FDB_OPTION_BOOLEAN, "output", 'o', &fdb_disable_output },
+        { FDB_OPTION_BOOLEAN, "output", 'o', &fdb_disable_std_output },
         { FDB_OPTION_INTEGER, "clip", 'c', &fdb_raw_data_clipping_size },
         { FDB_OPTION_STRING, "log_endpoint", 'e', &log_endpoint_filters },
         { FDB_OPTION_STRING, "log_busname", 'n', &log_busname_filters },

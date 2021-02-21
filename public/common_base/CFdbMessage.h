@@ -242,7 +242,7 @@ public:
                 , CFdbMsgPrefix &prefix
                 , uint8_t *buffer
                 , FdbSessionId_t sid
-                , const char *sender_name = 0);
+                , const char *peer_name = 0);
     CFdbMessage(NFdbBase::CFdbMessageHeader &head
                 , CFdbSession *session);
     CFdbMessage(const CFdbMessage *msg);
@@ -521,7 +521,7 @@ public:
 
     void setLogData(const char *log_data);
 
-    void checkLogEnabled(const CFdbBaseObject *object, bool lock = true);
+    void checkLogEnabled(const CFdbBaseObject *object);
 
     virtual FdbMessageType_t getTypeId()
     {
@@ -569,6 +569,7 @@ public:
 
     // Internal use only!!!
     CFdbSession *getSession();
+
     const std::string &senderName() const
     {
         return mStringData;
@@ -780,7 +781,7 @@ private:
     uint8_t *mBuffer;
     uint32_t mFlag;
     CMessageTimer *mTimer;
-    std::string mStringData; // log in text format or sender name
+    std::string mStringData;
     std::string mFilter;
 
     CFdbMsgMetadata *mTimeStamp;

@@ -130,7 +130,6 @@ private:
     void doBroadcast(NFdbBase::CFdbMessageHeader &head);
     void doSubscribeReq(NFdbBase::CFdbMessageHeader &head, bool subscribe);
     void doUpdate(NFdbBase::CFdbMessageHeader &head);
-    void checkLogEnabled(CFdbMessage *msg);
     bool receiveData(uint8_t *buf, int32_t size);
     void parsePrefix(const uint8_t *data, int32_t size);
     void processPayload(const uint8_t *data, int32_t size);

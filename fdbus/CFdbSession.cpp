@@ -200,25 +200,7 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
 
 bool CFdbSession::sendUDPMessage(CFdbMessage *msg)
 {
-#if 0
-    if (mContainer->sendUDPmessage(msg, mUDPAddr))
-    {
-        if (msg->isLogEnabled())
-        {
-            auto logger = FDB_CONTEXT->getLogger();
-            if (logger)
-            {
-                logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
-            }
-        }
-        return true;
-    }
-
-    return false;
-#else
-    // do not log UDP message
     return mContainer->sendUDPmessage(msg, mUDPAddr);
-#endif
 }
 
 bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
@@ -424,9 +406,9 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head)
     auto object = mContainer->owner()->getObject(msg, true);
     CBaseJob::Ptr msg_ref(msg);
 
-    checkLogEnabled(msg);
     if (object)
     {
+        msg->checkLogEnabled(object);
         msg->decodeDebugInfo(head);
         switch (head.type())
         {
@@ -481,6 +463,7 @@ void CFdbSession::doRequest(NFdbBase::CFdbMessageHeader &head)
     }
     else
     {
+        msg->enableLog(true);
         msg->sendStatus(this, NFdbBase::FDB_ST_OBJECT_NOT_FOUND, "Object is not found.");
     }
 }
@@ -600,7 +583,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head, bool subscri
         // correct the type so that checkLogEnabled() can get correct
         // sender name and receiver name
         msg->type(FDB_MT_BROADCAST);
-        checkLogEnabled(msg);
+        msg->checkLogEnabled(object);
         msg->decodeDebugInfo(head);
         const CFdbMsgSubscribeItem *sub_item;
         int32_t ret;
@@ -679,8 +662,7 @@ void CFdbSession::doSubscribeReq(NFdbBase::CFdbMessageHeader &head, bool subscri
     return;
     
 _reply_status:
-    msg->type(FDB_MT_STATUS); // correct the type
-    checkLogEnabled(msg);
+    msg->enableLog(true);
     msg->sendStatus(this, error_code, error_msg);
 }
 
@@ -782,18 +764,6 @@ bool CFdbSession::peerIp(std::string &host_ip)
     host_ip = sinfo.mConn->mPeerIp;
     return true;
 
-}
-
-void CFdbSession::checkLogEnabled(CFdbMessage *msg)
-{
-    if (!msg->isLogEnabled())
-    {
-        CLogProducer *logger = FDB_CONTEXT->getLogger();
-        if (logger && logger->checkLogEnabled(msg->type(), mSenderName.c_str(), mContainer->owner(), false))
-        {
-            msg->enableLog(true);
-        }
-    }
 }
 
 bool CFdbSession::connected(const CFdbSocketAddr &addr)

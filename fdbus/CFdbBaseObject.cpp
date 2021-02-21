@@ -31,7 +31,7 @@ using namespace std::placeholders;
 CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, CFdbBaseContext *dummy,
                                EFdbEndpointRole role)
     : mEndpoint(0)
-    , mFlag(FDB_OBJ_AUTO_REMOVE)
+    , mFlag(FDB_OBJ_AUTO_REMOVE | FDB_OBJ_ENABLE_LOG)
     , mWatchdog(0)
     , mWorker(worker)
     , mObjId(FDB_INVALID_ID)

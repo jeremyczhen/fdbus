@@ -124,7 +124,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
                          , CFdbMsgPrefix &prefix
                          , uint8_t *buffer
                          , FdbSessionId_t sid
-                         , const char *sender_name
+                         , const char *peer_name
                         )
     : mType(FDB_MT_REPLY)
     , mCode(head.code())
@@ -137,7 +137,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mBuffer(buffer)
     , mFlag((head.flag() & MSG_GLOBAL_FLAG_MASK) | MSG_FLAG_EXTERNAL_BUFFER)
     , mTimer(0)
-    , mStringData(sender_name ? sender_name : "")
+    , mStringData(peer_name ? peer_name : "None")
     , mTimeStamp(0)
     , mQOS(head.qos())
     , mContext(0)
@@ -1117,12 +1117,16 @@ void CFdbMessage::setLogData(const char *log_data)
     }
 }
 
-void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object, bool lock)
+void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object)
 {
+    if (!object->logEnabled())
+    {
+        return;
+    }
     if (!(mFlag & MSG_FLAG_ENABLE_LOG))
     {
         CLogProducer *logger = FDB_CONTEXT->getLogger();
-        if (logger && logger->checkLogEnabled(mType, 0, object->endpoint(), lock))
+        if (logger && logger->checkLogEnabled(mType, mStringData.c_str(), object->endpoint()))
         {
             mFlag |= MSG_FLAG_ENABLE_LOG;
         }
