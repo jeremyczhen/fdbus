@@ -41,6 +41,12 @@ public:
     {
         return mFileId >= 0;
     }
+    bool setCustomBuffer(char *buffer, uint32_t size)
+    {
+        mBuffer = buffer;
+        mBufferSize = size;
+    }
+    bool enableBuffering(bool enable);
 private:
     struct CFileInfo
     {
@@ -63,6 +69,9 @@ private:
     int64_t mCurrentStorageSize;
     FILE *mCurrentFp;
     int32_t mFileId;
+    bool mEnableBuffer;
+    char *mBuffer;
+    uint32_t mBufferSize;
 
     void checkFileSize();
     bool getLatestFile(std::string &latest_file);

@@ -29,7 +29,10 @@
 #include <sys/stat.h>
 #include "CLogFileManager.h"
 
-#define FDB_LOG_FILE_INDEX_SIZE 6
+#define FDB_LOG_FILE_INDEX_SIZE 8
+
+#define _fdb_filename_format(_size) "%0" #_size "d-%s.txt"
+#define fdb_filename_format(_size) _fdb_filename_format(_size)
 
 #ifdef __WIN32__
 #define FDB_PATH_SEPARATOR "\\"
@@ -39,7 +42,10 @@
 
 const char *CLogFileManager::mDefaultBaseName = "fdbus";
 
-CLogFileManager::CLogFileManager(const char *log_path, const char *base_name, int64_t max_total_size, int64_t max_file_size)
+CLogFileManager::CLogFileManager(const char *log_path,
+                                 const char *base_name,
+                                 int64_t max_total_size,
+                                 int64_t max_file_size)
     : mLogPath(log_path ? log_path : "")
     , mBaseName(base_name ? base_name : mDefaultBaseName)
     , mMaxStorageSize(max_total_size ? max_total_size : mDefaultMaxStorageSize)
@@ -47,6 +53,9 @@ CLogFileManager::CLogFileManager(const char *log_path, const char *base_name, in
     , mCurrentStorageSize(0)
     , mCurrentFp(0)
     , mFileId(-1)
+    , mEnableBuffer(false)
+    , mBuffer(0)
+    , mBufferSize(0)
 {
     if (!mLogPath.empty() && (mMaxStorageSize > mMaxFileSize))
     {
@@ -184,7 +193,8 @@ void CLogFileManager::getAbsPath(std::string &abs_path, const char *relative_nam
 void CLogFileManager::nextFileName()
 {
     char name_buf[1024];
-    snprintf(name_buf, sizeof(name_buf), "%06d-%s.txt", mFileId++, mBaseName.c_str());
+    snprintf(name_buf, sizeof(name_buf), fdb_filename_format(FDB_LOG_FILE_INDEX_SIZE),
+             mFileId++, mBaseName.c_str());
     mCurrentFileName = name_buf;
 }
 
@@ -233,6 +243,21 @@ void CLogFileManager::checkFileSize()
             std::string current_file;
             getAbsPath(current_file);
             mCurrentFp = fopen(current_file.c_str(), "wb");
+        }
+
+        if (mCurrentFp)
+        {
+            if (mEnableBuffer)
+            {
+                if (mBuffer && mBufferSize)
+                {
+                    setvbuf(mCurrentFp, mBuffer, _IOFBF, mBufferSize);
+                }
+            }
+            else
+            {
+                setbuf(mCurrentFp, 0);
+            }
         }
     }
 }
