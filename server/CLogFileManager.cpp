@@ -71,16 +71,16 @@ bool CLogFileManager::scanDir()
 #ifdef __WIN32__
     _finddata_t file;
     intptr_t lf;
-    if ((lf = _findfirst(mLogPath.c_str(), &file)) == -1)
+    std::string file_path = mLogPath + FDB_PATH_SEPARATOR "*.*";
+    if ((lf = _findfirst(file_path.c_str(), &file)) == -1)
     {
+        std::cout << "CLogFileManager: Error! unable to access directory "
+                  << mLogPath.c_str() << std::endl;
         return false;
     }
-    else
+    while(_findnext(lf, &file) == 0)
     {  
-        while(_findnext(lf, &file) == 0)
-        {  
-            addFile(file.name);
-        }
+        addFile(file.name);
     }
 
     _findclose(lf);
@@ -90,7 +90,8 @@ bool CLogFileManager::scanDir()
 
     if ((dir=opendir(mLogPath.c_str())) == NULL)
     {
-        perror("Open dir error...");
+        std::cout << "CLogFileManager: Error! unable to access directory "
+                  << mLogPath.c_str() << std::endl;
         return false;
     }  
 

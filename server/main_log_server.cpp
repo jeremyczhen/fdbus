@@ -349,10 +349,11 @@ private:
         {
             return false; // if log is disabled globally, don't generate log message
         }
-        else if (mLogCache.size() || !fdb_disable_std_output || !no_client_connected)
+        else if (mLogCache.size() ||            // log cache is enabled
+                 !fdb_disable_std_output ||     // showing at stdout
+                 !no_client_connected ||        // any log viewer is connected
+                 mFileManager.logEnabled())     // logging to file is enabled
         {
-            // if log cache is enabled OR log is allowed to to show at stdout OR
-            // any log viewer is connected, generate log message
             return true;
         }
         else
@@ -520,7 +521,7 @@ int main(int argc, char **argv)
         std::cout << "        'n': reverse selection of bus names specified by '-n'" << std::endl;
         std::cout << "        't': reverse selection of tags specified by '-t'" << std::endl;
         std::cout << "    -g: specify size of log cache in kB; no log cache if 0 is given (default)" << std::endl;
-        std::cout << "    -j: specify log storage in format: 'path:max_storage_size:max_file_size'; the size is in unit of MB. " << std::endl;
+        std::cout << "    -j: specify log storage in format: 'path,max_storage_size,max_file_size'; the size is in unit of MB. " << std::endl;
         std::cout << "    -h: print help" << std::endl;
         std::cout << "    ==== fdbus monitor log format: ====" << std::endl;
         std::cout << "    [F]" << std::endl;
@@ -555,7 +556,7 @@ int main(int argc, char **argv)
     if (log_storage_param)
     {
         uint32_t num_log_storage_param = 0;
-        char **log_storage_param_array = strsplit(log_storage_param, ":", &num_log_storage_param);
+        char **log_storage_param_array = strsplit(log_storage_param, ",", &num_log_storage_param);
         if (num_log_storage_param >= 1)
         {
             fdb_log_path = log_storage_param_array[0];
