@@ -19,43 +19,41 @@
 #include <common_base/CBaseSysDep.h>
 #include <common_base/CFdbSimpleMsgBuilder.h>
 #include <utils/Log.h>
-#include <iostream>
 #include <stdlib.h>
 #include <string>
 
-CLogPrinter::CLogPrinter(uint32_t mode)
-    : mPrintMode(mode)
+CLogPrinter::CLogPrinter()
 {
 }
 
-void CLogPrinter::outputFdbLog(LogInfo &log_info)
+void CLogPrinter::outputFdbLog(LogInfo &log_info, std::ostream &output)
 {
-    std::cout << "[F][" << log_info.mPid << "@" << log_info.mHostName << "]["
-              << log_info.mSender << "->" << log_info.mReceiver << "]["
-              << log_info.mBusName << "]["
-              << log_info.mObjId << "]["
-              << CFdbMessage::getMsgTypeName((EFdbMessageType)log_info.mMsgType) << "]["
-              << log_info.mMsgCode << "]["
-              << log_info.mTopic << "]["
-              << log_info.mMsgSn << "]["
-              << log_info.mPayloadSize << "]["
-              << log_info.mTimeStamp << "]{"
-              << std::endl;
+    output << "[F][" << log_info.mPid << "@" << log_info.mHostName << "]["
+           << log_info.mSender << "->" << log_info.mReceiver << "]["
+           << log_info.mBusName << "]["
+           << log_info.mObjId << "]["
+           << CFdbMessage::getMsgTypeName((EFdbMessageType)log_info.mMsgType) << "]["
+           << log_info.mMsgCode << "]["
+           << log_info.mTopic << "]["
+           << log_info.mMsgSn << "]["
+           << log_info.mPayloadSize << "]["
+           << log_info.mTimeStamp << "]{"
+           << std::endl;
 
     if (log_info.mIsString)
     {
         if (log_info.mData)
         {
-            std::cout << (const char *)log_info.mData << "}" << std::endl;
+            output << (const char *)log_info.mData << "}" << std::endl;
         }
     }
     else
     {
-        std::cout << "No log! Data size: " << log_info.mDataSize << std::endl << "}" << std::endl;
+        output << "No log! Data size: " << log_info.mDataSize << std::endl << "}" << std::endl;
     }
 }
 
-void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *log_msg)
+void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *log_msg, std::ostream &output)
 {
     LogInfo info;
     deserializer >> info.mPid
@@ -83,11 +81,11 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
         deserializer >> info.mDataSize;
         info.mData = 0;
     }
-    outputFdbLog(info);
+    outputFdbLog(info, output);
 
 }
 
-void CLogPrinter::outputTraceLog(TraceInfo &trace_info)
+void CLogPrinter::outputTraceLog(TraceInfo &trace_info, std::ostream &output)
 {
     static const char *level_name[] = {
         "[V]",
@@ -98,13 +96,13 @@ void CLogPrinter::outputTraceLog(TraceInfo &trace_info)
         "[F]",
         "[S]"
     };
-    std::cout << "[D]" << level_name[trace_info.mLogLevel] << "["
-              << trace_info.mTag << "-" << trace_info.mPid << "-" << trace_info.mHostName << "]["
-              << trace_info.mTimeStamp << "] "
-              << trace_info.mData;
+    output << "[D]" << level_name[trace_info.mLogLevel] << "["
+           << trace_info.mTag << "-" << trace_info.mPid << "-" << trace_info.mHostName << "]["
+           << trace_info.mTimeStamp << "] "
+           << trace_info.mData;
 }
 
-void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *trace_msg)
+void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessage *trace_msg, std::ostream &output)
 {
     TraceInfo info;
     deserializer >> info.mPid
@@ -120,5 +118,5 @@ void CLogPrinter::outputTraceLog(CFdbSimpleDeserializer &deserializer, CFdbMessa
     fdb_string_len_t str_len = 0;
     deserializer >> str_len;
     info.mData = str_len ? (const char *)deserializer.pos() : "\n";
-    outputTraceLog(info);
+    outputTraceLog(info, output);
 }

@@ -31,6 +31,7 @@ add_executable(logsvc
     ${PACKAGE_SOURCE_ROOT}/server/main_log_server.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CFdbLogCache.cpp
+    ${PACKAGE_SOURCE_ROOT}/server/CLogFileManager.cpp
 )
 
 add_executable(logviewer

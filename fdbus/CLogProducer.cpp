@@ -341,7 +341,7 @@ void CLogProducer::printTrace(EFdbLogLevel log_level, const char *tag, const cha
     trace_info.mTimeStamp = sysdep_getsystemtime_milli();
     trace_info.mLogLevel = log_level;
     trace_info.mData = info ? info : "\n";
-    CLogPrinter::outputTraceLog(trace_info);
+    CLogPrinter::outputTraceLog(trace_info, std::cout);
 }
 
 bool CLogProducer::checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl)

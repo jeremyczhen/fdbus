@@ -148,13 +148,13 @@ protected:
             case NFdbBase::NTF_FDBUS_LOG:
             {
                 CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
-                mLogPrinter.outputFdbLog(deserializer, msg);
+                mLogPrinter.outputFdbLog(deserializer, msg, std::cout);
             }
             break;
             case NFdbBase::NTF_TRACE_LOG:
             {
                 CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
-                mLogPrinter.outputTraceLog(deserializer, msg);
+                mLogPrinter.outputTraceLog(deserializer, msg, std::cout);
             }
             break;
             default:

@@ -17,10 +17,8 @@
 #ifndef __CLOGPRINTER_H__
 #define __CLOGPRINTER_H__
 #include <string>
+#include <iostream>
 #include <common_base/CFdbMessage.h>
-
-#define LOG_MODE_STDOUT         (1 << 0)
-#define LOG_MODE_FILE           (1 << 1)
 
 class CFdbSimpleDeserializer;
 class CLogPrinter
@@ -53,24 +51,10 @@ public:
         uint8_t mLogLevel;
         const char *mData;
     };
-    CLogPrinter(uint32_t mode = LOG_MODE_STDOUT);
-    void outputFdbLog(CFdbSimpleDeserializer &log_info, CFdbMessage *log_msg);
-    static void outputFdbLog(LogInfo &log_info);
-    void outputTraceLog(CFdbSimpleDeserializer &trace_info, CFdbMessage *trace_msg);
-    static void outputTraceLog(TraceInfo &trace_info);
-    void setPrintMode(uint32_t print_mode)
-    {
-        mPrintMode = print_mode;
-    }
-    void setLogFile(const char *log_file)
-    {
-        if (log_file)
-        {
-            mLogFile = log_file;
-        }
-    }
-private:
-    uint32_t mPrintMode;
-    std::string mLogFile;
+    CLogPrinter();
+    void outputFdbLog(CFdbSimpleDeserializer &log_info, CFdbMessage *log_msg, std::ostream &output);
+    static void outputFdbLog(LogInfo &log_info, std::ostream &output);
+    void outputTraceLog(CFdbSimpleDeserializer &trace_info, CFdbMessage *trace_msg, std::ostream &output);
+    static void outputTraceLog(TraceInfo &trace_info, std::ostream &output);
 };
 #endif

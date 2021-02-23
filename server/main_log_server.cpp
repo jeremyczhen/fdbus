@@ -27,6 +27,7 @@
 #include <iostream>
 #include "CLogPrinter.h"
 #include "CFdbLogCache.h"
+#include "CLogFileManager.h"
 
 static int32_t fdb_disable_request = 0;
 static int32_t fdb_disable_reply = 0;
@@ -47,6 +48,9 @@ static std::vector<std::string> fdb_trace_tag_white_list;
 static bool fdb_reverse_endpoint_name = false;
 static bool fdb_reverse_bus_name = false;
 static bool fdb_reverse_tag = false;
+static std::string fdb_log_path;
+static int64_t fdb_max_log_storage_size = 0;
+static int64_t fdb_max_file_size = 0;
 
 static void fdb_populate_white_list(const char *filter_str, std::vector<std::string> &white_list)
 {
@@ -89,6 +93,7 @@ public:
     CLogServer()
         : CBaseServer(FDB_LOG_SERVER_NAME)
         , mLogCache(fdb_cache_size * 1024)
+        , mFileManager(fdb_log_path.c_str(), 0, fdb_max_log_storage_size * 1024, fdb_max_file_size * 1024)
     {
     }
 protected:
@@ -99,10 +104,20 @@ protected:
         {
             case NFdbBase::REQ_FDBUS_LOG:
             {
-                if (!fdb_disable_std_output)
+                if (!fdb_disable_std_output || mFileManager.logEnabled())
                 {
                     CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
-                    mLogPrinter.outputFdbLog(deserializer, msg);
+                    std::ostringstream ostream;
+                    mLogPrinter.outputFdbLog(deserializer, msg, ostream);
+
+                    if (!fdb_disable_std_output)
+                    {
+                        std::cout << ostream.str();
+                    }
+                    if (mFileManager.logEnabled())
+                    {
+                        mFileManager.store(ostream.str());
+                    }
                 }
                 forwardLogData(NFdbBase::NTF_FDBUS_LOG, msg);
             }
@@ -145,10 +160,20 @@ protected:
             break;
             case NFdbBase::REQ_TRACE_LOG:
             {
-                if (!fdb_disable_std_output)
+                if (!fdb_disable_std_output || mFileManager.logEnabled())
                 {
                     CFdbSimpleDeserializer deserializer(msg->getPayloadBuffer(), msg->getPayloadSize());
-                    mLogPrinter.outputTraceLog(deserializer, msg);
+                    std::ostringstream ostream;
+                    mLogPrinter.outputTraceLog(deserializer, msg, ostream);
+
+                    if (!fdb_disable_std_output)
+                    {
+                        std::cout << ostream.str();
+                    }
+                    if (mFileManager.logEnabled())
+                    {
+                        mFileManager.store(ostream.str());
+                    }
                 }
                 forwardLogData(NFdbBase::NTF_TRACE_LOG, msg);
             }
@@ -315,8 +340,8 @@ private:
     TraceClientTbl_t mTraceClientTbl;
 
     CLogPrinter mLogPrinter;
-
     CFdbLogCache mLogCache;
+    CLogFileManager mFileManager;
 
     bool checkLogEnabled(bool global_disable, bool no_client_connected)
     {
@@ -441,6 +466,7 @@ int main(int argc, char **argv)
     char *trace_host_filters = 0;
     char *trace_tag_filters = 0;
     char *reverse_selections = 0;
+    char *log_storage_param = 0;
     const struct fdb_option core_options[] = {
         { FDB_OPTION_BOOLEAN, "request", 'q', &fdb_disable_request },
         { FDB_OPTION_BOOLEAN, "reply", 'p', &fdb_disable_reply },
@@ -458,6 +484,7 @@ int main(int argc, char **argv)
         { FDB_OPTION_STRING, "trace_hosts", 'M', &trace_host_filters },
         { FDB_OPTION_STRING, "reverse_selection", 'r', &reverse_selections },
         { FDB_OPTION_INTEGER, "cache_size", 'g', &fdb_cache_size },
+        { FDB_OPTION_STRING, "log_storage", 'j', &log_storage_param},
         { FDB_OPTION_BOOLEAN, "help", 'h', &help }
     };
 
@@ -493,6 +520,7 @@ int main(int argc, char **argv)
         std::cout << "        'n': reverse selection of bus names specified by '-n'" << std::endl;
         std::cout << "        't': reverse selection of tags specified by '-t'" << std::endl;
         std::cout << "    -g: specify size of log cache in kB; no log cache if 0 is given (default)" << std::endl;
+        std::cout << "    -j: specify log storage in format: 'path:max_storage_size:max_file_size'; the size is in unit of MB. " << std::endl;
         std::cout << "    -h: print help" << std::endl;
         std::cout << "    ==== fdbus monitor log format: ====" << std::endl;
         std::cout << "    [F]" << std::endl;
@@ -523,6 +551,24 @@ int main(int argc, char **argv)
     fdb_populate_white_list(log_busname_filters, fdb_log_busname_white_list);
     fdb_populate_white_list(trace_host_filters, fdb_trace_host_white_list);
     fdb_populate_white_list(trace_tag_filters, fdb_trace_tag_white_list);
+
+    if (log_storage_param)
+    {
+        uint32_t num_log_storage_param = 0;
+        char **log_storage_param_array = strsplit(log_storage_param, ":", &num_log_storage_param);
+        if (num_log_storage_param >= 1)
+        {
+            fdb_log_path = log_storage_param_array[0];
+        }
+        if (num_log_storage_param >= 2)
+        {
+            fdb_max_log_storage_size = atoi(log_storage_param_array[1]);
+        }
+        if (num_log_storage_param >= 3)
+        {
+            fdb_max_file_size = atoi(log_storage_param_array[2]);
+        }
+    }
 
     if (reverse_selections)
     {
