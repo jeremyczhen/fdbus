@@ -41,7 +41,7 @@ public:
     {
         return mFileId >= 0;
     }
-    bool setCustomBuffer(char *buffer, uint32_t size)
+    void setCustomBuffer(char *buffer, uint32_t size)
     {
         mBuffer = buffer;
         mBufferSize = size;
