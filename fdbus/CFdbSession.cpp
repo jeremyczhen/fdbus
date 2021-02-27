@@ -143,12 +143,25 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
         if (logger && msg->isLogEnabled())
         {
             CFdbRawMsgBuilder builder;
-            logger->logMessage(msg, mSenderName.c_str(), mContainer->owner(), builder);
-            submitOutput(msg->getRawBuffer(), msg->getRawDataSize(), &builder);
+            logger->logFDBus(msg, mSenderName.c_str(), mContainer->owner(), builder);
+            uint8_t *buffer = const_cast<uint8_t *>(builder.buffer());
+            int32_t size = builder.bufferSize();
+            bool need_release = false;
+            if (!buffer && size)
+            {
+                buffer = new uint8_t[size];
+                builder.toBuffer(buffer, size);
+                need_release = true;
+            }
+            submitOutput(msg->getRawBuffer(), msg->getRawDataSize(), buffer, size);
+            if (need_release)
+            {
+                delete[] buffer;
+            }
         }
         else
         {
-            submitOutput(msg->getRawBuffer(), msg->getRawDataSize(), 0);
+            submitOutput(msg->getRawBuffer(), msg->getRawDataSize(), 0, 0);
         }
     }
     else
@@ -160,7 +173,7 @@ bool CFdbSession::sendMessage(CFdbMessage *msg)
                 auto logger = FDB_CONTEXT->getLogger();
                 if (logger)
                 {
-                    logger->logMessage(msg, mSenderName.c_str(), mContainer->owner());
+                    logger->logFDBus(msg, mSenderName.c_str(), mContainer->owner());
                 }
             }
         }

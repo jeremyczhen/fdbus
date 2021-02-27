@@ -311,6 +311,7 @@ private:
     friend class CServerSocket;
     friend class CRegisterJob;
     friend class CDestroyJob;
+    friend class CLogProducer;
 };
 
 #endif

@@ -67,7 +67,7 @@ bool CFdbUDPSession::sendMessage(CFdbMessage *msg, const CFdbSocketAddr &dest_ad
             auto logger = FDB_CONTEXT->getLogger();
             if (logger)
             {
-                logger->logMessage(msg, 0, mContainer->owner());
+                logger->logFDBus(msg, 0, mContainer->owner());
             }
         }
         return true;

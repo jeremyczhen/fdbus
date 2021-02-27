@@ -22,12 +22,16 @@
 std::mutex CFdbContext::mSingletonLock;
 CFdbContext *CFdbContext::mInstance = 0;
 
+#define FDB_DEFAULT_LOG_CACHE_SIZE  8 * 1024 * 1024
+
 CFdbContext::CFdbContext()
     : CFdbBaseContext("FDBusDefaultContext")
     , mNameProxy(0)
     , mLogger(0)
     , mEnableNameProxy(true)
     , mEnableLogger(true)
+    , mEnableLogCache(true)
+    , mLogCacheSize(0)
 {
 
 }
@@ -60,7 +64,12 @@ bool CFdbContext::asyncReady()
     }
     if (mEnableLogger)
     {
-        auto logger = new CLogProducer();
+        int32_t cache_size = 0;
+        if (mEnableLogCache)
+        {
+            cache_size = mLogCacheSize ? mLogCacheSize : FDB_DEFAULT_LOG_CACHE_SIZE;
+        }
+        auto logger = new CLogProducer(cache_size);
         std::string svc_url;
         logger->getDefaultSvcUrl(svc_url);
         logger->doConnect(svc_url.c_str());

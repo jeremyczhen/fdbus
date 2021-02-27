@@ -18,6 +18,8 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/timeb.h>
+#include <string.h>
+#include <stdio.h>
 #include <common_base/CBaseSysDep.h>
 
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
@@ -154,5 +156,36 @@ int poll(pollfd *fds, int n_fds, int timeout_milliseconds)
 void sysdep_gethostname(char *name, int32_t size)
 {
     gethostname(name, size);
+}
+
+void sysdep_gettimestamp(char *stime, int32_t size, int32_t need_millisec, int32_t format)
+{
+    const char *date_format_str;
+    const char *ms_format_str;
+    time_t now_time;
+    time(&now_time);
+    if (format == 0)
+    {
+        date_format_str = "%F %H:%M:%S";
+        ms_format_str = ":%03u";
+    }
+    else
+    {
+        date_format_str = "%F_%H-%M-%S";
+        ms_format_str = "-%03u";
+    }
+    strftime(stime, size, date_format_str, localtime(&now_time));
+    if (need_millisec)
+    {
+        __timeb64 tm;
+        _ftime64_s(&tm);
+        if (tm.millitm >= 1000)
+        {
+            tm.millitm = 999;
+        }
+        char ms_buf[64];
+        snprintf(ms_buf, sizeof(ms_buf), ms_format_str, tm.millitm);
+        strncat(stime, ms_buf, size);
+    }
 }
 

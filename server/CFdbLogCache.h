@@ -22,17 +22,22 @@
 
 class CFdbSession;
 class CFdbBaseObject;
+class CLogProducer;
 
 class CFdbLogCache
 {
 public:
-    CFdbLogCache(int32_t max_size)
+    CFdbLogCache(int32_t max_size, bool stop_if_full = false)
         : mMaxSize(max_size)
         , mCacheSize(0)
         , mDataId(0)
+        , mStopIfFull(stop_if_full)
+        , mFull(false)
     {
     }
-    void push(uint8_t *log_data, int32_t size, FdbEventCode_t code);
+    ~CFdbLogCache();
+    void push(const uint8_t *log_data, int32_t size, FdbEventCode_t code);
+    void dump(CLogProducer *log_producer);
     void dump(CFdbBaseObject *object, CFdbSession *session, int32_t size);
     void resize(int32_t max_size);
     int32_t size() const
@@ -44,6 +49,11 @@ public:
         return mCacheSize;
     }
 
+    bool full() const
+    {
+        return mFull;
+    }
+
 private:
     struct CDataItem
     {
@@ -51,7 +61,7 @@ private:
         int32_t mSize;
         FdbEventCode_t mCode;
         uint32_t mId;
-        CDataItem(uint8_t *log_data, int32_t size, FdbEventCode_t code, uint32_t id);
+        CDataItem(const uint8_t *log_data, int32_t size, FdbEventCode_t code, uint32_t id);
         ~CDataItem();
     };
     typedef std::deque<CDataItem *> tCache;
@@ -59,8 +69,11 @@ private:
     int32_t mMaxSize;
     int32_t mCacheSize;
     uint32_t mDataId;
+    bool mStopIfFull;
+    bool mFull;
 
     void popOne();
+    void removeAll();
 };
 
 #endif

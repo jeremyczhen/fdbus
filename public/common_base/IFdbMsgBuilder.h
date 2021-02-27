@@ -26,6 +26,14 @@ public:
     {
         return -1;
     }
+    virtual const uint8_t *buffer()
+    {
+        return 0;
+    }
+    virtual int32_t bufferSize()
+    {
+        return 0;
+    }
     virtual bool toBuffer(uint8_t *buffer, int32_t size)
     {
         return true;

@@ -86,7 +86,7 @@ public:
     friend CFdbSimpleSerializer& operator<<(CFdbSimpleSerializer &serializer, const IFdbParcelable *data);
 
     int32_t toBuffer(uint8_t *buffer, int32_t size);
-    uint8_t *buffer() const
+    const uint8_t *buffer() const
     {
         return mBuffer;
     }

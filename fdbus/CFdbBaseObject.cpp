@@ -294,64 +294,6 @@ bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t time
     return msg->get(msg_ref, timeout);
 }
 
-bool CFdbBaseObject::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data)
-{
-    if (FDB_CONTEXT->isSelf())
-    {
-        CBaseMessage msg(code, this, FDB_INVALID_ID);
-        msg.expectReply(false);
-        if (!msg.serialize(data))
-        {
-            return false;
-        }
-        auto session = mEndpoint->preferredPeer();
-        if (session)
-        {
-            return session->sendMessage(&msg);
-        }
-        return false;
-    }
-    else
-    {
-        auto msg = new CBaseMessage(code, this);
-        if (!msg->serialize(data))
-        {
-            delete msg;
-            return false;
-        }
-        return msg->send();
-    }
-}
-
-bool CFdbBaseObject::sendLog(FdbMsgCode_t code, const void *buffer, int32_t size)
-{
-    if (FDB_CONTEXT->isSelf())
-    {
-        CBaseMessage msg(code, this);
-        msg.expectReply(false);
-        if (!msg.serialize(buffer, size))
-        {
-            return false;
-        }
-        auto session = mEndpoint->preferredPeer();
-        if (session)
-        {
-            return session->sendMessage(&msg);
-        }
-        return false;
-    }
-    else
-    {
-        auto msg = new CBaseMessage(code, this);
-        if (!msg->serialize(buffer, size))
-        {
-            delete msg;
-            return false;
-        }
-        return msg->send();
-    }
-}
-
 bool CFdbBaseObject::broadcast(FdbMsgCode_t code
                                , IFdbMsgBuilder &data
                                , const char *filter

@@ -65,6 +65,14 @@ public:
     {
         return mContextContainer;
     }
+    void enableLogCache(bool active)
+    {
+        mEnableLogCache = active;
+    }
+    void setLogCacheSize(int32_t size)
+    {
+        mLogCacheSize = size;
+    }
 
 protected:
     bool asyncReady();
@@ -82,6 +90,8 @@ private:
     bool mEnableNameProxy;
     bool mEnableLogger;
     tContextContainer mContextContainer;
+    bool mEnableLogCache;
+    int32_t mLogCacheSize;
 
     CFdbContext();
     friend class CRegisterContextJob;

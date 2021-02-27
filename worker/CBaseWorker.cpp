@@ -233,7 +233,7 @@ bool CBaseLoopTimer::attach(CBaseWorker *worker, bool enb)
             }
             else
             {
-                if (!mWorker->sendSync(new CAttachTimerJob(this, false, enb), 0, true))
+                if (!mWorker->sendAsync(new CAttachTimerJob(this, false, enb)))
                 {
                     return false;
                 }
@@ -251,7 +251,7 @@ bool CBaseLoopTimer::attach(CBaseWorker *worker, bool enb)
         }
         else
         {
-            if (!worker->sendSync(new CAttachTimerJob(this, true, enb), 0, true))
+            if (!worker->sendAsync(new CAttachTimerJob(this, true, enb)))
             {
                 mWorker = 0;
                 return false;
@@ -381,7 +381,7 @@ bool CBaseFdWatch::attach(CBaseWorker *worker, bool enb)
             }
             else
             {
-                if (!mWorker->sendSync(new CAttachWatchJob(this, false, enb, loop), 0, true))
+                if (!mWorker->sendAsync(new CAttachWatchJob(this, false, enb, loop)))
                 {
                     return false;
                 }
@@ -407,7 +407,7 @@ bool CBaseFdWatch::attach(CBaseWorker *worker, bool enb)
         }
         else
         {
-            if (!mWorker->sendSync(new CAttachWatchJob(this, true, enb, loop), 0, true))
+            if (!mWorker->sendAsync(new CAttachWatchJob(this, true, enb, loop)))
             {
                 mWorker = 0;
                 return false;

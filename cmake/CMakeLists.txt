@@ -106,6 +106,7 @@ set(OTHER_SOURCES
     ${PACKAGE_SOURCE_ROOT}/server/CBaseNameProxy.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CIntraNameProxy.cpp
     ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
+    ${PACKAGE_SOURCE_ROOT}/server/CFdbLogCache.cpp
 )
 
 include_directories(

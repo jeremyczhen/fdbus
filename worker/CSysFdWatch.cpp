@@ -73,24 +73,23 @@ void CSysFdWatch::updateFlags(uint32_t mask, uint32_t value)
     }
 }
 
-CSysFdWatch::COutputDataChunk::COutputDataChunk(uint8_t *buffer, int32_t size,
-                                                int32_t consumed, CFdbRawMsgBuilder *log_builder)
-    : mSize(size)
+CSysFdWatch::COutputDataChunk::COutputDataChunk(const uint8_t *msg_buffer, int32_t msg_size, int32_t consumed,
+                                                const uint8_t *log_buffer, int32_t log_size)
+    : mSize(msg_size)
     , mConsumed(consumed)
     , mLogBuffer(0)
-    , mLogSize(0)
+    , mLogSize(log_size)
 {
-    mBuffer = new uint8_t[size];
-    memcpy(mBuffer, buffer, size);
-
-    if (log_builder)
+    if (msg_size && msg_buffer)
     {
-        mLogSize = log_builder->serializer().bufferSize();
-        if (mLogSize)
-        {
-            mLogBuffer = new uint8_t[mLogSize];
-            log_builder->toBuffer(mLogBuffer, mLogSize);
-        }
+        mBuffer = new uint8_t[msg_size];
+        memcpy(mBuffer, msg_buffer, msg_size);
+    }
+
+    if (log_size && log_buffer)
+    {
+        mLogBuffer = new uint8_t[mLogSize];
+        memcpy(mLogBuffer, log_buffer, log_size);
     }
 }
 
@@ -148,37 +147,35 @@ void CSysFdWatch::submitInput(uint8_t *buffer, int32_t size, bool trigger_read)
     mInputRecursiveDepth--;
 }
 
-void CSysFdWatch::submitOutput(uint8_t *buffer, int32_t size, CFdbRawMsgBuilder *log_builder)
+void CSysFdWatch::submitOutput(const uint8_t *msg_buffer, int32_t msg_size,
+                               const uint8_t *log_buffer, int32_t log_size)
 {
-    if (!buffer || !size || fatalError())
+    if (!msg_buffer || !msg_size || fatalError())
     {
         return;
     }
     if (mOutputChunkList.size())
     {
-        mOutputChunkList.push_back(new COutputDataChunk(buffer, size, 0, log_builder));
+        mOutputChunkList.push_back(new COutputDataChunk(msg_buffer, msg_size, 0, log_buffer, log_size));
     }
     else
     {
-        auto consumed = writeStream(buffer, size);
+        auto consumed = writeStream(msg_buffer, msg_size);
         if (consumed < 0)
         {
             fatalError(true);
         }
-        else if (consumed < size)
+        else if (consumed < msg_size)
         {
-            mOutputChunkList.push_back(new COutputDataChunk(buffer, size, consumed, log_builder));
+            mOutputChunkList.push_back(new COutputDataChunk(msg_buffer, msg_size, consumed, log_buffer, log_size));
             updateFlags(POLLOUT, POLLOUT);
         }
-        else
+        else if (log_buffer && log_size)
         {
-            if (log_builder && log_builder->serializer().bufferSize())
+            auto logger = FDB_CONTEXT->getLogger();
+            if (logger)
             {
-                auto logger = FDB_CONTEXT->getLogger();
-                if (logger)
-                {
-                    logger->sendLog(NFdbBase::REQ_FDBUS_LOG, *log_builder);
-                }
+                logger->sendLog(NFdbBase::REQ_FDBUS_LOG, log_buffer, log_size);
             }
         }
     }

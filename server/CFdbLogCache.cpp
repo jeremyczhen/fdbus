@@ -17,19 +17,43 @@
 #include "CFdbLogCache.h"
 #include <common_base/CFdbSession.h>
 #include <common_base/CBaseEndpoint.h>
+#include <common_base/CLogProducer.h>
 
-CFdbLogCache::CDataItem::CDataItem(uint8_t *log_data, int32_t size, FdbEventCode_t code, uint32_t id)
-    : mLogData(new uint8_t[size])
+CFdbLogCache::CDataItem::CDataItem(const uint8_t *log_data, int32_t size, FdbEventCode_t code, uint32_t id)
+    : mLogData(((size > 0) && log_data) ? new uint8_t[size] : 0)
     , mSize(size)
     , mCode(code)
     , mId(id)
 {
-    memcpy(mLogData, log_data, size);
+    if (mLogData && log_data)
+    {
+        memcpy(mLogData, log_data, size);
+    }
 }
 
 CFdbLogCache::CDataItem::~CDataItem()
 {
-    delete[] mLogData;
+    if (mLogData)
+    {
+        delete[] mLogData;
+    }
+}
+
+void CFdbLogCache::removeAll()
+{
+    while (!mCache.empty())
+    {
+        auto head = mCache.front();
+        mCache.pop_front();
+        delete head;
+    }
+    mFull = false;
+    mCacheSize = 0;
+}
+
+CFdbLogCache::~CFdbLogCache()
+{
+    removeAll();
 }
 
 void CFdbLogCache::popOne()
@@ -42,12 +66,7 @@ void CFdbLogCache::popOne()
     mCacheSize -= head->mSize + sizeof(CDataItem);
     if (mCacheSize < 0)
     {
-        while (!mCache.empty())
-        {
-            auto h = mCache.front();
-            mCache.pop_front();
-            delete h;
-        }
+        removeAll();
     }
 
     if (mCache.empty())
@@ -61,22 +80,49 @@ void CFdbLogCache::popOne()
     }
 }
 
-void CFdbLogCache::push(uint8_t *log_data, int32_t size, FdbEventCode_t code)
+void CFdbLogCache::push(const uint8_t *log_data, int32_t size, FdbEventCode_t code)
 {
     if (!mMaxSize || (size <= 0))
     {
         return;
     }
-    while ((mCacheSize + size + (int32_t)sizeof(CDataItem)) > mMaxSize)
+    if (mStopIfFull)
     {
-        popOne();
-        if (mCache.empty())
+        if ((mCacheSize + size + (int32_t)sizeof(CDataItem)) > mMaxSize)
         {
-            break;
+            mFull = true;
+            return;
         }
     }
+    else
+    {
+        while ((mCacheSize + size + (int32_t)sizeof(CDataItem)) > mMaxSize)
+        {
+            mFull = true;
+            popOne();
+            if (mCache.empty())
+            {
+                break;
+            }
+        }
+    }
+
     mCacheSize += size + sizeof(CDataItem);
     mCache.push_back(new CDataItem(log_data, size, code, mDataId++));
+}
+
+void CFdbLogCache::dump(CLogProducer *log_producer)
+{
+    while (!mCache.empty())
+    {
+        auto item = mCache.front();
+        log_producer->sendLog(item->mCode, item->mLogData, item->mSize);
+        mCache.pop_front();
+        delete item;
+    }
+    mCacheSize = 0;
+    mDataId = 0;
+    mFull = 0;
 }
 
 void CFdbLogCache::dump(CFdbBaseObject *object, CFdbSession *session, int32_t size)

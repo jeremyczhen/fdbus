@@ -34,7 +34,7 @@ public:
         std::string mTopic;
         uint8_t mMsgType;
         FdbMsgCode_t mMsgCode;
-        uint64_t mTimeStamp;
+        std::string mTimeStamp;
         int32_t mPayloadSize;
         FdbMsgSn_t mMsgSn;
         FdbObjectId_t mObjId;
@@ -47,7 +47,7 @@ public:
         uint32_t mPid;
         std::string mTag;
         std::string mHostName;
-        uint64_t mTimeStamp;
+        std::string mTimeStamp;
         uint8_t mLogLevel;
         const char *mData;
     };

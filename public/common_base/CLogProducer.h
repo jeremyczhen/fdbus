@@ -305,13 +305,15 @@ private:
 }
 
 class CFdbRawMsgBuilder;
+class CFdbLogCache;
 class CLogProducer : public CBaseClient
 {
 public:
-    CLogProducer();
-    void logMessage(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint,
+    CLogProducer(int32_t log_cache_size);
+    ~CLogProducer();
+    void logFDBus(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint,
                     CFdbRawMsgBuilder &builder);
-    void logMessage(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint);
+    void logFDBus(CFdbMessage *msg, const char *receiver_name, CBaseEndpoint *endpoint);
     bool checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag);
     void logTrace(EFdbLogLevel log_level, const char *tag, const char *info);
     static void printTrace(EFdbLogLevel log_level, const char *tag, const char *info);
@@ -327,6 +329,8 @@ public:
     {
         mStaticLogLevel = level;
     }
+    bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &builder);
+    bool sendLog(FdbMsgCode_t code, const uint8_t *buffer, int32_t size);
     static const int32_t mMaxTraceLogSize = 4096;
 protected:
     void onBroadcast(CBaseJob::Ptr &msg_ref);
@@ -334,9 +338,6 @@ protected:
     void onOffline(FdbSessionId_t sid, bool is_last);
 private:
     typedef std::set<std::string> tFilterTbl;
-    
-    bool checkLogEnabledGlobally();
-    bool checkLogEnabledByMessageType(EFdbMessageType type);
     
     CBASE_tProcId mPid;
     bool mLoggerDisableGlobal;
@@ -363,9 +364,17 @@ private:
     std::mutex mFdbusLogLock; // protect mLogEndpointWhiteList and mLogBusnameWhiteList
 
     static EFdbLogLevel mStaticLogLevel;
+    CFdbLogCache *mLogCache;
 
+    static const char *mLogHead;
+    static const char *mBreakMark;
+
+    bool checkLogEnabledByMessageType(EFdbMessageType type);
     bool checkHostEnabled(const CFdbParcelableArray<std::string> &host_tbl);
     void populateWhiteList(const CFdbParcelableArray<std::string> &in_filter
                          , tFilterTbl &white_list);
+    void callSendLog(CBaseJob::Ptr &msg_ref);
+    bool checkCacheEnabled();
+    void sendCheckpoint(const char *check_point);
 };
 #endif

@@ -427,10 +427,6 @@ private:
     {
         auto payload = (uint8_t *)msg->getPayloadBuffer();
         int32_t size = msg->getPayloadSize();
-        if (!payload || (size <= 0))
-        {
-            return;
-        }
         mLogCache.push(payload, size, code);
 
         if (((code == NFdbBase::NTF_FDBUS_LOG) && !mLoggerClientTbl.empty()) ||

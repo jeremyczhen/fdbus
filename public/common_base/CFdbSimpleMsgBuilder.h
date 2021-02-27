@@ -34,6 +34,14 @@ public:
         mSerializer << mMessage;
         return mSerializer.bufferSize();
     }
+    const uint8_t *buffer()
+    {
+        return mSerializer.buffer();
+    }
+    int32_t bufferSize()
+    {
+        return mSerializer.bufferSize();
+    }
     bool toBuffer(uint8_t *buffer, int32_t size)
     {
         mSerializer.toBuffer(buffer, size);

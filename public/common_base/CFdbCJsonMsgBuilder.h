@@ -28,6 +28,14 @@ public:
     int32_t build();
     bool toBuffer(uint8_t *buffer, int32_t size);
     bool toString(std::string &msg_txt) const;
+    int32_t bufferSize()
+    {
+        return mSize;
+    }
+    const uint8_t *buffer()
+    {
+        return (const uint8_t *)mJson;
+    }
     
 private:
     const cJSON *mMessage;

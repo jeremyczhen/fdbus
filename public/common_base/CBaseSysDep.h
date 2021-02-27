@@ -103,6 +103,7 @@ uint64_t sysdep_getsystemtime_milli();
 uint64_t sysdep_getsystemtime_nano();
 int32_t sysdep_gettimeofday(struct timeval *tv);
 void sysdep_gethostname(char *name, int32_t size);
+void sysdep_gettimestamp(char *stime, int32_t size, int32_t need_millisec, int32_t format);
 
 #ifdef __cplusplus
 }

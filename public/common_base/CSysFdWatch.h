@@ -21,7 +21,6 @@
 #include "common_defs.h"
 
 class CFdEventLoop;
-class CFdbRawMsgBuilder;
 class CSysFdWatch
 {
 private:
@@ -55,8 +54,8 @@ private:
             , mLogBuffer(0)
             , mLogSize(0)
         {}
-        COutputDataChunk(uint8_t *buffer, int32_t size,
-                         int32_t consumed, CFdbRawMsgBuilder *log_builder);
+        COutputDataChunk(const uint8_t *msg_buffer, int32_t msg_size, int32_t consumed,
+                         const uint8_t *log_buffer, int32_t log_size);
         ~COutputDataChunk();
     };
 public:
@@ -201,7 +200,8 @@ protected:
 
     void submitInput(uint8_t *buffer, int32_t size, bool trigger_read);
 
-    void submitOutput(uint8_t *buffer, int32_t size, CFdbRawMsgBuilder *log_builder);
+    void submitOutput(const uint8_t *msg_buffer, int32_t msg_size,
+                      const uint8_t *log_buffer, int32_t log_size);
 
     void updateFlags(uint32_t mask, uint32_t value);
 

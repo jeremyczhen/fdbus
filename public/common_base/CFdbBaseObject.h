@@ -911,6 +911,11 @@ protected:
         mObjId = obj_id;
     }
 
+    CBaseEndpoint *endpoint() const
+    {
+        return mEndpoint;
+    }
+
     virtual void onSidebandInvoke(CBaseJob::Ptr &msg_ref);
     virtual void onSidebandReply(CBaseJob::Ptr &msg_ref)
     {}
@@ -972,9 +977,6 @@ private:
     bool updateEventCache(CFdbMessage *msg);
     void broadcast(CFdbMessage *msg);
 
-    bool sendLog(FdbMsgCode_t code, IFdbMsgBuilder &data);
-    bool sendLog(FdbMsgCode_t code, const void *buffer, int32_t size);
-
     void getSubscribeTable(FdbMsgCode_t code, CFdbSession *session, tFdbFilterSets &filter_tbl);
 
     void callOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);
@@ -1009,11 +1011,6 @@ private:
     void notifyOffline(CFdbSession *session, bool is_last);
 
     void broadcastCached(CBaseJob::Ptr &msg_ref);
-     
-    CBaseEndpoint *endpoint() const
-    {
-        return mEndpoint;
-    }
     const CEventData *getCachedEventData(FdbMsgCode_t msg_code, const char *filter);
 
     void callDispOnOnline(CBaseWorker *worker, CMethodJob<CFdbBaseObject> *job, CBaseJob::Ptr &ref);

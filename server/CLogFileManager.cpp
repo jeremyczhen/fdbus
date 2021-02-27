@@ -28,10 +28,11 @@
 #endif
 #include <sys/stat.h>
 #include "CLogFileManager.h"
+#include <common_base/CBaseSysDep.h>
 
 #define FDB_LOG_FILE_INDEX_SIZE 8
 
-#define _fdb_filename_format(_size) "%0" #_size "d-%s.txt"
+#define _fdb_filename_format(_size) "%0" #_size "d-%s-%s.txt"
 #define fdb_filename_format(_size) _fdb_filename_format(_size)
 
 #ifdef __WIN32__
@@ -193,8 +194,11 @@ void CLogFileManager::getAbsPath(std::string &abs_path, const char *relative_nam
 void CLogFileManager::nextFileName()
 {
     char name_buf[1024];
+    char date_buf[64];
+    sysdep_gettimestamp(date_buf, sizeof(date_buf), 0, 1);
+    date_buf[63] = '\0';
     snprintf(name_buf, sizeof(name_buf), fdb_filename_format(FDB_LOG_FILE_INDEX_SIZE),
-             mFileId++, mBaseName.c_str());
+             mFileId++, mBaseName.c_str(), date_buf);
     mCurrentFileName = name_buf;
 }
 

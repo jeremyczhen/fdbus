@@ -25,6 +25,7 @@
 #include <common_base/CFdbProtoMsgBuilder.h>
 
 #define OBJ_FROM_SERVER_TO_CLIENT   1
+#define FDB_NUM_OF_OBJECT           8
 #define FDB_SHUTDOWN_TEST           0
 
 #if 1
@@ -129,19 +130,7 @@ public:
     }
     
 protected:
-    void onOnline(FdbSessionId_t sid, bool is_first)
-    {
-        FDB_LOG_I("OBJ %d server session up: %d\n", this->objId(), sid);
-        if (is_first)
-        {
-            FDB_LOG_I("timer enabled\n");
-            if (!this->isPrimary())
-            {
-                mTimer->enable();
-            }
-        }
-    }
-
+    void onOnline(FdbSessionId_t sid, bool is_first);
     void onOffline(FdbSessionId_t sid, bool is_last)
     {
         FDB_LOG_I("OBJ %d server session shutdown: %d\n", this->objId(), sid);
@@ -366,45 +355,7 @@ public:
     }
 
 protected:
-    void onOnline(FdbSessionId_t sid, bool is_first)
-    {
-        FDB_LOG_I("OBJ %d client session online: %d\n", this->objId(), sid);
-        if (!this->isPrimary())
-        {
-            this->setDefaultSession(sid);
-        }
-        if (is_first)
-        {
-            CFdbMsgSubscribeList subscribe_list;
-            this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
-            this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
-            this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME);
-            this->addNotifyItem(subscribe_list, NTF_MEDIAPLAYER_CREATED);
-            /*
-             * register NTF_MANUAL_UPDATE for manual update: it will not
-             * update unless update() is called
-             */
-	    this->addUpdateItem(subscribe_list, NTF_MANUAL_UPDATE);
-            this->subscribe(subscribe_list);
-
-            if (this->isPrimary())
-            {
-#if 0
-                this->invoke(REQ_CREATE_MEDIAPLAYER);
-                CMyClient<CFdbBaseObject> *obj = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
-                obj->connect(dynamic_cast<CBaseEndpoint *>(this), 1);
-
-                obj = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
-                obj->connect(dynamic_cast<CBaseEndpoint *>(this), 2);
-#endif
-            }
-            else
-            {
-                mTimer->enable();
-            }
-        }
-    }
-
+    void onOnline(FdbSessionId_t sid, bool is_first);
     void onOffline(FdbSessionId_t sid, bool is_last)
     {
         FDB_LOG_I("OBJ %d client session shutdown: %d\n", this->objId(), sid);
@@ -574,6 +525,74 @@ protected:
     }
 };
 
+template<typename T>
+void CMyServer<T>::onOnline(FdbSessionId_t sid, bool is_first)
+{
+    FDB_LOG_I("OBJ %d server session up: %d\n", this->objId(), sid);
+    if (this->isPrimary())
+    {
+#ifdef OBJ_FROM_SERVER_TO_CLIENT
+        for (int j = 0; j < FDB_NUM_OF_OBJECT; ++j)
+        {
+            char obj_id[64];
+            sprintf(obj_id, "obj%u", j);
+            std::string obj_name = this->name() + obj_id;
+            auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+            obj->connect(this->endpoint(), 1000);
+        }
+#endif
+    }
+    else
+    {
+        mTimer->enable();
+    }
+}
+
+template<typename T>
+void CMyClient<T>::onOnline(FdbSessionId_t sid, bool is_first)
+{
+    FDB_LOG_I("OBJ %d client session online: %d\n", this->objId(), sid);
+    if (is_first)
+    {
+        CFdbMsgSubscribeList subscribe_list;
+        this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "my_filter");
+        this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME, "raw_buffer");
+        this->addNotifyItem(subscribe_list, NTF_ELAPSE_TIME);
+        this->addNotifyItem(subscribe_list, NTF_MEDIAPLAYER_CREATED);
+        /*
+         * register NTF_MANUAL_UPDATE for manual update: it will not
+         * update unless update() is called
+         */
+        this->addUpdateItem(subscribe_list, NTF_MANUAL_UPDATE);
+        this->subscribe(subscribe_list);
+    }
+    if (this->isPrimary())
+    {
+#if 0
+        this->invoke(REQ_CREATE_MEDIAPLAYER);
+        CMyClient<CFdbBaseObject> *obj = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
+        obj->connect(dynamic_cast<CBaseEndpoint *>(this), 1);
+
+        obj = new CMyClient<CFdbBaseObject>("mediaplayer1", &mediaplayer_worker);
+        obj->connect(dynamic_cast<CBaseEndpoint *>(this), 2);
+#endif
+#ifndef OBJ_FROM_SERVER_TO_CLIENT
+        for (int j = 0; j < FDB_NUM_OF_OBJECT; ++j)
+        {
+            char obj_id[64];
+            sprintf(obj_id, "obj%u", j);
+            std::string obj_name = this->name() + obj_id;
+            auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+            obj->connect(this->endpoint(), 1000);
+        }
+#endif
+    }
+    else
+    {
+        mTimer->enable();
+    }
+}
+
 class CObjTestTimer : public CBaseLoopTimer
 {
 public:
@@ -610,17 +629,6 @@ protected:
     int mCount;
 };
 
-static void printUsage(void)
-{
-    std::cout << "ERROR:" << std::endl;
-    std::cout << "argv 1:  1 - server; 0 - client" << std::endl;
-    std::cout << "argv 2:  service name" << std::endl;
-    std::cout << "Should run this test with arguments like these:" << std::endl;
-    std::cout << "if you run server : ./fdbobjtest 1 testserver" << std::endl;
-    std::cout << "if you run client : ./fdbobjtest 0 testserver" << std::endl;
-}
-
-
 int main(int argc, char **argv)
 {
     //shared_ptr_test();
@@ -647,24 +655,25 @@ int main(int argc, char **argv)
      auto worker_ptr = &main_worker;
     //CBaseWorker *worker_ptr = 0;
 
-    /*
-     * 参数1：1 - server； 0 - client
-     * 参数2：service的名字
-     *
-     * 本例子使用name server做地址解析，url格式为svc://server_name。支持的协议包括：
-     * - svc:
-     * svc://server_name - 指定要连接或创建的服务名；前提是name server必须已经启动
-     * - tcp：
-     * tcp://ip_address:port_number - 指定tcp连接的ip地址和端口号；不需要name server
-     * - ipc:
-     * ipc://path - 指定unix域socket的路径名；不需要name server
-     */
-    if(argc < 3)
+    const char *servers = 0;
+    const char *clients = 0;
+    int32_t help = 0;
+    const struct fdb_option core_options[] = {
+        { FDB_OPTION_STRING, "servers", 's', &servers },
+        { FDB_OPTION_STRING, "clients", 'c', &clients },
+        { FDB_OPTION_BOOLEAN, "help", 'h', &help }
+    };
+    if (help)
     {
-        printUsage();
-        return -1;
+        printf("Usage: cmd [-s server1,server2,...][ -c client1,client2,...]\n");
+        return 0;
     }
-    int32_t is_server = atoi(argv[1]);
+    fdb_parse_options(core_options, ARRAY_LENGTH(core_options), &argc, argv);
+    uint32_t nr_servers = 0;
+    char **server_list = servers ? strsplit(servers, ",", &nr_servers) : 0;
+    uint32_t nr_clients = 0;
+    char **client_list = clients ? strsplit(clients, ",", &nr_clients) : 0;
+
     CObjTestTimer obj_test_timer;
     obj_test_timer.attach(&main_worker, true);
 
@@ -675,11 +684,11 @@ int main(int argc, char **argv)
     std::vector<CFdbBaseContext *> server_contexts;
     std::vector<CFdbBaseContext *> client_contexts;
 
-    if (is_server)
+    if (server_list)
     {
-        for (int i = 2; i < argc; ++i)
+        for (uint32_t i = 0; i < nr_servers; ++i)
         {
-            std::string server_name = argv[i];
+            std::string server_name = server_list[i];
             std::string url(FDB_URL_SVC);
             url += server_name;
             server_name += "_server";
@@ -689,26 +698,15 @@ int main(int argc, char **argv)
             auto server = new CMyServer<CBaseServer>(server_name.c_str(), worker_ptr, context);
             servers.push_back(server);
             server->enableUDP(true);
-
-#ifdef OBJ_FROM_SERVER_TO_CLIENT
-            for (int j = 0; j < 5; ++j)
-            {
-                char obj_id[64];
-                sprintf(obj_id, "obj%u", j);
-                std::string obj_name = server_name + obj_id;
-                auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
-                obj->connect(server, 1000);
-            }
-#endif
-
             server->bind(url.c_str());
         }
     }
-    else
+
+    if (client_list)
     {
-        for (int i = 2; i < argc; ++i)
+        for (uint32_t i = 0; i < nr_clients; ++i)
         {
-            std::string server_name = argv[i];
+            std::string server_name = client_list[i];
             std::string url(FDB_URL_SVC);
             url += server_name;
             server_name += "_client";
@@ -718,18 +716,6 @@ int main(int argc, char **argv)
             auto client = new CMyClient<CBaseClient>(server_name.c_str(), worker_ptr, context);
             clients.push_back(client);
             client->enableUDP(true);
-            
-#ifndef OBJ_FROM_SERVER_TO_CLIENT
-            for (int j = 0; j < 5; ++j)
-            {
-                char obj_id[64];
-                sprintf(obj_id, "obj%u", j);
-                std::string obj_name = server_name + obj_id;
-                auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
-                obj->connect(client, 1000);
-            }
-#endif
-            
             client->enableReconnect(true);
             client->connect(url.c_str());
         }
