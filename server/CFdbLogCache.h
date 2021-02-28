@@ -28,7 +28,7 @@ class CFdbLogCache
 {
 public:
     CFdbLogCache(int32_t max_size, bool stop_if_full = false)
-        : mMaxSize(max_size)
+        : mMaxSize((max_size < 0) ? 0 : max_size)
         , mCacheSize(0)
         , mDataId(0)
         , mStopIfFull(stop_if_full)

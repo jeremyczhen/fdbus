@@ -1117,6 +1117,11 @@ void CFdbMessage::setLogData(const char *log_data)
     }
 }
 
+void CFdbMessage::clearLogData()
+{
+    mStringData.clear();
+}
+
 void CFdbMessage::checkLogEnabled(const CFdbBaseObject *object)
 {
     if (!object->logEnabled())

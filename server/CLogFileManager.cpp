@@ -72,6 +72,34 @@ CLogFileManager::~CLogFileManager()
     }
 }
 
+bool CLogFileManager::setWorkingPath(const char *path)
+{
+    if (path && (path[0] != '\0') && (mMaxStorageSize > mMaxFileSize) && mLogPath.compare(path))
+    {
+        if (mCurrentFp)
+        {
+            fclose(mCurrentFp);
+            mCurrentFp = 0;
+        }
+        mCurrentStorageSize = 0;
+        mFilePool.clear();
+        mLogPath = path;
+        return scanDir();
+    }
+    return false;
+}
+
+bool CLogFileManager::setStorageSize(int64_t max_storage_size, int64_t max_file_size)
+{
+    if (max_file_size <= max_storage_size)
+    {
+        mMaxStorageSize = max_storage_size;
+        mMaxFileSize = max_file_size;
+        return true;
+    }
+    return false;
+}
+
 bool CLogFileManager::scanDir()
 {
     if (mLogPath.empty())

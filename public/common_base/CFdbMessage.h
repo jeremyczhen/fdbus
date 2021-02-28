@@ -520,6 +520,7 @@ public:
     static const char *getMsgTypeName(EFdbMessageType type);
 
     void setLogData(const char *log_data);
+    void clearLogData();
 
     void checkLogEnabled(const CFdbBaseObject *object);
 

@@ -208,6 +208,10 @@ public:
     }
     void set_log_level(EFdbLogLevel level)
     {
+        if (level >= FDB_LL_MAX)
+        {
+            level = FDB_LL_SILENT;
+        }
         mLogLevel = level;
     }
     CFdbParcelableArray<std::string> &host_white_list()
@@ -251,6 +255,36 @@ public:
         mCacheSize = size;
     }
 
+    std::string &log_path()
+    {
+        return mLogPath;
+    }
+    void set_log_path(const char *path)
+    {
+        if (path)
+        {
+            mLogPath = path;
+        }
+    }
+
+    int32_t max_log_storage_size() const
+    {
+        return mMaxLogStorageSize;
+    }
+    void set_max_log_storage_size(int32_t max_size)
+    {
+        mMaxLogStorageSize = max_size;
+    }
+
+    int32_t max_log_file_size() const
+    {
+        return mMaxLogFileSize;
+    }
+    void set_max_log_file_size(int32_t max_size)
+    {
+        mMaxLogFileSize = max_size;
+    }
+
     void serialize(CFdbSimpleSerializer &serializer) const
     {
         serializer << mGlobalEnable
@@ -258,7 +292,10 @@ public:
                    << mHostWhiteList
                    << mTagWhiteList
                    << mReverseTag
-                   << mCacheSize;
+                   << mCacheSize
+                   << mLogPath
+                   << mMaxLogStorageSize
+                   << mMaxLogFileSize;
     }
     void deserialize(CFdbSimpleDeserializer &deserializer)
     {
@@ -268,7 +305,14 @@ public:
                      >> mHostWhiteList
                      >> mTagWhiteList
                      >> mReverseTag
-                     >> mCacheSize;
+                     >> mCacheSize
+                     >> mLogPath
+                     >> mMaxLogStorageSize
+                     >> mMaxLogFileSize;
+        if (level >= (uint8_t)FDB_LL_MAX)
+        {
+            level = (uint8_t)FDB_LL_SILENT;
+        }
         mLogLevel = (EFdbLogLevel)level;
     }
 private:
@@ -278,6 +322,9 @@ private:
     CFdbParcelableArray<std::string> mTagWhiteList;
     bool mReverseTag;
     int32_t mCacheSize;
+    std::string mLogPath;
+    int32_t mMaxLogStorageSize;
+    int32_t mMaxLogFileSize;
 };
 
 class FdbLogStart : public IFdbParcelable

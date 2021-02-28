@@ -197,6 +197,7 @@ bool CFdbSession::sendMessage(CBaseJob::Ptr &ref)
     if (sendMessage(msg))
     {
         msg->replaceBuffer(0); // free buffer to save memory
+        msg->clearLogData();
         mPendingMsgTable.insertEntry(msg->sn(), ref);
         return true;
     }

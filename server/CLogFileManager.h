@@ -46,7 +46,9 @@ public:
         mBuffer = buffer;
         mBufferSize = size;
     }
-    bool enableBuffering(bool enable);
+    bool setWorkingPath(const char *path);
+    bool setStorageSize(int64_t max_storage_size = mDefaultMaxStorageSize,
+                        int64_t max_file_size = mDefaultMaxFileSize);
 private:
     struct CFileInfo
     {
