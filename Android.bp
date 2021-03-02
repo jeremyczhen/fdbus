@@ -14,7 +14,7 @@ SRC_FILES = [
     "fdbus/CBaseEndpoint.cpp",
     "fdbus/CFdbCJsonMsgBuilder.cpp",
     "fdbus/CFdbSessionContainer.cpp",
-    "fdbus/CLogProducer.cpp",
+    "log/CLogProducer.cpp",
     "fdbus/CBaseServer.cpp",
     "fdbus/CFdbContext.cpp",
     "fdbus/CFdbBaseContext.cpp",
@@ -44,11 +44,12 @@ SRC_FILES = [
     "worker/CFdEventLoop.cpp",
     "worker/CThreadEventLoop.cpp",
     "worker/CSysFdWatch.cpp",
-    "server/CBaseNameProxy.cpp",
-    "server/CIntraNameProxy.cpp",
+    "utils/CBaseNameProxy.cpp",
+    "fdbus/CIntraNameProxy.cpp",
     "server/CAddressAllocator.cpp",
-    "server/CLogPrinter.cpp",
-    "security/cJSON/cJSON.c",
+    "log/CLogPrinter.cpp",
+    "log/CFdbLogCache.cpp",
+    "utils/cJSON/cJSON.c",
     "appfw/CFdbAFComponent.cpp",
     "appfw/CFdbAppFramework.cpp",
 ]
@@ -405,10 +406,9 @@ cc_binary {
         "-DCONFIG_DEBUG_LOG",
     ],
     srcs: [
-        "server/main_log_server.cpp",
-        "server/CLogPrinter.cpp",
-        "server/CFdbLogCache.cpp",
-        "server/CLogFileManager.cpp",
+        "log/main_log_server.cpp",
+        "log/CLogFileManager.cpp",
+        "log/fdb_log_config.cpp",
     ],
 
     shared_libs: [
@@ -438,8 +438,8 @@ cc_binary {
         "-DCONFIG_DEBUG_LOG",
     ],
     srcs: [
-        "server/main_log_client.cpp",
-        "server/CLogPrinter.cpp",
+        "log/main_log_client.cpp",
+        "log/fdb_log_config.cpp",
     ],
 
     shared_libs: [

@@ -126,19 +126,48 @@ bool CLogFileManager::scanDir()
     DIR *dir;
     struct dirent *ptr;
 
-    if ((dir=opendir(mLogPath.c_str())) == NULL)
+    if ((dir = opendir(mLogPath.c_str())) == 0)
     {
         std::cout << "CLogFileManager: Error! unable to access directory "
                   << mLogPath.c_str() << std::endl;
         return false;
     }  
 
-    while ((ptr=readdir(dir)) != NULL)
+    while ((ptr = readdir(dir)) != 0)
     {
+#ifdef CONFIG_QNX_DIRENT
+        bool found = false;
+        for(struct dirent_extra *extra = _DEXTRA_FIRST(ptr);
+            _DEXTRA_VALID(extra, ptr);
+           extra = _DEXTRA_NEXT(extra))
+        {
+            switch(extra->d_type)
+            {
+                /* Data includes information as returned by stat() */
+                case _DTYPE_STAT:
+                {
+                    struct dirent_extra_stat *extra_stat = (struct dirent_extra_stat *)extra;
+                    if (S_ISREG(extra_stat->d_stat.st_mode))
+                    {
+                        addFile(ptr->d_name);
+                        found = true;
+                    }
+                }
+                break;
+                default:
+                break;
+            }
+            if (found)
+            {
+                break;
+            }
+        }
+#else
         if(ptr->d_type == DT_REG)
         {
             addFile(ptr->d_name);
         }
+#endif
     }
     closedir(dir);
 #endif
