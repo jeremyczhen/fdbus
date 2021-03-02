@@ -19,7 +19,7 @@
 
 #include <common_base/common_defs.h>
 #include <common_base/CBaseClient.h>
-#include "CFdbIfNameServer.h"
+#include <server/CFdbIfNameServer.h>
 #include <common_base/CBaseJob.h>
 
 class CBaseNameProxy : public CBaseClient

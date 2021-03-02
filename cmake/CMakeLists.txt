@@ -96,17 +96,17 @@ file(GLOB APPFW_SOURCES "${PACKAGE_SOURCE_ROOT}/appfw/*.cpp")
 file(GLOB PUBLIC_HEADERS "${PACKAGE_SOURCE_ROOT}/common_base/*.h")
 
 set(SECURITY_SOURCES
-	${PACKAGE_SOURCE_ROOT}/security/cJSON/cJSON.c
 	${PACKAGE_SOURCE_ROOT}/security/CApiSecurityConfig.cpp
 	${PACKAGE_SOURCE_ROOT}/security/CFdbToken.cpp
 	${PACKAGE_SOURCE_ROOT}/security/CFdbusSecurityConfig.cpp
 )
 
 set(OTHER_SOURCES
-    ${PACKAGE_SOURCE_ROOT}/server/CBaseNameProxy.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/CIntraNameProxy.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/CFdbLogCache.cpp
+    ${PACKAGE_SOURCE_ROOT}/utils/cJSON/cJSON.c
+    ${PACKAGE_SOURCE_ROOT}/utils/CBaseNameProxy.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/CLogProducer.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/CLogPrinter.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/CFdbLogCache.cpp
 )
 
 include_directories(

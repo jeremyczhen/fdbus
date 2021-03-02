@@ -28,16 +28,14 @@ add_executable(lsclt
 )
 
 add_executable(logsvc
-    ${PACKAGE_SOURCE_ROOT}/server/main_log_server.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/CLogFileManager.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/fdb_log_config.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/main_log_server.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/CLogFileManager.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/fdb_log_config.cpp
 )
 
 add_executable(logviewer
-    ${PACKAGE_SOURCE_ROOT}/server/main_log_client.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/CLogPrinter.cpp
-    ${PACKAGE_SOURCE_ROOT}/server/fdb_log_config.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/main_log_client.cpp
+    ${PACKAGE_SOURCE_ROOT}/log/fdb_log_config.cpp
 )
 
 add_executable(fdbxclient

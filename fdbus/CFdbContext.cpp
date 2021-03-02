@@ -15,7 +15,7 @@
  */
 
 #include <common_base/CFdbContext.h>
-#include <server/CIntraNameProxy.h>
+#include "CIntraNameProxy.h"
 #include <common_base/CLogProducer.h>
 #include <utils/Log.h>
 

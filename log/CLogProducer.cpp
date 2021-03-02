@@ -18,10 +18,8 @@
 #include <common_base/CLogProducer.h>
 #include <common_base/CBaseThread.h>
 #include <common_base/CFdbContext.h>
-#include <server/CIntraNameProxy.h>
-#include <server/CFdbLogCache.h>
+#include <fdbus/CIntraNameProxy.h>
 #include <common_base/CFdbSession.h>
-#include <server/CLogPrinter.h>
 #include <common_base/CFdbRawMsgBuilder.h>
 #include <utils/CFdbIfMessageHeader.h>
 #include <common_base/fdb_log_trace.h>
@@ -30,6 +28,8 @@
 #include <stdarg.h>
 #include <inttypes.h>
 #include <utils/Log.h>
+#include "CFdbLogCache.h"
+#include "CLogPrinter.h"
 
 using namespace std::placeholders;
 

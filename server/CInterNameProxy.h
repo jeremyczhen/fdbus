@@ -19,7 +19,7 @@
 
 #include <string>
 #include <set>
-#include "CBaseNameProxy.h"
+#include <utils/CBaseNameProxy.h>
 #include "CFdbIfNameServer.h"
 
 class CHostProxy;

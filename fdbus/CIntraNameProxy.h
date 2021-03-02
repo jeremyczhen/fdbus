@@ -23,7 +23,7 @@
 #include <common_base/CNotificationCenter.h>
 #include <common_base/CFdbContext.h>
 #include <common_base/CMethodJob.h>
-#include "CBaseNameProxy.h"
+#include <utils/CBaseNameProxy.h>
 
 class CFdbBaseContext;
 
