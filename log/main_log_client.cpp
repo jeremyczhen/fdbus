@@ -111,12 +111,14 @@ protected:
             case NFdbBase::REQ_SET_LOGGER_CONFIG:
             case NFdbBase::REQ_GET_LOGGER_CONFIG:
             {
-                mLoggerCfgReplied = true;
                 NFdbBase::FdbMsgLogConfig in_config;
                 CFdbParcelableParser parser(in_config);
+
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CLogServer: Unable to deserialize message!\n");
+                    mLoggerCfgReplied = true;
+                    Exit();
                     return;
                 }
 
@@ -131,18 +133,21 @@ protected:
                     }
                 }
                 fdb_dump_logger_config(in_config);
+
+                mLoggerCfgReplied = true;
                 Exit();
             }
             break;
             case NFdbBase::REQ_SET_TRACE_CONFIG:
             case NFdbBase::REQ_GET_TRACE_CONFIG:
             {
-                mTraceCfgReplied = true;
                 NFdbBase::FdbTraceConfig in_config;
                 CFdbParcelableParser parser(in_config);
                 if (!msg->deserialize(parser))
                 {
                     LOG_E("CLogServer: Unable to deserialize message!\n");
+                    mLoggerCfgReplied = true;
+                    Exit();
                     return;
                 }
                 if ((msg->code() == NFdbBase::REQ_GET_TRACE_CONFIG) &&
@@ -156,6 +161,8 @@ protected:
                     }
                 }
                 fdb_dump_trace_config(in_config);
+
+                mTraceCfgReplied = true;
                 Exit();
             }
             break;

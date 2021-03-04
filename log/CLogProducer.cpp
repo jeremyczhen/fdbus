@@ -483,7 +483,7 @@ bool CLogProducer::sendLog(FdbMsgCode_t code, IFdbMsgBuilder &builder)
 
 bool CLogProducer::sendLog(FdbMsgCode_t code, const uint8_t *buffer, int32_t size)
 {
-    if (FDB_CONTEXT->isSelf())
+    if (context()->isSelf())
     {
         if (connected())
         {
@@ -514,7 +514,7 @@ bool CLogProducer::sendLog(FdbMsgCode_t code, const uint8_t *buffer, int32_t siz
             return false;
         }
         msg->setCallable(std::bind(&CLogProducer::callSendLog, this, _1));
-        return FDB_CONTEXT->sendAsync(msg);
+        return context()->sendAsync(msg);
     }
 }
 

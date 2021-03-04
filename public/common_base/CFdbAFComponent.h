@@ -19,18 +19,26 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <functional>
 #include "CFdbMsgDispatcher.h"
 #include "CMethodJob.h"
 #include "CFdbBaseObject.h"
+#include "CBaseWorker.h"
 
 class CBaseClient;
 class CBaseServer;
 class CBaseWorker;
 class CFdbBaseContext;
+class CBaseEndpoint;
 
 class CFdbAFComponent
 {
 public:
+    typedef std::function<void(CBaseEndpoint *)> tOnCreateFn;
+    CBaseClient *registerClient(const char *bus_name, const char *endpoint_name = 0, tOnCreateFn on_create = 0);
+    CBaseServer *registerServer(const char *bus_name, const char *endpoint_name = 0, tOnCreateFn on_create = 0);
+
     // base class of APP FW component
     // @name - name of the component for debug purpose
     // worker - the thread context where callback is executed; if not specified
@@ -115,17 +123,30 @@ protected:
     CBaseWorker *mWorker;
     virtual CBaseClient *createClient();
     virtual CBaseServer *createServer();
+
 private:
+    typedef std::map<std::string, CBaseClient *> tAFClientTbl;
+    typedef std::map<std::string, CBaseServer *> tAFServerTbl;
     typedef std::vector<CFdbBaseObject::tRegEntryId> tConnHandleTbl;
     CFdbEventDispatcher::tRegistryHandleTbl mEventRegistryTbl;
     tConnHandleTbl mConnHandleTbl;
     CFdbBaseContext *mContext;
 
+    tAFClientTbl mClientTbl;
+    tAFServerTbl mServerTbl;
+
+    CBaseClient *findClient(const char *bus_name);
+    CBaseServer *findService(const char *bus_name);
+    bool registerClient(const char *bus_name, CBaseClient *client);
+    bool registerService(const char *bus_name, CBaseServer *server);
+ 
+    void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
     void callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
     void callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
 
     friend class COfferServiceJob;
     friend class CQueryServiceJob;
+    friend class CRegisterEndpointJob;
 };
 
 #endif

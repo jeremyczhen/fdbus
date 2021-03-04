@@ -305,6 +305,7 @@ int main(int argc, char **argv)
         return 1;
     }
 #endif
+    FDB_CONTEXT->start();
     int32_t help = 0;
     const char *component = 0;
     const char *client = 0;

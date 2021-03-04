@@ -95,7 +95,6 @@ endif()
 file(GLOB_RECURSE SOCKET_SOURCES "${PACKAGE_SOURCE_ROOT}/platform/socket/*.cpp")
 file(GLOB UTILS_SOURCES "${PACKAGE_SOURCE_ROOT}/utils/*.cpp")
 file(GLOB WORKER_SOURCES "${PACKAGE_SOURCE_ROOT}/worker/*.cpp")
-file(GLOB APPFW_SOURCES "${PACKAGE_SOURCE_ROOT}/appfw/*.cpp")
 
 file(GLOB PUBLIC_HEADERS "${PACKAGE_SOURCE_ROOT}/common_base/*.h")
 
@@ -147,7 +146,6 @@ add_library(common_base ${LIB_BUILD_TYPE}
                           ${SOCKET_SOURCES}
                           ${UTILS_SOURCES}
                           ${WORKER_SOURCES}
-                          ${APPFW_SOURCES}
                           ${OTHER_SOURCES}
                           ${SECURITY_SOURCES}
 )
