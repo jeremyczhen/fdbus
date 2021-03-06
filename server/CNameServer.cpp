@@ -1183,7 +1183,7 @@ void CNameServer::allocateAddress(EFdbSocketType sckt_type, const std::string &s
 
 EFdbSocketType CNameServer::getSocketType(FdbSessionId_t sid)
 {
-    auto session = mContext->getSession(sid);
+    auto session = getSession(sid);
     if (session)
     {
         CFdbSessionInfo sinfo;

@@ -25,7 +25,8 @@
 #include <common_base/CFdbProtoMsgBuilder.h>
 
 #define OBJ_FROM_SERVER_TO_CLIENT   1
-#define FDB_NUM_OF_OBJECT           8
+#define FDB_NUM_OF_OBJECT_CLIENT    2
+#define FDB_NUM_OF_OBJECT_SERVER    2
 #define FDB_SHUTDOWN_TEST           0
 
 #if 1
@@ -532,13 +533,16 @@ void CMyServer<T>::onOnline(FdbSessionId_t sid, bool is_first)
     if (this->isPrimary())
     {
 #ifdef OBJ_FROM_SERVER_TO_CLIENT
-        for (int j = 0; j < FDB_NUM_OF_OBJECT; ++j)
+        for (int j = 0; j < FDB_NUM_OF_OBJECT_CLIENT; ++j)
         {
             char obj_id[64];
             sprintf(obj_id, "obj%u", j);
             std::string obj_name = this->name() + obj_id;
-            auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
-            obj->connect(this->endpoint(), 1000);
+            for (int k = 0; k < FDB_NUM_OF_OBJECT_SERVER; ++k)
+            {
+                auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                obj->connect(this->endpoint(), 1000 + k);
+            }
         }
 #endif
     }
@@ -577,13 +581,16 @@ void CMyClient<T>::onOnline(FdbSessionId_t sid, bool is_first)
         obj->connect(dynamic_cast<CBaseEndpoint *>(this), 2);
 #endif
 #ifndef OBJ_FROM_SERVER_TO_CLIENT
-        for (int j = 0; j < FDB_NUM_OF_OBJECT; ++j)
+        for (int j = 0; j < FDB_NUM_OF_OBJECT_CLIENT; ++j)
         {
             char obj_id[64];
             sprintf(obj_id, "obj%u", j);
             std::string obj_name = this->name() + obj_id;
-            auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
-            obj->connect(this->endpoint(), 1000);
+            for (int k = 0; k < FDB_NUM_OF_OBJECT_SERVER; ++k)
+            {
+                auto obj = new CMyClient<CFdbBaseObject>(obj_name.c_str(), &mediaplayer_worker);
+                obj->connect(this->endpoint(), 1000 + k);
+            }
         }
 #endif
     }

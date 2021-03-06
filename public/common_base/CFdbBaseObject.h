@@ -743,16 +743,6 @@ public:
         return !!(mFlag & FDB_OBJ_AUTO_REMOVE);
     }
 
-    void setDefaultSession(FdbSessionId_t sid = FDB_INVALID_ID)
-    {
-        mSid = sid;
-    }
-
-    FdbSessionId_t getDefaultSession()
-    {
-        return mSid;
-    }
-
     void initEventCache(FdbMsgCode_t event
                         , const char *topic
                         , IFdbMsgBuilder &data
@@ -952,7 +942,6 @@ private:
     CEventSubscribeHandle mGroupSubscribeHandle;
     FdbObjectId_t mObjId;
     EFdbEndpointRole mRole;
-    FdbSessionId_t mSid;
     EventCacheTable_t mEventCache;
 
     CFdbEventDispatcher mEvtDispather;

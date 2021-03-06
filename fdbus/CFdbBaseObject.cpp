@@ -36,7 +36,6 @@ CFdbBaseObject::CFdbBaseObject(const char *name, CBaseWorker *worker, CFdbBaseCo
     , mWorker(worker)
     , mObjId(FDB_INVALID_ID)
     , mRole(role)
-    , mSid(FDB_INVALID_ID)
     , mRegIdAllocator(0)
 {
     if (name)
@@ -270,7 +269,7 @@ bool CFdbBaseObject::get(FdbMsgCode_t code, const char *topic, int32_t timeout)
 
 bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
 {
-    msg->setDestination(this, FDB_INVALID_ID);
+    msg->setDestination(this);
     if (!msg->serialize(0, 0, this))
     {
         delete msg;
@@ -284,7 +283,7 @@ bool CFdbBaseObject::get(CFdbMessage *msg, const char *topic, int32_t timeout)
 bool CFdbBaseObject::get(CBaseJob::Ptr &msg_ref, const char *topic, int32_t timeout)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
-    msg->setDestination(this, FDB_INVALID_ID);
+    msg->setDestination(this);
     if (!msg->serialize(0, 0, this))
     {
         return false;
@@ -477,19 +476,11 @@ void CFdbBaseObject::callOnline(FdbSessionId_t sid, bool first_or_last, bool onl
     {
         if (online)
         {
-            if (!isPrimary() && (mRole == FDB_OBJECT_ROLE_CLIENT) && !fdbValidFdbId(mSid))
-            {
-                mSid = sid;
-            }
             onOnline(sid, first_or_last);
         }
         else
         {
             onOffline(sid, first_or_last);
-            if (!isPrimary() && (mSid == sid))
-            {
-                mSid = FDB_INVALID_ID;
-            }
         }
     }
     catch (...)

@@ -41,6 +41,10 @@ CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, CFdbBaseCont
 
 CBaseEndpoint::~CBaseEndpoint()
 {
+    if (!mSessionContainer.getContainer().empty())
+    {
+        LOG_E("~CBaseEndpoint: Unable to destroy context since there are active sessions!\n");
+    }
     destroySelf(false);
 }
 
@@ -94,21 +98,9 @@ void CBaseEndpoint::getDefaultSvcUrl(std::string &svc_url)
 CFdbSession *CBaseEndpoint::preferredPeer()
 {
     CFdbSession *session = 0;
-    if (fdbValidFdbId(mSid))
-    {
-        session = mContext->getSession(mSid);
-    }
-    if (session)
-    {
-        return session;
-    }
     auto &containers = getContainer();
     auto it = containers.begin();
-    if (it == containers.end())
-    {
-        session = 0;
-    }
-    else
+    if (it != containers.end())
     {
         auto sessions = it->second;
         session = sessions->getDefaultSession();
@@ -263,27 +255,28 @@ void CBaseEndpoint::unsubscribeSession(CFdbSession *session)
     unsubscribe(session);
 }
 
-class CKickOutSessionJob : public CBaseJob
+class CKickOutSessionJob : public CMethodJob<CBaseEndpoint>
 {
 public:
-    CKickOutSessionJob(FdbSessionId_t sid)
-        : CBaseJob(JOB_FORCE_RUN)
+    CKickOutSessionJob(CBaseEndpoint *object, FdbSessionId_t sid)
+        : CMethodJob<CBaseEndpoint>(object, &CBaseEndpoint::callKickOutSession, JOB_FORCE_RUN)
         , mSid(sid)
     {
     }
-protected:
-    void run(CBaseWorker *worker, Ptr &ref)
-    {
-        auto *context = fdb_dynamic_cast_if_available<CFdbBaseContext *>(worker);
-        context->deleteSession(mSid);
-    }
-private:
+
     FdbSessionId_t mSid;
 };
 
+void CBaseEndpoint::callKickOutSession(CBaseWorker *worker,
+                CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref)
+{
+    auto the_job = fdb_dynamic_cast_if_available<CKickOutSessionJob *>(job);
+    deleteSession(the_job->mSid);
+}
+
 void CBaseEndpoint::kickOut(FdbSessionId_t sid)
 {
-    mContext->sendAsyncEndeavor(new CKickOutSessionJob(sid));
+    mContext->sendAsyncEndeavor(new CKickOutSessionJob(this, sid));
 }
 
 CFdbBaseObject *CBaseEndpoint::getObject(CFdbMessage *msg, bool server_only)
@@ -784,5 +777,53 @@ void CBaseEndpoint::onPublish(CBaseJob::Ptr &msg_ref)
 {
     CFdbBaseObject::onPublish(msg_ref);
     mEventRouter.routeMessage(msg_ref);
+}
+
+void CBaseEndpoint::registerSession(CFdbSession *session)
+{
+    auto sid = mSessionContainer.allocateEntityId();
+    session->sid(sid);
+    mSessionContainer.insertEntry(sid, session);
+}
+
+CFdbSession *CBaseEndpoint::getSession(FdbSessionId_t session_id)
+{
+    CFdbSession *session = 0;
+    mSessionContainer.retrieveEntry(session_id, session);
+    return session;
+}
+
+void CBaseEndpoint::unregisterSession(FdbSessionId_t session_id)
+{
+    CFdbSession *session = 0;
+    auto it = mSessionContainer.retrieveEntry(session_id, session);
+    if (session)
+    {
+        mSessionContainer.deleteEntry(it);
+    }
+}
+
+void CBaseEndpoint::deleteSession(FdbSessionId_t session_id)
+{
+    CFdbSession *session = 0;
+    (void)mSessionContainer.retrieveEntry(session_id, session);
+    if (session)
+    {
+        delete session;
+    }
+}
+
+void CBaseEndpoint::deleteSession(CFdbSessionContainer *container)
+{
+    auto &session_tbl = mSessionContainer.getContainer();
+    for (auto it = session_tbl.begin(); it != session_tbl.end();)
+    {
+        CFdbSession *session = it->second;
+        ++it;
+        if (session->container() == container)
+        {
+            delete session;
+        }
+    }
 }
 

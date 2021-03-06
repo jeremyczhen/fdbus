@@ -213,7 +213,6 @@ private:
 #define MSG_FLAG_FORCE_UPDATE       (1 << 8)
 
 #define MSG_FLAG_HEAD_OK            (1 << (MSG_LOCAL_FLAG_SHIFT + 0))
-#define MSG_FLAG_ENDPOINT           (1 << (MSG_LOCAL_FLAG_SHIFT + 1))
 #define MSG_FLAG_REPLIED            (1 << (MSG_LOCAL_FLAG_SHIFT + 2))
 #define MSG_FLAG_ENABLE_LOG         (1 << (MSG_LOCAL_FLAG_SHIFT + 3))
 #define MSG_FLAG_EXTERNAL_BUFFER    (1 << (MSG_LOCAL_FLAG_SHIFT + 4))
@@ -583,7 +582,7 @@ protected:
 private:
     CFdbMessage(FdbMsgCode_t code
               , CFdbBaseObject *obj
-              , FdbSessionId_t alt_receiver = FDB_INVALID_ID
+              , FdbSessionId_t dest_sid = FDB_INVALID_ID
               , EFdbQOS qos = FDB_QOS_RELIABLE);
 
     CFdbMessage(FdbMsgCode_t code
@@ -593,8 +592,8 @@ private:
     CFdbMessage(FdbMsgCode_t code
                 , CFdbBaseObject *obj
                 , const char *filter
-                , FdbSessionId_t alt_sid = FDB_INVALID_ID
-                , FdbObjectId_t alt_oid = FDB_INVALID_ID
+                , FdbSessionId_t dest_sid = FDB_INVALID_ID
+                , FdbObjectId_t dest_oid = FDB_INVALID_ID
                 , EFdbQOS qos = FDB_QOS_RELIABLE);
     
     virtual CFdbMessage *clone(NFdbBase::CFdbMessageHeader &head
@@ -732,7 +731,7 @@ private:
 
     void update(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefix);
 
-    void setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid = FDB_INVALID_ID);
+    void setDestination(CFdbBaseObject *obj, FdbSessionId_t dest_sid = FDB_INVALID_ID);
     void setToken(CFdbBaseObject *obj);
 
     void objectId(FdbObjectId_t object_id)
@@ -773,11 +772,8 @@ private:
     int32_t mPayloadSize;
     int32_t mHeadSize;
     int32_t mOffset;
-    union
-    {
-        FdbSessionId_t mSid;
-        FdbEndpointId_t mEpid;
-    };
+    FdbEndpointId_t mEpid;
+    FdbSessionId_t mSid;
     FdbObjectId_t mOid;
     uint8_t *mBuffer;
     uint32_t mFlag;

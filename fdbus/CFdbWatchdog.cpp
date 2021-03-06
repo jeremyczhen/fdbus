@@ -77,7 +77,7 @@ void CFdbWatchdog::run()
         ++it;
         auto sid = the_it->first;
         auto &dog = the_it->second;
-        auto session = mObject->endpoint()->context()->getSession(sid);
+        auto session = mObject->endpoint()->getSession(sid);
         if (!session)
         {
             mDogs.erase(the_it);
@@ -118,7 +118,7 @@ void CFdbWatchdog::getDroppedProcesses(CFdbMsgProcessList &process_list)
         auto &dog = it->second;
         if (dog.mDropped)
         {
-            auto session = mObject->endpoint()->context()->getSession(sid);
+            auto session = mObject->endpoint()->getSession(sid);
             if (session)
             {
                 auto process = process_list.add_process_list();

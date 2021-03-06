@@ -35,10 +35,6 @@ class CBaseEndpoint;
 class CFdbAFComponent
 {
 public:
-    typedef std::function<void(CBaseEndpoint *)> tOnCreateFn;
-    CBaseClient *registerClient(const char *bus_name, const char *endpoint_name = 0, tOnCreateFn on_create = 0);
-    CBaseServer *registerServer(const char *bus_name, const char *endpoint_name = 0, tOnCreateFn on_create = 0);
-
     // base class of APP FW component
     // @name - name of the component for debug purpose
     // worker - the thread context where callback is executed; if not specified
@@ -140,13 +136,11 @@ private:
     bool registerClient(const char *bus_name, CBaseClient *client);
     bool registerService(const char *bus_name, CBaseServer *server);
  
-    void callRegisterEndpoint(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
     void callQueryService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
     void callOfferService(CBaseWorker *worker, CMethodJob<CFdbAFComponent> *job, CBaseJob::Ptr &ref);
 
     friend class COfferServiceJob;
     friend class CQueryServiceJob;
-    friend class CRegisterEndpointJob;
 };
 
 #endif

@@ -55,10 +55,6 @@ CFdbBaseContext::~CFdbBaseContext()
     {
         std::cout << "CFdbBaseContext: Unable to destroy context since there are active endpoint!" << std::endl;
     }
-    if (!mSessionContainer.getContainer().empty())
-    {
-        std::cout << "CFdbBaseContext: Unable to destroy context since there are active sessions!\n" << std::endl;
-    }
 }
 
 CBaseEndpoint *CFdbBaseContext::getEndpoint(FdbEndpointId_t endpoint_id)
@@ -66,54 +62,6 @@ CBaseEndpoint *CFdbBaseContext::getEndpoint(FdbEndpointId_t endpoint_id)
     CBaseEndpoint *endpoint = 0;
     mEndpointContainer.retrieveEntry(endpoint_id, endpoint);
     return endpoint;
-}
-
-void CFdbBaseContext::registerSession(CFdbSession *session)
-{
-    auto sid = mSessionContainer.allocateEntityId();
-    session->sid(sid);
-    mSessionContainer.insertEntry(sid, session);
-}
-
-CFdbSession *CFdbBaseContext::getSession(FdbSessionId_t session_id)
-{
-    CFdbSession *session = 0;
-    mSessionContainer.retrieveEntry(session_id, session);
-    return session;
-}
-
-void CFdbBaseContext::unregisterSession(FdbSessionId_t session_id)
-{
-    CFdbSession *session = 0;
-    auto it = mSessionContainer.retrieveEntry(session_id, session);
-    if (session)
-    {
-        mSessionContainer.deleteEntry(it);
-    }
-}
-
-void CFdbBaseContext::deleteSession(FdbSessionId_t session_id)
-{
-    CFdbSession *session = 0;
-    (void)mSessionContainer.retrieveEntry(session_id, session);
-    if (session)
-    {
-        delete session;
-    }
-}
-
-void CFdbBaseContext::deleteSession(CFdbSessionContainer *container)
-{
-    auto &session_tbl = mSessionContainer.getContainer();
-    for (auto it = session_tbl.begin(); it != session_tbl.end();)
-    {
-        CFdbSession *session = it->second;
-        ++it;
-        if (session->container() == container)
-        {
-            delete session;
-        }
-    }
 }
 
 FdbEndpointId_t CFdbBaseContext::registerEndpoint(CBaseEndpoint *endpoint)

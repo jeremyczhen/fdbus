@@ -44,7 +44,7 @@ void CServerSocket::onInput()
     if (sock_imp)
     {
         auto session = new CFdbSession(FDB_INVALID_ID, this, sock_imp);
-        mOwner->context()->registerSession(session);
+        mOwner->registerSession(session);
         session->attach(worker());
         if (!mOwner->addConnectedSession(this, session))
         {

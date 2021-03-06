@@ -242,7 +242,7 @@ CClientSocket *CBaseClient::doConnect(const char *url, const char *host_name, in
         auto session = sk->connect();
         if (session)
         {
-            mContext->registerSession(session);
+            registerSession(session);
             session->attach(mContext);
             if (addConnectedSession(sk, session))
             {
@@ -300,7 +300,7 @@ void CBaseClient::doDisconnect(FdbSessionId_t sid)
     
     if (fdbValidFdbId(sid))
     {
-        auto session = mContext->getSession(sid);
+        auto session = getSession(sid);
         if (session)
         {
             skid = session->container()->skid();

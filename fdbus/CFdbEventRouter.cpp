@@ -51,7 +51,7 @@ void CEventRouterProxy::onOnline(FdbSessionId_t sid, bool is_first)
 {
     if (is_first)
     {
-        mRouter->syncEventPool(mContext->getSession(sid));
+        mRouter->syncEventPool(getSession(sid));
     }
 }
 

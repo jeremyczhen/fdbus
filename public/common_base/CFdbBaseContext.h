@@ -22,8 +22,6 @@
 #include "CEntityContainer.h"
 #include "CBaseWorker.h"
 
-class CFdbSession;
-class CFdbSessionContainer;
 class CBaseEndpoint;
 
 class CFdbBaseContext : public CBaseWorker
@@ -37,11 +35,6 @@ public:
     bool init();
 
     CBaseEndpoint *getEndpoint(FdbEndpointId_t server_id);
-    void registerSession(CFdbSession *session);
-    CFdbSession *getSession(FdbSessionId_t session_id);
-    void unregisterSession(FdbSessionId_t session_id);
-    void deleteSession(FdbSessionId_t session_id);
-    void deleteSession(CFdbSessionContainer *container);
     FdbEndpointId_t registerEndpoint(CBaseEndpoint *endpoint);
     void unregisterEndpoint(CBaseEndpoint *endpoint);
     bool serverAlreadyRegistered(const char *bus_name);
@@ -65,10 +58,7 @@ protected:
     void teardown();
 
 private:
-    typedef CEntityContainer<FdbSessionId_t, CFdbSession *> tSessionContainer;
-
     tEndpointContainer mEndpointContainer;
-    tSessionContainer mSessionContainer;
 };
 
 #endif

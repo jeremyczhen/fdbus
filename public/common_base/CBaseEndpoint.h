@@ -228,6 +228,13 @@ public:
         return mObjectContainer;
     }
 
+    // Internal use only!!!
+    CFdbSession *getSession(FdbSessionId_t session_id);
+    void registerSession(CFdbSession *session);
+    void unregisterSession(FdbSessionId_t session_id);
+    void deleteSession(FdbSessionId_t session_id);
+    void deleteSession(CFdbSessionContainer *container);
+
 protected:
     std::string mNsName;
     CFdbToken::tTokenList mTokens;
@@ -263,8 +270,10 @@ protected:
     }
     void onPublish(CBaseJob :: Ptr &msg_ref);
     CFdbBaseContext *mContext;
-
 private:
+    typedef CEntityContainer<FdbSessionId_t, CFdbSession *> tSessionContainer;
+    tSessionContainer mSessionContainer;
+
     tObjectContainer mObjectContainer;
 
     uint32_t mSessionCnt;
@@ -298,6 +307,8 @@ private:
         return 0;
     }
 
+    void callKickOutSession(CBaseWorker *worker, CMethodJob<CBaseEndpoint> *job, CBaseJob::Ptr &ref);
+
     friend class CFdbSession;
     friend class CFdbUDPSession;
     friend class CFdbMessage;
@@ -312,6 +323,7 @@ private:
     friend class CRegisterJob;
     friend class CDestroyJob;
     friend class CLogProducer;
+    friend class CKickOutSessionJob;
 };
 
 #endif

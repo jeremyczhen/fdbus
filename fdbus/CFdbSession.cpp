@@ -63,7 +63,7 @@ CFdbSession::~CFdbSession()
 
     mContainer->owner()->deleteConnectedSession(this);
     mContainer->owner()->unsubscribeSession(this);
-    mContainer->owner()->context()->unregisterSession(mSid);
+    mContainer->owner()->unregisterSession(mSid);
 
     if (mSocket)
     {

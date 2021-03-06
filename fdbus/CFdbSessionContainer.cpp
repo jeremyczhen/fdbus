@@ -37,7 +37,7 @@ CFdbSessionContainer::CFdbSessionContainer(FdbSocketId_t skid , CBaseEndpoint *o
 
 CFdbSessionContainer::~CFdbSessionContainer()
 {
-    mOwner->context()->deleteSession(this);
+    mOwner->deleteSession(this);
     if (!mConnectedSessionTable.empty())
     {
         LOG_E("CFdbSessionContainer: Untracked sessions are found!!!\n");

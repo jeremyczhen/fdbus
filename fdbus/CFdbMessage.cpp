@@ -57,6 +57,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
+    , mEpid(FDB_INVALID_ID)
     , mSid(FDB_INVALID_ID)
     , mOid(FDB_INVALID_ID)
     , mBuffer(0)
@@ -64,23 +65,27 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code)
     , mTimer(0)
     , mTimeStamp(0)
     , mQOS(FDB_QOS_RELIABLE)
+    , mContext(0)
 {
 }
 
-CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t alt_receiver, EFdbQOS qos)
+CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t dest_sid, EFdbQOS qos)
     : mType(FDB_MT_REQUEST)
     , mCode(code)
     , mSn(FDB_INVALID_ID)
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
+    , mEpid(FDB_INVALID_ID)
+    , mSid(FDB_INVALID_ID)
     , mBuffer(0)
     , mFlag(0)
     , mTimer(0)
     , mTimeStamp(0)
     , mQOS(qos)
+    , mContext(0)
 {
-    setDestination(obj, alt_receiver);
+    setDestination(obj, dest_sid);
     if (qos == FDB_QOS_BEST_EFFORTS)
     {
         setToken(obj);
@@ -89,7 +94,6 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbBaseObject *obj, FdbSessionId_t 
     {
         mTimeStamp = new CFdbMsgMetadata();
     }
-    mContext = obj->endpoint()->context();
 }
 
 CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter)
@@ -99,6 +103,7 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code, CFdbMessage *msg, const char *filter
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
+    , mEpid(msg->mEpid)
     , mSid(msg->mSid)
     , mOid(msg->mOid)
     , mBuffer(0)
@@ -132,6 +137,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mPayloadSize(head.payload_size())
     , mHeadSize(prefix.mHeadLength)
     , mOffset(0)
+    , mEpid(FDB_INVALID_ID)
     , mSid(sid)
     , mOid(head.object_id())
     , mBuffer(buffer)
@@ -161,6 +167,7 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
     , mPayloadSize(head.payload_size())
     , mHeadSize(session->msgPrefix().mHeadLength)
     , mOffset(0)
+    , mEpid(session->container()->owner()->epid())
     , mSid(session->sid())
     , mOid(head.object_id())
     , mBuffer(session->payloadBuffer())
@@ -184,8 +191,8 @@ CFdbMessage::CFdbMessage(NFdbBase::CFdbMessageHeader &head
 CFdbMessage::CFdbMessage(FdbMsgCode_t code
                          , CFdbBaseObject *obj
                          , const char *filter
-                         , FdbSessionId_t alt_sid
-                         , FdbObjectId_t alt_oid
+                         , FdbSessionId_t dest_sid
+                         , FdbObjectId_t dest_oid
                          , EFdbQOS qos)
     : mType(FDB_MT_BROADCAST)
     , mCode(code)
@@ -193,13 +200,16 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
     , mPayloadSize(0)
     , mHeadSize(0)
     , mOffset(0)
+    , mEpid(FDB_INVALID_ID)
+    , mSid(FDB_INVALID_ID)
     , mBuffer(0)
     , mFlag(MSG_FLAG_NOREPLY_EXPECTED)
     , mTimer(0)
     , mTimeStamp(0)
     , mQOS(qos)
+    , mContext(0)
 {
-    setDestination(obj, FDB_INVALID_ID);
+    setDestination(obj, dest_sid);
     if (qos == FDB_QOS_BEST_EFFORTS)
     {
         setToken(obj);
@@ -210,25 +220,14 @@ CFdbMessage::CFdbMessage(FdbMsgCode_t code
         mFilter = filter;
     }
 
-    if (fdbValidFdbId(alt_sid))
+    if (fdbValidFdbId(dest_oid))
     {
-        mSid = alt_sid;
-        mFlag &= ~MSG_FLAG_ENDPOINT;
-    }
-    else
-    {
-        mEpid = obj->epid();
-        mFlag |= MSG_FLAG_ENDPOINT;
-    }
-    if (fdbValidFdbId(alt_oid))
-    {
-        mOid = alt_oid;
+        mOid = dest_oid;
     }
     if (obj->timeStampEnabled())
     {
         mTimeStamp = new CFdbMsgMetadata();
     }
-    mContext = obj->endpoint()->context();
 }
 
 CFdbMessage::CFdbMessage(const CFdbMessage *msg)
@@ -240,6 +239,7 @@ CFdbMessage::CFdbMessage(const CFdbMessage *msg)
     mHeadSize = mMaxHeadSize;
     mOffset = 0;
     mBuffer = 0;
+    mEpid = msg->mEpid;
     mSid = msg->mSid;
     mOid = msg->mOid;
     mFlag = msg->mFlag;
@@ -266,24 +266,10 @@ CFdbMessage::~CFdbMessage()
     //LOG_I("Message %d is destroyed!\n", (int32_t)mSn);
 }
 
-void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t alt_sid)
+void CFdbMessage::setDestination(CFdbBaseObject *obj, FdbSessionId_t dest_sid)
 {
-    auto sid = obj->getDefaultSession();
-    if (fdbValidFdbId(alt_sid))
-    {
-        mSid = alt_sid;
-        mFlag &= ~MSG_FLAG_ENDPOINT;
-    }
-    else if (fdbValidFdbId(sid))
-    {
-        mSid = sid;
-        mFlag &= ~MSG_FLAG_ENDPOINT;
-    }
-    else
-    {
-        mEpid = obj->epid();
-        mFlag |= MSG_FLAG_ENDPOINT;
-    }
+    mSid = dest_sid;
+    mEpid = obj->epid();
     mOid = obj->objId();
     mContext = obj->endpoint()->context();
 }
@@ -352,6 +338,11 @@ void CFdbMessage::dispatchMsg(Ptr &ref)
 bool CFdbMessage::feedback(CBaseJob::Ptr &msg_ref
                          , EFdbMessageType type)
 {
+    if (!mContext)
+    {
+        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "no context");
+        return false;
+    }
     mType = type;
     mFlag |= MSG_FLAG_REPLIED;
     setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
@@ -384,6 +375,11 @@ bool CFdbMessage::reply(CBaseJob::Ptr &msg_ref
                       , const char *log_data)
 {
     auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (!fdb_msg->mContext)
+    {
+        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "no context");
+        return false;
+    }
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
     {
         return false;
@@ -431,6 +427,11 @@ bool CFdbMessage::replyEventCache(CBaseJob::Ptr &msg_ref, const void *buffer, in
 bool CFdbMessage::status(CBaseJob::Ptr &msg_ref, int32_t error_code, const char *description)
 {
     auto fdb_msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (!fdb_msg->mContext)
+    {
+        fdb_msg->setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "no context");
+        return false;
+    }
     if (fdb_msg->mFlag & MSG_FLAG_NOREPLY_EXPECTED)
     {
         return false;
@@ -461,6 +462,11 @@ bool CFdbMessage::submit(CBaseJob::Ptr &msg_ref
                          , uint32_t tx_flag
                          , int32_t timeout)
 {
+    if (!mContext)
+    {
+        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "no context");
+        return false;
+    }
     bool sync = !!(tx_flag & FDB_MSG_TX_SYNC);
     if (sync && mContext->isSelf())
     {
@@ -588,6 +594,11 @@ bool CFdbMessage::broadcast(FdbMsgCode_t code
 
 bool CFdbMessage::broadcast()
 {
+   if (!mContext)
+   {
+        setStatusMsg(NFdbBase::FDB_ST_UNABLE_TO_SEND, "no context!");
+        return false;
+   }
    mType = FDB_MT_BROADCAST;
    setCallable(std::bind(&CFdbMessage::dispatchMsg, this, _1));
    if (!mContext->sendAsync(this))
@@ -866,10 +877,39 @@ void CFdbMessage::doBroadcast(Ptr &ref)
 {
     bool success = true;
     const char *reason = "";
-    if (mFlag & MSG_FLAG_ENDPOINT)
+
+    auto endpoint = mContext->getEndpoint(mEpid);
+    if (endpoint)
     {
-        auto endpoint = mContext->getEndpoint(mEpid);
-        if (endpoint)
+        if (fdbValidFdbId(mSid))
+        {
+            auto session = endpoint->getSession(mSid);
+            if (session)
+            {
+                auto object =
+                        session->container()->owner()->getObject(this, true);
+                if (object)
+                {
+                    // Broadcast to specified session of object
+                    if (!object->broadcast(this, session))
+                    {
+                        success = false;
+                        reason = "Not subscribed or fail to send!";
+                    }
+                }
+                else
+                {
+                    success = false;
+                    reason = "Invalid object id!";
+                }
+            }
+            else
+            {
+                success = false;
+                reason = "Invalid sid!";
+            }
+        }
+        else
         {
             auto object = endpoint->getObject(this, true);
             if (object)
@@ -883,40 +923,13 @@ void CFdbMessage::doBroadcast(Ptr &ref)
                 reason = "Invalid object id!";
             }
         }
-        else
-        {
-            success = false;
-            reason = "Invalid epid!";
-        }
     }
     else
     {
-        auto session = mContext->getSession(mSid);
-        if (session)
-        {
-            auto object =
-                    session->container()->owner()->getObject(this, true);
-            if (object)
-            {
-                // Broadcast to specified session of object
-                if (!object->broadcast(this, session))
-                {
-                    success = false;
-                    reason = "Not subscribed or fail to send!";
-                }
-            }
-            else
-            {
-                success = false;
-                reason = "Invalid object id!";
-            }
-        }
-        else
-        {
-            success = false;
-            reason = "Invalid sid!";
-        }
+        success = false;
+        reason = "Invalid epid!";
     }
+
     if (!success)
     {
         onAsyncError(ref, NFdbBase::FDB_ST_INVALID_ID, reason);
@@ -1062,22 +1075,16 @@ void CFdbMessage::update(NFdbBase::CFdbMessageHeader &head, CFdbMsgPrefix &prefi
 
 CFdbSession *CFdbMessage::getSession()
 {
-    CFdbSession *session;
-    if (mFlag & MSG_FLAG_ENDPOINT)
+    if (!mContext)
     {
-        auto endpoint = mContext->getEndpoint(mEpid);
-        session = endpoint ? endpoint->preferredPeer() : 0;
-        if (session)
-        {
-            mFlag &= ~MSG_FLAG_ENDPOINT;
-            mSid = session->sid();
-        }
+        return 0;
     }
-    else
+    auto endpoint = mContext->getEndpoint(mEpid);
+    if (endpoint)
     {
-        session = mContext->getSession(mSid);
+        return fdbValidFdbId(mSid) ? endpoint->getSession(mSid) : endpoint->preferredPeer();
     }
-    return session;
+    return 0;
 }
 
 bool CFdbMessage::deserialize(IFdbMsgParser &payload) const
@@ -1298,6 +1305,10 @@ void CFdbMessage::feedDogNoQueue(CBaseJob::Ptr &msg_ref)
 bool CFdbMessage::feedDog(CBaseJob::Ptr &msg_ref)
 {
     auto msg = castToMessage<CFdbMessage *>(msg_ref);
+    if (!msg->mContext)
+    {
+        return false;
+    }
     msg->setCallable(std::bind(&CFdbMessage::feedDogNoQueue, _1));
     return msg->mContext->sendAsync(msg_ref, true);
 }
