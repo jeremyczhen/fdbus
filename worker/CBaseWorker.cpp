@@ -37,26 +37,23 @@ CBaseJob::~CBaseJob()
 {
 }
 
-void CBaseJob::wakeup(Ptr &ref)
-{
-    // Why +1? because the job must be referred locally.
-    // Warning: ref count of the job can not be changed
-    // during the sync waiting!!!
-    if (ref.use_count() == (mSyncReq->mInitSharedCnt + 1))
-    {
-        mSyncReq->mSem.post();
-    }
-}
-
 void CBaseJob::terminate(Ptr &ref)
 {
     if (mSyncReq)
     {
-        std::lock_guard<std::mutex> _l(mSyncLock);
+        mSyncLock.lock();
         if (mSyncReq)
         {
-            wakeup(ref);
+            // Why +1? because the job must be referred locally.
+            // Warning: ref count of the job can not be changed
+            // during the sync waiting!!!
+            if (ref.use_count() == (mSyncReq->mInitSharedCnt + 1))
+            {
+                mSyncReq->mWakeupSignal.notify_one();
+                mSyncReq = 0;
+            }
         }
+        mSyncLock.unlock();
     }
 }
 
@@ -628,51 +625,19 @@ void CBaseWorker::run()
 
 void CBaseWorker::runOneJob(tJobContainer::iterator &it, bool run_job)
 {
-    if ((*it)->sync())
+    if (run_job)
     {
-        if ((*it)->mSyncReq)
+        (*it)->success(true);
+        try
         {
-            /*
-             * Running with mSyncLock locked so that when when timer
-             * expires at sendSync(), it waits until run() returns.
-             * success() will be set to true to indicate that run() has
-             * been executed successfully.
-             */
-            std::lock_guard<std::mutex> _l((*it)->mSyncLock);
-            if ((*it)->mSyncReq)
-            {
-                if (run_job)
-                {
-                    (*it)->success(true);
-                    try
-                    {
-                        (*it)->run(this, *it);
-                    }
-                    catch (...)
-                    {
-                        LOG_E("CBaseWorker: exception when run job!\n");
-                    }
-                }
-                (*it)->wakeup(*it);
-            }
+            (*it)->run(this, *it);
+        }
+        catch (...)
+        {
+            LOG_E("CBaseWorker: exception when run job!\n");
         }
     }
-    else
-    {
-        if (run_job)
-        {
-            (*it)->success(true);
-            try
-            {
-                (*it)->run(this, *it);
-            }
-            catch (...)
-            {
-                LOG_E("CBaseWorker: exception when run job!\n");
-            }
-        }
-        (*it)->terminate(*it);
-    }
+    (*it)->terminate(*it);
 }
 
 bool CBaseWorker::jobQueued() const
@@ -749,7 +714,6 @@ bool CBaseWorker::send(CBaseJob::Ptr &job, bool urgent)
 
 bool CBaseWorker::sendAsync(CBaseJob::Ptr &job, bool urgent)
 {
-    job->sync(false);
     return send(job, urgent);
 }
 
@@ -786,7 +750,6 @@ bool CBaseWorker::sendSync(CBaseJob::Ptr &job, int32_t milliseconds, bool urgent
 
     // now we can assure the job is not in any worker queue
     CBaseJob::CSyncRequest sync_req(job.use_count());
-    job->sync(true);
     job->success(false);
     job->mSyncReq = &sync_req;
     if (!send(job, urgent))
@@ -794,17 +757,31 @@ bool CBaseWorker::sendSync(CBaseJob::Ptr &job, int32_t milliseconds, bool urgent
         return false;
     }
 
-    if (!sync_req.mSem.wait(milliseconds))
+    if (job->mSyncReq)
     {
-        // the job might still in worker queue
-        std::lock_guard<std::mutex> _l(job->mSyncLock);
-        job->mSyncReq = 0;
-        return job->success();
+        job->mSyncLock.lock();
+        if (job->mSyncReq)
+        {
+            if (milliseconds <= 0)
+            {    // job->mSyncLock will be released
+                sync_req.mWakeupSignal.wait(job->mSyncLock);
+            }
+            else
+            {    // job->mSyncLock will be released
+                std::cv_status status = sync_req.mWakeupSignal.wait_for(job->mSyncLock,
+                                            std::chrono::milliseconds(milliseconds));
+                if (status == std::cv_status::timeout)
+                { // timeout! nothing to do.
+                }
+            }
+        }
+        job->mSyncLock.unlock();
     }
 
-    // now we can assure the job is not in any worker queue
     job->mSyncReq = 0;
-    return job->success();
+    auto ret = job->success();
+
+    return ret;
 }
 
 bool CBaseWorker::sendSyncEndeavor(CBaseJob::Ptr &job, int32_t milliseconds, bool urgent)

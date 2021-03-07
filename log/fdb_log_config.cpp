@@ -339,6 +339,7 @@ void printHelp(bool is_viewer)
     }
     std::cout << "    -c: specify size of raw data to be clipped for fdbus logging" << std::endl;
     std::cout << "    -e: specify a list of endpoints separated by ',' as white list for fdbus logging" << std::endl;
+    std::cout << "    -n: specify a list of fdbus name separated by ',' as white list for fdbus logging" << std::endl;
     std::cout << "    -m: specify a list of host names separated by ',' as white list for fdbus logging" << std::endl;
     std::cout << "    ==== Options for debug trace ====" << std::endl;
     std::cout << "    -l: specify debug trace level: 0-verbose 1-debug 2-info 3-warning 4-error 5-fatal 6-silent" << std::endl;
@@ -529,8 +530,8 @@ bool initLogConfig(int argc, char **argv, bool is_viewer)
     fdb_check_config_updated(fdb_debug_trace_level, (int32_t)FDB_LL_INFO);
     fdb_check_config_updated(fdb_disable_global_trace, 0);
     fdb_check_config_updated(fdb_cache_size, 0);
-    fdb_check_config_updated(fdb_max_log_storage_size, 0);
-    fdb_check_config_updated(fdb_max_log_file_size, 0);
+    fdb_check_config_updated(fdb_max_log_storage_size, 64 * 1024);
+    fdb_check_config_updated(fdb_max_log_file_size, 4 * 1024);
 
     return true;
 }

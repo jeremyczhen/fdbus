@@ -18,6 +18,7 @@
 #define _CBASEJOB_H_
 
 #include <memory>
+#include <condition_variable>
 #include <mutex>
 #include "CBaseSemaphore.h"
 #include "common_defs.h"
@@ -27,7 +28,6 @@ class CBaseJob
 {
 #define JOB_FORCE_RUN           (1 << 0)
 #define JOB_IS_URGENT           (1 << 1)
-#define JOB_IS_SYNC             (1 << 2)
 #define JOB_RUN_SUCCESS         (1 << 3)
 public:
     typedef std::shared_ptr<CBaseJob> Ptr;
@@ -58,7 +58,7 @@ public:
 
     bool sync() const
     {
-        return !!(mFlag & JOB_IS_SYNC);
+        return !!mSyncReq;
     }
 
     bool success() const
@@ -83,12 +83,11 @@ private:
     {
         CSyncRequest(long int init_shared_cnt)
             : mInitSharedCnt(init_shared_cnt)
-            , mSem(0)
         {
         }
 
         long int mInitSharedCnt;
-        CBaseSemaphore mSem;
+        std::condition_variable_any mWakeupSignal;
     };
 
     void urgent(bool active)
@@ -103,18 +102,6 @@ private:
         }
     }
 
-    void sync(bool active)
-    {
-        if (active)
-        {
-            mFlag |= JOB_IS_SYNC;
-        }
-        else
-        {
-            mFlag &= ~JOB_IS_SYNC;
-        }
-    }
-
     void success(bool active)
     {
         if (active)
@@ -126,8 +113,6 @@ private:
             mFlag &= ~JOB_RUN_SUCCESS;
         }
     }
-
-    void wakeup(Ptr &ref);
 
     int32_t mFlag;
     std::mutex mSyncLock;

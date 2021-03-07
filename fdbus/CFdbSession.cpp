@@ -116,11 +116,11 @@ bool CFdbSession::sendMessage(const uint8_t *buffer, int32_t size)
     {
         if (cnt < 0)
         {
-            LOG_E("CFdbSession: process %d: fatal error or peer drops when writing %d bytes!\n", CBaseThread::getPid(), size);
+            LOG_E("CFdbSession: error or peer drops when writing %d bytes!\n", size);
         }
         else
         {
-            LOG_E("CFdbSession: process %d: fail to write %d bytes!\n", CBaseThread::getPid(), size);
+            LOG_E("CFdbSession: fail to write %d bytes!\n", size);
         }
         fatalError(true);
         return false;
@@ -242,11 +242,11 @@ bool CFdbSession::receiveData(uint8_t *buf, int32_t size)
     {
         if (cnt < 0)
         {
-            LOG_E("CFdbSession: process %d: fatal error or peer drops when reading %d bytes!\n", CBaseThread::getPid(), size);
+            LOG_E("CFdbSession: error or peer drops when reading %d bytes!\n", size);
         }
         else
         {
-            LOG_E("CFdbSession: process %d: fail to read %d bytes!\n", CBaseThread::getPid(), size);
+            LOG_E("CFdbSession: fail to read %d bytes!\n", size);
         }
         fatalError(true);
         return false;

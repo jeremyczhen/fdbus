@@ -380,11 +380,15 @@ bool CLogProducer::checkLogTraceEnabled(EFdbLogLevel log_level, const char *tag)
 void CLogProducer::logTrace(EFdbLogLevel log_level, const char *tag, const char *info)
 {
     auto proxy = FDB_CONTEXT->getNameProxy();
+    char date_buf[64];
+    sysdep_gettimestamp(date_buf, sizeof(date_buf), 1, 0);
+    date_buf[63] = '\0';
+    std::string date_str = date_buf;
     CFdbRawMsgBuilder builder;
     builder.serializer() << (uint32_t)mPid
                          << tag
                          << (proxy ? proxy->hostName().c_str() : "Unknown")
-                         << sysdep_getsystemtime_milli()
+                         << date_buf
                          << (uint8_t)log_level
                          << info;
 

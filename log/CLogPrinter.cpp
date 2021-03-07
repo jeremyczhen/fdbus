@@ -28,16 +28,16 @@ CLogPrinter::CLogPrinter()
 
 void CLogPrinter::outputFdbLog(LogInfo &log_info, std::ostream &output)
 {
-    output << "[F][" << log_info.mPid << "@" << log_info.mHostName << "]["
-           << log_info.mSender << "->" << log_info.mReceiver << "]["
-           << log_info.mBusName << "]["
-           << log_info.mObjId << "]["
-           << CFdbMessage::getMsgTypeName((EFdbMessageType)log_info.mMsgType) << "]["
-           << log_info.mMsgCode << "]["
-           << log_info.mTopic << "]["
-           << log_info.mMsgSn << "]["
-           << log_info.mPayloadSize << "]["
-           << log_info.mTimeStamp << "]{"
+    output << "F+" << log_info.mPid << "@" << log_info.mHostName << "+"
+           << log_info.mSender << "->" << log_info.mReceiver << "+"
+           << log_info.mBusName << "+"
+           << log_info.mObjId << "+"
+           << CFdbMessage::getMsgTypeName((EFdbMessageType)log_info.mMsgType) << "+"
+           << log_info.mMsgCode << "+"
+           << log_info.mTopic << "+"
+           << (fdbValidFdbId(log_info.mMsgSn) ? log_info.mMsgSn : 0) << "+"
+           << log_info.mPayloadSize << "+"
+           << log_info.mTimeStamp << "+ {"
            << std::endl;
 
     if (log_info.mIsString)
@@ -88,17 +88,17 @@ void CLogPrinter::outputFdbLog(CFdbSimpleDeserializer &deserializer, CFdbMessage
 void CLogPrinter::outputTraceLog(TraceInfo &trace_info, std::ostream &output)
 {
     static const char *level_name[] = {
-        "[V]",
-        "[D]",
-        "[I]",
-        "[W]",
-        "[E]",
-        "[F]",
-        "[S]"
+        "D+V+",
+        "D+D+",
+        "D+I+",
+        "D+W+",
+        "D+E+",
+        "D+F+",
+        "D+S+"
     };
-    output << "[D]" << level_name[trace_info.mLogLevel] << "["
-           << trace_info.mTag << "-" << trace_info.mPid << "-" << trace_info.mHostName << "]["
-           << trace_info.mTimeStamp << "] "
+    output << level_name[trace_info.mLogLevel]
+           << trace_info.mTag << "+" << trace_info.mPid << "@" << trace_info.mHostName << "+"
+           << trace_info.mTimeStamp << "+ "
            << trace_info.mData;
 }
 
