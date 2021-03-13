@@ -50,8 +50,7 @@ SRC_FILES = [
     "log/CLogPrinter.cpp",
     "log/CFdbLogCache.cpp",
     "utils/cJSON/cJSON.c",
-    "appfw/CFdbAFComponent.cpp",
-    "appfw/CFdbAppFramework.cpp",
+    "fdbus/CFdbAFComponent.cpp",
 ]
 
 FDB_PROTO_DIR = "example/idl"

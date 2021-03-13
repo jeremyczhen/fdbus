@@ -17,7 +17,6 @@
 #ifndef _CFDBCONTEXT_H_
 #define _CFDBCONTEXT_H_
 
-#include <mutex>
 #include <functional>
 #include "common_defs.h"
 #include "CFdbBaseContext.h"
@@ -84,8 +83,6 @@ private:
 
     CIntraNameProxy *mNameProxy;
     CLogProducer *mLogger;
-    static std::mutex mSingletonLock;
-    static CFdbContext *mInstance;
 
     bool mEnableNameProxy;
     bool mEnableLogger;

@@ -188,24 +188,6 @@ private:
 
 int main(int argc, char **argv)
 {
-#ifdef __WIN32__
-    WORD wVersionRequested;
-    WSADATA wsaData;
-    int err;
-
-    /* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
-    wVersionRequested = MAKEWORD(2, 2);
-
-    err = WSAStartup(wVersionRequested, &wsaData);
-    if (err != 0)
-    {
-        /* Tell the user that we could not find a usable */
-        /* Winsock DLL.                                  */
-        printf("WSAStartup failed with error: %d\n", err);
-        return 1;
-    }
-#endif
-
     if (!initLogConfig(argc, argv, true))
     {
         return 0;

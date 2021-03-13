@@ -33,6 +33,7 @@ CBaseEndpoint::CBaseEndpoint(const char *name, CBaseWorker *worker, CFdbBaseCont
 {
     autoRemove(false);
     mContext = context ? context : FDB_CONTEXT;
+    mContext->init(); // will not multi-initialization
     enableBlockingMode(false);
     mObjId = FDB_OBJECT_MAIN;
     mEndpoint = this;

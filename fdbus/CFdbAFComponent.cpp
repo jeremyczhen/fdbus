@@ -25,6 +25,7 @@ CFdbAFComponent::CFdbAFComponent(const char *name, CBaseWorker *worker, CFdbBase
     , mWorker(worker)
 {
     mContext = context ? context : FDB_CONTEXT;
+    mContext->init(); // will not multi-initialization
 }
 
 CBaseClient *CFdbAFComponent::findClient(const char *bus_name)

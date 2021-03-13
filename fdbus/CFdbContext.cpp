@@ -18,9 +18,7 @@
 #include "CIntraNameProxy.h"
 #include <common_base/CLogProducer.h>
 #include <utils/Log.h>
-
-std::mutex CFdbContext::mSingletonLock;
-CFdbContext *CFdbContext::mInstance = 0;
+#include <stdio.h>
 
 #define FDB_DEFAULT_LOG_CACHE_SIZE  8 * 1024 * 1024
 
@@ -33,20 +31,28 @@ CFdbContext::CFdbContext()
     , mEnableLogCache(true)
     , mLogCacheSize(0)
 {
+#ifdef __WIN32__
+    WORD wVersionRequested;
+    WSADATA wsaData;
+    int err;
 
+    /* Use the MAKEWORD(lowbyte, highbyte) macro declared in Windef.h */
+    wVersionRequested = MAKEWORD(2, 2);
+
+    err = WSAStartup(wVersionRequested, &wsaData);
+    if (err != 0)
+    {
+        /* Tell the user that we could not find a usable */
+        /* Winsock DLL.                                  */
+        printf("WSAStartup failed with error: %d\n", err);
+    }
+#endif
 }
 
 CFdbContext *CFdbContext::getInstance()
 {
-    if (!mInstance)
-    {
-        std::lock_guard<std::mutex> _l(mSingletonLock);
-        if (!mInstance)
-        {
-            mInstance = new CFdbContext();
-        }
-    }
-    return mInstance;
+    static CFdbContext context;
+    return &context;
 }
 
 const char *CFdbContext::getFdbLibVersion()
